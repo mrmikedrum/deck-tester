@@ -7,7 +7,9 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 - **Embed Forge rather than write a rules engine.** The previous homegrown Rust engine, now in
   `../mtg-goldfish-legacy`, modeled cards as closed enums and parsed Oracle text by pattern. On the
   Eternities decks it marked 37% of cards as implemented, and the ones spot-checked were silently wrong.
-  Forge scripts nearly every card and exposes every player decision through one interface.
+  Forge scripts nearly every card and exposes every player decision through one interface. The M0 spike
+  confirmed it holds: every card known, decisions intercepted, snapshots restored, and about 100 games in
+  45 s.
 - **Two modes, one engine.** Manual means the agent answers every decision. Automated means a pilot script
   plus Forge's AI. The only difference is who answers.
 - **Pilots are Python, falling back to Forge's AI.** The agent's reasoning becomes reusable rules; Forge's AI
@@ -27,4 +29,3 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 - **License.** Forge is GPL-3.0, and the engine links it, so publishing means GPL-3.0.
 - **Where deck kits live.** Probably beside each deck in Deckmaster's project folders, with only examples
   here.
-- **Toolchain.** This machine has no JDK or Maven yet; M0 needs JDK 17+ and Maven.

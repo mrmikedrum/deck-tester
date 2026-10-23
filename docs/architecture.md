@@ -102,23 +102,44 @@ recorded.
 
 ## Snapshots and overrides
 
-Snapshots use `GameCopier` from forge-ai's simulation package. If its fidelity falls short, the fallback is
-replaying the seed plus the recorded answers. Overrides are explicit commands on game objects: move between
-zones, set life, add or remove counters of any type, tap or untap, create a token, attach.
+Snapshots use forge-game's `GameSnapshot`, the copy behind Forge's own experimental undo: copy the game, and
+later restore it into the running game in place. Where its fidelity falls short, the fallback is replaying
+the seed plus the recorded answers. Overrides are explicit commands on game objects: move between zones, set
+life, add or remove counters of any type, tap or untap, create a token, attach.
 
 ## Forge dependency
 
-Built from a pinned upstream commit into `vendor/forge` (gitignored) and installed into the local Maven
-repository: forge-core, forge-game and forge-ai, with no GUI modules. Card scripts come from its
-`res/cardsfolder`, then from `cards/`. Moving the pin is a deliberate change, for example to pick up a new
-set. There's no long-lived fork.
+`scripts/bootstrap-forge.sh` sparse-fetches a pinned upstream commit into `vendor/forge` (gitignored) and
+installs forge-core, forge-game and forge-ai into the local Maven repository, with no GUI modules. Card
+scripts come from `vendor/forge/forge-gui/res/cardsfolder`, then from `cards/`. Headless startup
+(`engine/.../Forge.java`) is the card-data part of forge-gui's `FModel.initialize`. Moving the pin is a
+deliberate change, for example to pick up a new set. There's no long-lived fork.
 
-## Not yet verified (M0)
+## Measured in M0 (2026-10-23, Apple Silicon, 10 cores, JDK 21)
 
-- Headless startup time and memory.
-- How fast a game to turn 8 plays.
-- Running several games at once in one JVM. Forge has static state; the fallback is a few engine
-  processes.
-- How faithful `GameCopier`'s copies are.
-- Forge's coverage of the example decks' cards.
-- How passive opponents fit Forge's Commander deck validation.
+Measured with `scripts/spike.sh`, on the Marath deck against three passive opponents.
+
+- **Startup:** 1.8 s with all 34,100 card scripts loaded eagerly (146 MB heap). Lazy loading was slower
+  (3.8 s) and saved only memory, so loading stays eager.
+- **Coverage:** Forge knew all 100 cards and marked none as hard for its AI.
+- **Speed:** a game to turn 8 with Forge's AI piloting took about 1.3 s on one thread. 16 games on 8 threads
+  took 6.3–7.3 s with no failures, so 100 games run in about 40–45 s. Several games in one JVM worked.
+- **Memory:** about 400–480 MB live heap with 8 games in flight; the process peaked near 3 GB under the
+  JVM's default maximum, so the engine should set `-Xmx`.
+- **Decisions:** overriding `PlayerControllerAi` methods intercepts mulligans and priority. A game thread
+  parked on a `SynchronousQueue` until another thread answered, then carried on, and handing the rest of
+  the game back to the AI worked.
+- **Snapshots:** `GameSnapshot` copied a mid-game state in 29 ms and restored it in place in 5 ms. The
+  restored state matched the copy exactly, and the game carried on from it. `GameCopier` wasn't needed.
+- **Determinism:** seeding Forge's shared RNG (`MyRandom.setRandom`) gave identical games when run one
+  after another. With games in parallel the RNG is shared, so per-game seeding needs a per-thread RNG.
+- **Opponents:** Kozilek plus 99 Wastes passed Forge's Commander setup. The opponents only played lands,
+  and the AI pilot attacked them.
+
+M1 has to handle what the spike showed:
+
+- Forge prints noise to stdout, so the engine sends Forge's output to a log and keeps its own channel clean.
+- Forge's list of legal plays includes spells the player can't pay for, so the agent's options need an
+  affordability filter.
+- Option labels from Forge carry full Oracle text; they need compact labels.
+- Cast events include abilities and triggers, so records come from game objects, not UI views.

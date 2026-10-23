@@ -29,7 +29,7 @@ def doctor(_args) -> int:
         ("python 3.9+", sys.version_info >= (3, 9), sys.version.split()[0]),
         ("java 17+", bool(java and java >= 17), f"found {java}" if java else "not found"),
         ("maven", bool(shutil.which("mvn")), "found" if shutil.which("mvn") else "not found"),
-        ("forge", (ROOT / "vendor" / "forge").is_dir(), "vendor/forge (built in M0)"),
+        ("forge", (ROOT / "vendor" / "forge").is_dir(), "vendor/forge (scripts/bootstrap-forge.sh)"),
     ]
     for name, ok, detail in checks:
         print(f"{'ok ' if ok else 'MISSING'} {name}: {detail}")
