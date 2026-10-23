@@ -1,15 +1,13 @@
 # Roadmap
 
-Each milestone ends with something an agent can use. Delete a milestone when it ships. M0 (Forge spike) and
-M1 (manual mode) shipped on 2026-10-23; what they built is in [architecture](architecture.md).
+Each milestone ends with something an agent can use. Delete a milestone when it ships. M0 (Forge spike), M1
+(manual mode) and the core of M2 (automated batches) shipped on 2026-10-23; what they built is in
+[architecture](architecture.md).
 
-## M2 — Automated mode
+## M2, the rest
 
-Pilot SDK, settled against the decisions M1 surfaces. Forge AI fallback, `run` batches across threads with
-per-game seeds, standard metrics, deck-plan checkpoints, a batch report, and `cards` across a batch.
-
-Done when 100 games of eight turns finish in about a minute (a benchmark; game length is the caller's choice) and
-the report fits on one screen.
+Deck-plan checkpoints, missing-colour and flood flags, resuming an automated game by hand, and a state view
+for pilots.
 
 ## M3 — Card fixes
 

@@ -17,6 +17,7 @@ import forge.game.zone.ZoneType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Cost payment for the agent's casts: which permanents to tap or sacrifice is the agent's choice, the
@@ -43,7 +44,7 @@ final class ManualCostDecision extends AiCostDecision {
         if (!cost.canTapSource) {
             valid.remove(source);
         }
-        return pick(valid, cost.getAbilityAmount(ability), "tap for " + source.getName());
+        return pick(valid, cost.getAbilityAmount(ability), "tap for " + source.getName(), () -> recorded("tap", super.visit(cost)));
     }
 
     @Override
@@ -57,7 +58,7 @@ final class ManualCostDecision extends AiCostDecision {
         }
         CardCollectionView valid = CardLists.filter(player.getCardsIn(ZoneType.Battlefield), CardPredicates.canBeSacrificedBy(ability, isEffect()));
         valid = CardLists.getValidCards(valid, type.split(";"), player, source, ability);
-        return pick(valid, cost.getAbilityAmount(ability), "sacrifice for " + source.getName());
+        return pick(valid, cost.getAbilityAmount(ability), "sacrifice for " + source.getName(), () -> recorded("sacrifice", super.visit(cost)));
     }
 
     @Override
@@ -85,7 +86,8 @@ final class ManualCostDecision extends AiCostDecision {
         return decision;
     }
 
-    private PaymentDecision pick(CardCollectionView valid, int count, String prompt) {
+    /** The agent picks the cards; when it hands the choice over, Forge's AI does (the fallback). */
+    private PaymentDecision pick(CardCollectionView valid, int count, String prompt, Supplier<PaymentDecision> fallback) {
         if (count == 0) {
             return PaymentDecision.number(0);
         }
@@ -93,6 +95,6 @@ final class ManualCostDecision extends AiCostDecision {
             return null;
         }
         List<Card> chosen = controller.choose("choose", prompt, valid, card -> Labels.card(card, player), count, count);
-        return PaymentDecision.card(chosen);
+        return chosen != null ? PaymentDecision.card(chosen) : fallback.get();
     }
 }

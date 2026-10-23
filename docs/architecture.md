@@ -2,7 +2,7 @@
 
 ```
 agent ──shell──▶ bin/goldfish (Python) ──JSON lines, Unix socket──▶ engine (JVM, Forge embedded)
-                   │ runs the pilot in automated mode (M2)            │ one thread per game
+                   │ runs batches and the pilot                       │ one thread per game
                    ▼                                                  ▼
              digests, reports ◀───────────── game records (.goldfish/runs/g<N>.jsonl) ◀┘
 ```
@@ -10,9 +10,9 @@ agent ──shell──▶ bin/goldfish (Python) ──JSON lines, Unix socket�
 | Path | Language | Owns |
 |------|----------|------|
 | `engine/` | Java 17, Maven | Forge host: game setup, decision routing, snapshots, overrides, recording facts |
-| `goldfish/` | Python 3.9, stdlib only | CLI, engine client, digests; later the pilot runtime, metrics and reports |
+| `goldfish/` | Python 3.9, stdlib only | CLI, engine client, digests, batch runner and pilot runtime, reports |
 | `cards/` | Forge card script | Cards added or corrected, loaded after Forge's own (M3) |
-| deck kit (outside) | text + Python | Decklist and `pilot.py`, kept beside the deck in Deckmaster's project folder |
+| deck and pilot (outside) | text + Python | The decklist, and optionally a pilot file, passed by path |
 
 Decisions have to be intercepted inside Forge, so the engine is Java. Everything an agent writes or reads
 (pilots, metrics, reports) is Python: that matches Deckmaster's tooling, and it changes without rebuilding
@@ -61,7 +61,27 @@ Casting follows Forge's AI sequence (`ComputerUtil.handlePlayingSpellAbility`), 
 `ManualController.cast`, so that `ManualCostDecision` can give tap and sacrifice choices to the agent. If a
 cast fails, the card goes back where it came from, and the record marks the cast as failed.
 
-In automated mode (M2), a pilot answers the kinds it declares, and Forge's AI (`super`) answers the rest.
+## Who answers: agent, pilot or Forge's AI
+
+Each session has the set of decision kinds the agent answers; Forge's AI (`super`) answers the rest. A
+manual game (`start`) asks every kind; `start --ask mulligan,play` asks only those, and `--ask none` lets
+Forge's AI play the whole game. In any decision the agent can answer `ai` to hand just that one over.
+
+Two rules keep the deciders consistent:
+
+- Whoever chooses a play also casts it. If the agent chose the spell, its targets, modes, X and payment
+  come to the agent too (an `ai` answer there hands that piece back). If Forge's AI chose it, Forge's own
+  cast path does everything.
+- When only some kinds are asked, priority outside the agent's stops goes to Forge's AI, not a pass.
+
+Automated mode is the same session with a pilot as the agent. `goldfish run` (`goldfish/batch.py`) starts
+one session per seed, at most `--workers` at once, each asking the kinds the pilot defines. It answers each
+parked decision by calling the pilot's function for that kind; a `None` hands it to the AI. With no pilot,
+nothing is asked and games never park.
+
+Forge marks some cards as ones its AI can't play well (`AI:RemoveDeck:All`; the Marath deck's commander is
+one). `start` and `run` name them, because Forge's AI simply never plays them; a pilot's `play` handler or
+manual play can.
 
 ## Sessions and processes
 
@@ -94,7 +114,10 @@ The engine records facts only, one JSON line each, tagged with the agent's turn:
 - `move` for the agent's cards changing zones, including tokens appearing;
 - `life` for any player;
 - `look` for cards seen by scry, surveil, reveal or search;
-- `decision` (kind, prompt, option count, answer by label, and who answered: agent, forced or ai);
+- `decision` (kind, prompt, option count, answer by label, and who answered: agent, forced or ai;
+  `deferred` when the agent handed it to the AI);
+- `eot` at the agent's end step: lands, potential and unspent mana, hand size, creatures, other
+  permanents, and the opponents' total life;
 - `snapshot`, `restore`, `override`.
 
 Cards are named, never numbered. Ids appear only so a card seen twice counts once.
@@ -109,15 +132,22 @@ Python derives everything else:
 
 Restoring a snapshot drops the abandoned line from these views; `--all` keeps it.
 
-Still to come in M2: standard per-turn metrics (land drop made, mana available versus spent, commander
-turn, missing colours, screw and flood flags), and deck-plan checkpoints from the pilot, reported as hit
-rates.
+- **`goldfish run` / `report`:** a batch manifest in `.goldfish/batches/b<N>.json` lists its games. The
+  report (`goldfish/report.py`) gives per-turn averages (lands, potential and unspent mana, the share of
+  games that missed a land drop, cumulative spells, damage to opponents), when the commander was cast,
+  and mulligans. `--per-game` adds a line per game (open any with `--session gN log`); `--cards` adds, per
+  card, how many games saw and played it.
+
+Not yet: deck-plan checkpoints, missing-colour and flood flags, resuming an automated game by hand, and a
+pilot view of the game state beyond the decision itself.
 
 ## Pilots
 
-A pilot is one Python file beside the deck: handlers for the decision kinds that express the deck's plan,
-and the deck's `PLAN`. A handler sees a read-only state view and returns an option number, or `None` to
-defer to Forge's AI. The SDK's shape is settled in M2 against the decisions M1 surfaces.
+A pilot is a Python file passed by path, defining functions named after decision kinds (`mulligan`,
+`play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `pay`). Each gets the decision
+as a dict (kind, turn, prompt, options, details, min, max, repeat) and returns option numbers, or `None`
+to defer to Forge's AI. `examples/pilots/commander_first.py` casts the commander whenever it's offered.
+Where pilots live is the caller's choice; nothing here assumes a location.
 
 ## Cards Forge lacks or gets wrong
 
@@ -157,3 +187,11 @@ removed in M1 and is in git history at `e0e2b7e`.
   took 6.3–7.3 s, so 100 games run in about 40–45 s.
 - **Memory:** about 400–480 MB live heap with 8 games in flight; the engine runs with `-Xmx2g`.
 - **Snapshots:** `GameSnapshot` copied a mid-game state in 29 ms and restored it in place in 5 ms, exactly.
+
+## Measured in M2 (2026-10-23)
+
+- **Batches:** 100 games of the Marath deck to turn 8 with Forge's AI piloting, 8 at a time: 40.9 s. The
+  engine held about 810 MB resident afterwards.
+- **Seeds:** the same seed gives the same draws. Forge's AI evaluates some choices on time-limited worker
+  threads, so its games can still differ slightly: rerunning 6 seeds gave 5 identical games and one with
+  different combat damage.

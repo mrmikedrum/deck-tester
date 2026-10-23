@@ -27,5 +27,4 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
   history there keeps the fork link and needs the default branch changed from `mainline`. A new standalone
   repo avoids both.
 - **License.** Forge is GPL-3.0, and the engine links it, so publishing means GPL-3.0.
-- **Where deck kits live.** Probably beside each deck in Deckmaster's project folders, with only examples
-  here.
+- **Where pilots live.** Passed by path for now; Deckmaster decides whether they belong with a project.

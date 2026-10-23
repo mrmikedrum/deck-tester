@@ -110,7 +110,7 @@ def digest(facts: List[dict], decisions: bool = False) -> List[str]:
         lines.append(f"T{turn} " + " · ".join(p for p in parts if p))
         if decisions:
             for f in group:
-                if f["t"] == "decision" and f.get("by") != "forced":
+                if f["t"] == "decision" and f.get("by") != "forced" and not f.get("deferred"):
                     lines.append(f"   {'(ai) ' if f.get('by') == 'ai' else ''}{f['kind']}{' (' + f['prompt'] + ')' if f.get('prompt') else ''}: "
                                  f"{', '.join(map(str, f['answer'])) or 'none'}")
     return lines

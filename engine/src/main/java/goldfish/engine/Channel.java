@@ -22,11 +22,14 @@ final class Channel {
         }
     }
 
+    /** The answer that hands a decision to Forge's AI. */
+    static final Object DEFER = new Object();
+
     private final SynchronousQueue<Object> answers = new SynchronousQueue<>();
     private Decision pending;
     private boolean finished;
 
-    /** Game thread: publish the decision and park until it is answered. */
+    /** Game thread: publish the decision and park until it is answered; null when handed to the AI. */
     @SuppressWarnings("unchecked")
     List<Integer> ask(Decision decision) {
         synchronized (this) {
@@ -42,6 +45,9 @@ final class Channel {
         }
         if (answer instanceof Interrupt interrupt) {
             throw interrupt;
+        }
+        if (answer == DEFER) {
+            return null;
         }
         return (List<Integer>) answer;
     }

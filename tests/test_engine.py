@@ -37,5 +37,31 @@ class ManualGameTest(unittest.TestCase):
         self.assertEqual(played, [])    # the land play was undone by the restore
 
 
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
+class AutomatedGameTest(unittest.TestCase):
+    def test_ai_plays_a_whole_game_and_records_end_of_turn(self):
+        deck = decklist.load(DECK)
+        reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 5,
+                                "turns": 3, "ask": [], "mana": "auto"})
+        self.assertEqual(reply.get("over"), "turn limit")
+        self.assertIn("Marath, Will of the Wild", reply["ai_avoids"])
+        reply = engine.request({"cmd": "end", "session": reply["session"]})
+        facts = records.load(reply["records"])
+        self.assertEqual([f["turn"] for f in facts if f["t"] == "eot"], [1, 2, 3])
+
+    def test_a_decision_can_be_handed_to_the_ai(self):
+        deck = decklist.load(DECK)
+        reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 1})
+        session = reply["session"]
+        try:
+            self.assertEqual(reply["decision"]["kind"], "mulligan")
+            reply = engine.request({"cmd": "answer", "session": session, "defer": True})
+            self.assertEqual(reply["decision"]["kind"], "play")
+        finally:
+            reply = engine.request({"cmd": "end", "session": session})
+        decisions = [f for f in records.load(reply["records"]) if f["t"] == "decision" and f["kind"] == "mulligan"]
+        self.assertEqual(decisions[-1]["by"], "ai")
+
+
 if __name__ == "__main__":
     unittest.main()

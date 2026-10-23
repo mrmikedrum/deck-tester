@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import decklist, engine, records, render
+from . import batch, decklist, engine, records, render, report
 
 ROOT = Path(__file__).resolve().parent.parent
 CURRENT = engine.HOME / "current"
@@ -94,10 +94,18 @@ def start(args) -> int:
         payload["seed"] = args.seed
     if args.turns is not None:
         payload["turns"] = args.turns
+    if args.ask is not None:
+        payload["ask"] = [] if args.ask == "none" else [kind.strip() for kind in args.ask.split(",") if kind.strip()]
+        unknown = set(payload["ask"]) - set(batch.KINDS)
+        if unknown:
+            print(f"unknown kinds: {', '.join(sorted(unknown))}; kinds are {', '.join(batch.KINDS)}")
+            return 1
     engine.refresh()
     reply = engine.request(payload)
     CURRENT.write_text(reply["session"])
     print(f"{reply['session']} seed {reply['seed']} · {Path(args.deck).stem}@{deck.revision()}")
+    if reply.get("ai_avoids") and args.ask is not None:
+        print("Forge's AI doesn't play: " + ", ".join(reply["ai_avoids"]))
     _show(reply)
     return 0
 
@@ -112,7 +120,12 @@ def _parse_answer(tokens) -> list:
 
 
 def answer(args) -> int:
-    _show(engine.request({"cmd": "answer", "session": _session(args), "answer": _parse_answer(args.answer)}))
+    request = {"cmd": "answer", "session": _session(args)}
+    if [token.lower() for token in args.answer] == ["ai"]:
+        request["defer"] = True
+    else:
+        request["answer"] = _parse_answer(args.answer)
+    _show(engine.request(request))
     return 0
 
 
@@ -198,6 +211,28 @@ def cards(args) -> int:
     return 0
 
 
+def run(args) -> int:
+    deck = decklist.load(args.deck)
+    problems = deck.problems()
+    if problems:
+        print("deck problems: " + "; ".join(problems))
+        return 1
+    seed = args.seed if args.seed is not None else int.from_bytes(__import__("os").urandom(2), "big") * 100
+    manifest = batch.run(deck, Path(args.deck).stem, args.games, seed, args.turns, args.opponents, args.pilot, args.workers)
+    for line in report.build(manifest, show_games=args.per_game, show_cards=args.cards):
+        print(line)
+    return 0
+
+
+def report_cmd(args) -> int:
+    batch_id = args.batch or batch.latest()
+    if not batch_id:
+        raise engine.EngineError("no batches yet; run one with: goldfish run DECK")
+    for line in report.build(batch.load(batch_id), show_games=args.per_game, show_cards=args.cards):
+        print(line)
+    return 0
+
+
 def engine_cmd(args) -> int:
     if args.action == "stop":
         engine.stop()
@@ -230,10 +265,30 @@ def main(argv=None) -> int:
                        help="main: priority on your main phases and with something on the stack; all: every time")
     begin.add_argument("--mana", choices=("creatures", "always", "auto"), default="creatures",
                        help="when you pick which sources pay: when a creature could pay, always, or never")
+    begin.add_argument("--ask", help="decision kinds you answer, comma-separated, or 'none' (default: all); "
+                       "Forge's AI answers the rest. Kinds: " + ", ".join(batch.KINDS))
     begin.add_argument("--opponents", type=int, default=3)
     begin.set_defaults(run=start)
 
-    reply = commands.add_parser("a", aliases=["answer"], help="answer the decision with option numbers (or 'none')")
+    play = commands.add_parser("run", help="play a batch of games automatically and report")
+    play.add_argument("deck")
+    play.add_argument("--games", type=int, default=20)
+    play.add_argument("--seed", type=int, help="first seed; game N uses seed+N (default: random)")
+    play.add_argument("--turns", type=int, default=8, help="end each game after this many of your turns (0: no limit)")
+    play.add_argument("--pilot", help="Python file answering some decision kinds; Forge's AI answers the rest")
+    play.add_argument("--opponents", type=int, default=3)
+    play.add_argument("--workers", type=int, default=8, help="games played at once")
+    play.add_argument("--per-game", action="store_true", help="add a line per game")
+    play.add_argument("--cards", action="store_true", help="add how often each card was seen and played")
+    play.set_defaults(run=run)
+
+    summary = commands.add_parser("report", help="report on a batch again (default: the last one)")
+    summary.add_argument("batch", nargs="?")
+    summary.add_argument("--per-game", action="store_true", help="add a line per game")
+    summary.add_argument("--cards", action="store_true", help="add how often each card was seen and played")
+    summary.set_defaults(run=report_cmd)
+
+    reply = commands.add_parser("a", aliases=["answer"], help="answer with option numbers, 'none', or 'ai' to let Forge's AI decide")
     reply.add_argument("answer", nargs="*")
     reply.set_defaults(run=answer)
     pending = commands.add_parser("decision", help="show the pending decision")

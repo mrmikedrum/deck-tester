@@ -22,9 +22,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
@@ -136,6 +138,10 @@ public final class Server {
                 if (pending == null) {
                     return progress(session);
                 }
+                if (request.has("defer") && request.get("defer").getAsBoolean()) {
+                    session.channel.resume(Channel.DEFER);
+                    return progress(session);
+                }
                 List<Integer> answer = new ArrayList<>();
                 request.getAsJsonArray("answer").forEach(e -> answer.add(e.getAsInt()));
                 String problem = pending.check(answer);
@@ -207,11 +213,19 @@ public final class Server {
         synchronized (this) {
             id = "g" + (++lastId);
         }
-        Session session = new Session(id, seed, turns, stopsAll, mana, home.resolve("runs"));
+        Set<String> asks = null;
+        if (request.has("ask")) {
+            asks = new HashSet<>();
+            for (JsonElement kind : request.getAsJsonArray("ask")) {
+                asks.add(kind.getAsString());
+            }
+        }
+        Session session = new Session(id, seed, turns, stopsAll, mana, asks, home.resolve("runs"));
         sessions.put(id, session);
         session.start(deck, opponents, String.join(" + ", commanders), deckName, deckHash);
         Map<String, Object> reply = progress(session);
         reply.put("seed", seed);
+        reply.put("ai_avoids", Session.aiAvoids(deck));
         return reply;
     }
 

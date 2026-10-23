@@ -1,9 +1,10 @@
 # AGENTS.md
 
-MTG Goldfish lets agents playtest Commander decks by goldfishing, with Forge as the rules engine. Read
-[vision](docs/vision.md) for what it's for, [architecture](docs/architecture.md) for how it fits together,
-and [roadmap](docs/roadmap.md) for what comes next. [Decisions](docs/decisions.md) holds what's settled and
-what's open.
+MTG Goldfish lets agents playtest Commander decks by goldfishing, with Forge as the rules engine.
+For routine piloting, use Deckmaster's goldfish skill and the [README](README.md); load further detail
+only when the task needs it. For development or diagnosis, read [vision](docs/vision.md) for purpose,
+[architecture](docs/architecture.md) for implementation, and relevant [decisions](docs/decisions.md).
+[Roadmap](docs/roadmap.md) owns planned work. Reuse guidance already current in context.
 
 ## How to work here
 
@@ -25,13 +26,13 @@ what's open.
 
 | Path | What |
 |------|------|
-| `goldfish/` | Python package: CLI (`cli.py`), engine client (`engine.py`), record digests (`records.py`), text views (`render.py`) |
+| `goldfish/` | Python package: CLI (`cli.py`), engine client (`engine.py`), record digests (`records.py`), text views (`render.py`), batches and pilots (`batch.py`), batch reports (`report.py`) |
 | `bin/goldfish` | CLI entry point |
 | `engine/` | Forge host: `Server` (socket), `Session` (one game), `ManualController` (decisions), `Recorder` (facts) |
 | `scripts/` | `bootstrap-forge.sh` (fetch and install pinned Forge), `build-engine.sh` (compile; the CLI runs it when needed) |
 | `vendor/forge` | Pinned Forge checkout, gitignored; card scripts in `forge-gui/res/cardsfolder` |
 | `cards/` | Forge card-script overlay (arrives in M3) |
-| `examples/decks/` | Real decklists used as fixtures |
+| `examples/` | Real decklists used as fixtures, and an example pilot |
 | `tests/` | `unittest` suites; `test_engine.py` plays a real game and skips without Forge |
 | `.goldfish/` | Runtime, gitignored: engine socket and log, game records in `runs/` |
 

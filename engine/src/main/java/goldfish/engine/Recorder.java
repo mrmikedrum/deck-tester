@@ -10,6 +10,10 @@ import forge.game.event.GameEventLandPlayed;
 import forge.game.event.GameEventPlayerLivesChanged;
 import forge.game.event.GameEventSnapshotRestored;
 import forge.game.event.GameEventTurnBegan;
+import forge.game.event.GameEventTurnPhase;
+import forge.game.phase.PhaseType;
+import forge.game.player.Player;
+import forge.ai.ComputerUtilMana;
 import forge.game.player.PlayerView;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
@@ -90,9 +94,9 @@ final class Recorder {
         }
     }
 
-    void played(SpellAbility sa, String label, Integer x, boolean ok) {
+    void played(SpellAbility sa, String label, Integer x, boolean ok, String by) {
         write(sa.isSpell() ? "cast" : "activate", "card", sa.getHostCard().getName(), "id", sa.getHostCard().getId(), "as", label, "x", x,
-                "failed", ok ? null : true);
+                "failed", ok ? null : true, "by", by);
     }
 
     void look(Iterable<?> cards, String why) {
@@ -123,6 +127,8 @@ final class Recorder {
             if (isPilot(turn.turnOwner()) && session.beginPilotTurn()) {
                 write("turn");
             }
+        } else if (event instanceof GameEventTurnPhase phase && phase.phase() == PhaseType.END_OF_TURN && isPilot(phase.playerTurn())) {
+            endOfTurn();
         } else if (event instanceof GameEventLandPlayed land && isPilot(land.player())) {
             write("land", "card", land.land().getName(), "id", land.land().getId());
         } else if (event instanceof GameEventPlayerLivesChanged life) {
@@ -130,6 +136,24 @@ final class Recorder {
         } else if (event instanceof GameEventCardChangeZone move) {
             zoneChange(move);
         }
+    }
+
+    /** Where the agent stands at its end step: the numbers a batch report averages. */
+    private void endOfTurn() {
+        Player pilot = session.pilot;
+        int opponentsLife = 0;
+        for (Player player : pilot.getGame().getPlayers()) {
+            if (!player.equals(pilot)) {
+                opponentsLife += player.getLife();
+            }
+        }
+        write("eot", "lands", pilot.getLandsInPlay().size(),
+                "mana", ComputerUtilMana.getAvailableManaEstimate(pilot, false),
+                "unspent", ComputerUtilMana.getAvailableManaEstimate(pilot, true),
+                "hand", pilot.getCardsIn(ZoneType.Hand).size(),
+                "creatures", pilot.getCreaturesInPlay().size(),
+                "permanents", pilot.getCardsIn(ZoneType.Battlefield).size() - pilot.getLandsInPlay().size(),
+                "opponents_life", opponentsLife);
     }
 
     private void zoneChange(GameEventCardChangeZone move) {

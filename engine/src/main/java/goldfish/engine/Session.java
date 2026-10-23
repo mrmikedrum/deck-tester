@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
 
 /** One goldfish game: the agent's deck against passive opponents, run on its own thread. */
@@ -67,6 +68,8 @@ final class Session {
     final int turnLimit;
     final boolean stopsAll;
     final ManaChoice manaChoice;
+    /** The decision kinds the agent answers; null for all of them. Forge's AI answers the rest. */
+    private final Set<String> asks;
     final Path recordFile;
     final Channel channel = new Channel();
     final Recorder recorder;
@@ -77,7 +80,8 @@ final class Session {
     private volatile SeededRandom.Source random;
     private final Map<String, Snapshot> snapshots = new LinkedHashMap<>();
 
-    Session(String id, long seed, int turnLimit, boolean stopsAll, ManaChoice manaChoice, Path runsDir) throws IOException {
+    Session(String id, long seed, int turnLimit, boolean stopsAll, ManaChoice manaChoice, Set<String> asks, Path runsDir) throws IOException {
+        this.asks = asks;
         this.id = id;
         this.seed = seed;
         this.turnLimit = turnLimit;
@@ -85,6 +89,21 @@ final class Session {
         this.manaChoice = manaChoice;
         this.recordFile = runsDir.resolve(id + ".jsonl");
         this.recorder = new Recorder(this, recordFile);
+    }
+
+    /** Cards whose Forge scripts say its AI can't play them well (AI:RemoveDeck:All). */
+    static List<String> aiAvoids(Deck deck) {
+        List<String> names = new ArrayList<>();
+        for (DeckSection section : List.of(DeckSection.Commander, DeckSection.Main)) {
+            if (deck.has(section)) {
+                deck.get(section).forEach(entry -> {
+                    if (entry.getKey().getRules().getAiHints().getRemAIDecks() && !names.contains(entry.getKey().getName())) {
+                        names.add(entry.getKey().getName());
+                    }
+                });
+            }
+        }
+        return names;
     }
 
     static Deck deck(List<String> commanders, List<Map.Entry<Integer, String>> main, List<String> unknown) {
@@ -159,6 +178,15 @@ final class Session {
             return "draw";
         }
         return outcome.isWinner(pilot.getLobbyPlayer()) ? "won" : "lost";
+    }
+
+    boolean asks(String kind) {
+        return asks == null || asks.contains(kind);
+    }
+
+    /** Whether the agent answers every kind (plain manual mode). */
+    boolean manual() {
+        return asks == null;
     }
 
     /** Called by the recorder when the agent's turn begins; false once past the turn limit, which ends the game. */
