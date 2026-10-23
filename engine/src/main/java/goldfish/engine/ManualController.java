@@ -1,10 +1,13 @@
 package goldfish.engine;
 
 import forge.LobbyPlayer;
+import forge.ai.AiCardMemory;
 import forge.ai.ComputerUtil;
 import forge.ai.ComputerUtilCost;
 import forge.ai.ComputerUtilMana;
 import forge.ai.PlayerControllerAi;
+import forge.card.ColorSet;
+import forge.card.ICardFace;
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.ability.ApiType;
@@ -19,6 +22,7 @@ import forge.game.combat.CombatUtil;
 import forge.game.player.DelayedReveal;
 import forge.game.player.Player;
 import forge.game.player.PlayerActionConfirmMode;
+import forge.game.player.PlayerController.BinaryChoiceType;
 import forge.game.spellability.AbilitySub;
 import forge.game.spellability.OptionalCostValue;
 import forge.game.spellability.SpellAbility;
@@ -28,15 +32,19 @@ import forge.util.collect.FCollectionView;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
- * The agent's seat in manual mode: every decision with more than one legal answer goes to the agent
- * through the session's channel. Decisions not overridden here fall through to Forge's AI; the list of
- * which is which lives in docs/architecture.md.
+ * The agent's seat in manual mode: every decision overridden here with more than one legal answer goes to
+ * the agent through the session's channel. A few are still Forge's AI's, recorded as such; anything not
+ * overridden falls through to the AI unrecorded. docs/architecture.md keeps the list.
  */
 public class ManualController extends PlayerControllerAi {
     private static final List<String> YES_NO = List.of("yes", "no");
@@ -51,15 +59,20 @@ public class ManualController extends PlayerControllerAi {
     // ---- asking ----
 
     private List<Integer> ask(String kind, String prompt, List<String> options, int min, int max) {
+        return ask(kind, prompt, options, null, min, max, false);
+    }
+
+    /** Ask the agent, unless only one answer is legal. Repeat allows the same option more than once. */
+    private List<Integer> ask(String kind, String prompt, List<String> options, List<String> details, int min, int max, boolean repeat) {
         boolean ordered = kind.equals("order");
         if (max == 0) {
             return List.of();
         }
-        if (options.size() == 1 && min >= 1) {
+        if (options.size() == 1 && min >= 1 && !repeat) {
             session.recorder.decision(kind, prompt, options, List.of(1), "forced");
             return List.of(1);
         }
-        if (!ordered && min >= options.size()) {
+        if (!ordered && !repeat && min >= options.size()) {
             List<Integer> all = new ArrayList<>();
             for (int i = 1; i <= options.size(); i++) {
                 all.add(i);
@@ -67,7 +80,8 @@ public class ManualController extends PlayerControllerAi {
             session.recorder.decision(kind, prompt, options, all, "forced");
             return all;
         }
-        Decision decision = new Decision(kind, session.turnLabel(), prompt, options, min, Math.min(max, options.size()));
+        Decision decision = new Decision(kind, session.turnLabel(), prompt, options, details, min,
+                repeat ? max : Math.min(max, options.size()), repeat);
         List<Integer> answer = session.channel.ask(decision);
         session.recorder.decision(kind, prompt, options, answer, "agent");
         return answer;
@@ -77,7 +91,7 @@ public class ManualController extends PlayerControllerAi {
         if (min >= max) {
             return min;
         }
-        Decision decision = new Decision("number", session.turnLabel(), prompt, List.of(), min, max);
+        Decision decision = new Decision("number", session.turnLabel(), prompt, List.of(), null, min, max, false);
         int value = session.channel.ask(decision).get(0);
         session.recorder.decision("number", prompt, List.of(), List.of(value), "agent");
         return value;
@@ -87,18 +101,29 @@ public class ManualController extends PlayerControllerAi {
         return ask("confirm", prompt, YES_NO, 1, 1).get(0) == 1;
     }
 
-    /** Ask for some of the items; card lists are sorted by name so duplicates sit together. */
+    /** Ask for some of the items; sorted by label so duplicates sit together. Cards carry their text as detail. */
     <T> List<T> choose(String kind, String prompt, Iterable<T> items, Function<T, String> label, int min, int max) {
         List<T> list = new ArrayList<>();
         items.forEach(list::add);
         list.sort(Comparator.comparing(label));
         List<String> options = new ArrayList<>();
         list.forEach(item -> options.add(label.apply(item)));
+        List<String> details = null;
+        if (list.stream().anyMatch(item -> item instanceof Card)) {
+            details = new ArrayList<>();
+            for (T item : list) {
+                details.add(item instanceof Card card ? Labels.detail(card) : options.get(details.size()));
+            }
+        }
         List<T> chosen = new ArrayList<>();
-        for (int pick : ask(kind, prompt, options, Math.min(min, list.size()), Math.min(max, list.size()))) {
+        for (int pick : ask(kind, prompt, options, details, Math.min(min, list.size()), Math.min(max, list.size()), false)) {
             chosen.add(list.get(pick - 1));
         }
         return chosen;
+    }
+
+    void recordAi(String kind, String prompt, List<String> answer) {
+        session.recorder.ai(kind, prompt, answer);
     }
 
     private String cardLabel(Card card) {
@@ -167,11 +192,16 @@ public class ManualController extends PlayerControllerAi {
                 return null;
             }
             List<String> options = new ArrayList<>();
+            List<String> details = new ArrayList<>();
             options.add("pass");
-            playable.forEach(sa -> options.add(Labels.ability(sa)));
+            details.add("pass priority");
+            playable.forEach(sa -> {
+                options.add(Labels.ability(sa));
+                details.add(Labels.detail(sa));
+            });
             int pick;
             try {
-                pick = ask("play", "", options, 1, 1).get(0);
+                pick = ask("play", "", options, details, 1, 1, false).get(0);
             } catch (Channel.Interrupt interrupt) {
                 if (interrupt.restored) {
                     continue; // state was restored under us: ask again from the restored state
@@ -243,13 +273,79 @@ public class ManualController extends PlayerControllerAi {
         if (!sa.isTargetNumberValid()) {
             return false;
         }
+        List<Card> sources = sa.getPayCosts().hasManaCost() ? manaSources() : List.of();
+        List<Card> held = new ArrayList<>();
+        String by = "ai";
+        if (askForMana(sources)) {
+            String prompt = "sources to pay " + sa.getPayCosts().getTotalMana() + " for " + source.getName() + "; none = automatic";
+            List<Card> chosen = choose("pay", prompt, sources, card -> cardLabel(card) + " (" + produces(card) + ")", 0, sources.size());
+            if (!chosen.isEmpty()) {
+                by = "agent";
+                for (Card card : sources) {
+                    if (!chosen.contains(card)) {
+                        // Forge's AI leaves sources it holds for the next spell alone while paying.
+                        AiCardMemory.rememberCard(getPlayer(), card, AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
+                        held.add(card);
+                    }
+                }
+            }
+        }
+        boolean paid;
         game.getStack().freezeStack(sa);
-        if (new CostPayment(sa.getPayCosts(), sa).payComputerCosts(new ManualCostDecision(this, sa))) {
+        try {
+            paid = new CostPayment(sa.getPayCosts(), sa).payComputerCosts(new ManualCostDecision(this, sa));
+        } finally {
+            held.forEach(card -> AiCardMemory.forgetCard(getPlayer(), card, AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL));
+        }
+        List<String> tapped = new ArrayList<>();
+        for (Card card : sources) {
+            Card now = game.getCardState(card);
+            if (now != null && now.isTapped()) {
+                tapped.add(now.getName());
+            }
+        }
+        session.recorder.paid(source.getName(), tapped, by);
+        if (paid) {
             game.getStack().addAndUnfreeze(sa);
             return true;
         }
         game.getStack().clearFrozen();
         return false;
+    }
+
+    /** Permanents of the agent's that could produce mana right now. */
+    private List<Card> manaSources() {
+        List<Card> sources = new ArrayList<>();
+        for (Card card : getPlayer().getCardsIn(ZoneType.Battlefield)) {
+            for (SpellAbility ability : card.getManaAbilities()) {
+                ability.setActivatingPlayer(getPlayer());
+                if (ability.canPlay()) {
+                    sources.add(card);
+                    break;
+                }
+            }
+        }
+        return sources;
+    }
+
+    /** Whether choosing sources could matter: always, or when a creature (which could attack or crew instead) can pay. */
+    private boolean askForMana(List<Card> sources) {
+        return sources.size() > 1 && switch (session.manaChoice) {
+            case AUTO -> false;
+            case ALWAYS -> true;
+            case CREATURES -> sources.stream().anyMatch(Card::isCreature);
+        };
+    }
+
+    private static String produces(Card card) {
+        Set<String> produced = new LinkedHashSet<>();
+        for (SpellAbility ability : card.getManaAbilities()) {
+            String mana = ability.getManaPart() == null ? null : ability.getManaPart().getOrigProduced();
+            if (mana != null && !mana.isEmpty()) {
+                produced.add(mana.replace("Combo ", "").replace(" ", ""));
+            }
+        }
+        return String.join("/", produced);
     }
 
     /** Targets for every part of the ability that targets, asked part by part. */
@@ -268,6 +364,61 @@ public class ManualController extends PlayerControllerAi {
                 part.getTargets().add(target);
             }
         }
+    }
+
+    // ---- choices still left to Forge's AI, recorded so the game record says who decided ----
+
+    @Override
+    public byte chooseColor(String message, SpellAbility sa, ColorSet colors) {
+        byte color = super.chooseColor(message, sa, colors);
+        session.recorder.ai("color", clean(message) + source(sa), List.of(ColorSet.fromMask(color).toString()));
+        return color;
+    }
+
+    @Override
+    public ColorSet chooseColors(String message, SpellAbility sa, int min, int max, ColorSet options) {
+        ColorSet colors = super.chooseColors(message, sa, min, max, options);
+        session.recorder.ai("color", clean(message) + source(sa), List.of(String.valueOf(colors)));
+        return colors;
+    }
+
+    @Override
+    public String chooseSomeType(String kindOfType, SpellAbility sa, Collection<String> validTypes, boolean isOptional) {
+        String type = super.chooseSomeType(kindOfType, sa, validTypes, isOptional);
+        session.recorder.ai("type", kindOfType + source(sa), List.of(String.valueOf(type)));
+        return type;
+    }
+
+    @Override
+    public String chooseCardName(SpellAbility sa, Predicate<ICardFace> cpp, String valid, String message) {
+        String name = super.chooseCardName(sa, cpp, valid, message);
+        session.recorder.ai("name", clean(message) + source(sa), List.of(String.valueOf(name)));
+        return name;
+    }
+
+    @Override
+    public String chooseCardName(SpellAbility sa, List<ICardFace> faces, String message) {
+        String name = super.chooseCardName(sa, faces, message);
+        session.recorder.ai("name", clean(message) + source(sa), List.of(String.valueOf(name)));
+        return name;
+    }
+
+    @Override
+    public boolean chooseBinary(SpellAbility sa, String question, BinaryChoiceType kindOfChoice, Boolean defaultVal) {
+        boolean choice = super.chooseBinary(sa, question, kindOfChoice, defaultVal);
+        session.recorder.ai("binary", clean(question) + source(sa), List.of(String.valueOf(choice)));
+        return choice;
+    }
+
+    @Override
+    public CardCollectionView orderMoveToZoneList(CardCollectionView cards, ZoneType destinationZone, SpellAbility source) {
+        CardCollectionView ordered = super.orderMoveToZoneList(cards, destinationZone, source);
+        if (ordered.size() > 1) {
+            List<String> names = new ArrayList<>();
+            ordered.forEach(card -> names.add(card.getName()));
+            session.recorder.ai("order", "cards to " + destinationZone.name().toLowerCase() + source(source), names);
+        }
+        return ordered;
     }
 
     @Override
@@ -324,9 +475,14 @@ public class ManualController extends PlayerControllerAi {
     @Override
     public List<AbilitySub> chooseModeForAbility(SpellAbility sa, List<AbilitySub> possible, int min, int num, boolean allowRepeat) {
         List<String> options = new ArrayList<>();
-        possible.forEach(mode -> options.add(Labels.text(mode.getDescription(), sa.getHostCard().getName())));
+        List<String> details = new ArrayList<>();
+        possible.forEach(mode -> {
+            options.add(Labels.text(mode.getDescription(), sa.getHostCard().getName()));
+            details.add(clean(mode.getDescription()));
+        });
+        String prompt = "modes for " + sa.getHostCard().getName() + (allowRepeat ? ", a mode may repeat" : "");
         List<AbilitySub> chosen = new ArrayList<>();
-        for (int pick : ask("mode", "modes for " + sa.getHostCard().getName(), options, min, num)) {
+        for (int pick : ask("mode", prompt, options, details, min, num, allowRepeat)) {
             chosen.add(possible.get(pick - 1));
         }
         return chosen;

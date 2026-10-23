@@ -7,6 +7,7 @@ style, and `# commander`, `[Commander]` or a bare `Commander` line. Card lines a
 Side and maybe boards are read but never played.
 """
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from typing import List, Tuple
@@ -39,6 +40,11 @@ class Decklist:
     @property
     def size(self) -> int:
         return len(self.commanders) + sum(qty for qty, _ in self.main)
+
+    def revision(self) -> str:
+        """A short hash of what's played (commanders and main deck), so a game says which list it tested."""
+        lines = sorted(self.commanders) + ["--"] + sorted(f"{qty} {name}" for qty, name in self.main)
+        return hashlib.sha1("\n".join(lines).encode()).hexdigest()[:8]
 
     def problems(self) -> List[str]:
         """Commander construction problems visible from names alone."""

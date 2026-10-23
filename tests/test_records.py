@@ -3,7 +3,7 @@ import unittest
 from goldfish import records, render
 
 FACTS = [
-    {"t": "start", "turn": 0, "seed": 11},
+    {"t": "start", "turn": 0, "seed": 11, "deck": "marath", "hash": "56fe6c23"},
     {"t": "draw", "turn": 0, "card": "Forest", "id": 1},
     {"t": "draw", "turn": 0, "card": "Sol Ring", "id": 2},
     {"t": "decision", "turn": 0, "kind": "mulligan", "prompt": "keep this hand", "options": 2, "answer": ["keep"], "by": "agent"},
@@ -16,6 +16,7 @@ FACTS = [
     {"t": "look", "turn": 1, "cards": ["Island", "Forest"], "ids": [9, 3], "why": "scry"},
     {"t": "look", "turn": 1, "cards": ["Plains"], "ids": [10], "why": "searched (Fabled Passage)"},
     {"t": "cast", "turn": 1, "card": "Sol Ring", "id": 2, "as": "Sol Ring", "x": 2, "failed": True},
+    {"t": "decision", "turn": 1, "kind": "color", "prompt": "choose a color", "answer": ["green"], "by": "ai"},
     {"t": "life", "turn": 1, "player": "Opp 1", "life": 37},
     {"t": "end", "turn": 1, "reason": "turn limit"},
 ]
@@ -44,12 +45,16 @@ class DigestTest(unittest.TestCase):
         self.assertEqual(lines[0], "T0 drew Forest, Sol Ring")
         self.assertEqual(lines[1], "T1 drew Forest · land Forest · Opp 1 37 · over: turn limit")
 
-    def test_decisions_on_request(self):
+    def test_decisions_on_request_mark_the_ai(self):
         lines = records.digest(FACTS, decisions=True)
         self.assertIn("   mulligan (keep this hand): keep", lines)
+        self.assertIn("   (ai) color (choose a color): green", lines)
+
+    def test_header_names_deck_revision_and_seed(self):
+        self.assertEqual(records.header(FACTS), "marath@56fe6c23 seed 11")
 
     def test_happened_groups_runs(self):
-        line = records.happened(FACTS[1:3] + FACTS[11:])
+        line = records.happened(FACTS[1:3] + FACTS[12:13] + FACTS[14:])
         self.assertEqual(line, "drew Forest, Sol Ring · couldn't cast Sol Ring X=2 · Opp 1 37 · over: turn limit")
 
 
@@ -58,6 +63,12 @@ class RenderTest(unittest.TestCase):
         decision = {"turn": "T1 main1", "kind": "choose", "prompt": "search", "min": 0, "max": 1,
                     "options": ["Forest", "Forest", "Forest", "Plains"]}
         self.assertEqual(render.decision(decision), "T1 main1 choose (search) [pick 0-1]: 1-3 Forest · 4 Plains")
+
+    def test_repeatable_choice_and_full_detail(self):
+        decision = {"turn": "T5 main1", "kind": "mode", "prompt": "modes", "min": 4, "max": 4, "repeat": True,
+                    "options": ["Citizen", "Proliferate."], "details": ["Create a 2/2 Citizen", "Proliferate."]}
+        self.assertEqual(render.decision(decision), "T5 main1 mode (modes) [pick 4, repeats allowed]: 1 Citizen · 2 Proliferate.")
+        self.assertEqual(render.details(decision), ["1. Create a 2/2 Citizen", "2. Proliferate."])
 
     def test_number_decision(self):
         decision = {"turn": "T2 main1", "kind": "number", "prompt": "X for Hangarback Walker", "min": 0, "max": 3, "options": []}

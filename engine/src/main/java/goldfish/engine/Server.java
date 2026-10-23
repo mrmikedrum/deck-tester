@@ -199,13 +199,17 @@ public final class Server {
         int turns = request.has("turns") ? request.get("turns").getAsInt() : 0;
         int opponents = request.has("opponents") ? request.get("opponents").getAsInt() : 3;
         boolean stopsAll = request.has("stops") && request.get("stops").getAsString().equals("all");
+        Session.ManaChoice mana = Session.ManaChoice.valueOf(
+                (request.has("mana") ? request.get("mana").getAsString() : "creatures").toUpperCase(java.util.Locale.ROOT));
+        String deckName = request.has("deck") ? request.get("deck").getAsString() : null;
+        String deckHash = request.has("hash") ? request.get("hash").getAsString() : null;
         String id;
         synchronized (this) {
             id = "g" + (++lastId);
         }
-        Session session = new Session(id, seed, turns, stopsAll, home.resolve("runs"));
+        Session session = new Session(id, seed, turns, stopsAll, mana, home.resolve("runs"));
         sessions.put(id, session);
-        session.start(deck, opponents, String.join(" + ", commanders));
+        session.start(deck, opponents, String.join(" + ", commanders), deckName, deckHash);
         Map<String, Object> reply = progress(session);
         reply.put("seed", seed);
         return reply;

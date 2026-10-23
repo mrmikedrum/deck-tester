@@ -6,15 +6,61 @@ import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** Short, name-based labels for options. Agents read these, so they stay terse: no ids, no rules text. */
 final class Labels {
     private static final int MAX = 50;
 
     private Labels() { }
 
+    /** A card's name; on the battlefield also what tells copies apart: P/T, counters, tapped, token. */
     static String card(Card card, Player me) {
-        Player controller = card.getController();
-        return controller == null || controller.equals(me) ? card.getName() : card.getName() + " (" + controller.getName() + ")";
+        StringBuilder label = new StringBuilder(card.getName());
+        if (card.isInZone(ZoneType.Battlefield)) {
+            if (card.isCreature()) {
+                label.append(' ').append(card.getNetPower()).append('/').append(card.getNetToughness());
+            }
+            if (!card.getCounters().isEmpty()) {
+                List<String> counters = new ArrayList<>();
+                card.getCounters().entrySet().forEach(e -> counters.add(e.getElement().getName() + " " + e.getCount()));
+                label.append(" [").append(String.join(", ", counters)).append(']');
+            }
+            List<String> flags = new ArrayList<>();
+            if (card.isTapped()) {
+                flags.add("tapped");
+            }
+            if (card.isToken()) {
+                flags.add("token");
+            }
+            Player controller = card.getController();
+            if (controller != null && !controller.equals(me)) {
+                flags.add(controller.getName());
+            }
+            if (!flags.isEmpty()) {
+                label.append(" (").append(String.join(", ", flags)).append(')');
+            }
+        } else if (card.getController() != null && !card.getController().equals(me)) {
+            label.append(" (").append(card.getController().getName()).append(')');
+        }
+        return label.toString();
+    }
+
+    /** The full text behind a card option, for agents that ask for detail. */
+    static String detail(Card card) {
+        // Forge's Oracle text separates abilities with a literal backslash-n, and sometimes a real newline.
+        String text = card.getOracleText() == null ? ""
+                : card.getOracleText().replace("\\n", "\n").replaceAll("\\s*\n\\s*", " / ").trim();
+        return card.getName() + " — " + card.getType() + (text.isEmpty() ? "" : " — " + text);
+    }
+
+    /** The full text behind an ability option. */
+    static String detail(SpellAbility sa) {
+        if (sa.isSpell() || sa.isLandAbility()) {
+            return detail(sa.getHostCard());
+        }
+        return sa.getHostCard().getName() + ": " + (sa.toString() == null ? "" : sa.toString().replaceAll("\\s+", " ").trim());
     }
 
     static String entity(GameEntity entity, Player me) {

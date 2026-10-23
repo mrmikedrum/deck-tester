@@ -9,12 +9,15 @@ import java.util.concurrent.SynchronousQueue;
  * changed concurrently.
  */
 final class Channel {
-    /** What the game thread receives instead of an answer when the session ends or state was restored. */
+    /**
+     * What the game thread receives instead of an answer: the session ended, or the state changed under
+     * the decision (a restore or an override) and the decision should be asked again.
+     */
     static final class Interrupt extends RuntimeException {
         final boolean restored;
 
         Interrupt(boolean restored) {
-            super(restored ? "restored" : "session ended", null, false, false);
+            super(restored ? "state changed" : "session ended", null, false, false);
             this.restored = restored;
         }
     }

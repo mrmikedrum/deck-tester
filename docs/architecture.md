@@ -22,9 +22,11 @@ the JVM.
 
 Forge asks each player's `PlayerController` everything: 112 abstract methods at the pinned commit. The
 agent's seat is `ManualController extends PlayerControllerAi`. Each method it overrides becomes a
-`Decision`: a kind, the turn, a short prompt, and numbered options labelled by card name. The answer is
-option numbers (or a value for `number`). A decision with only one legal answer is answered as `forced`
-and never reaches the agent.
+`Decision`: a kind, the turn, a short prompt, and numbered options labelled by card name. On the
+battlefield, a label also carries what tells copies apart: P/T, counters, tapped, token. Each option's full
+text (Oracle text or the whole ability) travels with it for `decision --full`. The answer is option numbers
+(or a value for `number`; repeats only where the card allows them). A decision with only one legal answer
+is answered as `forced` and never reaches the agent.
 
 In manual mode, the agent decides:
 
@@ -32,22 +34,25 @@ In manual mode, the agent decides:
 - `play`: what to do with priority, including pass. Options are only what's legal now and payable, with no
   mana abilities, because payment is automatic.
 - `number`: X, and other announced numbers, capped at what can be paid;
-- `mode`, `targets` (every targeting part of a spell or trigger), `confirm` (optional "may" and optional
-  triggers), and `order` (simultaneous triggers);
+- `mode` (including modes that may repeat), `targets` (every targeting part of a spell or trigger),
+  `confirm` (optional "may" and optional triggers), and `order` (simultaneous triggers);
+- `pay`: which mana sources pay, when a creature could pay (`--mana always` asks for every cast,
+  `--mana auto` never). Answering none leaves it to Forge's AI. The sources not chosen are held back
+  through the AI's own "held for the next spell" memory;
 - `choose`: cards or players from a set. This covers searches, discards, sacrifices, reveals, scry and
   surveil, optional costs, and the permanents a cost taps or sacrifices.
 - `attack`: attackers, each with a defender.
 
-Forge's AI still decides, and nothing records it yet:
+Forge's AI still decides these, and the record marks each answer `by: ai`:
 
-- mana payment: which sources tap, and colour choices while paying;
-- other cost choices, such as discarding or exiling as a cost, and the unusual tap or sacrifice variants;
-- blocks, which never come up against passive opponents;
-- choices of colour, type or name, ordering cards put back into the library, new targets for copies,
-  piles, votes and dice;
-- the rarer prompts no example deck has needed yet.
+- mana payment when the agent doesn't pick sources (the record keeps which sources tapped);
+- discard, exile and return costs, and unusual tap or sacrifice cost variants;
+- colour, creature type and card name choices, yes-or-no choices, and the order cards go back to the
+  library.
 
-Surface any of these when a deck needs it, following the pattern in `ManualController`.
+Forge's AI also answers, unrecorded: blocks (which never come up against passive opponents), new targets
+for copies, piles, votes, dice, and the rarer prompts no example deck has needed yet. Surface or record any
+of them when a deck needs it, following the pattern in `ManualController`.
 
 Priority stops: by default the agent is asked about priority during its own main phases and whenever
 something is on the stack, and only when it has a playable option. `--stops all` asks at every priority.
@@ -83,11 +88,13 @@ compare lines on the same draws. A game runs until it ends or the agent ends it;
 The engine records facts only, one JSON line each, tagged with the agent's turn:
 
 - `start`, `turn`, `end`;
-- `draw`, `land`, `cast` and `activate` (with X, and `failed` when the cast didn't go through);
+- `start` names the deck, a hash of its played cards (`deck@hash`, from `Decklist.revision`) and the seed;
+- `draw`, `land`, `cast` and `activate` (with X, and `failed` when the cast didn't go through), and `paid`
+  (the sources that tapped, and who chose them);
 - `move` for the agent's cards changing zones, including tokens appearing;
 - `life` for any player;
 - `look` for cards seen by scry, surveil, reveal or search;
-- `decision` (kind, prompt, option count, answer by label, and who answered);
+- `decision` (kind, prompt, option count, answer by label, and who answered: agent, forced or ai);
 - `snapshot`, `restore`, `override`.
 
 Cards are named, never numbered. Ids appear only so a card seen twice counts once.
@@ -95,7 +102,8 @@ Cards are named, never numbered. Ids appear only so a card seen twice counts onc
 Python derives everything else:
 
 - **Shown after each command:** what happened since the agent last looked, on one line.
-- **`goldfish log`:** one line per turn. `--decisions` adds the agent's choices; `--turn N` lists every fact.
+- **`goldfish log`:** a header naming `deck@hash` and seed, then one line per turn. `--decisions` adds the
+  choices, AI ones marked; `--turn N` lists every fact.
 - **`goldfish cards`:** cards seen (drawn, scryed, surveilled, revealed; each card once) and cards played
   (lands and spells), by name. `--by-turn` splits them per turn.
 
@@ -119,14 +127,15 @@ game honest, and each one is recorded.
 
 ## Snapshots and overrides
 
-Snapshots use forge-game's `GameSnapshot`, the copy behind Forge's own experimental undo. Snapshots are
-taken and restored only at a `play` decision. A restore puts the copy back into the running game, then the
-parked decision is asked again from the restored state.
+Snapshots use forge-game's `GameSnapshot`, the copy behind Forge's own experimental undo. They also save the
+game's random sequence, so a restored line shuffles and draws exactly as before. Snapshots are taken and
+restored only at a `play` decision. A restore puts the copy back into the running game, then the parked
+decision is asked again from the restored state.
 
 Overrides are commands on cards named by the agent: move between zones, create a card, set life, add or
 remove counters of any type, tap, untap. Use `Name#2` for the second card of that name. Triggers are
 suppressed during an override, because a correction states how the game should be; it shouldn't set off
-new effects.
+new effects. A waiting `play` decision is asked again afterwards, so its options match the corrected board.
 
 ## Forge dependency
 

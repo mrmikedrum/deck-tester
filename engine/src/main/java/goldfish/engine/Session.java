@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 
 /** One goldfish game: the agent's deck against passive opponents, run on its own thread. */
@@ -55,13 +56,17 @@ final class Session {
         }
     }
 
-    private record Snapshot(GameSnapshot copy, int pilotTurn) { }
+    private record Snapshot(GameSnapshot copy, int pilotTurn, Random random) { }
+
+    /** When the agent picks which sources pay mana: never, when a creature could pay, or always. */
+    enum ManaChoice { AUTO, CREATURES, ALWAYS }
 
     final String id;
     final long seed;
     /** Turns of the agent's after which the game ends; 0 for no limit. */
     final int turnLimit;
     final boolean stopsAll;
+    final ManaChoice manaChoice;
     final Path recordFile;
     final Channel channel = new Channel();
     final Recorder recorder;
@@ -69,13 +74,15 @@ final class Session {
     volatile Game game;
     volatile Player pilot;
     volatile String over;
+    private volatile SeededRandom.Source random;
     private final Map<String, Snapshot> snapshots = new LinkedHashMap<>();
 
-    Session(String id, long seed, int turnLimit, boolean stopsAll, Path runsDir) throws IOException {
+    Session(String id, long seed, int turnLimit, boolean stopsAll, ManaChoice manaChoice, Path runsDir) throws IOException {
         this.id = id;
         this.seed = seed;
         this.turnLimit = turnLimit;
         this.stopsAll = stopsAll;
+        this.manaChoice = manaChoice;
         this.recordFile = runsDir.resolve(id + ".jsonl");
         this.recorder = new Recorder(this, recordFile);
     }
@@ -109,9 +116,9 @@ final class Session {
     }
 
     /** Builds and plays the game on its own thread, so every shuffle draws from this session's seed. */
-    void start(Deck deck, int opponents, String commanderNames) {
+    void start(Deck deck, int opponents, String commanderNames, String deckName, String deckHash) {
         Thread thread = new Thread(() -> {
-            SeededRandom.seed(seed);
+            random = SeededRandom.seed(seed);
             try {
                 List<RegisteredPlayer> players = new ArrayList<>();
                 players.add(RegisteredPlayer.forCommander(deck)
@@ -125,7 +132,8 @@ final class Session {
                 game.setNoGUIUser();
                 pilot = game.getPlayers().stream().filter(p -> p.getName().equals(PILOT)).findFirst().orElseThrow();
                 game.subscribeToEvents(recorder);
-                recorder.write("start", "seed", seed, "commander", commanderNames, "turns", turnLimit > 0 ? turnLimit : null, "opponents", opponents);
+                recorder.write("start", "seed", seed, "deck", deckName, "hash", deckHash, "commander", commanderNames,
+                        "turns", turnLimit > 0 ? turnLimit : null, "opponents", opponents);
                 match.startGame(game);
                 if (over == null) {
                     over = outcome();
@@ -196,7 +204,7 @@ final class Session {
         requirePlayDecision();
         GameSnapshot copy = new GameSnapshot(game);
         copy.makeCopy();
-        snapshots.put(name, new Snapshot(copy, pilotTurn));
+        snapshots.put(name, new Snapshot(copy, pilotTurn, random.copy()));
         recorder.write("snapshot", "name", name);
         return "snapshot " + name + " at " + turnLabel();
     }
@@ -210,10 +218,11 @@ final class Session {
         }
         snapshot.copy().restoreGameState(game);
         pilotTurn = snapshot.pilotTurn();
+        random.rewind(snapshot.random()); // the same shuffles and draws as when the snapshot was taken
         // A restored copy may share objects with the game now, so keep a fresh copy for the next restore.
         GameSnapshot fresh = new GameSnapshot(game);
         fresh.makeCopy();
-        snapshots.put(name, new Snapshot(fresh, pilotTurn));
+        snapshots.put(name, new Snapshot(fresh, pilotTurn, snapshot.random()));
         recorder.write("restore", "name", name);
         channel.resume(new Channel.Interrupt(true));
     }
@@ -231,7 +240,7 @@ final class Session {
     }
 
     /** A manual correction to the game state, recorded as such. Cards are referred to by name, "Name#2" for the second. */
-    String override(List<String> args) {
+    String override(List<String> args) throws InterruptedException {
         if (channel.pending() == null) {
             throw new IllegalStateException("overrides happen while the game waits for a decision");
         }
@@ -248,6 +257,10 @@ final class Session {
             game.getTriggerHandler().setSuppressAllTriggers(false);
         }
         recorder.write("override", "what", String.join(" ", args), "result", result);
+        Decision pending = channel.pending();
+        if (pending != null && pending.kind().equals("play")) {
+            channel.resume(new Channel.Interrupt(true)); // the options changed with the board: ask again
+        }
         return result;
     }
 
@@ -380,7 +393,7 @@ final class Session {
         }
         view.put("turn", turnLabel());
         view.put("life", pilot.getLife());
-        view.put("mana", ComputerUtilMana.getAvailableManaEstimate(pilot, false));
+        view.put("mana", ComputerUtilMana.getAvailableManaEstimate(pilot, true)); // untapped, usable now
         view.put("library", pilot.getCardsIn(ZoneType.Library).size());
         view.put("hand", names(pilot.getCardsIn(ZoneType.Hand)));
         List<Map<String, Object>> board = new ArrayList<>();

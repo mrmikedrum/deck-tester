@@ -27,8 +27,15 @@ def decision(d: dict) -> str:
     if not d["options"]:
         return f"{head}: number {d['min']}-{d['max']}"
     if not (d["min"] == d["max"] == 1):
-        head += f" [pick {d['min']}]" if d["min"] == d["max"] else f" [pick {d['min']}-{d['max']}]"
+        head += f" [pick {d['min']}" if d["min"] == d["max"] else f" [pick {d['min']}-{d['max']}"
+        head += ", repeats allowed]" if d.get("repeat") else "]"
     return f"{head}: {_options(d['options'])}"
+
+
+def details(d: dict) -> List[str]:
+    """Each option's full text, for when the short label isn't enough to decide."""
+    full = d.get("details") or d["options"]
+    return [f"{i}. {text}" for i, text in enumerate(full, 1)]
 
 
 def progress(reply: dict) -> str:

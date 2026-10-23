@@ -75,6 +75,16 @@ def happened(facts: Iterable[dict]) -> str:
     return " · ".join(parts)
 
 
+def header(facts: List[dict]) -> str:
+    """The deck, revision and seed a game tested."""
+    start = next((f for f in facts if f["t"] == "start"), None)
+    if not start:
+        return ""
+    deck = start.get("deck") or start.get("commander", "")
+    revision = f"@{start['hash']}" if start.get("hash") else ""
+    return f"{deck}{revision} seed {start.get('seed')}"
+
+
 def by_turn(facts: Iterable[dict]) -> "OrderedDict[int, List[dict]]":
     turns: "OrderedDict[int, List[dict]]" = OrderedDict()
     for fact in facts:
@@ -101,7 +111,7 @@ def digest(facts: List[dict], decisions: bool = False) -> List[str]:
         if decisions:
             for f in group:
                 if f["t"] == "decision" and f.get("by") != "forced":
-                    lines.append(f"   {f['kind']}{' (' + f['prompt'] + ')' if f.get('prompt') else ''}: "
+                    lines.append(f"   {'(ai) ' if f.get('by') == 'ai' else ''}{f['kind']}{' (' + f['prompt'] + ')' if f.get('prompt') else ''}: "
                                  f"{', '.join(map(str, f['answer'])) or 'none'}")
     return lines
 

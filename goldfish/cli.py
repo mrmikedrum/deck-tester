@@ -88,8 +88,8 @@ def start(args) -> int:
     if problems:
         print("deck problems: " + "; ".join(problems))
         return 1
-    payload = {"cmd": "start", "commanders": deck.commanders, "main": deck.main,
-               "stops": args.stops, "opponents": args.opponents}
+    payload = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "stops": args.stops,
+               "mana": args.mana, "opponents": args.opponents, "deck": Path(args.deck).stem, "hash": deck.revision()}
     if args.seed is not None:
         payload["seed"] = args.seed
     if args.turns is not None:
@@ -97,7 +97,7 @@ def start(args) -> int:
     engine.refresh()
     reply = engine.request(payload)
     CURRENT.write_text(reply["session"])
-    print(f"{reply['session']} seed {reply['seed']}")
+    print(f"{reply['session']} seed {reply['seed']} · {Path(args.deck).stem}@{deck.revision()}")
     _show(reply)
     return 0
 
@@ -117,7 +117,11 @@ def answer(args) -> int:
 
 
 def decision(args) -> int:
-    _show(engine.request({"cmd": "decision", "session": _session(args)}))
+    reply = engine.request({"cmd": "decision", "session": _session(args)})
+    _show(reply)
+    if args.full and reply.get("decision"):
+        for line in render.details(reply["decision"]):
+            print(line)
     return 0
 
 
@@ -145,6 +149,7 @@ def override(args) -> int:
     reply = engine.request({"cmd": "override", "session": _session(args), "args": args.args})
     _new_facts(reply)  # the result line below says it; don't repeat it on the next command
     print(reply["result"])
+    print(render.progress(reply))
     return 0
 
 
@@ -172,6 +177,9 @@ def log(args) -> int:
         for fact in records.by_turn(facts).get(args.turn, []):
             print(" ".join(f"{k}={v}" for k, v in fact.items() if k != "turn"))
         return 0
+    header = records.header(facts)
+    if header:
+        print(header)
     for line in records.digest(facts, decisions=args.decisions):
         print(line)
     return 0
@@ -220,13 +228,17 @@ def main(argv=None) -> int:
     begin.add_argument("--turns", type=int, help="end the game after this many of your turns (default: no limit)")
     begin.add_argument("--stops", choices=("main", "all"), default="main",
                        help="main: priority on your main phases and with something on the stack; all: every time")
+    begin.add_argument("--mana", choices=("creatures", "always", "auto"), default="creatures",
+                       help="when you pick which sources pay: when a creature could pay, always, or never")
     begin.add_argument("--opponents", type=int, default=3)
     begin.set_defaults(run=start)
 
     reply = commands.add_parser("a", aliases=["answer"], help="answer the decision with option numbers (or 'none')")
     reply.add_argument("answer", nargs="*")
     reply.set_defaults(run=answer)
-    commands.add_parser("decision", help="show the pending decision").set_defaults(run=decision)
+    pending = commands.add_parser("decision", help="show the pending decision")
+    pending.add_argument("--full", action="store_true", help="also each option's full text")
+    pending.set_defaults(run=decision)
 
     show = commands.add_parser("state", help="your hand, board and mana")
     show.add_argument("--full", action="store_true", help="also graveyard, exile and opponents")

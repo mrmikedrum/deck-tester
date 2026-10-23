@@ -79,6 +79,17 @@ final class Recorder {
                 "answer", picked, "by", by);
     }
 
+    /** A choice Forge's AI made for the agent's seat, so the record shows what the agent didn't decide. */
+    void ai(String kind, String prompt, List<String> answer) {
+        write("decision", "kind", kind, "prompt", prompt.isEmpty() ? null : prompt, "answer", answer, "by", "ai");
+    }
+
+    void paid(String card, List<String> sources, String by) {
+        if (!sources.isEmpty()) {
+            write("paid", "card", card, "sources", sources, "by", by);
+        }
+    }
+
     void played(SpellAbility sa, String label, Integer x, boolean ok) {
         write(sa.isSpell() ? "cast" : "activate", "card", sa.getHostCard().getName(), "id", sa.getHostCard().getId(), "as", label, "x", x,
                 "failed", ok ? null : true);
