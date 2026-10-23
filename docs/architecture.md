@@ -2,16 +2,16 @@
 
 ```
 agent ──shell──▶ bin/goldfish (Python) ──JSON lines, Unix socket──▶ engine (JVM, Forge embedded)
-                   │ runs the pilot in automated mode                 │ games on threads
+                   │ runs the pilot in automated mode (M2)            │ one thread per game
                    ▼                                                  ▼
-             digests, reports ◀────────── game records (.goldfish/runs/…) ◀┘
+             digests, reports ◀───────────── game records (.goldfish/runs/g<N>.jsonl) ◀┘
 ```
 
 | Path | Language | Owns |
 |------|----------|------|
 | `engine/` | Java 17, Maven | Forge host: game setup, decision routing, snapshots, overrides, recording facts |
-| `goldfish/` | Python 3.9, stdlib only | CLI, session client, pilot runtime, metrics, plan checks, digests, reports |
-| `cards/` | Forge card script | Cards added or corrected, loaded after Forge's own |
+| `goldfish/` | Python 3.9, stdlib only | CLI, engine client, digests; later the pilot runtime, metrics and reports |
+| `cards/` | Forge card script | Cards added or corrected, loaded after Forge's own (M3) |
 | deck kit (outside) | text + Python | Decklist and `pilot.py`, kept beside the deck in Deckmaster's project folder |
 
 Decisions have to be intercepted inside Forge, so the engine is Java. Everything an agent writes or reads
@@ -20,92 +20,113 @@ the JVM.
 
 ## Decisions: the one seam
 
-Forge asks each player's `PlayerController` everything (112 abstract methods at the time of writing: what to
-play, targets, modes, X, scry, sacrifice, mulligan…). `PilotController extends PlayerControllerAi` turns each
-call into a decision:
+Forge asks each player's `PlayerController` everything: 112 abstract methods at the pinned commit. The
+agent's seat is `ManualController extends PlayerControllerAi`. Each method it overrides becomes a
+`Decision`: a kind, the turn, a short prompt, and numbered options labelled by card name. The answer is
+option numbers (or a value for `number`). A decision with only one legal answer is answered as `forced`
+and never reaches the agent.
 
-```json
-{"id": 41, "game": "g3", "turn": 4, "kind": "scry", "prompt": "Scry 2",
- "options": [{"id": "a", "card": "Forest"}, {"id": "b", "card": "Ouroboroid"}],
- "answer": "top and bottom lists of option ids"}
-```
+In manual mode, the agent decides:
 
-The decision is routed by mode:
+- `mulligan`, and which cards to bottom;
+- `play`: what to do with priority, including pass. Options are only what's legal now and payable, with no
+  mana abilities, because payment is automatic.
+- `number`: X, and other announced numbers, capped at what can be paid;
+- `mode`, `targets` (every targeting part of a spell or trigger), `confirm` (optional "may" and optional
+  triggers), and `order` (simultaneous triggers);
+- `choose`: cards or players from a set. This covers searches, discards, sacrifices, reveals, scry and
+  surveil, optional costs, and the permanents a cost taps or sacrifices.
+- `attack`: attackers, each with a defender.
 
-- **Manual:** every decision with more than one legal answer goes to the agent, and the game thread parks
-  until it's answered. Mana payment is a decision too, with `auto` as one of its answers.
-- **Automated:** if the pilot declared this kind, the pilot answers it. When the pilot returns `None`, or the
-  kind isn't declared, the decision falls through to Forge's AI via `super`.
+Forge's AI still decides, and nothing records it yet:
 
-Every answer is recorded along with who gave it: agent, pilot, AI, or forced (only one legal answer).
+- mana payment: which sources tap, and colour choices while paying;
+- other cost choices, such as discarding or exiling as a cost, and the unusual tap or sacrifice variants;
+- blocks, which never come up against passive opponents;
+- choices of colour, type or name, ordering cards put back into the library, new targets for copies,
+  piles, votes and dice;
+- the rarer prompts no example deck has needed yet.
 
-Forge's methods are grouped into about a dozen kinds:
+Surface any of these when a deck needs it, following the pattern in `ManualController`.
 
-- `mulligan`;
-- `play`: what to do with priority, including pass;
-- `targets`, `mode`, `number` (X and similar), `confirm` (optional "may");
-- `choose`: cards or players from a set, as in search, discard or sacrifice;
-- `order`: triggers or cards;
-- `scry`, `attack`, `block`, `pay`;
-- `name`, `type`, `color`.
+Priority stops: by default the agent is asked about priority during its own main phases and whenever
+something is on the stack, and only when it has a playable option. `--stops all` asks at every priority.
 
-The long tail starts as `other`, carrying Forge's own prompt and options, so nothing is out of reach in
-manual mode.
+Casting follows Forge's AI sequence (`ComputerUtil.handlePlayingSpellAbility`), restated in
+`ManualController.cast`, so that `ManualCostDecision` can give tap and sacrifice choices to the agent. If a
+cast fails, the card goes back where it came from, and the record marks the cast as failed.
+
+In automated mode (M2), a pilot answers the kinds it declares, and Forge's AI (`super`) answers the rest.
 
 ## Sessions and processes
 
-One long-lived engine process per machine, so the card database (the slow part of Forge's startup) loads
-once. `bin/goldfish` starts it on first use and speaks JSON lines over a Unix socket under `.goldfish/`.
+One engine process per machine, so the card database (the slow part of Forge's startup) loads once.
+`bin/goldfish` builds the engine when its sources change. It starts the engine on first use and speaks one
+JSON request per connection over `.goldfish/engine.sock`. `start` restarts an idle engine whose code is
+out of date; `goldfish engine stop` ends it and every session in it. Forge's console noise goes to
+`.goldfish/engine.log`.
 
-- **Manual:** `goldfish start` creates a game and prints its first decision. Each later command (`state`,
-  `answer`, `snapshot`, `restore`, `override`) is its own short process; the engine holds the parked game
-  in between.
-- **Automated:** `goldfish run` holds one connection, plays games on engine threads, and answers the pilot's
-  decision kinds from Python as they arrive. Only declared kinds cross the socket.
-
-A game can switch modes at any decision: open an automated game in manual mode, or hand a manual game to a
-pilot.
+Each game runs on its own thread and parks at each decision. Every CLI command is a short process. Game
+state is read or changed only while the game thread is parked or finished, so nothing touches it
+concurrently.
 
 ## Game setup
 
-Commander at 40 life: the agent's deck against three passive opponents (the count is configurable). Each
-passive opponent has 99 basics, keeps seven, plays a land each turn and does nothing else. Shuffles are
-seeded, so a game can be replayed and a deck revision tried on the same seeds.
+Commander at 40 life: the agent's deck (`You`) against three passive opponents (`Opp 1`–`Opp 3`; the count
+is configurable). Each opponent is Kozilek plus 99 Wastes: it keeps seven, plays a land each turn, and never
+attacks or blocks. Each game thread has its own seeded RNG (`SeededRandom` installed as Forge's
+`MyRandom`), so a seed replays the same draws even with games running side by side. Start with `--seed` to
+compare lines on the same draws. The game ends when the agent's turn after `--turns` (default 8) begins.
 
-## Records, metrics, reports
+## Records, digests, metrics
 
-The engine records facts only, one JSON line each: turn and phase starts, land plays, casts with the mana
-paid, resolutions, zone changes, damage and life, counters, every decision with its answerer, and every
-override. Records live at `.goldfish/runs/<run>/<game>.jsonl`.
+The engine records facts only, one JSON line each, tagged with the agent's turn:
 
-Python derives everything else, so changing a metric never touches Java:
+- `start`, `turn`, `end`;
+- `draw`, `land`, `cast` and `activate` (with X, and `failed` when the cast didn't go through);
+- `move` for the agent's cards changing zones, including tokens appearing;
+- `life` for any player;
+- `look` for cards seen by scry, surveil, reveal or search;
+- `decision` (kind, prompt, option count, answer by label, and who answered);
+- `snapshot`, `restore`, `override`.
 
-- **Standard per-turn metrics**, for example land drop made, mana available versus spent, spells cast, the
-  turn the commander was cast, colours missing for cards in hand, and flags for screw, flood and stalls.
-- **The deck plan:** checkpoints the pilot declares (for example "commander on the battlefield by turn 3"),
-  reported as a hit rate and the turn each one was met.
-- **Digests:** a batch report is the plan and metrics table plus one line per game.
-  `goldfish show <game> [--turn N] [--decisions]` opens the full trace.
+Cards are named, never numbered. Ids appear only so a card seen twice counts once.
+
+Python derives everything else:
+
+- **Shown after each command:** what happened since the agent last looked, on one line.
+- **`goldfish log`:** one line per turn. `--decisions` adds the agent's choices; `--turn N` lists every fact.
+- **`goldfish cards`:** cards seen (drawn, scryed, surveilled, revealed; each card once) and cards played
+  (lands and spells), by name. `--by-turn` splits them per turn.
+
+Restoring a snapshot drops the abandoned line from these views; `--all` keeps it.
+
+Still to come in M2: standard per-turn metrics (land drop made, mana available versus spent, commander
+turn, missing colours, screw and flood flags), and deck-plan checkpoints from the pilot, reported as hit
+rates.
 
 ## Pilots
 
 A pilot is one Python file beside the deck: handlers for the decision kinds that express the deck's plan,
-and the deck's `PLAN`. A handler sees a read-only state view and returns an option id, or `None` to defer to
-Forge's AI. The SDK's shape is settled in M2 against real decisions, not designed in advance.
+and the deck's `PLAN`. A handler sees a read-only state view and returns an option number, or `None` to
+defer to Forge's AI. The SDK's shape is settled in M2 against the decisions M1 surfaces.
 
 ## Cards Forge lacks or gets wrong
 
-`goldfish deck check` lists cards Forge doesn't know, plus cards whose scripts mark them as hard for its AI
-(those are the ones a pilot should handle). Fixes are Forge scripts in `cards/`; engine bugs go upstream
-as Forge pull requests. Until something is fixed, manual overrides keep the game honest, and each one is
-recorded.
+`goldfish start` refuses a deck with cards Forge doesn't know, and names them. Fixes are Forge scripts in
+`cards/` (M3); engine bugs go upstream as Forge pull requests. Until something is fixed, overrides keep the
+game honest, and each one is recorded.
 
 ## Snapshots and overrides
 
-Snapshots use forge-game's `GameSnapshot`, the copy behind Forge's own experimental undo: copy the game, and
-later restore it into the running game in place. Where its fidelity falls short, the fallback is replaying
-the seed plus the recorded answers. Overrides are explicit commands on game objects: move between zones, set
-life, add or remove counters of any type, tap or untap, create a token, attach.
+Snapshots use forge-game's `GameSnapshot`, the copy behind Forge's own experimental undo. Snapshots are
+taken and restored only at a `play` decision. A restore puts the copy back into the running game, then the
+parked decision is asked again from the restored state.
+
+Overrides are commands on cards named by the agent: move between zones, create a card, set life, add or
+remove counters of any type, tap, untap. Use `Name#2` for the second card of that name. Triggers are
+suppressed during an override, because a correction states how the game should be; it shouldn't set off
+new effects.
 
 ## Forge dependency
 
@@ -117,29 +138,13 @@ deliberate change, for example to pick up a new set. There's no long-lived fork.
 
 ## Measured in M0 (2026-10-23, Apple Silicon, 10 cores, JDK 21)
 
-Measured with `scripts/spike.sh`, on the Marath deck against three passive opponents.
+Measured with the spike harness, on the Marath deck against three passive opponents. The harness was
+removed in M1 and is in git history at `e0e2b7e`.
 
 - **Startup:** 1.8 s with all 34,100 card scripts loaded eagerly (146 MB heap). Lazy loading was slower
-  (3.8 s) and saved only memory, so loading stays eager.
-- **Coverage:** Forge knew all 100 cards and marked none as hard for its AI.
+  (3.8 s) and saved only memory.
+- **Coverage:** Forge knew all 100 cards.
 - **Speed:** a game to turn 8 with Forge's AI piloting took about 1.3 s on one thread. 16 games on 8 threads
-  took 6.3–7.3 s with no failures, so 100 games run in about 40–45 s. Several games in one JVM worked.
-- **Memory:** about 400–480 MB live heap with 8 games in flight; the process peaked near 3 GB under the
-  JVM's default maximum, so the engine should set `-Xmx`.
-- **Decisions:** overriding `PlayerControllerAi` methods intercepts mulligans and priority. A game thread
-  parked on a `SynchronousQueue` until another thread answered, then carried on, and handing the rest of
-  the game back to the AI worked.
-- **Snapshots:** `GameSnapshot` copied a mid-game state in 29 ms and restored it in place in 5 ms. The
-  restored state matched the copy exactly, and the game carried on from it. `GameCopier` wasn't needed.
-- **Determinism:** seeding Forge's shared RNG (`MyRandom.setRandom`) gave identical games when run one
-  after another. With games in parallel the RNG is shared, so per-game seeding needs a per-thread RNG.
-- **Opponents:** Kozilek plus 99 Wastes passed Forge's Commander setup. The opponents only played lands,
-  and the AI pilot attacked them.
-
-M1 has to handle what the spike showed:
-
-- Forge prints noise to stdout, so the engine sends Forge's output to a log and keeps its own channel clean.
-- Forge's list of legal plays includes spells the player can't pay for, so the agent's options need an
-  affordability filter.
-- Option labels from Forge carry full Oracle text; they need compact labels.
-- Cast events include abilities and triggers, so records come from game objects, not UI views.
+  took 6.3–7.3 s, so 100 games run in about 40–45 s.
+- **Memory:** about 400–480 MB live heap with 8 games in flight; the engine runs with `-Xmx2g`.
+- **Snapshots:** `GameSnapshot` copied a mid-game state in 29 ms and restored it in place in 5 ms, exactly.

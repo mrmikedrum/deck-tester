@@ -25,23 +25,26 @@ what's open.
 
 | Path | What |
 |------|------|
-| `goldfish/` | Python package: CLI, decklist parsing, later the session client, pilots, metrics and reports |
+| `goldfish/` | Python package: CLI (`cli.py`), engine client (`engine.py`), record digests (`records.py`), text views (`render.py`) |
 | `bin/goldfish` | CLI entry point |
-| `engine/` | Forge host, Java 17 and Maven; today the M0 controllers and `Spike` measurement harness |
-| `scripts/` | `bootstrap-forge.sh` (fetch and install pinned Forge), `spike.sh` (rerun the M0 measurements) |
+| `engine/` | Forge host: `Server` (socket), `Session` (one game), `ManualController` (decisions), `Recorder` (facts) |
+| `scripts/` | `bootstrap-forge.sh` (fetch and install pinned Forge), `build-engine.sh` (compile; the CLI runs it when needed) |
 | `vendor/forge` | Pinned Forge checkout, gitignored; card scripts in `forge-gui/res/cardsfolder` |
 | `cards/` | Forge card-script overlay (arrives in M3) |
-| `examples/decks/` | Real decklists used as fixtures and spike inputs |
-| `tests/` | `unittest` suites |
+| `examples/decks/` | Real decklists used as fixtures |
+| `tests/` | `unittest` suites; `test_engine.py` plays a real game and skips without Forge |
+| `.goldfish/` | Runtime, gitignored: engine socket and log, game records in `runs/` |
 
 ## Commands
 
 ```bash
-python3 -m unittest discover -s tests -v   # all Python tests
 scripts/bootstrap-forge.sh                  # once, and after moving the Forge pin (JDK 21, Maven)
-scripts/spike.sh                            # engine smoke run: one game, snapshot, 16 parallel games
+python3 -m unittest discover -s tests -v   # all tests; the engine test needs Forge
 bin/goldfish doctor                         # toolchain and Forge status
-bin/goldfish deck check examples/decks/eternities-living-worlds-iii.txt
+bin/goldfish engine stop                    # after changing engine code with sessions open
 ```
+
+Using the CLI is in the [README](README.md). When something misbehaves, `.goldfish/engine.log` has Forge's
+output and stack traces.
 
 The previous Rust engine lives in `../mtg-goldfish-legacy` for reference only. Don't port code from it.

@@ -1,18 +1,46 @@
 # MTG Goldfish
 
 Agent-driven Commander goldfishing on top of [Forge](https://github.com/Card-Forge/forge). An agent plays a
-deck's first turns against passive opponents, either by hand (manual mode) or with a pilot script it wrote
-(automated mode), and gets back compact reports on how the deck develops.
-
-Status: design and scaffolding. The Forge engine host arrives in M0; see the [roadmap](docs/roadmap.md).
+deck's first turns against passive opponents, either by hand (manual mode, available now) or with a pilot
+script it wrote (automated mode, M2), and gets back compact reports on how the deck develops.
 
 - [Vision](docs/vision.md): what this is for, the two modes, and principles
-- [Architecture](docs/architecture.md): components, the decision seam, records and reports
-- [Decisions](docs/decisions.md): what's settled and what's open
-- [AGENTS.md](AGENTS.md): how to work in this repo
+- [Architecture](docs/architecture.md): components, the decision seam, records, and what's measured
+- [Roadmap](docs/roadmap.md) and [decisions](docs/decisions.md)
+- [AGENTS.md](AGENTS.md): how to work on this repo
+
+## Setup
+
+Needs JDK 17+ (21 recommended) and Maven; then once:
 
 ```bash
-bin/goldfish doctor
-bin/goldfish deck check examples/decks/eternities-living-worlds-iii.txt
-python3 -m unittest discover -s tests -v
+scripts/bootstrap-forge.sh
 ```
+
+## Manual mode
+
+```bash
+bin/goldfish start examples/decks/eternities-living-worlds-iii.txt --seed 11
+```
+
+Every command prints what happened since you last looked, then the decision waiting for you:
+
+```
+g1 seed 11
+drew Resourceful Defense, Winds of Abandon, Fabled Passage, Felidar Retreat, Forest, Spelunking, Plains
+T0 setup mulligan (keep this hand): 1 keep · 2 mulligan
+```
+
+| Command | Does |
+|---------|------|
+| `a 2` / `a 1 3` / `a none` | Answer with option numbers; `[pick 0-2]` on a decision says how many |
+| `decision` | Show the waiting decision again |
+| `state [--full]` | Hand, board, mana; `--full` adds graveyard, exile and opponents |
+| `log [--decisions] [--turn N]` | One line per turn; your choices; every fact of one turn |
+| `cards [--by-turn]` | Cards seen and played, by name |
+| `snapshot NAME` / `restore NAME` | Save the game at a play decision and go back to it |
+| `override move\|create\|life\|counter\|tap\|untap …` | Correct the game by hand, for example `override counter Ouroboroid +1/+1 2` |
+| `end` | End the game; records stay in `.goldfish/runs/` |
+
+Games run to the start of your turn 9 by default (`--turns`), against three opponents who only play lands.
+`bin/goldfish --session g3 log` addresses an older game; the default is the last one started.

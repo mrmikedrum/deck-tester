@@ -1,19 +1,12 @@
 # Roadmap
 
-Each milestone ends with something an agent can use. Delete a milestone when it ships. M0, the Forge spike,
-shipped on 2026-10-23; its measurements are in [architecture](architecture.md#measured-in-m0-2026-10-23-apple-silicon-10-cores-jdk-21).
-
-## M1 — Manual mode
-
-Engine server and `bin/goldfish` session commands. Compact state view, every decision surfaced (affordable
-options only, with short labels), overrides, snapshots, records, and `show` digests.
-
-Done when an agent can play the example deck to turn 8 entirely by hand and read the trace afterwards.
+Each milestone ends with something an agent can use. Delete a milestone when it ships. M0 (Forge spike) and
+M1 (manual mode) shipped on 2026-10-23; what they built is in [architecture](architecture.md).
 
 ## M2 — Automated mode
 
-Pilot SDK, settled against real decisions from M1. Forge AI fallback, `run` batches across threads with
-per-game seeds, standard metrics, deck-plan checkpoints, batch report.
+Pilot SDK, settled against the decisions M1 surfaces. Forge AI fallback, `run` batches across threads with
+per-game seeds, standard metrics, deck-plan checkpoints, a batch report, and `cards` across a batch.
 
 Done when 100 games to turn 8 finish in about a minute and the report fits on one screen.
 
@@ -25,4 +18,7 @@ Done when an agent can fix a misbehaving card without touching Java.
 
 ## Later
 
-Paired comparisons across deck revisions, and Deckmaster's playtest skill calling `goldfish`.
+- Surface the decisions Forge's AI still makes in manual mode (see architecture) as decks need them, and
+  record the ones it keeps.
+- Paired comparisons across deck revisions.
+- Deckmaster's playtest skill calling `goldfish`.
