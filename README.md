@@ -42,5 +42,6 @@ T0 setup mulligan (keep this hand): 1 keep · 2 mulligan
 | `override move\|create\|life\|counter\|tap\|untap …` | Correct the game by hand, for example `override counter Ouroboroid +1/+1 2` |
 | `end` | End the game; records stay in `.goldfish/runs/` |
 
-Games run to the start of your turn 9 by default (`--turns`), against three opponents who only play lands.
+A game runs until it ends or you `end` it; `--turns N` ends it after your Nth turn. The three opponents only
+play lands.
 `bin/goldfish --session g3 log` addresses an older game; the default is the last one started.

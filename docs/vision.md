@@ -5,8 +5,8 @@
 Let Deckmaster playtest a Commander deck by goldfishing it, cheaply enough in tokens and reasoning that the
 agent's attention goes to judging the deck rather than running the game.
 
-A goldfish asks: when nobody interferes, does the deck do what it was built to do? It looks at the first
-seven or eight turns, not at finished games: mana development, colour access, how the curve gets used,
+A goldfish asks: when nobody interferes, does the deck do what it was built to do? It usually looks at
+the early turns rather than finished games: mana development, colour access, how the curve gets used,
 whether the engine assembles, and where the deck stalls (screw, flood, dead cards, the missing piece).
 
 ## Who it serves

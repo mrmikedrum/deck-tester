@@ -59,6 +59,7 @@ final class Session {
 
     final String id;
     final long seed;
+    /** Turns of the agent's after which the game ends; 0 for no limit. */
     final int turnLimit;
     final boolean stopsAll;
     final Path recordFile;
@@ -124,7 +125,7 @@ final class Session {
                 game.setNoGUIUser();
                 pilot = game.getPlayers().stream().filter(p -> p.getName().equals(PILOT)).findFirst().orElseThrow();
                 game.subscribeToEvents(recorder);
-                recorder.write("start", "seed", seed, "commander", commanderNames, "turns", turnLimit, "opponents", opponents);
+                recorder.write("start", "seed", seed, "commander", commanderNames, "turns", turnLimit > 0 ? turnLimit : null, "opponents", opponents);
                 match.startGame(game);
                 if (over == null) {
                     over = outcome();
@@ -155,7 +156,7 @@ final class Session {
     /** Called by the recorder when the agent's turn begins; false once past the turn limit, which ends the game. */
     boolean beginPilotTurn() {
         pilotTurn++;
-        if (pilotTurn > turnLimit) {
+        if (turnLimit > 0 && pilotTurn > turnLimit) {
             over = "turn limit";
             game.setGameOver(GameEndReason.Draw);
             return false;

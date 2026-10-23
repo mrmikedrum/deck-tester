@@ -89,9 +89,11 @@ def start(args) -> int:
         print("deck problems: " + "; ".join(problems))
         return 1
     payload = {"cmd": "start", "commanders": deck.commanders, "main": deck.main,
-               "turns": args.turns, "stops": args.stops, "opponents": args.opponents}
+               "stops": args.stops, "opponents": args.opponents}
     if args.seed is not None:
         payload["seed"] = args.seed
+    if args.turns is not None:
+        payload["turns"] = args.turns
     engine.refresh()
     reply = engine.request(payload)
     CURRENT.write_text(reply["session"])
@@ -215,7 +217,7 @@ def main(argv=None) -> int:
     begin = commands.add_parser("start", help="start a manual game and show the first decision")
     begin.add_argument("deck")
     begin.add_argument("--seed", type=int)
-    begin.add_argument("--turns", type=int, default=8, help="end the game after this many of your turns")
+    begin.add_argument("--turns", type=int, help="end the game after this many of your turns (default: no limit)")
     begin.add_argument("--stops", choices=("main", "all"), default="main",
                        help="main: priority on your main phases and with something on the stack; all: every time")
     begin.add_argument("--opponents", type=int, default=3)

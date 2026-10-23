@@ -196,7 +196,7 @@ public final class Server {
             throw new IllegalArgumentException("Forge doesn't know: " + String.join(", ", unknown));
         }
         long seed = request.has("seed") ? request.get("seed").getAsLong() : ThreadLocalRandom.current().nextLong(1, 1_000_000);
-        int turns = request.has("turns") ? request.get("turns").getAsInt() : 8;
+        int turns = request.has("turns") ? request.get("turns").getAsInt() : 0;
         int opponents = request.has("opponents") ? request.get("opponents").getAsInt() : 3;
         boolean stopsAll = request.has("stops") && request.get("stops").getAsString().equals("all");
         String id;

@@ -76,7 +76,7 @@ Commander at 40 life: the agent's deck (`You`) against three passive opponents (
 is configurable). Each opponent is Kozilek plus 99 Wastes: it keeps seven, plays a land each turn, and never
 attacks or blocks. Each game thread has its own seeded RNG (`SeededRandom` installed as Forge's
 `MyRandom`), so a seed replays the same draws even with games running side by side. Start with `--seed` to
-compare lines on the same draws. The game ends when the agent's turn after `--turns` (default 8) begins.
+compare lines on the same draws. A game runs until it ends or the agent ends it; `--turns N` is an optional cap.
 
 ## Records, digests, metrics
 
