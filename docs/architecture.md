@@ -195,3 +195,12 @@ removed in M1 and is in git history at `e0e2b7e`.
 - **Seeds:** the same seed gives the same draws. Forge's AI evaluates some choices on time-limited worker
   threads, so its games can still differ slightly: rerunning 6 seeds gave 5 identical games and one with
   different combat damage.
+- **Forge's lookahead (`--ai`):** Forge's AI is rule-based and greedy by default (it casts the most
+  expensive spell its rules approve, re-deciding at each priority). It has two experimental modes:
+  - `hybrid` keeps the rules but simulates each candidate play once as a safety check. On 40 matched seeds
+    it was 45% slower (28.2 s against 19.4 s) and no better: 7.0 lands and 11.9 mana at turn 8, against
+    7.7 and 13.0.
+  - `sim` searches up to three actions ahead within the turn, copying the game for each branch. It ran out
+    of a 2 GB heap by turn 3–5 even one game at a time. With 6 GB, one game took 77 s to reach turn 3 and
+    then crashed inside Forge's simulation (on a passive opponent's Wastes). It did cast Marath, which the
+    default rules never do. Not usable for batches.

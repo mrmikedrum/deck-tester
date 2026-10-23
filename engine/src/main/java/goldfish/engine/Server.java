@@ -220,7 +220,14 @@ public final class Server {
                 asks.add(kind.getAsString());
             }
         }
-        Session session = new Session(id, seed, turns, stopsAll, mana, asks, home.resolve("runs"));
+        String ai = request.has("ai") ? request.get("ai").getAsString() : "default";
+        forge.ai.AIOption aiMode = switch (ai) {
+            case "default" -> null;
+            case "hybrid" -> forge.ai.AIOption.USE_HYBRID_SIMULATION;
+            case "sim" -> forge.ai.AIOption.USE_FULL_SIMULATION;
+            default -> throw new IllegalArgumentException("ai is default, hybrid or sim");
+        };
+        Session session = new Session(id, seed, turns, stopsAll, mana, asks, aiMode, home.resolve("runs"));
         sessions.put(id, session);
         session.start(deck, opponents, String.join(" + ", commanders), deckName, deckHash);
         Map<String, Object> reply = progress(session);

@@ -1,6 +1,7 @@
 package goldfish.engine;
 
 import forge.StaticData;
+import forge.ai.AIOption;
 import forge.ai.LobbyPlayerAi;
 import forge.ai.PlayerControllerAi;
 import forge.deck.Deck;
@@ -70,6 +71,8 @@ final class Session {
     final ManaChoice manaChoice;
     /** The decision kinds the agent answers; null for all of them. Forge's AI answers the rest. */
     private final Set<String> asks;
+    /** Forge's lookahead for the AI's choices: null for its default rules, or hybrid or full simulation. */
+    final AIOption aiMode;
     final Path recordFile;
     final Channel channel = new Channel();
     final Recorder recorder;
@@ -80,8 +83,10 @@ final class Session {
     private volatile SeededRandom.Source random;
     private final Map<String, Snapshot> snapshots = new LinkedHashMap<>();
 
-    Session(String id, long seed, int turnLimit, boolean stopsAll, ManaChoice manaChoice, Set<String> asks, Path runsDir) throws IOException {
+    Session(String id, long seed, int turnLimit, boolean stopsAll, ManaChoice manaChoice, Set<String> asks, AIOption aiMode,
+            Path runsDir) throws IOException {
         this.asks = asks;
+        this.aiMode = aiMode;
         this.id = id;
         this.seed = seed;
         this.turnLimit = turnLimit;
@@ -152,7 +157,8 @@ final class Session {
                 pilot = game.getPlayers().stream().filter(p -> p.getName().equals(PILOT)).findFirst().orElseThrow();
                 game.subscribeToEvents(recorder);
                 recorder.write("start", "seed", seed, "deck", deckName, "hash", deckHash, "commander", commanderNames,
-                        "turns", turnLimit > 0 ? turnLimit : null, "opponents", opponents);
+                        "turns", turnLimit > 0 ? turnLimit : null, "opponents", opponents,
+                        "ai", aiMode == null ? null : aiMode.name().toLowerCase(Locale.ROOT));
                 match.startGame(game);
                 if (over == null) {
                     over = outcome();

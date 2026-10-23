@@ -57,12 +57,12 @@ def _play(start: dict, handlers: Dict[str, Callable], avoids: List[str]) -> dict
 
 
 def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
-        pilot: Optional[str], workers: int) -> dict:
+        pilot: Optional[str], workers: int, ai: str = "default") -> dict:
     """Play a batch and write its manifest; returns the manifest."""
     handlers = load_pilot(pilot) if pilot else {}
     base = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "deck": deck_name,
             "hash": deck.revision(), "opponents": opponents, "ask": sorted(handlers),
-            "mana": "creatures" if "pay" in handlers else "auto"}
+            "mana": "creatures" if "pay" in handlers else "auto", "ai": ai}
     if turns:
         base["turns"] = turns
     engine.refresh()
@@ -78,7 +78,7 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     with ThreadPoolExecutor(max_workers=workers) as pool:
         played = list(pool.map(one, range(games)))
     manifest = {"deck": deck_name, "hash": deck.revision(), "commander": " + ".join(deck.commanders),
-                "pilot": pilot, "turns": turns, "seconds": round(time.time() - began, 1), "ai_avoids": avoids,
+                "pilot": pilot, "ai": ai, "turns": turns, "seconds": round(time.time() - began, 1), "ai_avoids": avoids,
                 "games": played}
     BATCHES.mkdir(parents=True, exist_ok=True)
     batch_id = f"b{len(list(BATCHES.glob('b*.json'))) + 1}"

@@ -58,6 +58,9 @@ public class ManualController extends PlayerControllerAi {
     public ManualController(Game game, Player player, LobbyPlayer lobbyPlayer, Session session) {
         super(game, player, lobbyPlayer);
         this.session = session;
+        if (session.aiMode != null) {
+            getAi().setUseSimulation(session.aiMode);
+        }
     }
 
     // ---- asking ----
@@ -278,7 +281,22 @@ public class ManualController extends PlayerControllerAi {
     public boolean playChosenSpellAbility(SpellAbility sa) {
         String label = Labels.ability(sa);
         if (aiPlay) {
-            boolean played = super.playChosenSpellAbility(sa);
+            Card host = sa.getHostCard();
+            ZoneType origin = host.getZone() == null ? null : host.getZone().getZoneType();
+            boolean played;
+            try {
+                played = super.playChosenSpellAbility(sa);
+            } catch (Channel.Interrupt interrupt) {
+                throw interrupt;
+            } catch (RuntimeException forgeError) {
+                // The same AI cost-payment failures as in the agent's casts: a failed cast, not a lost game.
+                forgeError.printStackTrace();
+                played = false;
+                Card stuck = getGame().getCardState(host);
+                if (sa.isSpell() && origin != null && stuck != null && stuck.isInZone(ZoneType.Stack)) {
+                    getGame().getAction().moveTo(origin, stuck, null, null);
+                }
+            }
             if (!sa.isLandAbility()) {
                 session.recorder.played(sa, label, sa.costHasManaX() ? sa.getXManaCostPaid() : null, played, "ai");
             }

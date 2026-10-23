@@ -44,7 +44,8 @@ def _average(values: List[float]) -> str:
 def summary(manifest: dict, summaries: List[dict]) -> List[str]:
     games = manifest["games"]
     seeds = [g["seed"] for g in games]
-    pilot = manifest.get("pilot") or "Forge AI"
+    ai = "Forge AI" + ("" if manifest.get("ai", "default") == "default" else f" ({manifest['ai']})")
+    pilot = f"{manifest['pilot']} + {ai}" if manifest.get("pilot") else ai
     cap = f"to turn {manifest['turns']}" if manifest.get("turns") else "uncapped"
     lines = [f"{manifest['id']} · {manifest['deck']}@{manifest['hash']} · {len(games)} games · seeds "
              f"{min(seeds)}-{max(seeds)} · {pilot} · {cap} · {manifest['seconds']}s"]

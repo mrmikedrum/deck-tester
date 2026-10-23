@@ -76,6 +76,7 @@ those kinds; returning `None` hands one back to the AI. See `examples/pilots/com
 | `--games N`, `--seed N` | How many games; game N uses seed+N, so any game can be replayed with `start --seed` |
 | `--turns N` | Turns per game (default 8; 0 for no limit) |
 | `--pilot FILE` | Answer some decision kinds yourself |
+| `--ai hybrid\|sim` | Forge's experimental lookahead; slower and no better so far, and `sim` crashes (see architecture) |
 | `--per-game`, `--cards` | Add a line per game; add how often each card was seen and played |
 | `report [bN]` | Show a batch's report again, with the same flags |
 

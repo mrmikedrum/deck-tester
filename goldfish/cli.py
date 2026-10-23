@@ -89,7 +89,7 @@ def start(args) -> int:
         print("deck problems: " + "; ".join(problems))
         return 1
     payload = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "stops": args.stops,
-               "mana": args.mana, "opponents": args.opponents, "deck": Path(args.deck).stem, "hash": deck.revision()}
+               "mana": args.mana, "opponents": args.opponents, "ai": args.ai, "deck": Path(args.deck).stem, "hash": deck.revision()}
     if args.seed is not None:
         payload["seed"] = args.seed
     if args.turns is not None:
@@ -218,7 +218,8 @@ def run(args) -> int:
         print("deck problems: " + "; ".join(problems))
         return 1
     seed = args.seed if args.seed is not None else int.from_bytes(__import__("os").urandom(2), "big") * 100
-    manifest = batch.run(deck, Path(args.deck).stem, args.games, seed, args.turns, args.opponents, args.pilot, args.workers)
+    manifest = batch.run(deck, Path(args.deck).stem, args.games, seed, args.turns, args.opponents, args.pilot,
+                         args.workers, args.ai)
     for line in report.build(manifest, show_games=args.per_game, show_cards=args.cards):
         print(line)
     return 0
@@ -268,6 +269,8 @@ def main(argv=None) -> int:
     begin.add_argument("--ask", help="decision kinds you answer, comma-separated, or 'none' (default: all); "
                        "Forge's AI answers the rest. Kinds: " + ", ".join(batch.KINDS))
     begin.add_argument("--opponents", type=int, default=3)
+    begin.add_argument("--ai", choices=("default", "hybrid", "sim"), default="default",
+                       help="how Forge's AI decides the kinds you don't (see run --help)")
     begin.set_defaults(run=start)
 
     play = commands.add_parser("run", help="play a batch of games automatically and report")
@@ -278,6 +281,8 @@ def main(argv=None) -> int:
     play.add_argument("--pilot", help="Python file answering some decision kinds; Forge's AI answers the rest")
     play.add_argument("--opponents", type=int, default=3)
     play.add_argument("--workers", type=int, default=8, help="games played at once")
+    play.add_argument("--ai", choices=("default", "hybrid", "sim"), default="default",
+                      help="Forge's AI: its rules; rules with a one-play safety simulation; or a 3-action lookahead search")
     play.add_argument("--per-game", action="store_true", help="add a line per game")
     play.add_argument("--cards", action="store_true", help="add how often each card was seen and played")
     play.set_defaults(run=run)

@@ -60,7 +60,7 @@ def _start() -> None:
     java = str(Path(env["JAVA_HOME"]) / "bin" / "java") if "JAVA_HOME" in env else "java"
     # Detach through a shell so the engine outlives this command and isn't our child.
     subprocess.run(["/bin/sh", "-c", 'nohup "$@" >>"$0" 2>&1 </dev/null &', str(LOG),
-                    java, "-Xmx2g", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME)], env=env, check=True)
+                    java, f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME)], env=env, check=True)
     deadline = time.time() + 90
     while time.time() < deadline:
         try:
