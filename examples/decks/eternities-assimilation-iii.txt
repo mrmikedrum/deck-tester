@@ -1,0 +1,94 @@
+~~Commanders~~
+1 Atraxa, Praetors' Voice
+
+~~Mainboard~~
+1 Adagia, Windswept Bastion
+1 Arcane Signet
+1 Astral Cornucopia
+1 Bioengineered Future
+1 Breeding Pool
+1 Brimaz, Blight of Oreskos
+1 Cankerbloom
+1 Chrome Host Seedshark
+1 Command Tower
+1 Cosmic Rebirth
+1 Crystalline Crawler
+1 Cyberdrive Awakener
+1 Dyadrine, Synthesis Amalgam
+1 Emergency Eject
+1 Evendo, Waking Haven
+1 Evolution Sage
+1 Evolution Witness
+1 Expedition Map
+1 Exploration Broodship
+1 Ezuri, Stalker of Spheres
+1 Fabled Passage
+1 Farseek
+1 Filigree Vector
+1 Flooded Strand
+6 Forest
+1 Generous Patron
+1 Glissa, Herald of Predation
+1 Glistening Dawn
+1 Godless Shrine
+1 Grateful Apparition
+1 Hallowed Fountain
+1 Hangarback Walker
+1 Harmonize
+1 Haywire Mite
+1 Insight Engine
+1 Inspiring Call
+2 Island
+1 Kami of Whispered Hopes
+1 Karn's Bastion
+1 Larval Scoutlander
+1 Loading Zone
+1 Mana Confluence
+1 Marketback Walker
+1 Marsh Flats
+1 Metastatic Evangel
+1 Misty Rainforest
+1 Nature's Lore
+1 Night's Whisper
+1 Norn's Inquisitor
+1 Ornithopter of Paradise
+1 Overgrown Tomb
+1 Patrolling Peacemaker
+1 Phyrexian Metamorph
+5 Plains
+1 Polluted Delta
+1 Rampant Growth
+1 Recon Craft Theta
+1 Reflecting Pool
+1 Reject Imperfection
+1 Resourceful Defense
+1 Ripples of Potential
+1 Scalding Tarn
+1 Scavenger Grounds
+1 Scheming Aspirant
+1 Sol Ring
+1 Spelunking
+1 Steel Overseer
+1 Stridehangar Automaton
+1 Sunder the Gateway
+1 Sunfall
+1 Susur Secundi, Void Altar
+1 Swamp
+1 Sword of Truth and Justice
+1 Swords to Plowshares
+1 Tekuthal, Inquiry Dominus
+1 Temple Garden
+1 Terrasymbiosis
+1 The Eternity Elevator
+1 Throne of Geth
+1 Tome of Legends
+1 Unnatural Restoration
+1 Uthros Research Craft
+1 Uthros, Titanic Godcore
+1 Verdant Catacombs
+1 Vigorbloom Charm
+1 Watery Grave
+1 Winds of Abandon
+1 Windswept Heath
+1 Wooded Foothills
+

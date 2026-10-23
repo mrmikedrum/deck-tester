@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.goldfish/
+vendor/
+engine/target/
+.DS_Store
