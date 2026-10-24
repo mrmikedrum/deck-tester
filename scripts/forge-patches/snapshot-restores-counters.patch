@@ -1,0 +1,14 @@
+diff --git a/forge-game/src/main/java/forge/game/GameSnapshot.java b/forge-game/src/main/java/forge/game/GameSnapshot.java
+index a738fc16..b2934fcc 100644
+--- a/forge-game/src/main/java/forge/game/GameSnapshot.java
++++ b/forge-game/src/main/java/forge/game/GameSnapshot.java
+@@ -491,6 +491,9 @@ public class GameSnapshot {
+         newCard.setGameTimestamp(fromCard.getGameTimestamp());
+         newCard.setLayerTimestamp(fromCard.getLayerTimestamp());
+         newCard.setTapped(fromCard.isTapped());
++        // A card that still exists is reused on restore, so its counters and damage must be put back too.
++        newCard.setCounters(HashMultiset.create(fromCard.getCounters()));
++        newCard.setDamage(fromCard.getDamage());
+         newCard.setFaceDown(fromCard.isFaceDown());
+         newCard.setManifested(fromCard.getManifestedSA());
+         newCard.setSickness(fromCard.hasSickness());

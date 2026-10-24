@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import batch, decklist, engine, records, render, report
+from . import batch, decklist, engine, model, records, render, report
 
 ROOT = Path(__file__).resolve().parent.parent
 CURRENT = engine.HOME / "current"
@@ -218,8 +218,9 @@ def run(args) -> int:
         print("deck problems: " + "; ".join(problems))
         return 1
     seed = args.seed if args.seed is not None else int.from_bytes(__import__("os").urandom(2), "big") * 100
+    guide = Path(args.guide).read_text() if args.guide and Path(args.guide).is_file() else args.guide
     manifest = batch.run(deck, Path(args.deck).stem, args.games, seed, args.turns, args.opponents, args.pilot,
-                         args.workers, args.ai)
+                         args.workers, args.ai, guide, args.hybrid)
     for line in report.build(manifest, show_games=args.per_game, show_cards=args.cards):
         print(line)
     return 0
@@ -231,6 +232,11 @@ def report_cmd(args) -> int:
         raise engine.EngineError("no batches yet; run one with: goldfish run DECK")
     for line in report.build(batch.load(batch_id), show_games=args.per_game, show_cards=args.cards):
         print(line)
+    return 0
+
+
+def model_cmd(_args) -> int:
+    print(model.check())
     return 0
 
 
@@ -278,7 +284,12 @@ def main(argv=None) -> int:
     play.add_argument("--games", type=int, default=20)
     play.add_argument("--seed", type=int, help="first seed; game N uses seed+N (default: random)")
     play.add_argument("--turns", type=int, default=8, help="end each game after this many of your turns (0: no limit)")
-    play.add_argument("--pilot", help="Python file answering some decision kinds; Forge's AI answers the rest")
+    play.add_argument("--guide", help="the deck plan in plain language (text, or a file): the decision model plays "
+                      "by it, with Forge's AI deciding what the model can't")
+    play.add_argument("--hybrid", choices=model.HYBRIDS, default="outcomes",
+                      help="with --guide: outcomes (Forge's AI plays each option out and the model picks by text and "
+                      "result) or plain (the model picks by text alone)")
+    play.add_argument("--pilot", help="Python file answering some decision kinds before the model or Forge's AI")
     play.add_argument("--opponents", type=int, default=3)
     play.add_argument("--workers", type=int, default=8, help="games played at once")
     play.add_argument("--ai", choices=("default", "hybrid", "sim"), default="default",
@@ -325,6 +336,8 @@ def main(argv=None) -> int:
     seen.add_argument("--all", action="store_true", help="include lines abandoned by restoring a snapshot")
     seen.set_defaults(run=cards)
 
+    commands.add_parser("model", help="check the decision model with one tiny call").set_defaults(run=model_cmd)
+
     process = commands.add_parser("engine", help="engine process status or stop")
     process.add_argument("action", choices=("status", "stop"))
     process.set_defaults(run=engine_cmd)
@@ -332,7 +345,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.run(args)
-    except (engine.EngineError, decklist.DecklistError, OSError, ValueError) as error:
+    except (engine.EngineError, decklist.DecklistError, model.ModelError, OSError, ValueError) as error:
         print(f"error: {error}")
         return 1
 

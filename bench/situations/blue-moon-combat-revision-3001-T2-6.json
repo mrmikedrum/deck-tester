@@ -1,0 +1,663 @@
+{
+ "id": "blue-moon-combat-revision-3001-T2-6",
+ "plan": "Blue creatures and copies. Make a land drop every turn and cast Sol Ring early. Springleaf Drum only makes mana by tapping a creature, so cast creatures first. Princess Yue is cheap: cast her early; when she dies she returns as a land named Moon. Clones and copy effects (Phantasmal Image, Phyrexian Metamorph, Vizier of Many Faces and the like) are best copying your best creature. Tap and untap tricks and repeated enter-the-battlefield triggers grow a large board; attack with it. Counterspells and bounce have no targets here: hold them, and draw cards with spare mana.",
+ "state": {
+  "turn": "T2 main2",
+  "life": 40,
+  "mana": 2,
+  "library": 90,
+  "hand": [
+   "Springleaf Drum",
+   "Wonderscape Sage",
+   "Island",
+   "Island",
+   "Waxen Shapethief",
+   "North Pole Patrol",
+   "Imprisoned in the Moon"
+  ],
+  "battlefield": [
+   {
+    "name": "Minamo, School at Water's Edge"
+   },
+   {
+    "name": "Survivors' Encampment"
+   }
+  ],
+  "command": [
+   "Princess Yue"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Imprisoned in the Moon": "Imprisoned in the Moon {2}{U} — Enchantment - Aura — Enchant creature, land, or planeswalker / Enchanted permanent is a colorless land with \"{T}: Add {C}\" and loses all other card types and abilities.",
+   "Minamo, School at Water's Edge": "Minamo, School at Water's Edge — Legendary Land — {T}: Add {U}. / {U}, {T}: Untap target legendary permanent.",
+   "North Pole Patrol": "North Pole Patrol {2}{U} — Creature - Human Soldier Ally — {T}: Untap another target permanent you control. / Waterbend {3}, {T}: Tap target creature an opponent controls. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)",
+   "Princess Yue": "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2.",
+   "Springleaf Drum": "Springleaf Drum {1} — Artifact — {T}, Tap an untapped creature you control: Add one mana of any color.",
+   "Survivors' Encampment": "Survivors' Encampment — Land - Desert — {T}: Add {C}. / {T}, Tap an untapped creature you control: Add one mana of any color.",
+   "Waxen Shapethief": "Waxen Shapethief {3}{U} — Creature - Shapeshifter — Flash / You may have this creature enter as a copy of an artifact or creature you control. / Cycling {2} ({2}, Discard this card: Draw a card.)",
+   "Wonderscape Sage": "Wonderscape Sage {1}{U} — Creature - Moonfolk Wizard — Flying / {T}, Return a land you control to its owner's hand: Draw a card. Then discard a card unless that land had a nonbasic land type."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T2 main2",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Springleaf Drum",
+   "Wonderscape Sage",
+   "Waxen Shapethief: Cycling {2} ({2}, Discard this card: Draw a card.)"
+  ],
+  "details": [
+   "pass priority",
+   "Springleaf Drum {1} — Artifact — {T}, Tap an untapped creature you control: Add one mana of any color.",
+   "Wonderscape Sage {1}{U} — Creature - Moonfolk Wizard — Flying / {T}, Return a land you control to its owner's hand: Draw a card. Then discard a card unless that land had a nonbasic land type.",
+   "Waxen Shapethief: Cycling {2} ({2}, Discard this card: Draw a card.)"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 2
+  },
+  {
+   "t": "draw",
+   "turn": 2,
+   "card": "Imprisoned in the Moon",
+   "id": 72
+  },
+  {
+   "t": "snapshot",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "land",
+   "turn": 2,
+   "card": "Survivors' Encampment",
+   "id": 3
+  },
+  {
+   "t": "snapshot",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "snapshot",
+   "turn": 2,
+   "name": "anchor"
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Wonderscape Sage",
+     "id": 22,
+     "as": "Wonderscape Sage",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 0,
+     "hand": 6,
+     "creatures": 1,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Island",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "library": 89,
+    "hand": [
+     "Springleaf Drum",
+     "Island",
+     "Island",
+     "Waxen Shapethief",
+     "North Pole Patrol",
+     "Imprisoned in the Moon",
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Survivors' Encampment"
+     },
+     {
+      "name": "Wonderscape Sage",
+      "pt": "1/3"
+     }
+    ],
+    "command": [
+     "Princess Yue"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 2,
+     "hand": 7,
+     "creatures": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Island",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "library": 89,
+    "hand": [
+     "Springleaf Drum",
+     "Wonderscape Sage",
+     "Island",
+     "Island",
+     "Waxen Shapethief",
+     "North Pole Patrol",
+     "Imprisoned in the Moon",
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Survivors' Encampment"
+     }
+    ],
+    "command": [
+     "Princess Yue"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Springleaf Drum": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Springleaf Drum"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Springleaf Drum",
+     "sources": [
+      "Minamo, School at Water's Edge"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Springleaf Drum",
+     "id": 12,
+     "as": "Springleaf Drum",
+     "by": "compared"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 3,
+     "unspent": 1,
+     "hand": 6,
+     "creatures": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Island",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "library": 89,
+    "hand": [
+     "Wonderscape Sage",
+     "Island",
+     "Island",
+     "Waxen Shapethief",
+     "North Pole Patrol",
+     "Imprisoned in the Moon",
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Survivors' Encampment"
+     },
+     {
+      "name": "Springleaf Drum"
+     }
+    ],
+    "command": [
+     "Princess Yue"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Wonderscape Sage": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Wonderscape Sage"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Wonderscape Sage",
+     "sources": [
+      "Minamo, School at Water's Edge",
+      "Survivors' Encampment"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Wonderscape Sage",
+     "id": 22,
+     "as": "Wonderscape Sage",
+     "by": "compared"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 0,
+     "hand": 6,
+     "creatures": 1,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Island",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "library": 89,
+    "hand": [
+     "Springleaf Drum",
+     "Island",
+     "Island",
+     "Waxen Shapethief",
+     "North Pole Patrol",
+     "Imprisoned in the Moon",
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Survivors' Encampment"
+     },
+     {
+      "name": "Wonderscape Sage",
+      "pt": "1/3"
+     }
+    ],
+    "command": [
+     "Princess Yue"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Waxen Shapethief: Cycling {2} ({2}, Discard this card: Draw a card.)": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Waxen Shapethief: Cycling {2} ({2}, Discard this card: Draw a card.)"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "cost",
+     "prompt": "discard for Waxen Shapethief",
+     "answer": [
+      "Waxen Shapethief"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "Waxen Shapethief",
+     "from": "hand",
+     "to": "graveyard"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Waxen Shapethief",
+     "sources": [
+      "Minamo, School at Water's Edge",
+      "Survivors' Encampment"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Waxen Shapethief",
+     "id": 50,
+     "as": "Waxen Shapethief: Cycling {2} ({2}, Discard this card: Draw a card.)",
+     "by": "compared"
+    },
+    {
+     "t": "draw",
+     "turn": 2,
+     "card": "Island",
+     "id": 36
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 0,
+     "hand": 7,
+     "creatures": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Pestered Wellguard",
+     "id": 63
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "library": 88,
+    "hand": [
+     "Springleaf Drum",
+     "Wonderscape Sage",
+     "Island",
+     "Island",
+     "North Pole Patrol",
+     "Imprisoned in the Moon",
+     "Island",
+     "Pestered Wellguard"
+    ],
+    "battlefield": [
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Survivors' Encampment"
+     }
+    ],
+    "command": [
+     "Princess Yue"
+    ],
+    "graveyard": [
+     "Waxen Shapethief"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Wonderscape Sage"
+ ],
+ "note": "same, second main phase"
+}

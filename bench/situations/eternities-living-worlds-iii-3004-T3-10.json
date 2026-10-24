@@ -1,0 +1,1021 @@
+{
+ "id": "eternities-living-worlds-iii-3004-T3-10",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T3 main1",
+  "life": 38,
+  "mana": 3,
+  "library": 89,
+  "hand": [
+   "Sol Ring",
+   "Recon Craft Theta",
+   "Misty Rainforest",
+   "Kami of Whispered Hopes",
+   "Scalding Tarn"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Mana Confluence"
+   },
+   {
+    "name": "Ornithopter of Paradise",
+    "pt": "0/2"
+   },
+   {
+    "name": "Expedition Map"
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [
+   "Bloodstained Mire"
+  ],
+  "exile": [],
+  "stack": [
+   "Bloodstained Mire (62) - You searches their libra…"
+  ],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Expedition Map": "Expedition Map {1} — Artifact — {2}, {T}, Sacrifice Expedition Map: Search your library for a land card, reveal it, put it into your hand, then shuffle.",
+   "Kami of Whispered Hopes": "Kami of Whispered Hopes {2}{G} — Creature - Spirit — If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on that permanent instead. / {T}: Add X mana of any one color, where X is Kami of Whispered Hopes's power.",
+   "Mana Confluence": "Mana Confluence — Land — {T}, Pay 1 life: Add one mana of any color.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Misty Rainforest": "Misty Rainforest — Land — {T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+   "Ornithopter of Paradise": "Ornithopter of Paradise {2} — Artifact Creature - Thopter — Flying / {T}: Add one mana of any color.",
+   "Recon Craft Theta": "Recon Craft Theta {4} — Artifact - Vehicle — Flying / When Recon Craft Theta enters, create a 0/0 blue Alien creature token. Put a +1/+1 counter on it. / Whenever Recon Craft Theta attacks, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.) / Crew 2",
+   "Scalding Tarn": "Scalding Tarn — Land — {T}, Pay 1 life, Sacrifice Scalding Tarn: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
+   "Sol Ring": "Sol Ring {1} — Artifact — {T}: Add {C}{C}."
+  }
+ },
+ "decision": {
+  "kind": "choose",
+  "turn": "T3 main1",
+  "prompt": "Select a card from your library (Bloodstained Mire)",
+  "options": [
+   "Mountain",
+   "Sacred Foundry",
+   "Stomping Ground"
+  ],
+  "details": [
+   "Mountain — Basic Land - Mountain — ({T}: Add {R}.)",
+   "Sacred Foundry — Land - Mountain Plains — ({T}: Add {R} or {W}.) / As Sacred Foundry enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Stomping Ground — Land - Mountain Forest — ({T}: Add {R} or {G}.) / As Stomping Ground enters, you may pay 2 life. If you don't, it enters tapped."
+  ],
+  "min": 0,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 3
+  },
+  {
+   "t": "draw",
+   "turn": 3,
+   "card": "Scalding Tarn",
+   "id": 93
+  },
+  {
+   "t": "snapshot",
+   "turn": 3,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 3,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "land",
+   "turn": 3,
+   "card": "Bloodstained Mire",
+   "id": 62
+  },
+  {
+   "t": "snapshot",
+   "turn": 3,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 3,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "life",
+   "turn": 3,
+   "player": "You",
+   "life": 38
+  },
+  {
+   "t": "move",
+   "turn": 3,
+   "card": "Bloodstained Mire",
+   "from": "battlefield",
+   "to": "graveyard"
+  },
+  {
+   "t": "activate",
+   "turn": 3,
+   "card": "Bloodstained Mire",
+   "id": 62,
+   "as": "Bloodstained Mire: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+   "by": "ai"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "look",
+   "turn": 3,
+   "cards": [
+    "Mountain",
+    "Sacred Foundry",
+    "Stomping Ground"
+   ],
+   "ids": [
+    8,
+    58,
+    38
+   ],
+   "why": "searched (Bloodstained Mire)"
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Bloodstained Mire)",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Bloodstained Mire)",
+     "answer": [
+      "Sacred Foundry"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Sacred Foundry",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Kami of Whispered Hopes",
+     "id": 31,
+     "as": "Kami of Whispered Hopes",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 5,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Fertilid",
+     "id": 96
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 37,
+    "mana": 5,
+    "library": 87,
+    "hand": [
+     "Sol Ring",
+     "Recon Craft Theta",
+     "Misty Rainforest",
+     "Scalding Tarn",
+     "Fertilid"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Sacred Foundry"
+     },
+     {
+      "name": "Kami of Whispered Hopes",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Bloodstained Mire"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Mountain": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Bloodstained Mire)",
+     "options": 3,
+     "answer": [
+      "Mountain"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Mountain",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Recon Craft Theta",
+     "id": 1,
+     "as": "Recon Craft Theta",
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Alien Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Bioengineered Future",
+     "id": 16
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 37,
+    "mana": 4,
+    "library": 87,
+    "hand": [
+     "Sol Ring",
+     "Misty Rainforest",
+     "Kami of Whispered Hopes",
+     "Scalding Tarn",
+     "Bioengineered Future"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Mountain"
+     },
+     {
+      "name": "Recon Craft Theta"
+     },
+     {
+      "name": "Alien Token",
+      "pt": "1/1",
+      "counters": {
+       "+1/+1": 1
+      },
+      "token": true
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Bloodstained Mire"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Sacred Foundry": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Bloodstained Mire)",
+     "options": 3,
+     "answer": [
+      "Sacred Foundry"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Sacred Foundry",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Kami of Whispered Hopes",
+     "id": 31,
+     "as": "Kami of Whispered Hopes",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 5,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Bioengineered Future",
+     "id": 16
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 37,
+    "mana": 5,
+    "library": 87,
+    "hand": [
+     "Sol Ring",
+     "Recon Craft Theta",
+     "Misty Rainforest",
+     "Scalding Tarn",
+     "Bioengineered Future"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Sacred Foundry"
+     },
+     {
+      "name": "Kami of Whispered Hopes",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Bloodstained Mire"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Stomping Ground": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Bloodstained Mire)",
+     "options": 3,
+     "answer": [
+      "Stomping Ground"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Stomping Ground",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Kami of Whispered Hopes",
+     "id": 31,
+     "as": "Kami of Whispered Hopes",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 5,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Inspiring Call",
+     "id": 56
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 37,
+    "mana": 5,
+    "library": 87,
+    "hand": [
+     "Sol Ring",
+     "Recon Craft Theta",
+     "Misty Rainforest",
+     "Scalding Tarn",
+     "Inspiring Call"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Kami of Whispered Hopes",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Bloodstained Mire"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "nothing": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Bloodstained Mire)",
+     "options": 3,
+     "answer": [],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Cancel Search? Up to 1 more card(s) can be selected. (Bloodstained Mire)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Kami of Whispered Hopes",
+     "id": 31,
+     "as": "Kami of Whispered Hopes",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 2,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Arcane Signet",
+     "id": 55
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 37,
+    "mana": 4,
+    "library": 88,
+    "hand": [
+     "Sol Ring",
+     "Recon Craft Theta",
+     "Misty Rainforest",
+     "Scalding Tarn",
+     "Arcane Signet"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Kami of Whispered Hopes",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Bloodstained Mire"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Sacred Foundry",
+  "Stomping Ground"
+ ],
+ "note": "fetch a red dual for Marath's colours; nothing is worst"
+}

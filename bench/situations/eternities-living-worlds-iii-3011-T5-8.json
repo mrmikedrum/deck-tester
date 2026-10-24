@@ -1,0 +1,1350 @@
+{
+ "id": "eternities-living-worlds-iii-3011-T5-8",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T5 main1",
+  "life": 38,
+  "mana": 4,
+  "library": 87,
+  "hand": [
+   "Resourceful Defense",
+   "Ouroboroid",
+   "Arcane Signet",
+   "Harmonize"
+  ],
+  "battlefield": [
+   {
+    "name": "Command Tower"
+   },
+   {
+    "name": "Forest",
+    "tapped": true
+   },
+   {
+    "name": "Hangarback Walker",
+    "pt": "5/5",
+    "counters": {
+     "+1/+1": 3
+    }
+   },
+   {
+    "name": "Mana Confluence"
+   },
+   {
+    "name": "Sword of Truth and Justice"
+   },
+   {
+    "name": "Forest",
+    "tapped": true
+   },
+   {
+    "name": "Crystalline Crawler",
+    "pt": "4/4",
+    "counters": {
+     "+1/+1": 3
+    }
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [
+   "Nature's Lore (83) - You searches their library f…"
+  ],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 37,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 39,
+    "lands": 5,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Arcane Signet": "Arcane Signet {2} — Artifact — {T}: Add one mana of any color in your commander's color identity.",
+   "Command Tower": "Command Tower — Land — {T}: Add one mana of any color in your commander's color identity.",
+   "Crystalline Crawler": "Crystalline Crawler {4} — Artifact Creature - Construct — Converge — Crystalline Crawler enters with a +1/+1 counter on it for each color of mana spent to cast it. / Remove a +1/+1 counter from Crystalline Crawler: Add one mana of any color. / {T}: Put a +1/+1 counter on Crystalline Crawler.",
+   "Hangarback Walker": "Hangarback Walker {X}{X} — Artifact Creature - Construct — Hangarback Walker enters with X +1/+1 counters on it. / When Hangarback Walker dies, create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on Hangarback Walker. / {1}, {T}: Put a +1/+1 counter on Hangarback Walker.",
+   "Harmonize": "Harmonize {2}{G}{G} — Sorcery — Draw three cards.",
+   "Mana Confluence": "Mana Confluence — Land — {T}, Pay 1 life: Add one mana of any color.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Ouroboroid": "Ouroboroid {2}{G}{G} — Creature - Plant Wurm — At the beginning of combat on your turn, put X +1/+1 counters on each creature you control, where X is this creature's power.",
+   "Resourceful Defense": "Resourceful Defense {2}{W} — Enchantment — Whenever a permanent you control leaves the battlefield, if it had counters on it, put those counters on target permanent you control. / {4}{W}: Move any number of counters from target permanent you control to another target permanent you control.",
+   "Sword of Truth and Justice": "Sword of Truth and Justice {3} — Artifact - Equipment — Equipped creature gets +2/+2 and has protection from white and from blue. / Whenever equipped creature deals combat damage to a player, put a +1/+1 counter on a creature you control, then proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.) / Equip {2}"
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T5 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Hangarback Walker: {1}, {T}: Put a +1/+1 counter on this.",
+   "Crystalline Crawler: {T}: Put a +1/+1 counter on this."
+  ],
+  "details": [
+   "pass priority",
+   "Hangarback Walker: {1}, {T}: Put a +1/+1 counter on Hangarback Walker.",
+   "Crystalline Crawler: {T}: Put a +1/+1 counter on Crystalline Crawler."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 5
+  },
+  {
+   "t": "draw",
+   "turn": 5,
+   "card": "Nature's Lore",
+   "id": 83
+  },
+  {
+   "t": "snapshot",
+   "turn": 5,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 5,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "cast",
+   "turn": 5,
+   "card": "Nature's Lore",
+   "id": 83,
+   "as": "Nature's Lore",
+   "by": "ai"
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "look",
+     "turn": 5,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Stomping Ground",
+      "Temple Garden"
+     ],
+     "ids": [
+      20,
+      21,
+      22,
+      23,
+      25,
+      27,
+      28,
+      29,
+      38,
+      84
+     ],
+     "why": "searched (Nature's Lore)"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Hangarback Walker 5/5 [+1/+1 3] -> Opp 2",
+      "Crystalline Crawler 4/4 [+1/+1 3] -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 2",
+     "life": 28
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a creature you control (+1/+1) (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": " (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a creature you control (+1/+1) (Sword of Truth and Justice)",
+     "answer": [
+      "Hangarback Walker"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Crystalline Crawler)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Resourceful Defense",
+     "id": 79,
+     "as": "Resourceful Defense",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 5,
+     "mana": 7,
+     "unspent": 1,
+     "hand": 3,
+     "creatures": 2,
+     "permanents": 4,
+     "opponents_life": 107
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Sundering Growth",
+     "id": 48
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 37,
+    "mana": 7,
+    "library": 85,
+    "hand": [
+     "Ouroboroid",
+     "Arcane Signet",
+     "Harmonize",
+     "Sundering Growth"
+    ],
+    "battlefield": [
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Hangarback Walker",
+      "pt": "7/7",
+      "counters": {
+       "+1/+1": 5
+      }
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Sword of Truth and Justice"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Crystalline Crawler",
+      "pt": "4/4",
+      "counters": {
+       "+1/+1": 3
+      }
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Resourceful Defense"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Nature's Lore"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 28,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "look",
+     "turn": 5,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Stomping Ground",
+      "Temple Garden"
+     ],
+     "ids": [
+      20,
+      21,
+      22,
+      23,
+      25,
+      27,
+      28,
+      29,
+      38,
+      84
+     ],
+     "why": "searched (Nature's Lore)"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Hangarback Walker 5/5 [+1/+1 3] -> Opp 2",
+      "Crystalline Crawler 4/4 [+1/+1 3] -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 2",
+     "life": 28
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a creature you control (+1/+1) (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": " (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a creature you control (+1/+1) (Sword of Truth and Justice)",
+     "answer": [
+      "Hangarback Walker"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Crystalline Crawler)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Resourceful Defense",
+     "id": 79,
+     "as": "Resourceful Defense",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 5,
+     "mana": 7,
+     "unspent": 1,
+     "hand": 3,
+     "creatures": 2,
+     "permanents": 4,
+     "opponents_life": 107
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Sundering Growth",
+     "id": 48
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 37,
+    "mana": 7,
+    "library": 85,
+    "hand": [
+     "Ouroboroid",
+     "Arcane Signet",
+     "Harmonize",
+     "Sundering Growth"
+    ],
+    "battlefield": [
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Hangarback Walker",
+      "pt": "7/7",
+      "counters": {
+       "+1/+1": 5
+      }
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Sword of Truth and Justice"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Crystalline Crawler",
+      "pt": "4/4",
+      "counters": {
+       "+1/+1": 3
+      }
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Resourceful Defense"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Nature's Lore"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 28,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Hangarback Walker: {1}, {T}: Put a +1/+1 counter on this.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Hangarback Walker: {1}, {T}: Put a +1/+1 counter on this."
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Hangarback Walker",
+     "sources": [
+      "Command Tower"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 5,
+     "card": "Hangarback Walker",
+     "id": 74,
+     "as": "Hangarback Walker: {1}, {T}: Put a +1/+1 counter on this.",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 5,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Stomping Ground",
+      "Temple Garden"
+     ],
+     "ids": [
+      20,
+      21,
+      22,
+      23,
+      25,
+      27,
+      28,
+      29,
+      38,
+      84
+     ],
+     "why": "searched (Nature's Lore)"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Crystalline Crawler 4/4 [+1/+1 3] -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 2",
+     "life": 33
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Crystalline Crawler)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Arcane Signet",
+     "id": 55,
+     "as": "Arcane Signet",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 5,
+     "mana": 9,
+     "unspent": 3,
+     "hand": 3,
+     "creatures": 2,
+     "permanents": 4,
+     "opponents_life": 112
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Sundering Growth",
+     "id": 48
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 37,
+    "mana": 9,
+    "library": 85,
+    "hand": [
+     "Resourceful Defense",
+     "Ouroboroid",
+     "Harmonize",
+     "Sundering Growth"
+    ],
+    "battlefield": [
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Hangarback Walker",
+      "pt": "6/6",
+      "counters": {
+       "+1/+1": 4
+      }
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Sword of Truth and Justice"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Crystalline Crawler",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 2
+      }
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Arcane Signet"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Nature's Lore"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 33,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Crystalline Crawler: {T}: Put a +1/+1 counter on this.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Crystalline Crawler: {T}: Put a +1/+1 counter on this."
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "activate",
+     "turn": 5,
+     "card": "Crystalline Crawler",
+     "id": 76,
+     "as": "Crystalline Crawler: {T}: Put a +1/+1 counter on this.",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 5,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Stomping Ground",
+      "Temple Garden"
+     ],
+     "ids": [
+      20,
+      21,
+      22,
+      23,
+      25,
+      27,
+      28,
+      29,
+      38,
+      84
+     ],
+     "why": "searched (Nature's Lore)"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Nature's Lore)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Hangarback Walker 5/5 [+1/+1 3] -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 2",
+     "life": 32
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a creature you control (+1/+1) (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": " (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a creature you control (+1/+1) (Sword of Truth and Justice)",
+     "answer": [
+      "Crystalline Crawler"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Sword of Truth and Justice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Crystalline Crawler)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Resourceful Defense",
+     "id": 79,
+     "as": "Resourceful Defense",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 5,
+     "mana": 7,
+     "unspent": 1,
+     "hand": 3,
+     "creatures": 2,
+     "permanents": 4,
+     "opponents_life": 111
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Sundering Growth",
+     "id": 48
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 37,
+    "mana": 7,
+    "library": 85,
+    "hand": [
+     "Ouroboroid",
+     "Arcane Signet",
+     "Harmonize",
+     "Sundering Growth"
+    ],
+    "battlefield": [
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Hangarback Walker",
+      "pt": "6/6",
+      "counters": {
+       "+1/+1": 4
+      }
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Sword of Truth and Justice"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Crystalline Crawler",
+      "pt": "6/6",
+      "counters": {
+       "+1/+1": 5
+      }
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Resourceful Defense"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Nature's Lore"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 32,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": null,
+ "note": ""
+}

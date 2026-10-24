@@ -1,0 +1,177 @@
+{
+ "id": "scenario-mulligan-keep",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T0 setup",
+  "life": 40,
+  "mana": 0,
+  "library": 99,
+  "hand": [
+   "Forest",
+   "Plains",
+   "Mountain",
+   "Sol Ring",
+   "Rampant Growth",
+   "Llanowar Elves",
+   "Beast Within"
+  ],
+  "battlefield": [],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Beast Within": "Beast Within {2}{G} — Instant — Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+   "Llanowar Elves": "Llanowar Elves {G} — Creature - Elf Druid — {T}: Add {G}.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Rampant Growth": "Rampant Growth {1}{G} — Sorcery — Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+   "Sol Ring": "Sol Ring {1} — Artifact — {T}: Add {C}{C}."
+  }
+ },
+ "decision": {
+  "kind": "mulligan",
+  "turn": "T0 setup",
+  "prompt": "keep this hand",
+  "options": [
+   "keep",
+   "mulligan"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [],
+ "default": "keep",
+ "lines": {
+  "keep": {
+   "facts": [],
+   "state": {
+    "turn": "T0 setup",
+    "life": 40,
+    "mana": 0,
+    "library": 99,
+    "hand": [
+     "Forest",
+     "Plains",
+     "Mountain",
+     "Sol Ring",
+     "Rampant Growth",
+     "Llanowar Elves",
+     "Beast Within"
+    ],
+    "battlefield": [],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 0,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 0,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 0,
+      "other": 0
+     }
+    ],
+    "text": {
+     "Beast Within": "Beast Within {2}{G} — Instant — Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+     "Llanowar Elves": "Llanowar Elves {G} — Creature - Elf Druid — {T}: Add {G}.",
+     "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+     "Rampant Growth": "Rampant Growth {1}{G} — Sorcery — Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+     "Sol Ring": "Sol Ring {1} — Artifact — {T}: Add {C}{C}."
+    }
+   }
+  },
+  "mulligan": {
+   "facts": [],
+   "state": {
+    "turn": "T0 setup",
+    "life": 40,
+    "mana": 0,
+    "library": 99,
+    "hand": [
+     "Forest",
+     "Plains",
+     "Mountain",
+     "Sol Ring",
+     "Rampant Growth",
+     "Llanowar Elves",
+     "Beast Within"
+    ],
+    "battlefield": [],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 0,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 0,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 0,
+      "other": 0
+     }
+    ],
+    "text": {
+     "Beast Within": "Beast Within {2}{G} — Instant — Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+     "Llanowar Elves": "Llanowar Elves {G} — Creature - Elf Druid — {T}: Add {G}.",
+     "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+     "Rampant Growth": "Rampant Growth {1}{G} — Sorcery — Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+     "Sol Ring": "Sol Ring {1} — Artifact — {T}: Add {C}{C}."
+    }
+   }
+  }
+ },
+ "expected": [
+  "keep"
+ ],
+ "note": "Three lands, Sol Ring and ramp: keep."
+}

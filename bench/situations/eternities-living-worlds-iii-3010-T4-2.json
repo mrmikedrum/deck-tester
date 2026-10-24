@@ -1,0 +1,1392 @@
+{
+ "id": "eternities-living-worlds-iii-3010-T4-2",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T4 main1",
+  "life": 39,
+  "mana": 4,
+  "library": 87,
+  "hand": [
+   "Ouroboroid",
+   "Emergency Eject",
+   "Misty Rainforest",
+   "Swords to Plowshares",
+   "Glacier Godmaw",
+   "Winds of Abandon"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Forest"
+   },
+   {
+    "name": "Temple Garden"
+   },
+   {
+    "name": "Staff of the Storyteller",
+    "counters": {
+     "Story": 1
+    }
+   },
+   {
+    "name": "Spirit Token",
+    "pt": "1/1",
+    "token": true
+   },
+   {
+    "name": "Scavenger Grounds"
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [
+   "Flooded Strand"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Emergency Eject": "Emergency Eject {2}{W} — Instant — Destroy target nonland permanent. Its controller creates a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "Glacier Godmaw": "Glacier Godmaw {5}{G}{G} — Creature - Leviathan — Trample / When this creature enters, create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\") / Landfall — Whenever a land you control enters, creatures you control get +1/+1 and gain vigilance and haste until end of turn.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Misty Rainforest": "Misty Rainforest — Land — {T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+   "Ouroboroid": "Ouroboroid {2}{G}{G} — Creature - Plant Wurm — At the beginning of combat on your turn, put X +1/+1 counters on each creature you control, where X is this creature's power.",
+   "Scavenger Grounds": "Scavenger Grounds — Land - Desert — {T}: Add {C}. / {2}, {T}, Sacrifice a Desert: Exile all graveyards.",
+   "Spirit Token": "Spirit Token — Creature - Spirit — Flying",
+   "Staff of the Storyteller": "Staff of the Storyteller {1}{W} — Artifact — When Staff of the Storyteller enters, create a 1/1 white Spirit creature token with flying. / Whenever you create one or more creature tokens, put a story counter on Staff of the Storyteller. / {W}, {T}, Remove a story counter from Staff of the Storyteller: Draw a card.",
+   "Swords to Plowshares": "Swords to Plowshares {W} — Instant — Exile target creature. Its controller gains life equal to its power.",
+   "Temple Garden": "Temple Garden — Land - Forest Plains — ({T}: Add {G} or {W}.) / As Temple Garden enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Winds of Abandon": "Winds of Abandon {1}{W} — Sorcery — Exile target creature you don't control. For each creature exiled this way, its controller searches their library for a basic land card. Those players put those cards onto the battlefield tapped, then shuffle. / Overload {4}{W}{W} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")"
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T4 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Ouroboroid",
+   "Emergency Eject",
+   "Swords to Plowshares",
+   "Staff of the Storyteller: {W}, {T}, Remove a story counter from this: Draw …",
+   "Scavenger Grounds: {2}, {T}, Sacrifice a Desert: Exile all graveyard…"
+  ],
+  "details": [
+   "pass priority",
+   "Ouroboroid {2}{G}{G} — Creature - Plant Wurm — At the beginning of combat on your turn, put X +1/+1 counters on each creature you control, where X is this creature's power.",
+   "Emergency Eject {2}{W} — Instant — Destroy target nonland permanent. Its controller creates a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "Swords to Plowshares {W} — Instant — Exile target creature. Its controller gains life equal to its power.",
+   "Staff of the Storyteller: {W}, {T}, Remove a story counter from Staff of the Storyteller: Draw a card.",
+   "Scavenger Grounds: {2}, {T}, Sacrifice a Desert: Exile all graveyards."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 4
+  },
+  {
+   "t": "draw",
+   "turn": 4,
+   "card": "Scavenger Grounds",
+   "id": 64
+  },
+  {
+   "t": "snapshot",
+   "turn": 4,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 4,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "land",
+   "turn": 4,
+   "card": "Scavenger Grounds",
+   "id": 64
+  },
+  {
+   "t": "snapshot",
+   "turn": 4,
+   "name": "anchor"
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Spirit Token 1/1 (token) -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Ouroboroid",
+     "id": 77,
+     "as": "Ouroboroid",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 86,
+    "hand": [
+     "Emergency Eject",
+     "Misty Rainforest",
+     "Swords to Plowshares",
+     "Glacier Godmaw",
+     "Winds of Abandon",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Staff of the Storyteller",
+      "counters": {
+       "Story": 1
+      }
+     },
+     {
+      "name": "Spirit Token",
+      "pt": "1/1",
+      "token": true
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Ouroboroid",
+      "pt": "1/3"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Flooded Strand"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "pass"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Spirit Token 1/1 (token) -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Ouroboroid",
+     "id": 77,
+     "as": "Ouroboroid",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 86,
+    "hand": [
+     "Emergency Eject",
+     "Misty Rainforest",
+     "Swords to Plowshares",
+     "Glacier Godmaw",
+     "Winds of Abandon",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Staff of the Storyteller",
+      "counters": {
+       "Story": 1
+      }
+     },
+     {
+      "name": "Spirit Token",
+      "pt": "1/1",
+      "token": true
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Ouroboroid",
+      "pt": "1/3"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Flooded Strand"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Ouroboroid": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Ouroboroid"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Ouroboroid",
+     "sources": [
+      "Plains",
+      "Forest",
+      "Temple Garden",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Ouroboroid",
+     "id": 77,
+     "as": "Ouroboroid",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Spirit Token 2/2 [+1/+1 1] (token) -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 3",
+     "life": 38
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 118
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 86,
+    "hand": [
+     "Emergency Eject",
+     "Misty Rainforest",
+     "Swords to Plowshares",
+     "Glacier Godmaw",
+     "Winds of Abandon",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Staff of the Storyteller",
+      "counters": {
+       "Story": 1
+      }
+     },
+     {
+      "name": "Spirit Token",
+      "pt": "2/2",
+      "counters": {
+       "+1/+1": 1
+      },
+      "token": true
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Ouroboroid",
+      "pt": "2/4",
+      "counters": {
+       "+1/+1": 1
+      }
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Flooded Strand"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 38,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Emergency Eject": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Emergency Eject"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for Destroy target nonland permanent. Its controller …",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Emergency Eject",
+     "sources": [
+      "Plains",
+      "Forest",
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Emergency Eject",
+     "id": 59,
+     "as": "Emergency Eject",
+     "by": "agent"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Spirit Token",
+     "from": "battlefield",
+     "to": "graveyard",
+     "token": true
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Lander Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 1,
+     "hand": 5,
+     "creatures": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Lander Token",
+     "from": "battlefield",
+     "to": "graveyard",
+     "token": true
+    },
+    {
+     "t": "activate",
+     "turn": 5,
+     "card": "Lander Token",
+     "id": 421,
+     "as": "Lander Token: {2}, {T}, Sacrifice this: Search your library for…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 5,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Mountain",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains"
+     ],
+     "ids": [
+      20,
+      21,
+      22,
+      23,
+      24,
+      26,
+      27,
+      28,
+      29,
+      8,
+      49,
+      50,
+      51,
+      52,
+      53
+     ],
+     "why": "searched (Lander Token)"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Lander Token)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Lander Token)",
+     "answer": [
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Plains",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Patrolling Peacemaker",
+     "id": 81
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 39,
+    "mana": 2,
+    "library": 85,
+    "hand": [
+     "Ouroboroid",
+     "Misty Rainforest",
+     "Swords to Plowshares",
+     "Glacier Godmaw",
+     "Winds of Abandon",
+     "Patrolling Peacemaker"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains",
+      "tapped": true
+     },
+     {
+      "name": "Forest",
+      "tapped": true
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Staff of the Storyteller",
+      "counters": {
+       "Story": 1
+      }
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Plains",
+      "tapped": true
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Flooded Strand",
+     "Emergency Eject"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Swords to Plowshares": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Swords to Plowshares"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for Exile target creature. Its controller gains life …",
+     "options": 1,
+     "answer": [
+      "Spirit Token 1/1 (token)"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Swords to Plowshares",
+     "sources": [
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Swords to Plowshares",
+     "id": 91,
+     "as": "Swords to Plowshares",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Spirit Token",
+     "from": "battlefield",
+     "to": "exile",
+     "token": true
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 40
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Staff of the Storyteller",
+     "id": 18,
+     "as": "Staff of the Storyteller: {W}, {T}, Remove a story counter from this: Draw …",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Forest",
+     "id": 26
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 2,
+     "hand": 6,
+     "creatures": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Stomping Ground",
+     "id": 38
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 40,
+    "mana": 4,
+    "library": 85,
+    "hand": [
+     "Ouroboroid",
+     "Emergency Eject",
+     "Misty Rainforest",
+     "Glacier Godmaw",
+     "Winds of Abandon",
+     "Forest",
+     "Stomping Ground"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Staff of the Storyteller"
+     },
+     {
+      "name": "Scavenger Grounds"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Flooded Strand",
+     "Swords to Plowshares"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Staff of the Storyteller: {W}, {T}, Remove a story counter from this: Draw …": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Staff of the Storyteller: {W}, {T}, Remove a story counter from this: Draw …"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Staff of the Storyteller",
+     "sources": [
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Staff of the Storyteller",
+     "id": 18,
+     "as": "Staff of the Storyteller: {W}, {T}, Remove a story counter from this: Draw …",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Forest",
+     "id": 26
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Spirit Token 1/1 (token) -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 3,
+     "hand": 7,
+     "creatures": 1,
+     "permanents": 2,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Stomping Ground",
+     "id": 38
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 85,
+    "hand": [
+     "Ouroboroid",
+     "Emergency Eject",
+     "Misty Rainforest",
+     "Swords to Plowshares",
+     "Glacier Godmaw",
+     "Winds of Abandon",
+     "Forest",
+     "Stomping Ground"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Staff of the Storyteller"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Spirit Token",
+      "pt": "1/1",
+      "token": true
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Flooded Strand"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Scavenger Grounds: {2}, {T}, Sacrifice a Desert: Exile all graveyard…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Scavenger Grounds: {2}, {T}, Sacrifice a Desert: Exile all graveyard…"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "sacrifice for Scavenger Grounds",
+     "options": 1,
+     "answer": [
+      "Scavenger Grounds"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Scavenger Grounds",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Scavenger Grounds",
+     "sources": [
+      "Plains",
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Scavenger Grounds",
+     "id": 64,
+     "as": "Scavenger Grounds: {2}, {T}, Sacrifice a Desert: Exile all graveyard…",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "order",
+     "prompt": "cards to exile (Scavenger Grounds)",
+     "answer": [
+      "Flooded Strand",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Flooded Strand",
+     "from": "graveyard",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Scavenger Grounds",
+     "from": "graveyard",
+     "to": "exile"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Spirit Token 1/1 (token) -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Staff of the Storyteller",
+     "id": 18,
+     "as": "Staff of the Storyteller: {W}, {T}, Remove a story counter from this: Draw …",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Forest",
+     "id": 26
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 3,
+     "unspent": 0,
+     "hand": 7,
+     "creatures": 1,
+     "permanents": 2,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Stomping Ground",
+     "id": 38
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 39,
+    "mana": 3,
+    "library": 85,
+    "hand": [
+     "Ouroboroid",
+     "Emergency Eject",
+     "Misty Rainforest",
+     "Swords to Plowshares",
+     "Glacier Godmaw",
+     "Winds of Abandon",
+     "Forest",
+     "Stomping Ground"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Staff of the Storyteller"
+     },
+     {
+      "name": "Spirit Token",
+      "pt": "1/1",
+      "token": true
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [],
+    "exile": [
+     "Flooded Strand",
+     "Scavenger Grounds"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Ouroboroid"
+ ],
+ "note": "cast the creature; the removal hits only our own"
+}

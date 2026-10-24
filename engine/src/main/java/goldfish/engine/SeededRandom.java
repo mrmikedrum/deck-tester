@@ -7,27 +7,35 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.UncheckedIOException;
 import java.util.Random;
+import java.util.function.Supplier;
 
 /**
  * Forge draws all randomness from one shared Random (forge.util.MyRandom). Installed there, this gives
- * each game thread its own seeded sequence, so parallel games stay reproducible from their seeds. A
- * session holds its game's Source, so a snapshot can save the sequence and a restore can rewind it.
+ * each game thread its own seeded sequences, so parallel games stay reproducible from their seeds.
+ *
+ * Each game has two sequences. The game's own (shuffles, coin flips, dice) is what the seed fixes. Forge's
+ * AI also draws randomness while it weighs a choice ("hold the land drop some of the time"); that comes
+ * from a second sequence, used while the controller is {@link #thinking}, so a game replayed from recorded
+ * answers, in which the AI never weighs anything, shuffles exactly as the original did.
  */
 final class SeededRandom extends Random {
-    /** One game's random sequence. */
+    /** One game's random sequences. */
     static final class Source {
-        private volatile Random random;
+        private volatile Random game;
+        private final Random weighing;
+        private int thinking;
 
         Source(long seed) {
-            random = new Random(seed);
+            game = new Random(seed);
+            weighing = new Random(~seed);
         }
 
         Random copy() {
-            return SeededRandom.copy(random);
+            return SeededRandom.copy(game);
         }
 
         void rewind(Random saved) {
-            random = SeededRandom.copy(saved);
+            game = SeededRandom.copy(saved);
         }
     }
 
@@ -40,9 +48,22 @@ final class SeededRandom extends Random {
         return source;
     }
 
+    /** Run Forge's AI weighing a choice: its random draws leave the game's own sequence alone. */
+    static <T> T thinking(Supplier<T> ai) {
+        Source source = LOCAL.get();
+        source.thinking++;
+        try {
+            return ai.get();
+        } finally {
+            source.thinking--;
+        }
+    }
+
     @Override
     protected int next(int bits) {
-        return LOCAL.get().random.nextInt() >>> (32 - bits);
+        Source source = LOCAL.get();
+        Random random = source.thinking > 0 ? source.weighing : source.game;
+        return random.nextInt() >>> (32 - bits);
     }
 
     /** Random is serializable, and its serialized form carries its whole state. */

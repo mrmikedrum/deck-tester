@@ -15,6 +15,12 @@ public record Decision(String kind, String turn, String prompt, List<String> opt
         return options.isEmpty();
     }
 
+    /** The same question in the same place: what a fork's replay checks at each recorded decision. */
+    boolean same(Decision other) {
+        return kind.equals(other.kind) && turn.equals(other.turn) && prompt.equals(other.prompt)
+                && options.equals(other.options) && min == other.min && max == other.max && repeat == other.repeat;
+    }
+
     /** Null when the answer fits this decision, otherwise why it doesn't. */
     public String check(List<Integer> answer) {
         if (isNumber()) {

@@ -1,0 +1,1130 @@
+{
+ "id": "dack-cedh-3001-T2-8",
+ "plan": "Fast mana into an early commander. Play fast mana (Sol Ring, Mana Vault, moxen, monoliths, Ancient Tomb)\nas soon as you can and cast Dack Fayden as early as possible; his entry hands each opponent a goaded\ncreature from your library. Stax and protection pieces (Rule of Law, Trinisphere, Silence and the like) do\nlittle against these opponents; cast them only with mana to spare after developing. Tutors should find mana\nor more development. Removal has no targets: hold it.\n",
+ "state": {
+  "turn": "T2 main2",
+  "life": 39,
+  "mana": 7,
+  "library": 90,
+  "hand": [
+   "All-Fates Stalker",
+   "Werefox Bodyguard",
+   "Wispweaver Angel",
+   "Flooded Strand",
+   "Plains"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Mana Vault",
+    "tapped": true
+   },
+   {
+    "name": "Component Pouch",
+    "counters": {
+     "Component": 2
+    }
+   },
+   {
+    "name": "City of Traitors"
+   }
+  ],
+  "command": [
+   "Dack Fayden, Helping Hand"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   }
+  ],
+  "text": {
+   "All-Fates Stalker": "All-Fates Stalker {3}{W} — Creature - Drix Assassin — When this creature enters, exile up to one target non-Assassin creature until this creature leaves the battlefield. / Warp {1}{W} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "City of Traitors": "City of Traitors — Land — When you play another land, sacrifice City of Traitors. / {T}: Add {C}{C}.",
+   "Component Pouch": "Component Pouch {3} — Artifact — {T}, Remove a component counter from Component Pouch: Add two mana of different colors. / {T}: Roll a d20. / 1—9 | Put a component counter on Component Pouch. / 10—20 | Put two component counters on Component Pouch.",
+   "Dack Fayden, Helping Hand": "Dack Fayden, Helping Hand {4}{W}{W} — Legendary Creature - Human Advisor — When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen.",
+   "Flooded Strand": "Flooded Strand — Land — {T}, Pay 1 life, Sacrifice Flooded Strand: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle.",
+   "Mana Vault": "Mana Vault {1} — Artifact — This artifact doesn't untap during your untap step. / At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact. / At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you. / {T}: Add {C}{C}{C}.",
+   "Werefox Bodyguard": "Werefox Bodyguard {1}{W}{W} — Creature - Elf Fox Knight — Flash / When Werefox Bodyguard enters, exile up to one other target non-Fox creature until Werefox Bodyguard leaves the battlefield. / {1}{W}, Sacrifice Werefox Bodyguard: You gain 2 life.",
+   "Wispweaver Angel": "Wispweaver Angel {4}{W}{W} — Creature - Angel — Flying / When Wispweaver Angel enters, you may exile another target creature you control, then return that card to the battlefield under its owner's control."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T2 main2",
+  "prompt": "",
+  "options": [
+   "pass",
+   "All-Fates Stalker",
+   "All-Fates Stalker (warp)",
+   "Werefox Bodyguard",
+   "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on…"
+  ],
+  "details": [
+   "pass priority",
+   "All-Fates Stalker {3}{W} — Creature - Drix Assassin — When this creature enters, exile up to one target non-Assassin creature until this creature leaves the battlefield. / Warp {1}{W} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "All-Fates Stalker {3}{W} — Creature - Drix Assassin — When this creature enters, exile up to one target non-Assassin creature until this creature leaves the battlefield. / Warp {1}{W} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "Werefox Bodyguard {1}{W}{W} — Creature - Elf Fox Knight — Flash / When Werefox Bodyguard enters, exile up to one other target non-Fox creature until Werefox Bodyguard leaves the battlefield. / {1}{W}, Sacrifice Werefox Bodyguard: You gain 2 life.",
+   "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on Component Pouch. 10—20 | Put two component counters on Component Pouch."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 2
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "confirm",
+   "prompt": "use Mana Vault: this (59): At the beginning of your upkeep, you m…",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "draw",
+   "turn": 2,
+   "card": "City of Traitors",
+   "id": 72
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "life",
+   "turn": 2,
+   "player": "You",
+   "life": 39
+  },
+  {
+   "t": "snapshot",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "land",
+   "turn": 2,
+   "card": "City of Traitors",
+   "id": 72
+  },
+  {
+   "t": "snapshot",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 2,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "snapshot",
+   "turn": 2,
+   "name": "anchor"
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 10,
+     "unspent": 7,
+     "hand": 5,
+     "creatures": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Component Pouch",
+     "id": 50,
+     "as": "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on…",
+     "by": "ai"
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "use Mana Vault: this (59): At the beginning of your upkeep, you m…",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Plains",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 89,
+    "hand": [
+     "All-Fates Stalker",
+     "Werefox Bodyguard",
+     "Wispweaver Angel",
+     "Flooded Strand",
+     "Plains",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Vault"
+     },
+     {
+      "name": "Component Pouch",
+      "tapped": true,
+      "counters": {
+       "Component": 3
+      }
+     },
+     {
+      "name": "City of Traitors",
+      "tapped": true
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 10,
+     "unspent": 7,
+     "hand": 5,
+     "creatures": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Component Pouch",
+     "id": 50,
+     "as": "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on…",
+     "by": "ai"
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "use Mana Vault: this (59): At the beginning of your upkeep, you m…",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Plains",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 89,
+    "hand": [
+     "All-Fates Stalker",
+     "Werefox Bodyguard",
+     "Wispweaver Angel",
+     "Flooded Strand",
+     "Plains",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Vault"
+     },
+     {
+      "name": "Component Pouch",
+      "tapped": true,
+      "counters": {
+       "Component": 3
+      }
+     },
+     {
+      "name": "City of Traitors",
+      "tapped": true
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "All-Fates Stalker": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "All-Fates Stalker"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "All-Fates Stalker",
+     "sources": [
+      "Plains",
+      "Component Pouch",
+      "City of Traitors"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "All-Fates Stalker",
+     "id": 12,
+     "as": "All-Fates Stalker",
+     "by": "compared"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 10,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 1,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "use Mana Vault: this (59): At the beginning of your upkeep, you m…",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Plains",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 89,
+    "hand": [
+     "Werefox Bodyguard",
+     "Wispweaver Angel",
+     "Flooded Strand",
+     "Plains",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Vault"
+     },
+     {
+      "name": "Component Pouch",
+      "tapped": true
+     },
+     {
+      "name": "City of Traitors",
+      "tapped": true
+     },
+     {
+      "name": "All-Fates Stalker",
+      "pt": "2/3"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "All-Fates Stalker (warp)": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "All-Fates Stalker (warp)"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "All-Fates Stalker",
+     "sources": [
+      "Plains",
+      "City of Traitors"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "All-Fates Stalker",
+     "id": 12,
+     "as": "All-Fates Stalker (warp)",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 10,
+     "unspent": 4,
+     "hand": 4,
+     "creatures": 1,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "All-Fates Stalker",
+     "from": "battlefield",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "Warped All-Fates Stalker (12)",
+     "to": "command"
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Component Pouch",
+     "id": 50,
+     "as": "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on…",
+     "by": "ai"
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "use Mana Vault: this (59): At the beginning of your upkeep, you m…",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Plains",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 89,
+    "hand": [
+     "Werefox Bodyguard",
+     "Wispweaver Angel",
+     "Flooded Strand",
+     "Plains",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Vault"
+     },
+     {
+      "name": "Component Pouch",
+      "tapped": true,
+      "counters": {
+       "Component": 3
+      }
+     },
+     {
+      "name": "City of Traitors",
+      "tapped": true
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [
+     "All-Fates Stalker"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Werefox Bodyguard": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "Werefox Bodyguard"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Werefox Bodyguard",
+     "sources": [
+      "Plains",
+      "Component Pouch"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Werefox Bodyguard",
+     "id": 22,
+     "as": "Werefox Bodyguard",
+     "by": "compared"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 10,
+     "unspent": 2,
+     "hand": 4,
+     "creatures": 1,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "use Mana Vault: this (59): At the beginning of your upkeep, you m…",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Plains",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 89,
+    "hand": [
+     "All-Fates Stalker",
+     "Wispweaver Angel",
+     "Flooded Strand",
+     "Plains",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Vault"
+     },
+     {
+      "name": "Component Pouch",
+      "tapped": true
+     },
+     {
+      "name": "City of Traitors",
+      "tapped": true
+     },
+     {
+      "name": "Werefox Bodyguard",
+      "pt": "2/2"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on…"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Component Pouch",
+     "id": 50,
+     "as": "Component Pouch: {T}: Roll a d20. 1—9 | Put a component counter on…",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 10,
+     "unspent": 3,
+     "hand": 5,
+     "creatures": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "use Mana Vault: this (59): At the beginning of your upkeep, you m…",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Component Pouch)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Plains",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 89,
+    "hand": [
+     "All-Fates Stalker",
+     "Werefox Bodyguard",
+     "Wispweaver Angel",
+     "Flooded Strand",
+     "Plains",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mana Vault"
+     },
+     {
+      "name": "Component Pouch",
+      "tapped": true,
+      "counters": {
+       "Component": 3
+      }
+     },
+     {
+      "name": "City of Traitors",
+      "tapped": true
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": null,
+ "note": ""
+}

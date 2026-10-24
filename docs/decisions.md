@@ -18,6 +18,14 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 - **Scale:** about 100 automated games in about a minute, each with a full trace kept for later inspection.
 - **Table:** three passive opponents at 40 life who play a land each turn; configurable.
 - **Engine records facts, Python derives meaning**, so metrics and reports change without a JVM rebuild.
+- **Lookahead forks the game by replaying it from the seed, never by restoring in place.** Every decision
+  at the agent's seat is logged with its answer, whoever gave it, and Forge's AI never acts between
+  decisions or weighs anything during a replay. Restoring Forge's snapshot in place kept drifting (counters,
+  AI memory, static abilities, the stack); a replay only resolves the same actions again, and a fingerprint
+  check proves it landed in the same game. The parent game is never touched, so forks can run in parallel.
+- **Decision-model design is measured, not argued.** What Jev reads is chosen on a bench of captured
+  situations with answers fixed before testing, and confirmed on full games scored by development (lands,
+  mana, board, cards in hand), not damage.
 - **Fresh history.** The old code and its history are in `../mtg-goldfish-legacy` (still pointing at the
   old remotes). This repo starts on `main` with no remote.
 

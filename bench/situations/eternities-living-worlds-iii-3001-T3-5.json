@@ -1,0 +1,1922 @@
+{
+ "id": "eternities-living-worlds-iii-3001-T3-5",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T3 main1",
+  "life": 40,
+  "mana": 5,
+  "library": 89,
+  "hand": [
+   "Spelunking",
+   "Forest",
+   "Misty Rainforest",
+   "Vigorbloom Charm",
+   "Emergency Eject",
+   "Terrasymbiosis",
+   "Command Tower"
+  ],
+  "battlefield": [
+   {
+    "name": "Grove of the Burnwillows"
+   },
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Ornithopter of Paradise",
+    "pt": "0/2"
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Command Tower": "Command Tower — Land — {T}: Add one mana of any color in your commander's color identity.",
+   "Emergency Eject": "Emergency Eject {2}{W} — Instant — Destroy target nonland permanent. Its controller creates a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "Grove of the Burnwillows": "Grove of the Burnwillows — Land — {T}: Add {C}. / {T}: Add {R} or {G}. Each opponent gains 1 life.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Misty Rainforest": "Misty Rainforest — Land — {T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+   "Ornithopter of Paradise": "Ornithopter of Paradise {2} — Artifact Creature - Thopter — Flying / {T}: Add one mana of any color.",
+   "Spelunking": "Spelunking {2}{G} — Enchantment — When Spelunking enters, draw a card, then you may put a land card from your hand onto the battlefield. If you put a Cave onto the battlefield this way, you gain 4 life. / Lands you control enter untapped.",
+   "Terrasymbiosis": "Terrasymbiosis {2}{G} — Enchantment — Whenever you put one or more +1/+1 counters on a creature you control, you may draw that many cards. Do this only once each turn.",
+   "Vigorbloom Charm": "Vigorbloom Charm {G}{W} — Instant — Choose one — / • Target permanent you control gains hexproof and indestructible until end of turn. / • You draw a card and gain 3 life. / • Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)"
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T3 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Spelunking",
+   "Forest (land)",
+   "Misty Rainforest (land)",
+   "Vigorbloom Charm",
+   "Emergency Eject",
+   "Terrasymbiosis",
+   "Command Tower (land)",
+   "Marath, Will of the Wild (commander)"
+  ],
+  "details": [
+   "pass priority",
+   "Spelunking {2}{G} — Enchantment — When Spelunking enters, draw a card, then you may put a land card from your hand onto the battlefield. If you put a Cave onto the battlefield this way, you gain 4 life. / Lands you control enter untapped.",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Misty Rainforest — Land — {T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+   "Vigorbloom Charm {G}{W} — Instant — Choose one — / • Target permanent you control gains hexproof and indestructible until end of turn. / • You draw a card and gain 3 life. / • Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)",
+   "Emergency Eject {2}{W} — Instant — Destroy target nonland permanent. Its controller creates a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+   "Terrasymbiosis {2}{G} — Enchantment — Whenever you put one or more +1/+1 counters on a creature you control, you may draw that many cards. Do this only once each turn.",
+   "Command Tower — Land — {T}: Add one mana of any color in your commander's color identity.",
+   "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 3
+  },
+  {
+   "t": "draw",
+   "turn": 3,
+   "card": "Command Tower",
+   "id": 36
+  },
+  {
+   "t": "snapshot",
+   "turn": 3,
+   "name": "anchor"
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "land",
+     "turn": 3,
+     "card": "Command Tower",
+     "id": 36
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Larval Scoutlander",
+     "id": 63
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Misty Rainforest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Stomping Ground",
+      "Temple Garden"
+     ],
+     "ids": [
+      20,
+      21,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      38,
+      84
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "mode",
+     "prompt": "modes for Vigorbloom Charm",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Grove of the Burnwillows)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 1",
+     "life": 41
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 2",
+     "life": 41
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 3",
+     "life": 41
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "id": 43,
+     "as": "Vigorbloom Charm",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Rampant Growth",
+     "id": 85
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 42
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 1,
+     "permanents": 2,
+     "opponents_life": 123
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Inspiring Call",
+     "id": 56
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 42,
+    "mana": 8,
+    "library": 85,
+    "hand": [
+     "Forest",
+     "Emergency Eject",
+     "Terrasymbiosis",
+     "Larval Scoutlander",
+     "Rampant Growth",
+     "Inspiring Call"
+    ],
+    "battlefield": [
+     {
+      "name": "Grove of the Burnwillows"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Temple Garden"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Misty Rainforest",
+     "Vigorbloom Charm"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 9,
+     "answer": [
+      "pass"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "land",
+     "turn": 3,
+     "card": "Command Tower",
+     "id": 36
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Larval Scoutlander",
+     "id": 63
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Misty Rainforest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Stomping Ground",
+      "Temple Garden"
+     ],
+     "ids": [
+      20,
+      21,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      38,
+      84
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "mode",
+     "prompt": "modes for Vigorbloom Charm",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Grove of the Burnwillows)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 1",
+     "life": 41
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 2",
+     "life": 41
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 3",
+     "life": 41
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "id": 43,
+     "as": "Vigorbloom Charm",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Karn's Bastion",
+     "id": 33
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 42
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 1,
+     "permanents": 2,
+     "opponents_life": 123
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Loading Zone",
+     "id": 47
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 42,
+    "mana": 8,
+    "library": 85,
+    "hand": [
+     "Forest",
+     "Emergency Eject",
+     "Terrasymbiosis",
+     "Larval Scoutlander",
+     "Karn's Bastion",
+     "Loading Zone"
+    ],
+    "battlefield": [
+     {
+      "name": "Grove of the Burnwillows"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Temple Garden"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Misty Rainforest",
+     "Vigorbloom Charm"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Spelunking": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 9,
+     "answer": [
+      "Spelunking"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 3,
+     "card": "Spelunking",
+     "sources": [
+      "Grove of the Burnwillows",
+      "Plains",
+      "Ornithopter of Paradise"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "compared"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Larval Scoutlander",
+     "id": 63
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Command Tower"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "land",
+     "turn": 3,
+     "card": "Forest",
+     "id": 22
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "mode",
+     "prompt": "modes for Vigorbloom Charm",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "id": 43,
+     "as": "Vigorbloom Charm",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Patrolling Peacemaker",
+     "id": 81
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 43
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 1,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Crystalline Crawler",
+     "id": 76
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 43,
+    "mana": 8,
+    "library": 86,
+    "hand": [
+     "Misty Rainforest",
+     "Emergency Eject",
+     "Terrasymbiosis",
+     "Larval Scoutlander",
+     "Patrolling Peacemaker",
+     "Crystalline Crawler"
+    ],
+    "battlefield": [
+     {
+      "name": "Grove of the Burnwillows"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Forest"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Vigorbloom Charm"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Forest (land)": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 9,
+     "answer": [
+      "Forest (land)"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "land",
+     "turn": 3,
+     "card": "Forest",
+     "id": 22
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Larval Scoutlander",
+     "id": 63
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Command Tower"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "mode",
+     "prompt": "modes for Vigorbloom Charm",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Grove of the Burnwillows)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 1",
+     "life": 41
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 2",
+     "life": 41
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "Opp 3",
+     "life": 41
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "id": 43,
+     "as": "Vigorbloom Charm",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Patrolling Peacemaker",
+     "id": 81
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 43
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 1,
+     "permanents": 2,
+     "opponents_life": 123
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Crystalline Crawler",
+     "id": 76
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 43,
+    "mana": 8,
+    "library": 86,
+    "hand": [
+     "Misty Rainforest",
+     "Emergency Eject",
+     "Terrasymbiosis",
+     "Larval Scoutlander",
+     "Patrolling Peacemaker",
+     "Crystalline Crawler"
+    ],
+    "battlefield": [
+     {
+      "name": "Grove of the Burnwillows"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Command Tower"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Vigorbloom Charm"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 41,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Misty Rainforest (land)": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 9,
+     "answer": [
+      "Misty Rainforest (land)"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "land",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Stomping Ground",
+      "Temple Garden"
+     ],
+     "ids": [
+      20,
+      21,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      38,
+      84
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Stomping Ground"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Stomping Ground",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Fertilid",
+     "id": 96
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Command Tower"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 8,
+     "unspent": 2,
+     "hand": 5,
+     "creatures": 1,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Reflecting Pool",
+     "id": 98
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 8,
+    "library": 86,
+    "hand": [
+     "Forest",
+     "Vigorbloom Charm",
+     "Emergency Eject",
+     "Terrasymbiosis",
+     "Fertilid",
+     "Reflecting Pool"
+    ],
+    "battlefield": [
+     {
+      "name": "Grove of the Burnwillows"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Command Tower"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Misty Rainforest"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Vigorbloom Charm": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 9,
+     "answer": [
+      "Vigorbloom Charm"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "mode",
+     "prompt": "modes for Vigorbloom Charm",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "sources": [
+      "Plains",
+      "Ornithopter of Paradise"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "id": 43,
+     "as": "Vigorbloom Charm",
+     "by": "agent"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "land",
+     "turn": 3,
+     "card": "Command Tower",
+     "id": 36
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 7,
+     "unspent": 5,
+     "hand": 5,
+     "creatures": 1,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Larval Scoutlander",
+     "id": 63
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 40,
+    "mana": 7,
+    "library": 88,
+    "hand": [
+     "Spelunking",
+     "Forest",
+     "Misty Rainforest",
+     "Emergency Eject",
+     "Terrasymbiosis",
+     "Larval Scoutlander"
+    ],
+    "battlefield": [
+     {
+      "name": "Grove of the Burnwillows"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Command Tower"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Vigorbloom Charm"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Emergency Eject": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 9,
+     "answer": [
+      "Emergency Eject"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "targets",
+     "prompt": "target for Destroy target nonland permanent. Its controller …",
+     "options": 1,
+     "answer": [
+      "Ornithopter of Paradise 0/2"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "W"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 3,
+     "card": "Emergency Eject",
+     "sources": [
+      "Grove of the Burnwillows",
+      "Plains",
+      "Ornithopter of Paradise"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Emergency Eject",
+     "id": 59,
+     "as": "Emergency Eject",
+     "by": "compared"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Ornithopter of Paradise",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Lander Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "land",
+     "turn": 3,
+     "card": "Command Tower",
+     "id": 36
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 6,
+     "unspent": 2,
+     "hand": 5,
+     "creatures": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Lander Token",
+     "from": "battlefield",
+     "to": "graveyard",
+     "token": true
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Lander Token",
+     "id": 406,
+     "as": "Lander Token: {2}, {T}, Sacrifice this: Search your library for…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Mountain",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains"
+     ],
+     "ids": [
+      20,
+      21,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      8,
+      49,
+      51,
+      52,
+      53,
+      54
+     ],
+     "why": "searched (Lander Token)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Lander Token)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Lander Token)",
+     "answer": [
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Plains",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Ouroboroid",
+     "id": 77
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 40,
+    "mana": 3,
+    "library": 87,
+    "hand": [
+     "Spelunking",
+     "Forest",
+     "Misty Rainforest",
+     "Vigorbloom Charm",
+     "Terrasymbiosis",
+     "Ouroboroid"
+    ],
+    "battlefield": [
+     {
+      "name": "Grove of the Burnwillows"
+     },
+     {
+      "name": "Plains",
+      "tapped": true
+     },
+     {
+      "name": "Command Tower",
+      "tapped": true
+     },
+     {
+      "name": "Plains",
+      "tapped": true
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Ornithopter of Paradise",
+     "Emergency Eject"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Spelunking",
+  "Forest (land)",
+  "Misty Rainforest (land)"
+ ],
+ "note": "develop; Emergency Eject would destroy our own permanent"
+}

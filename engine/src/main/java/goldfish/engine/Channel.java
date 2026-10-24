@@ -13,12 +13,23 @@ final class Channel {
      * What the game thread receives instead of an answer: the session ended, or the state changed under
      * the decision (a restore or an override) and the decision should be asked again.
      */
-    static final class Interrupt extends RuntimeException {
+    static class Interrupt extends RuntimeException {
         final boolean restored;
 
         Interrupt(boolean restored) {
-            super(restored ? "state changed" : "session ended", null, false, false);
+            this(restored, restored ? "state changed" : "session ended");
+        }
+
+        Interrupt(boolean restored, String message) {
+            super(message, null, false, false);
             this.restored = restored;
+        }
+    }
+
+    /** A fork's replay reached a decision other than the one recorded next: it isn't the same game. */
+    static final class Drift extends Interrupt {
+        Drift(String message) {
+            super(false, message);
         }
     }
 
@@ -28,6 +39,8 @@ final class Channel {
     private final SynchronousQueue<Object> answers = new SynchronousQueue<>();
     private Decision pending;
     private boolean finished;
+    private String by = "agent";
+    private Double confidence;
 
     /** Game thread: publish the decision and park until it is answered; null when handed to the AI. */
     @SuppressWarnings("unchecked")
@@ -77,6 +90,33 @@ final class Channel {
 
     synchronized boolean isFinished() {
         return finished;
+    }
+
+    /** Who gave the last answer ("agent" unless the client named itself, such as "model"), and how sure it was. */
+    synchronized String by() {
+        return by;
+    }
+
+    synchronized Double confidence() {
+        return confidence;
+    }
+
+    /** Server: hand the parked decision to Forge's AI, noting who chose to (the agent, or a model that agreed). */
+    void defer(String by, Double confidence) throws InterruptedException {
+        synchronized (this) {
+            this.by = by;
+            this.confidence = confidence;
+        }
+        resume(DEFER);
+    }
+
+    /** Server: release the parked game thread with an answer from the named answerer. */
+    void answer(List<Integer> answer, String by, Double confidence) throws InterruptedException {
+        synchronized (this) {
+            this.by = by;
+            this.confidence = confidence;
+        }
+        resume(answer);
     }
 
     /** Server: release the parked game thread with an answer, or with an Interrupt. */

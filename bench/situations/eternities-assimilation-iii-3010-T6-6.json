@@ -1,0 +1,708 @@
+{
+ "id": "eternities-assimilation-iii-3010-T6-6",
+ "plan": "Ramp, then build a standardized board. Make a land drop every turn and cast mana rocks and land fetchers\nfirst. Cast Atraxa (W/U/B/G) once you have its colours; proliferate every turn with her and other\nproliferate cards. Grow a wide board of artifact creatures and tokens with +1/+1 counters: Steel Overseer,\nThrone of Geth and other counter engines are the payoff. Spend your mana every turn. Removal and wraths do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T6 attackers",
+  "life": 38,
+  "mana": 4,
+  "library": 84,
+  "hand": [
+   "Glistening Dawn",
+   "Cyberdrive Awakener",
+   "Winds of Abandon",
+   "Bioengineered Future",
+   "Vigorbloom Charm",
+   "Harmonize",
+   "Throne of Geth",
+   "Tekuthal, Inquiry Dominus"
+  ],
+  "battlefield": [
+   {
+    "name": "Overgrown Tomb"
+   },
+   {
+    "name": "Forest"
+   },
+   {
+    "name": "Mana Confluence"
+   },
+   {
+    "name": "Norn's Inquisitor",
+    "pt": "1/1"
+   },
+   {
+    "name": "Phyrexian Token",
+    "pt": "3/3",
+    "counters": {
+     "+1/+1": 3
+    },
+    "token": true
+   },
+   {
+    "name": "Temple Garden"
+   }
+  ],
+  "command": [
+   "Atraxa, Praetors' Voice"
+  ],
+  "graveyard": [
+   "Misty Rainforest",
+   "Inspiring Call"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 6,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 36,
+    "lands": 6,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 36,
+    "lands": 6,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Atraxa, Praetors' Voice": "Atraxa, Praetors' Voice {G}{W}{U}{B} — Legendary Creature - Phyrexian Angel Horror — Flying, vigilance, deathtouch, lifelink / At the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Bioengineered Future": "Bioengineered Future {1}{G}{G} — Enchantment — When this enchantment enters, create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\") / Each creature you control enters with an additional +1/+1 counter on it for each land that entered the battlefield under your control this turn.",
+   "Cyberdrive Awakener": "Cyberdrive Awakener {5}{U} — Artifact Creature - Construct — Flying / Other artifact creatures you control have flying. / When this creature enters, each noncreature artifact you control becomes a 4/4 artifact creature until end of turn.",
+   "Glistening Dawn": "Glistening Dawn {2}{G}{G} — Sorcery — Incubate X twice, where X is the number of lands you control. (To incubate X, create an Incubator token with X +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)",
+   "Harmonize": "Harmonize {2}{G}{G} — Sorcery — Draw three cards.",
+   "Mana Confluence": "Mana Confluence — Land — {T}, Pay 1 life: Add one mana of any color.",
+   "Norn's Inquisitor": "Norn's Inquisitor {1}{W} — Creature - Phyrexian Knight — When Norn's Inquisitor enters, incubate 2. / Whenever a permanent you control transforms into a Phyrexian, put a +1/+1 counter on it.",
+   "Overgrown Tomb": "Overgrown Tomb — Land - Swamp Forest — ({T}: Add {B} or {G}.) / As Overgrown Tomb enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Phyrexian Token": "Phyrexian Token — Artifact Creature - Phyrexian",
+   "Tekuthal, Inquiry Dominus": "Tekuthal, Inquiry Dominus {2}{U}{U} — Legendary Creature - Phyrexian Horror — Flying / If you would proliferate, proliferate twice instead. / {1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal, Inquiry Dominus. ({U/P} can be paid with either {U} or 2 life.)",
+   "Temple Garden": "Temple Garden — Land - Forest Plains — ({T}: Add {G} or {W}.) / As Temple Garden enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Throne of Geth": "Throne of Geth {2} — Artifact — {T}, Sacrifice an artifact: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Vigorbloom Charm": "Vigorbloom Charm {G}{W} — Instant — Choose one — / • Target permanent you control gains hexproof and indestructible until end of turn. / • You draw a card and gain 3 life. / • Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)",
+   "Winds of Abandon": "Winds of Abandon {1}{W} — Sorcery — Exile target creature you don't control. For each creature exiled this way, its controller searches their library for a basic land card. Those players put those cards onto the battlefield tapped, then shuffle. / Overload {4}{W}{W} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")"
+  }
+ },
+ "decision": {
+  "kind": "attack",
+  "turn": "T6 attackers",
+  "prompt": "attackers, at most one defender each",
+  "options": [
+   "Norn's Inquisitor 1/1 -> Opp 1",
+   "Norn's Inquisitor 1/1 -> Opp 2",
+   "Norn's Inquisitor 1/1 -> Opp 3",
+   "Phyrexian Token 3/3 [+1/+1 3] (token) -> Opp 1",
+   "Phyrexian Token 3/3 [+1/+1 3] (token) -> Opp 2",
+   "Phyrexian Token 3/3 [+1/+1 3] (token) -> Opp 3"
+  ],
+  "min": 0,
+  "max": 6,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 6
+  },
+  {
+   "t": "draw",
+   "turn": 6,
+   "card": "Tekuthal, Inquiry Dominus",
+   "id": 39
+  },
+  {
+   "t": "snapshot",
+   "turn": 6,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 6,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers",
+     "answer": [
+      "Phyrexian Token 3/3 [+1/+1 3] (token) -> Opp 2",
+      "Norn's Inquisitor 1/1 -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 2",
+     "life": 32
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Atraxa, Praetors' Voice",
+     "id": 100,
+     "as": "Atraxa, Praetors' Voice (commander)",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 6,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 8,
+     "creatures": 3,
+     "permanents": 3,
+     "opponents_life": 108
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Atraxa, Praetors' Voice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Atraxa, Praetors' Voice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "discard to hand size",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "discard to hand size",
+     "answer": [
+      "Cyberdrive Awakener"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Cyberdrive Awakener",
+     "from": "hand",
+     "to": "graveyard"
+    },
+    {
+     "t": "turn",
+     "turn": 7
+    },
+    {
+     "t": "draw",
+     "turn": 7,
+     "card": "Ezuri, Stalker of Spheres",
+     "id": 15
+    }
+   ],
+   "state": {
+    "turn": "T7 main1",
+    "life": 37,
+    "mana": 4,
+    "library": 83,
+    "hand": [
+     "Glistening Dawn",
+     "Winds of Abandon",
+     "Bioengineered Future",
+     "Vigorbloom Charm",
+     "Harmonize",
+     "Throne of Geth",
+     "Tekuthal, Inquiry Dominus",
+     "Ezuri, Stalker of Spheres"
+    ],
+    "battlefield": [
+     {
+      "name": "Overgrown Tomb"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Norn's Inquisitor",
+      "pt": "1/1"
+     },
+     {
+      "name": "Phyrexian Token",
+      "pt": "4/4",
+      "counters": {
+       "+1/+1": 4
+      },
+      "token": true
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Atraxa, Praetors' Voice",
+      "pt": "4/4"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Misty Rainforest",
+     "Inspiring Call",
+     "Cyberdrive Awakener"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 32,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 36,
+      "lands": 7,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "attack with everything": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 6,
+     "answer": [
+      "Norn's Inquisitor 1/1 -> Opp 1",
+      "Phyrexian Token 3/3 [+1/+1 3] (token) -> Opp 1"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 1",
+     "life": 36
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Atraxa, Praetors' Voice",
+     "id": 100,
+     "as": "Atraxa, Praetors' Voice (commander)",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 6,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 8,
+     "creatures": 3,
+     "permanents": 3,
+     "opponents_life": 108
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Atraxa, Praetors' Voice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Atraxa, Praetors' Voice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "discard to hand size",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "discard to hand size",
+     "answer": [
+      "Cyberdrive Awakener"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Cyberdrive Awakener",
+     "from": "hand",
+     "to": "graveyard"
+    },
+    {
+     "t": "turn",
+     "turn": 7
+    },
+    {
+     "t": "draw",
+     "turn": 7,
+     "card": "Ezuri, Stalker of Spheres",
+     "id": 15
+    }
+   ],
+   "state": {
+    "turn": "T7 main1",
+    "life": 37,
+    "mana": 4,
+    "library": 83,
+    "hand": [
+     "Glistening Dawn",
+     "Winds of Abandon",
+     "Bioengineered Future",
+     "Vigorbloom Charm",
+     "Harmonize",
+     "Throne of Geth",
+     "Tekuthal, Inquiry Dominus",
+     "Ezuri, Stalker of Spheres"
+    ],
+    "battlefield": [
+     {
+      "name": "Overgrown Tomb"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Norn's Inquisitor",
+      "pt": "1/1"
+     },
+     {
+      "name": "Phyrexian Token",
+      "pt": "4/4",
+      "counters": {
+       "+1/+1": 4
+      },
+      "token": true
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Atraxa, Praetors' Voice",
+      "pt": "4/4"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Misty Rainforest",
+     "Inspiring Call",
+     "Cyberdrive Awakener"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 36,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 36,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 36,
+      "lands": 7,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "no attack": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 6,
+     "answer": [],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "answer": [
+      "U"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Atraxa, Praetors' Voice",
+     "id": 100,
+     "as": "Atraxa, Praetors' Voice (commander)",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 6,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 8,
+     "creatures": 3,
+     "permanents": 3,
+     "opponents_life": 112
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Atraxa, Praetors' Voice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Atraxa, Praetors' Voice)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "discard to hand size",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "discard to hand size",
+     "answer": [
+      "Cyberdrive Awakener"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Cyberdrive Awakener",
+     "from": "hand",
+     "to": "graveyard"
+    },
+    {
+     "t": "turn",
+     "turn": 7
+    },
+    {
+     "t": "draw",
+     "turn": 7,
+     "card": "Ezuri, Stalker of Spheres",
+     "id": 15
+    }
+   ],
+   "state": {
+    "turn": "T7 main1",
+    "life": 37,
+    "mana": 4,
+    "library": 83,
+    "hand": [
+     "Glistening Dawn",
+     "Winds of Abandon",
+     "Bioengineered Future",
+     "Vigorbloom Charm",
+     "Harmonize",
+     "Throne of Geth",
+     "Tekuthal, Inquiry Dominus",
+     "Ezuri, Stalker of Spheres"
+    ],
+    "battlefield": [
+     {
+      "name": "Overgrown Tomb"
+     },
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Norn's Inquisitor",
+      "pt": "1/1"
+     },
+     {
+      "name": "Phyrexian Token",
+      "pt": "4/4",
+      "counters": {
+       "+1/+1": 4
+      },
+      "token": true
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Atraxa, Praetors' Voice",
+      "pt": "4/4"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Misty Rainforest",
+     "Inspiring Call",
+     "Cyberdrive Awakener"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 36,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 36,
+      "lands": 7,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "attack with everything"
+ ],
+ "note": "nothing blocks: attack"
+}

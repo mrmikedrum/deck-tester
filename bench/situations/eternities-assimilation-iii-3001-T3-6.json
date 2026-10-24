@@ -1,0 +1,2206 @@
+{
+ "id": "eternities-assimilation-iii-3001-T3-6",
+ "plan": "Ramp, then build a standardized board. Make a land drop every turn and cast mana rocks and land fetchers\nfirst. Cast Atraxa (W/U/B/G) once you have its colours; proliferate every turn with her and other\nproliferate cards. Grow a wide board of artifact creatures and tokens with +1/+1 counters: Steel Overseer,\nThrone of Geth and other counter engines are the payoff. Spend your mana every turn. Removal and wraths do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T3 main1",
+  "life": 40,
+  "mana": 3,
+  "library": 89,
+  "hand": [
+   "Spelunking",
+   "Vigorbloom Charm",
+   "Glissa, Herald of Predation",
+   "Inspiring Call",
+   "Harmonize",
+   "Haywire Mite"
+  ],
+  "battlefield": [
+   {
+    "name": "Island"
+   },
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Ornithopter of Paradise",
+    "pt": "0/2"
+   },
+   {
+    "name": "Misty Rainforest"
+   }
+  ],
+  "command": [
+   "Atraxa, Praetors' Voice"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Atraxa, Praetors' Voice": "Atraxa, Praetors' Voice {G}{W}{U}{B} — Legendary Creature - Phyrexian Angel Horror — Flying, vigilance, deathtouch, lifelink / At the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Glissa, Herald of Predation": "Glissa, Herald of Predation {3}{B}{G} — Legendary Creature - Phyrexian Zombie Elf — At the beginning of combat on your turn, choose one — / • Incubate 2 twice. (To incubate 2, create an Incubator token with two +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.) / • Transform all Incubator tokens you control. / • Phyrexians you control gain first strike and deathtouch until end of turn.",
+   "Harmonize": "Harmonize {2}{G}{G} — Sorcery — Draw three cards.",
+   "Haywire Mite": "Haywire Mite {1} — Artifact Creature - Insect — When Haywire Mite dies, you gain 2 life. / {G}, Sacrifice Haywire Mite: Exile target noncreature artifact or noncreature enchantment.",
+   "Inspiring Call": "Inspiring Call {2}{G} — Instant — Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain indestructible until end of turn.",
+   "Misty Rainforest": "Misty Rainforest — Land — {T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+   "Ornithopter of Paradise": "Ornithopter of Paradise {2} — Artifact Creature - Thopter — Flying / {T}: Add one mana of any color.",
+   "Spelunking": "Spelunking {2}{G} — Enchantment — When Spelunking enters, draw a card, then you may put a land card from your hand onto the battlefield. If you put a Cave onto the battlefield this way, you gain 4 life. / Lands you control enter untapped.",
+   "Vigorbloom Charm": "Vigorbloom Charm {G}{W} — Instant — Choose one — / • Target permanent you control gains hexproof and indestructible until end of turn. / • You draw a card and gain 3 life. / • Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)"
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T3 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Spelunking",
+   "Vigorbloom Charm",
+   "Inspiring Call",
+   "Haywire Mite",
+   "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+  ],
+  "details": [
+   "pass priority",
+   "Spelunking {2}{G} — Enchantment — When Spelunking enters, draw a card, then you may put a land card from your hand onto the battlefield. If you put a Cave onto the battlefield this way, you gain 4 life. / Lands you control enter untapped.",
+   "Vigorbloom Charm {G}{W} — Instant — Choose one — / • Target permanent you control gains hexproof and indestructible until end of turn. / • You draw a card and gain 3 life. / • Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)",
+   "Inspiring Call {2}{G} — Instant — Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain indestructible until end of turn.",
+   "Haywire Mite {1} — Artifact Creature - Insect — When Haywire Mite dies, you gain 2 life. / {G}, Sacrifice Haywire Mite: Exile target noncreature artifact or noncreature enchantment.",
+   "Misty Rainforest: {T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 3
+  },
+  {
+   "t": "draw",
+   "turn": 3,
+   "card": "Haywire Mite",
+   "id": 36
+  },
+  {
+   "t": "snapshot",
+   "turn": 3,
+   "name": "anchor"
+  },
+  {
+   "t": "restore",
+   "turn": 3,
+   "name": "anchor"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "by": "ai",
+   "deferred": true
+  },
+  {
+   "t": "land",
+   "turn": 3,
+   "card": "Misty Rainforest",
+   "id": 11
+  },
+  {
+   "t": "snapshot",
+   "turn": 3,
+   "name": "anchor"
+  }
+ ],
+ "lines": {
+  "default": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true,
+     "via": "compared"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Hallowed Fountain",
+      "Island",
+      "Overgrown Tomb",
+      "Temple Garden",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      47,
+      21,
+      77,
+      86,
+      34
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "id": 14
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Verdant Catacombs"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "id": 14,
+     "as": "Verdant Catacombs: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Overgrown Tomb",
+      "Swamp",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      77,
+      13,
+      34
+     ],
+     "why": "searched (Verdant Catacombs)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Verdant Catacombs)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Verdant Catacombs)",
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Haywire Mite",
+     "id": 36,
+     "as": "Haywire Mite",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 5,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Larval Scoutlander",
+     "id": 65
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 38,
+    "mana": 5,
+    "library": 85,
+    "hand": [
+     "Vigorbloom Charm",
+     "Glissa, Herald of Predation",
+     "Inspiring Call",
+     "Harmonize",
+     "Larval Scoutlander"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Godless Shrine"
+     },
+     {
+      "name": "Haywire Mite",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Misty Rainforest",
+     "Verdant Catacombs"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "pass"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Hallowed Fountain",
+      "Island",
+      "Overgrown Tomb",
+      "Temple Garden",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      47,
+      21,
+      77,
+      86,
+      34
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "id": 14
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Verdant Catacombs"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "id": 14,
+     "as": "Verdant Catacombs: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Overgrown Tomb",
+      "Swamp",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      77,
+      13,
+      34
+     ],
+     "why": "searched (Verdant Catacombs)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Verdant Catacombs)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Verdant Catacombs)",
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Haywire Mite",
+     "id": 36,
+     "as": "Haywire Mite",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 5,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Larval Scoutlander",
+     "id": 65
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 38,
+    "mana": 5,
+    "library": 85,
+    "hand": [
+     "Vigorbloom Charm",
+     "Glissa, Herald of Predation",
+     "Inspiring Call",
+     "Harmonize",
+     "Larval Scoutlander"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Godless Shrine"
+     },
+     {
+      "name": "Haywire Mite",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Misty Rainforest",
+     "Verdant Catacombs"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Spelunking": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Spelunking"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 3,
+     "card": "Spelunking",
+     "sources": [
+      "Island",
+      "Plains",
+      "Ornithopter of Paradise"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Sol Ring",
+     "id": 63
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Hallowed Fountain",
+      "Island",
+      "Overgrown Tomb",
+      "Temple Garden",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      47,
+      21,
+      77,
+      86,
+      34
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Haywire Mite",
+     "id": 36,
+     "as": "Haywire Mite",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Steel Overseer",
+     "id": 8
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 86,
+    "hand": [
+     "Vigorbloom Charm",
+     "Glissa, Herald of Predation",
+     "Inspiring Call",
+     "Harmonize",
+     "Sol Ring",
+     "Steel Overseer"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Haywire Mite",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Misty Rainforest"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Vigorbloom Charm": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Vigorbloom Charm"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "mode",
+     "prompt": "modes for Vigorbloom Charm",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "sources": [
+      "Plains",
+      "Ornithopter of Paradise"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "id": 43,
+     "as": "Vigorbloom Charm",
+     "by": "agent"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Hallowed Fountain",
+      "Island",
+      "Overgrown Tomb",
+      "Temple Garden",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      47,
+      21,
+      77,
+      86,
+      34
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Hallowed Fountain"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Hallowed Fountain",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Haywire Mite",
+     "id": 36,
+     "as": "Haywire Mite",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Cyberdrive Awakener",
+     "id": 91
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 87,
+    "hand": [
+     "Spelunking",
+     "Glissa, Herald of Predation",
+     "Inspiring Call",
+     "Harmonize",
+     "Cyberdrive Awakener"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Hallowed Fountain"
+     },
+     {
+      "name": "Haywire Mite",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Vigorbloom Charm",
+     "Misty Rainforest"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Inspiring Call": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Inspiring Call"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 3,
+     "card": "Inspiring Call",
+     "sources": [
+      "Island",
+      "Plains",
+      "Ornithopter of Paradise"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Inspiring Call",
+     "id": 59,
+     "as": "Inspiring Call",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Hallowed Fountain",
+      "Island",
+      "Overgrown Tomb",
+      "Temple Garden",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      47,
+      21,
+      77,
+      86,
+      34
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 1,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Verdant Catacombs",
+     "id": 14
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 4,
+    "library": 87,
+    "hand": [
+     "Spelunking",
+     "Vigorbloom Charm",
+     "Glissa, Herald of Predation",
+     "Harmonize",
+     "Haywire Mite",
+     "Verdant Catacombs"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Temple Garden"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Inspiring Call",
+     "Misty Rainforest"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Haywire Mite": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Haywire Mite"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "paid",
+     "turn": 3,
+     "card": "Haywire Mite",
+     "sources": [
+      "Island"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Haywire Mite",
+     "id": 36,
+     "as": "Haywire Mite",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Hallowed Fountain",
+      "Island",
+      "Overgrown Tomb",
+      "Temple Garden",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      47,
+      21,
+      77,
+      86,
+      34
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "mode",
+     "prompt": "modes for Vigorbloom Charm",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vigorbloom Charm",
+     "id": 43,
+     "as": "Vigorbloom Charm",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "id": 14
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 42
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 2,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Scalding Tarn",
+     "id": 95
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 42,
+    "mana": 4,
+    "library": 86,
+    "hand": [
+     "Spelunking",
+     "Glissa, Herald of Predation",
+     "Inspiring Call",
+     "Harmonize",
+     "Verdant Catacombs",
+     "Scalding Tarn"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Haywire Mite",
+      "pt": "1/1"
+     },
+     {
+      "name": "Temple Garden"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Misty Rainforest",
+     "Vigorbloom Charm"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "compared"
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Misty Rainforest",
+     "id": 11,
+     "as": "Misty Rainforest: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "compared"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Hallowed Fountain",
+      "Island",
+      "Overgrown Tomb",
+      "Temple Garden",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      47,
+      21,
+      77,
+      86,
+      34
+     ],
+     "why": "searched (Misty Rainforest)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Misty Rainforest)",
+     "answer": [
+      "Temple Garden"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Temple Garden",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "color",
+     "prompt": "Select Mana to Produce (Ornithopter of Paradise)",
+     "answer": [
+      "G"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Spelunking",
+     "id": 12,
+     "as": "Spelunking",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "id": 14
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Search your hand? (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your hand (Spelunking)",
+     "answer": [
+      "Verdant Catacombs"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "life",
+     "turn": 3,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Verdant Catacombs",
+     "id": 14,
+     "as": "Verdant Catacombs: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 3,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Overgrown Tomb",
+      "Swamp",
+      "Watery Grave"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      77,
+      13,
+      34
+     ],
+     "why": "searched (Verdant Catacombs)"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Verdant Catacombs)",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Verdant Catacombs)",
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "by": "ai",
+     "deferred": true
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Haywire Mite",
+     "id": 36,
+     "as": "Haywire Mite",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 5,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Larval Scoutlander",
+     "id": 65
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 38,
+    "mana": 5,
+    "library": 85,
+    "hand": [
+     "Vigorbloom Charm",
+     "Glissa, Herald of Predation",
+     "Inspiring Call",
+     "Harmonize",
+     "Larval Scoutlander"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Ornithopter of Paradise",
+      "pt": "0/2"
+     },
+     {
+      "name": "Temple Garden"
+     },
+     {
+      "name": "Spelunking"
+     },
+     {
+      "name": "Godless Shrine"
+     },
+     {
+      "name": "Haywire Mite",
+      "pt": "1/1"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Misty Rainforest",
+     "Verdant Catacombs"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": null,
+ "note": ""
+}

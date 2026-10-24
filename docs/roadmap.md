@@ -15,6 +15,14 @@ The `cards/` overlay, plus a way to load one card into a small scenario and conf
 
 Done when an agent can fix a misbehaving card without touching Java.
 
+## Decision model, next
+
+- More scenarios (`bench/scenarios.py`): fetch-land timing, when to hold a land, counters versus tokens
+  for Marath, draw engines; then confirm the context design on full games scored by development (lands,
+  mana, board, hand), not damage, against the Forge-AI baseline in architecture.
+- Fork drift under parallel load (architecture, "Measured: forks"): find the remaining shared state in
+  Forge that games running side by side disturb; sequential replay is exact.
+
 ## Later
 
 - Surface the decisions Forge's AI still makes in manual mode (see architecture) as decks need them, and

@@ -13,7 +13,6 @@ import forge.game.event.GameEventTurnBegan;
 import forge.game.event.GameEventTurnPhase;
 import forge.game.phase.PhaseType;
 import forge.game.player.Player;
-import forge.ai.ComputerUtilMana;
 import forge.game.player.PlayerView;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
@@ -74,18 +73,23 @@ final class Recorder {
 
     // ---- facts reported by the controller and session ----
 
-    void decision(String kind, String prompt, List<String> options, List<Integer> answer, String by) {
+    /**
+     * An answered decision, by whoever answered it (agent, pilot, model, forced, or ai). The confidence is the
+     * answerer's own, when it gives one; via names who handed the decision to Forge's AI, when someone did.
+     */
+    void decision(Decision decision, List<Integer> answer, String by, Double confidence, String via) {
         List<String> picked = new ArrayList<>();
         for (int a : answer) {
-            picked.add(options.isEmpty() ? String.valueOf(a) : options.get(a - 1));
+            picked.add(decision.isNumber() ? String.valueOf(a)
+                    : a < 1 || a > decision.options().size() ? "(unlisted)" : decision.options().get(a - 1));
         }
-        write("decision", "kind", kind, "prompt", prompt.isEmpty() ? null : prompt, "options", options.size(),
-                "answer", picked, "by", by);
+        write("decision", "kind", decision.kind(), "prompt", decision.prompt().isEmpty() ? null : decision.prompt(),
+                "options", decision.options().size(), "answer", picked, "by", by, "p", confidence, "via", via);
     }
 
-    /** A choice Forge's AI made for the agent's seat, so the record shows what the agent didn't decide. */
+    /** A choice Forge's AI made for the agent's seat that isn't logged for forks: it would choose again there. */
     void ai(String kind, String prompt, List<String> answer) {
-        write("decision", "kind", kind, "prompt", prompt.isEmpty() ? null : prompt, "answer", answer, "by", "ai");
+        write("decision", "kind", kind, "prompt", prompt.isEmpty() ? null : prompt, "answer", answer, "by", "ai", "unlogged", true);
     }
 
     void paid(String card, List<String> sources, String by) {
@@ -148,10 +152,11 @@ final class Recorder {
             }
         }
         write("eot", "lands", pilot.getLandsInPlay().size(),
-                "mana", ComputerUtilMana.getAvailableManaEstimate(pilot, false),
-                "unspent", ComputerUtilMana.getAvailableManaEstimate(pilot, true),
+                "mana", Session.manaEstimate(pilot, false),
+                "unspent", Session.manaEstimate(pilot, true),
                 "hand", pilot.getCardsIn(ZoneType.Hand).size(),
                 "creatures", pilot.getCreaturesInPlay().size(),
+                "power", pilot.getCreaturesInPlay().stream().mapToInt(c -> Math.max(0, c.getNetPower())).sum(),
                 "permanents", pilot.getCardsIn(ZoneType.Battlefield).size() - pilot.getLandsInPlay().size(),
                 "opponents_life", opponentsLife);
     }

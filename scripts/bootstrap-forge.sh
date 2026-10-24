@@ -29,6 +29,14 @@ if [ "$(git -C "$DEST" rev-parse -q --verify HEAD 2>/dev/null)" != "$FORGE_COMMI
   git -C "$DEST" checkout -q FETCH_HEAD
 fi
 
+# Fixes we need before Forge has them (each is also offered upstream); skipped once applied.
+for patch in "$ROOT"/scripts/forge-patches/*.patch; do
+  [ -e "$patch" ] || continue
+  if ! git -C "$DEST" apply --reverse --check "$patch" 2>/dev/null; then
+    git -C "$DEST" apply "$patch"
+  fi
+done
+
 JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}"
 export JAVA_HOME
 cd "$DEST" && mvn -q -pl forge-core,forge-game,forge-ai -am -DskipTests -Dcheckstyle.skip flatten:flatten install

@@ -8,6 +8,7 @@ import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
 import forge.game.cost.CostDiscard;
 import forge.game.cost.CostExile;
+import forge.game.cost.CostPartMana;
 import forge.game.cost.CostReturn;
 import forge.game.cost.CostSacrifice;
 import forge.game.cost.CostTapType;
@@ -20,16 +21,31 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * Cost payment for the agent's casts: which permanents to tap or sacrifice is the agent's choice, the
- * rest (mana, life, the source itself) is paid as Forge's AI would. Unusual variants of these costs,
- * such as tapping creatures with total power N, also stay with the AI.
+ * Cost payment for the agent's casts: which permanents to tap or sacrifice is a decision like any other
+ * (the agent's, or Forge's AI's, logged either way); the rest (mana, life, the source itself) is paid as
+ * Forge's AI would. Unusual variants of these costs, such as tapping creatures with total power N, stay
+ * with the AI unlogged.
  */
 final class ManualCostDecision extends AiCostDecision {
     private final ManualController controller;
+    /** Mana abilities chosen to pay the mana part, with the colours each makes; empty leaves it to Forge's AI. */
+    private final List<SpellAbility> plan;
+    private final List<String> planColors;
 
-    ManualCostDecision(ManualController controller, SpellAbility sa) {
+    ManualCostDecision(ManualController controller, SpellAbility sa, List<SpellAbility> plan, List<String> planColors) {
         super(controller.getPlayer(), sa, false);
         this.controller = controller;
+        this.plan = plan;
+        this.planColors = planColors;
+    }
+
+    /** The mana part: activate the chosen abilities here, where Forge's AI would tap, then pay from the pool. */
+    @Override
+    public PaymentDecision visit(CostPartMana cost) {
+        for (int i = 0; i < plan.size(); i++) {
+            controller.activate(plan.get(i), planColors.get(i));
+        }
+        return super.visit(cost);
     }
 
     @Override
@@ -44,7 +60,7 @@ final class ManualCostDecision extends AiCostDecision {
         if (!cost.canTapSource) {
             valid.remove(source);
         }
-        return pick(valid, cost.getAbilityAmount(ability), "tap for " + source.getName(), () -> recorded("tap", super.visit(cost)));
+        return pick(valid, cost.getAbilityAmount(ability), "tap for " + source.getName(), () -> super.visit(cost));
     }
 
     @Override
@@ -58,7 +74,7 @@ final class ManualCostDecision extends AiCostDecision {
         }
         CardCollectionView valid = CardLists.filter(player.getCardsIn(ZoneType.Battlefield), CardPredicates.canBeSacrificedBy(ability, isEffect()));
         valid = CardLists.getValidCards(valid, type.split(";"), player, source, ability);
-        return pick(valid, cost.getAbilityAmount(ability), "sacrifice for " + source.getName(), () -> recorded("sacrifice", super.visit(cost)));
+        return pick(valid, cost.getAbilityAmount(ability), "sacrifice for " + source.getName(), () -> super.visit(cost));
     }
 
     @Override
@@ -76,7 +92,7 @@ final class ManualCostDecision extends AiCostDecision {
         return cost.payCostFromSource() ? super.visit(cost) : recorded("return", super.visit(cost));
     }
 
-    /** Record a cost choice Forge's AI made for the agent. */
+    /** Record a cost choice Forge's AI made for the agent, unlogged: a fork lets it choose again. */
     private PaymentDecision recorded(String what, PaymentDecision decision) {
         if (decision != null && !decision.cards.isEmpty()) {
             List<String> names = new ArrayList<>();
@@ -86,15 +102,18 @@ final class ManualCostDecision extends AiCostDecision {
         return decision;
     }
 
-    /** The agent picks the cards; when it hands the choice over, Forge's AI does (the fallback). */
-    private PaymentDecision pick(CardCollectionView valid, int count, String prompt, Supplier<PaymentDecision> fallback) {
+    /** The cards for the cost: chosen through the controller, with Forge's AI's choice as the fallback. */
+    private PaymentDecision pick(CardCollectionView valid, int count, String prompt, Supplier<PaymentDecision> ai) {
         if (count == 0) {
             return PaymentDecision.number(0);
         }
         if (valid.size() < count) {
             return null;
         }
-        List<Card> chosen = controller.choose("choose", prompt, valid, card -> Labels.card(card, player), count, count);
-        return chosen != null ? PaymentDecision.card(chosen) : fallback.get();
+        List<Card> chosen = controller.choose("choose", prompt, valid, card -> Labels.card(card, player), count, count, () -> {
+            PaymentDecision decision = ai.get();
+            return decision == null ? List.<Card>of() : decision.cards;
+        });
+        return chosen.size() < count ? null : PaymentDecision.card(chosen);
     }
 }

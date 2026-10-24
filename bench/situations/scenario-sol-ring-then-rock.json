@@ -1,0 +1,850 @@
+{
+ "id": "scenario-sol-ring-then-rock",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T2 main1",
+  "life": 40,
+  "mana": 2,
+  "library": 98,
+  "hand": [
+   "Sol Ring",
+   "Mind Stone",
+   "Cultivate",
+   "Beast Within"
+  ],
+  "battlefield": [
+   {
+    "name": "Forest"
+   },
+   {
+    "name": "Plains"
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [
+   "Forest"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Beast Within": "Beast Within {2}{G} — Instant — Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+   "Cultivate": "Cultivate {2}{G} — Sorcery — Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Mind Stone": "Mind Stone {2} — Artifact — {T}: Add {C}. / {1}, {T}, Sacrifice Mind Stone: Draw a card.",
+   "Sol Ring": "Sol Ring {1} — Artifact — {T}: Add {C}{C}."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T2 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Sol Ring",
+   "Mind Stone"
+  ],
+  "details": [
+   "pass priority",
+   "Sol Ring {1} — Artifact — {T}: Add {C}{C}.",
+   "Mind Stone {2} — Artifact — {T}: Add {C}. / {1}, {T}, Sacrifice Mind Stone: Draw a card."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 2
+  },
+  {
+   "t": "draw",
+   "turn": 2,
+   "card": "Exploration Broodship",
+   "id": 66
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Scalding Tarn",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Arid Mesa",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Chaos Warp",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Spelunking",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Forest",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Verdant Catacombs",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Pollenbright Druid",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Exploration Broodship",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Sol Ring",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Mind Stone",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Cultivate",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Beast Within",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Forest",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 2,
+   "card": "Plains",
+   "to": "battlefield"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g3551"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g3550"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g3552"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g3553"
+  }
+ ],
+ "default": "pass",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Mind Stone"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {2} for Mind Stone, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)",
+      "Forest (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Mind Stone",
+     "sources": [
+      "Plains",
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Mind Stone",
+     "id": 406,
+     "as": "Mind Stone",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Sol Ring"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Sol Ring",
+     "id": 405,
+     "as": "Sol Ring",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 5,
+     "unspent": 2,
+     "hand": 2,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Exploration Broodship",
+     "id": 66
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 5,
+    "library": 97,
+    "hand": [
+     "Cultivate",
+     "Beast Within",
+     "Exploration Broodship"
+    ],
+    "battlefield": [
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mind Stone"
+     },
+     {
+      "name": "Sol Ring"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Forest"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Sol Ring": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Sol Ring"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {1} for Sol Ring, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Sol Ring",
+     "sources": [
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Sol Ring",
+     "id": 405,
+     "as": "Sol Ring",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Cultivate"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{G} for Cultivate, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Forest (G)",
+      "Sol Ring (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Cultivate",
+     "sources": [
+      "Forest",
+      "Sol Ring"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Cultivate",
+     "id": 407,
+     "as": "Cultivate",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 2,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Mountain",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains"
+     ],
+     "ids": [
+      20,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      8,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54
+     ],
+     "why": "searched (Cultivate)"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "choose",
+     "prompt": "Select a card from your library (1 / 2) (Cultivate)",
+     "options": 16,
+     "answer": [
+      "Mountain"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 2,
+     "cards": [
+      "Forest",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Plains",
+      "Plains",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest"
+     ],
+     "ids": [
+      27,
+      50,
+      53,
+      49,
+      51,
+      29,
+      28,
+      24,
+      26,
+      54,
+      52,
+      23,
+      22,
+      20,
+      25
+     ],
+     "why": "searched (Cultivate)"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "choose",
+     "prompt": "Select a card from your library (2 / 2) (Cultivate)",
+     "options": 15,
+     "answer": [
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 2,
+     "cards": [
+      "Forest",
+      "Mountain"
+     ],
+     "ids": [
+      25,
+      8
+     ],
+     "why": "searched (Cultivate)"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "choose",
+     "prompt": "Select a card to put onto the battlefield (Cultivate)",
+     "options": 2,
+     "answer": [
+      "Mountain"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "Mountain",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "look",
+     "turn": 2,
+     "cards": [
+      "Forest"
+     ],
+     "ids": [
+      25
+     ],
+     "why": "searched (Cultivate)"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "choose",
+     "prompt": "Select a card to put into your hand (Cultivate)",
+     "options": 1,
+     "answer": [
+      "Forest"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "draw",
+     "turn": 2,
+     "card": "Forest",
+     "id": 25
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Forest (land)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "land",
+     "turn": 2,
+     "card": "Forest",
+     "id": 25
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 4,
+     "mana": 6,
+     "unspent": 1,
+     "hand": 2,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Stomping Ground",
+     "id": 38
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 6,
+    "library": 95,
+    "hand": [
+     "Mind Stone",
+     "Beast Within",
+     "Stomping Ground"
+    ],
+    "battlefield": [
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Sol Ring"
+     },
+     {
+      "name": "Mountain"
+     },
+     {
+      "name": "Forest"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Forest",
+     "Cultivate"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Mind Stone": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Mind Stone"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {2} for Mind Stone, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)",
+      "Forest (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Mind Stone",
+     "sources": [
+      "Plains",
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Mind Stone",
+     "id": 406,
+     "as": "Mind Stone",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Sol Ring"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Sol Ring",
+     "id": 405,
+     "as": "Sol Ring",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 5,
+     "unspent": 2,
+     "hand": 2,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Exploration Broodship",
+     "id": 66
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 5,
+    "library": 97,
+    "hand": [
+     "Cultivate",
+     "Beast Within",
+     "Exploration Broodship"
+    ],
+    "battlefield": [
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mind Stone"
+     },
+     {
+      "name": "Sol Ring"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Forest"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Sol Ring"
+ ],
+ "note": "Two lands: Sol Ring first leaves three mana for Mind Stone or Cultivate too; Mind Stone first leaves nothing."
+}

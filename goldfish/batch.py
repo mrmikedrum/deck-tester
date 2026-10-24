@@ -1,4 +1,5 @@
-"""Automated games: a batch of seeded games played in parallel, Forge's AI deciding except where a pilot does.
+"""Automated games: a batch of seeded games played in parallel. A pilot file answers first, then the decision
+model when the batch has a deck plan (see model.py), and Forge's AI answers whatever is left.
 
 A pilot is a Python file defining functions named after decision kinds (mulligan, play, targets, mode,
 number, confirm, order, choose, attack, pay). Each gets the decision as a dict (kind, turn, prompt, options,
@@ -14,10 +15,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from . import engine
+from . import engine, model
 
 KINDS = ("mulligan", "play", "targets", "mode", "number", "confirm", "order", "choose", "attack", "pay")
 BATCHES = engine.HOME / "batches"
+MAX_DECISIONS = 100  # decisions in one turn before the loop guard hands the rest of it to Forge's AI
 
 
 def load_pilot(path: str) -> Dict[str, Callable]:
@@ -39,32 +41,60 @@ def _answer(handler: Optional[Callable], decision: dict) -> Optional[List[int]]:
     return [picked] if isinstance(picked, int) else list(picked)
 
 
-def _play(start: dict, handlers: Dict[str, Callable], avoids: List[str]) -> dict:
-    """Play one game to the end; returns the engine's final reply."""
+def _play(start: dict, handlers: Dict[str, Callable], decider: Optional[model.Decider], avoids: List[str],
+          turns: int = 0, guarded: Optional[dict] = None) -> dict:
+    """Play one game to the end, or past the given turn; returns the engine's final reply. Notes in guarded the
+    turn where the loop guard took over, if it did."""
+    guarded = {} if guarded is None else guarded
     reply = engine.request(start)
     session = reply["session"]
     avoids[:] = reply.get("ai_avoids", [])
+    asked: Dict[int, int] = {}
+    send = model.Decider.send
     try:
-        while reply.get("decision"):
+        while reply.get("decision") and not (turns and model.turn(reply["decision"]) > turns):
             decision = reply["decision"]
+            turn = model.turn(decision)
+            asked[turn] = asked.get(turn, 0) + 1
             picks = _answer(handlers.get(decision["kind"]), decision)
-            request = {"cmd": "answer", "session": session}
-            request.update({"defer": True} if picks is None else {"answer": picks})
-            reply = engine.request(request)
+            if asked[turn] > MAX_DECISIONS:
+                # A pilot or model can repeat itself forever (an ability it can activate again and again, a
+                # search it keeps declining) and hang the batch; Forge's AI finishes the turn, and the report
+                # flags the game.
+                guarded.setdefault("loop", turn)
+                reply = send(reply, {"defer": True})
+            elif picks is not None:
+                reply = send(reply, {"answer": picks, "by": "pilot"})
+            elif decider:
+                reply = decider.step(reply)
+            else:
+                reply = send(reply, {"defer": True})
     finally:
-        reply = engine.request({"cmd": "end", "session": session})
+        end = {"cmd": "end", "session": session}
+        if turns and reply.get("decision") and model.turn(reply["decision"]) > turns:
+            end["over"] = "turn limit"
+        reply = engine.request(end)
     return reply
 
 
 def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
-        pilot: Optional[str], workers: int, ai: str = "default") -> dict:
-    """Play a batch and write its manifest; returns the manifest."""
+        pilot: Optional[str], workers: int, ai: str = "default", guide: Optional[str] = None,
+        hybrid: str = "outcomes") -> dict:
+    """Play a batch and write its manifest; returns the manifest. A guide (the deck plan) brings in the model,
+    working with Forge's AI as the hybrid names (see model.Decider)."""
     handlers = load_pilot(pilot) if pilot else {}
+    usage = model.Usage()
+    if guide:
+        model.key()  # fail before the first game, not in every worker
+    asks = set(handlers) | (set(model.KINDS) if guide else set())
     base = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "deck": deck_name,
-            "hash": deck.revision(), "opponents": opponents, "ask": sorted(handlers),
+            "hash": deck.revision(), "opponents": opponents, "ask": sorted(asks),
             "mana": "creatures" if "pay" in handlers else "auto", "ai": ai}
+    # Playing options out runs forks into the next turn, so the engine's limit sits past the batch's and the
+    # batch stops each game at its own limit.
+    exploring = bool(guide) and hybrid != "plain"
     if turns:
-        base["turns"] = turns
+        base["turns"] = turns + 2 if exploring else turns
     engine.refresh()
     engine.request({"cmd": "sessions"})  # start the engine once, before the workers race to
     began = time.time()
@@ -72,14 +102,23 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     avoids: List[str] = []
 
     def one(index: int) -> dict:
-        reply = _play(dict(base, seed=seed + index), handlers, avoids)
-        return {"session": reply["session"], "seed": seed + index, "records": reply["records"], "over": reply.get("over")}
+        decider = model.Decider(guide, opponents, usage, hybrid) if guide else None
+        guarded: dict = {}
+        reply = _play(dict(base, seed=seed + index), handlers, decider, avoids, turns if exploring else 0, guarded)
+        game = {"session": reply["session"], "seed": seed + index, "records": reply["records"], "over": reply.get("over")}
+        if guarded:
+            game["loop_guard"] = guarded["loop"]
+        return game
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         played = list(pool.map(one, range(games)))
     manifest = {"deck": deck_name, "hash": deck.revision(), "commander": " + ".join(deck.commanders),
                 "pilot": pilot, "ai": ai, "turns": turns, "seconds": round(time.time() - began, 1), "ai_avoids": avoids,
                 "games": played}
+    if guide:
+        manifest["guide"] = guide
+        manifest["hybrid"] = hybrid
+        manifest["model"] = usage.summary()
     BATCHES.mkdir(parents=True, exist_ok=True)
     batch_id = f"b{len(list(BATCHES.glob('b*.json'))) + 1}"
     manifest["id"] = batch_id

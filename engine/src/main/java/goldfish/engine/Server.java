@@ -61,7 +61,14 @@ public final class Server {
         MyRandom.setRandom(new SeededRandom());
         Server server = new Server(home);
         Path socket = home.resolve("engine.sock");
-        Files.deleteIfExists(socket);
+        if (Files.exists(socket)) {
+            try (SocketChannel running = SocketChannel.open(UnixDomainSocketAddress.of(socket))) {
+                System.err.println("another goldfish engine is already listening on " + socket);
+                System.exit(0);
+            } catch (IOException stale) {
+                Files.delete(socket); // left by an engine that has gone
+            }
+        }
         try (ServerSocketChannel listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
             listener.bind(UnixDomainSocketAddress.of(socket));
             System.err.println("goldfish engine ready on " + socket);
@@ -120,7 +127,7 @@ public final class Server {
         }
         if (cmd.equals("shutdown")) {
             for (Session session : sessions.values()) {
-                session.end();
+                session.end("shutdown");
             }
             Map<String, Object> reply = ok();
             reply.put("bye", "shutdown");
@@ -138,8 +145,10 @@ public final class Server {
                 if (pending == null) {
                     return progress(session);
                 }
+                String by = request.has("by") ? request.get("by").getAsString() : "agent";
+                Double confidence = request.has("p") ? request.get("p").getAsDouble() : null;
                 if (request.has("defer") && request.get("defer").getAsBoolean()) {
-                    session.channel.resume(Channel.DEFER);
+                    session.channel.defer(by, confidence);
                     return progress(session);
                 }
                 List<Integer> answer = new ArrayList<>();
@@ -148,15 +157,17 @@ public final class Server {
                 if (problem != null) {
                     throw new IllegalArgumentException(problem);
                 }
-                session.channel.resume(answer);
+                session.channel.answer(answer, by, confidence);
                 return progress(session);
             }
             case "state": {
                 session.channel.await(WAIT_MILLIS);
                 Map<String, Object> reply = progress(session);
-                reply.put("state", session.state());
+                reply.put("state", session.state(request.has("text") && request.get("text").getAsBoolean()));
                 return reply;
             }
+            case "fork":
+                return fork(session);
             case "snapshot": {
                 session.channel.await(WAIT_MILLIS);
                 String name = request.has("name") ? request.get("name").getAsString() : null;
@@ -178,7 +189,7 @@ public final class Server {
                 return reply;
             }
             case "end": {
-                session.end();
+                session.end(request.has("over") ? request.get("over").getAsString() : "ended");
                 session.channel.await(WAIT_MILLIS);
                 sessions.remove(session.id);
                 return progress(session);
@@ -209,10 +220,6 @@ public final class Server {
                 (request.has("mana") ? request.get("mana").getAsString() : "creatures").toUpperCase(java.util.Locale.ROOT));
         String deckName = request.has("deck") ? request.get("deck").getAsString() : null;
         String deckHash = request.has("hash") ? request.get("hash").getAsString() : null;
-        String id;
-        synchronized (this) {
-            id = "g" + (++lastId);
-        }
         Set<String> asks = null;
         if (request.has("ask")) {
             asks = new HashSet<>();
@@ -227,13 +234,64 @@ public final class Server {
             case "sim" -> forge.ai.AIOption.USE_FULL_SIMULATION;
             default -> throw new IllegalArgumentException("ai is default, hybrid or sim");
         };
-        Session session = new Session(id, seed, turns, stopsAll, mana, asks, aiMode, home.resolve("runs"));
-        sessions.put(id, session);
-        session.start(deck, opponents, String.join(" + ", commanders), deckName, deckHash);
+        Session.Setup setup = new Session.Setup(deck, opponents, seed, turns, stopsAll, mana, asks, aiMode,
+                String.join(" + ", commanders), deckName, deckHash);
+        Session session = new Session(nextId(), setup, home.resolve("runs"), null, null);
+        sessions.put(session.id, session);
+        session.start();
         Map<String, Object> reply = progress(session);
         reply.put("seed", seed);
         reply.put("ai_avoids", Session.aiAvoids(deck));
         return reply;
+    }
+
+    /**
+     * A new session that replays this parked one's decisions from the same seed, checks it arrived at the same
+     * decision in the same state, and waits there. The parent stays parked; the fork is a game of its own.
+     */
+    private Map<String, Object> fork(Session parent) throws Exception {
+        Decision parked = parent.channel.await(WAIT_MILLIS);
+        if (parked == null) {
+            throw new IllegalStateException("fork while the game waits for a decision");
+        }
+        long began = System.nanoTime();
+        Session fork = parent.fork(nextId(), home.resolve("runs"));
+        sessions.put(fork.id, fork);
+        fork.start();
+        Decision reached = fork.channel.await(WAIT_MILLIS);
+        String problem = null;
+        if (reached == null) {
+            problem = fork.channel.isFinished() ? fork.over : "still replaying after " + WAIT_MILLIS / 1000 + "s";
+        } else if (!parked.same(reached)) {
+            problem = "replay reached " + reached.kind() + " " + reached.options() + " at " + reached.turn()
+                    + " instead of " + parked.kind() + " " + parked.options() + " at " + parked.turn();
+        } else {
+            String difference = Session.firstDifference(parent.fingerprint(), fork.fingerprint());
+            if (!difference.isEmpty()) {
+                problem = "state differs: " + difference;
+            }
+        }
+        if (problem != null) {
+            parent.recorder.write("fork", "session", fork.id, "failed", problem);
+            fork.end("drift");
+            fork.channel.await(WAIT_MILLIS);
+            sessions.remove(fork.id);
+            throw new IllegalStateException("fork drifted: " + problem);
+        }
+        String ids = Session.firstDifference(parent.fingerprint(true), fork.fingerprint(true));
+        parent.recorder.write("fork", "session", fork.id, "ids", ids.isEmpty() ? null : ids);
+        Map<String, Object> reply = progress(fork);
+        reply.put("parent", parent.id);
+        if (!ids.isEmpty()) {
+            reply.put("ids", ids);
+        }
+        reply.put("replayed", fork.replayed());
+        reply.put("ms", (System.nanoTime() - began) / 1_000_000);
+        return reply;
+    }
+
+    private synchronized String nextId() {
+        return "g" + (++lastId);
     }
 
     private static Map<String, Object> ok() {

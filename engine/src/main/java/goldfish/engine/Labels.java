@@ -52,7 +52,8 @@ final class Labels {
         // Forge's Oracle text separates abilities with a literal backslash-n, and sometimes a real newline.
         String text = card.getOracleText() == null ? ""
                 : card.getOracleText().replace("\\n", "\n").replaceAll("\\s*\n\\s*", " / ").trim();
-        return card.getName() + " — " + card.getType() + (text.isEmpty() ? "" : " — " + text);
+        String cost = card.getManaCost() == null || card.getManaCost().isNoCost() ? "" : " " + card.getManaCost();
+        return card.getName() + cost + " — " + card.getType() + (text.isEmpty() ? "" : " — " + text);
     }
 
     /** The full text behind an ability option. */
@@ -60,7 +61,7 @@ final class Labels {
         if (sa.isSpell() || sa.isLandAbility()) {
             return detail(sa.getHostCard());
         }
-        return sa.getHostCard().getName() + ": " + (sa.toString() == null ? "" : sa.toString().replaceAll("\\s+", " ").trim());
+        return sa.getHostCard().getName() + ": " + named(sa.toString(), sa.getHostCard().getName());
     }
 
     static String entity(GameEntity entity, Player me) {
@@ -93,9 +94,15 @@ final class Labels {
         return name + ": " + text(sa.toString(), name);
     }
 
+    /** Rules text in one line, with Forge's placeholders for the card's own name filled in. */
+    static String named(String raw, String name) {
+        String text = raw == null ? "" : raw.trim().replaceAll("\\s+", " ");
+        return name.isEmpty() ? text : text.replace("CARDNAME", name).replace("NICKNAME", name);
+    }
+
     /** Rules text shortened for a label: the card's own name prefix dropped, cut at MAX characters. */
     static String text(String raw, String name) {
-        String text = raw == null ? "" : raw.trim().replaceAll("\\s+", " ");
+        String text = named(raw, name);
         if (text.startsWith(name + " - ")) {
             text = text.substring(name.length() + 3);
         } else if (text.startsWith(name + ": ")) {

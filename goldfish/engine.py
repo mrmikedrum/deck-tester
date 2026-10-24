@@ -74,9 +74,16 @@ def _start() -> None:
 def request(payload: dict, start: bool = True) -> dict:
     """Send one request; start the engine first if it isn't running. Raises EngineError on failure."""
     HOME.mkdir(exist_ok=True)
-    try:
-        client = _connect()
-    except OSError:
+    client = None
+    for attempt in range(3):  # a busy engine can refuse a connection for a moment; don't start a second one
+        try:
+            client = _connect()
+            break
+        except OSError:
+            if not SOCKET.exists():
+                break
+            time.sleep(0.2 * (attempt + 1))
+    if client is None:
         if not start:
             raise EngineError("engine isn't running")
         _start()
