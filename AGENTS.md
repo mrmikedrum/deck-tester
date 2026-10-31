@@ -8,9 +8,9 @@ only when the task needs it. For development or diagnosis, read [vision](docs/vi
 
 ## How to work here
 
-- **Never implement game rules ourselves.** If a card or interaction is wrong, fix it as a Forge card script
-  in `cards/`, or upstream in Forge. Our code only routes decisions, records facts, and reports. A rule
-  written in our code drifts from Forge's and silently breaks the record.
+- **Forge owns game rules, including new-card support.** Our code routes decisions, records facts and
+  reports; a second rules implementation drifts and silently breaks the record. The
+  [Forge dependency procedure](docs/architecture.md#forge-dependency) owns support checks and updates.
 - **The engine records facts; Python interprets them.** Metrics, plans and digests belong in `goldfish/`, so
   they change without a JVM rebuild.
 - **Agents pay for every byte we print.** Default output is the shortest digest that supports a judgment,
@@ -31,7 +31,7 @@ only when the task needs it. For development or diagnosis, read [vision](docs/vi
 | `engine/` | Forge host: `Server` (socket), `Session` (one game), `ManualController` (decisions), `Recorder` (facts) |
 | `scripts/` | `bootstrap-forge.sh` (fetch and install pinned Forge), `build-engine.sh` (compile; the CLI runs it when needed) |
 | `vendor/forge` | Pinned Forge checkout, gitignored; card scripts in `forge-gui/res/cardsfolder` |
-| `cards/` | Forge card-script overlay (arrives in M3) |
+| `vendor/forge/forge-gui/res/` | Upstream card data paired with the pinned engine; no local new-card overlay |
 | `examples/` | Real decklists used as fixtures, and an example pilot |
 | `tests/` | `unittest` suites; `test_engine.py` plays a real game and skips without Forge |
 | `.goldfish/` | Runtime, gitignored: engine socket and log, game records in `runs/` |

@@ -9,11 +9,10 @@ Each milestone ends with something an agent can use. Delete a milestone when it 
 Deck-plan checkpoints, missing-colour and flood flags, resuming an automated game by hand, and a state view
 for pilots.
 
-## M3 — Card fixes
+## M3 — Upstream card support
 
-The `cards/` overlay, plus a way to load one card into a small scenario and confirm it behaves.
-
-Done when an agent can fix a misbehaving card without touching Java.
+The [Forge dependency procedure](architecture.md#forge-dependency) owns updates and compatibility.
+Done when a tested, reproducible upstream engine/resource pin supports the requested cards.
 
 ## Decision model, next
 

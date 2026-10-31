@@ -11,7 +11,7 @@ agent ──shell──▶ bin/goldfish (Python) ──JSON lines, Unix socket�
 |------|----------|------|
 | `engine/` | Java 17, Maven | Forge host: game setup, decision routing and logging, forks, snapshots, overrides, recording facts |
 | `goldfish/` | Python 3.9, stdlib only | CLI, engine client, digests, batch runner and pilot runtime, reports |
-| `cards/` | Forge card script | Cards added or corrected, loaded after Forge's own (M3) |
+| `vendor/forge/forge-gui/res/` | Forge resources | Upstream-maintained cards, tokens and editions at the engine pin |
 | deck, plan and pilot (outside) | text + Python | The decklist, and optionally a deck plan and a pilot file, passed by path |
 
 Decisions have to be intercepted inside Forge, so the engine is Java. Everything an agent writes or reads
@@ -207,8 +207,8 @@ caller's choice; nothing here assumes a location.
 
 ## Cards Forge lacks or gets wrong
 
-`goldfish start` refuses a deck with cards Forge doesn't know, and names them. Fixes are Forge scripts in
-`cards/` (M3); engine bugs go upstream as Forge pull requests. Until something is fixed, overrides keep the
+`goldfish start` refuses a deck with cards Forge doesn't know, and names them. The support check and update
+path live under [Forge dependency](#forge-dependency). Overrides keep the
 game honest, and each one is recorded.
 
 ## Forks: a game replayed from its seed
@@ -276,9 +276,59 @@ new effects. A waiting `play` decision is asked again afterwards, so its options
 
 `scripts/bootstrap-forge.sh` sparse-fetches a pinned upstream commit into `vendor/forge` (gitignored) and
 installs forge-core, forge-game and forge-ai into the local Maven repository, with no GUI modules. Card
-scripts come from `vendor/forge/forge-gui/res/cardsfolder`, then from `cards/`. Headless startup
-(`engine/.../Forge.java`) is the card-data part of forge-gui's `FModel.initialize`. Moving the pin is a
-deliberate change, for example to pick up a new set. There's no long-lived fork.
+scripts come only from `vendor/forge/forge-gui/res/cardsfolder`; the live `Forge.start` has no custom-card
+reader. Headless startup (`engine/.../Forge.java`) is the card-data part of forge-gui's `FModel.initialize`.
+There is no long-lived fork. Mike's October 31 correction supersedes the local new-card overlay plan:
+Forge-maintained upstream resources are authoritative for card behavior. Local text-to-rules translations
+create a second implementation that can drift.
+
+### Updating upstream support
+
+1. Inventory the exact missing cards in the requested export. Check the installed pin and a specific
+   official [release or snapshot commit](https://github.com/Card-Forge/forge), including `upcoming`.
+   A newer tag alone is not evidence of support. Record full commit, source paths and card names;
+   filename presence is not a passing rules test. Keep unsupported previews out of claimed playtests;
+   do not silently cut or substitute cards in Mike's list.
+2. Default to engine and all resources from the same commit. The bootstrap pins them together; the
+   official `AutoUpdater` distributes versioned release/snapshot packages, not a card-only compatibility
+   contract. This headless host has no supported independent card-data updater. A proposed data-only
+   import would need an exact upstream source revision, its tokens/editions/keywords and engine feature
+   compatibility proved in isolation; do not copy latest cards into an older engine on assumption.
+3. Prepare a clean candidate checkout, preserving the dirty live tree and every existing Forge patch.
+   Inventory vendor status, patch hashes and engine dependencies first. Change `FORGE_COMMIT` deliberately;
+   build candidate Forge into an isolated Maven repository and compile the host against that repository,
+   so shared snapshot artifacts and the live engine cannot change during evaluation. Verify each patch
+   still applies or is demonstrably upstream; never drop one merely to make the build pass.
+4. Run the existing engine tests, a seeded known-supported baseline (manual decisions, batch, fork and
+   snapshot/restore), then starts of the original exports and focused native-rule scenarios for newly
+   supported cards. Record unknown cards, parser failures and untested behavior separately. These scenarios exercise the upstream-maintained
+   resources. Failure or incomplete coverage leaves the current pin installed.
+5. After candidate review, back up changed files and the working dependency checkpoint. Install only
+   reviewed changes when the simulator is idle; do not end somebody else's game. Rebuild and verify the
+   original failing exports before declaring recovery. Roll back to the prior pin, resource tree, patches
+   and compiled dependencies if the baseline or required behavior regresses; retain game records.
+
+### Checked October 31, 2026 (inventory, not rules acceptance)
+
+Installed `b13b6c822a7bc54e3150d0ff4899f1f8fe60346c`: all thirteen names below are absent.
+Official tree `9b31ac1a8733d57cc395c613ec0916f3e09f42a4` (complete, not truncated):
+
+- **Present upstream only, not installed or behavior-verified:** Captain Pike, Fullness of Time,
+  `forge-gui/res/cardsfolder/upcoming/captain_pike_fullness_of_time.txt`.
+- **Absent upstream:** Locutus of Borg; Co-Option Adjutant; Borg Scout Sphere; Hit It; Final Frontier;
+  U.S.S. Discovery, at Black Alert; Conquest Mission; Warp Speed; Genesis Device; Maturation Chamber;
+  Stable Wormhole; U.S.S. Voyager (not unrelated cards with “Voyager” in their name).
+
+Latest tagged `forge-2.0.15` was published September 28, older than the installed October 23 pin.
+Neither upgrading blindly nor importing Pike alone unblocks the two full Trek exports. Keep those
+exports blocked honestly; existing supported lists can still be tested. The previous local eleven-card
+candidate is uninstalled, superseded evidence, not an update source; its failed-repair brake still stands.
+Recheck upstream for a new requested test or deliberate upgrade, not with a new polling job.
+
+Sources: [complete tree](https://api.github.com/repos/Card-Forge/forge/git/trees/9b31ac1a8733d57cc395c613ec0916f3e09f42a4?recursive=1),
+[latest release](https://api.github.com/repos/Card-Forge/forge/releases/latest),
+[official updater](https://github.com/Card-Forge/forge/blob/9b31ac1a8733d57cc395c613ec0916f3e09f42a4/forge-gui/src/main/java/forge/download/AutoUpdater.java).
+The installed support list must be rechecked after any pin change.
 
 ## Measured in M0 (2026-10-23, Apple Silicon, 10 cores, JDK 21)
 
