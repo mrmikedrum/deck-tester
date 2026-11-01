@@ -1,0 +1,15 @@
+diff --git a/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java b/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java
+index 92517d0d..eaf95a3f 100644
+--- a/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java
++++ b/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java
+@@ -36,7 +36,9 @@ public class CharmEffect extends SpellAbilityEffect {
+ 
+         List<AbilitySub> choices = Lists.newArrayList(sa.getAdditionalAbilityList("Choices"));
+ 
+-        if (source.getZone() != null) {
++        // Card text is also rendered before an ability has an activating player.
++        // In that case show all modes, rather than querying legal targets.
++        if (source.getZone() != null && sa.getActivatingPlayer() != null) {
+             List<AbilitySub> toRemove = Lists.newArrayList();
+             for (AbilitySub ch : choices) {
+                 // 603.3c If one of the modes would be illegal, that mode can't be chosen.

@@ -1,10 +1,12 @@
 #!/bin/sh
 # Fetch Forge at the pinned commit into vendor/forge and install the headless modules
 # (forge-core, forge-game, forge-ai) into the local Maven repository.
-# Moving FORGE_COMMIT is a deliberate change: see docs/architecture.md, "Forge dependency".
+# Resolve the current daily: git ls-remote https://github.com/Card-Forge/forge.git refs/tags/daily-snapshots
+# Update procedure: docs/architecture.md, "Updating upstream support".
+# Isolate builds: GOLDFISH_MAVEN_ARGS=-Dmaven.repo.local=/absolute/path
 set -eu
 
-FORGE_COMMIT=b13b6c822a7bc54e3150d0ff4899f1f8fe60346c
+FORGE_COMMIT=cec1aaea3c5e57fbd77c11c9ede9a800d55cf8c6
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/vendor/forge"
 
@@ -39,5 +41,5 @@ done
 
 JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}"
 export JAVA_HOME
-cd "$DEST" && mvn -q -pl forge-core,forge-game,forge-ai -am -DskipTests -Dcheckstyle.skip flatten:flatten install
+cd "$DEST" && mvn ${GOLDFISH_MAVEN_ARGS:-} -q -pl forge-core,forge-game,forge-ai -am -DskipTests -Dcheckstyle.skip flatten:flatten install
 echo "forge $FORGE_COMMIT installed"
