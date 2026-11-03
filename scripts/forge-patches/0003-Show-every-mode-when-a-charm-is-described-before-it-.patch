@@ -1,3 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 15:58:09 -0700
+Subject: [PATCH] Show every mode when a charm is described before it has an
+ activator
+
+CharmEffect filters modes by legal targets, which needs an activating player. Rendering a modal
+trigger's text before anyone activates it reached that filter with none and failed. Without an
+activator, describe all modes; choosing modes is unchanged.
+
+Goldfish-Upstream: offer
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../src/main/java/forge/game/ability/effects/CharmEffect.java | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
 diff --git a/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java b/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java
 index 92517d0d..eaf95a3f 100644
 --- a/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java

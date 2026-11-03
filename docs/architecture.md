@@ -340,13 +340,33 @@ options match the corrected board, and overrides are logged so a fork makes them
 
 ## Forge dependency
 
-`scripts/bootstrap-forge.sh` sparse-fetches a pinned upstream commit into `vendor/forge` (gitignored) and
-installs forge-core, forge-game and forge-ai into the local Maven repository, with no GUI modules. Card
+`scripts/bootstrap-forge.sh` sparse-fetches a pinned upstream commit into `vendor/forge` (gitignored),
+applies our patch series as commits on its `goldfish` branch, and installs forge-core, forge-game and
+forge-ai into the local Maven repository, with no GUI modules. Card
 scripts come only from `vendor/forge/forge-gui/res/cardsfolder`; the live `Forge.start` has no custom-card
 reader. Headless startup (`engine/.../Forge.java`) is the card-data part of forge-gui's `FModel.initialize`.
 There is no long-lived engine fork. Prefer Forge-maintained scripts; Mike's November 2 instruction
 also permits native, script-only card contributions using existing engine mechanics and analogous
 upstream cards, with behavior tests and verified replacement when upstream catches up.
+
+### Engine patches
+
+`scripts/forge-patches/` is a `git format-patch` series, applied in order with `git am -3`. Each message
+says why the patch exists and, in a `Goldfish-Upstream:` trailer, whether it is offered upstream
+(`offer`), needs rework first, or is a hook only this host needs (`local`). To change one, commit on
+`vendor/forge`'s `goldfish` branch (amend or rebase as usual), then export the whole series again:
+
+```bash
+rm scripts/forge-patches/*.patch
+git -C vendor/forge format-patch -N --zero-commit --no-signature -o "$PWD/scripts/forge-patches" \
+  "$(sed -n 's/^FORGE_COMMIT=//p' scripts/bootstrap-forge.sh)..goldfish"
+```
+
+Bootstrap refuses to rebuild over uncommitted edits or unexported commits there. A build is named by
+the pin and a hash of the series (`cec1aaea-01284e96`) and installed as its own Maven version, so a
+candidate never replaces the live build; `.goldfish/forge-build` records what is installed. The engine
+compiles against that version, refuses to start when it isn't the checkout's (`goldfish doctor` shows
+both), and every game record's `start` fact carries it as `forge`.
 
 ### Script-only card additions
 
@@ -371,11 +391,10 @@ every available script was used in that game.
    contract. This headless host has no supported independent card-data updater. A proposed data-only
    import would need an exact upstream source revision, its tokens/editions/keywords and engine feature
    compatibility proved in isolation; do not copy latest cards into an older engine on assumption.
-3. Prepare a clean candidate checkout, preserving the dirty live tree and every existing Forge patch.
-   Inventory vendor status, patch hashes and engine dependencies first. Change `FORGE_COMMIT` deliberately;
-   build candidate Forge into an isolated Maven repository and compile the host against that repository,
-   so shared snapshot artifacts and the live engine cannot change during evaluation. Verify each patch
-   still applies or is demonstrably upstream; never drop one merely to make the build pass.
+3. Prepare a candidate checkout and change `FORGE_COMMIT` deliberately; its build gets its own Maven
+   version, so the live engine cannot change during evaluation. A patch that no longer applies stops
+   bootstrap in `git am`: resolve it there and export the series again. A patch upstream now contains is
+   dropped from the series; never drop one merely to make the build pass.
 4. Run the existing engine tests, a seeded known-supported baseline (manual decisions, batch, fork and
    snapshot/restore), then starts of the original exports and focused native-rule scenarios for newly
    supported cards. Record unknown cards, parser failures and untested behavior separately. These scenarios exercise the upstream-maintained

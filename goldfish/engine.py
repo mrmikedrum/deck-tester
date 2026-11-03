@@ -1,7 +1,9 @@
 """Talk to the engine process: build it when sources change, start it on first use, send one request."""
 
+import hashlib
 import json
 import os
+import re
 import socket
 import subprocess
 import time
@@ -16,6 +18,18 @@ LOG = HOME / "engine.log"
 ENGINE = ROOT / "engine"
 CLASSPATH = ENGINE / "target" / "classpath.txt"
 RES = ROOT / "vendor" / "forge" / "forge-gui" / "res"
+FORGE_BUILD = HOME / "forge-build"
+
+
+def forge_build() -> tuple:
+    """The installed Forge build and the one this checkout pins: commit and patch series, as bootstrap names it."""
+    pin = re.search(r"^FORGE_COMMIT=(\w+)", (ROOT / "scripts" / "bootstrap-forge.sh").read_text(), re.M).group(1)
+    patches = sorted((ROOT / "scripts" / "forge-patches").glob("*.patch"))
+    wanted = pin[:8] + "-" + hashlib.sha256(b"".join(p.read_bytes() for p in patches)).hexdigest()[:8]
+    installed = None
+    if FORGE_BUILD.exists():
+        installed = dict(line.split("=", 1) for line in FORGE_BUILD.read_text().split()).get("build")
+    return installed, wanted
 
 
 class EngineError(Exception):
@@ -26,8 +40,8 @@ def _stale() -> bool:
     if not CLASSPATH.exists():
         return True
     built = CLASSPATH.stat().st_mtime
-    sources = [ENGINE / "pom.xml", *(ENGINE / "src").rglob("*.java")]
-    return any(path.stat().st_mtime > built for path in sources)
+    sources = [ENGINE / "pom.xml", FORGE_BUILD, *(ENGINE / "src").rglob("*.java")]
+    return any(path.exists() and path.stat().st_mtime > built for path in sources)
 
 
 def _build() -> None:
@@ -51,6 +65,9 @@ def _connect():
 def _start() -> None:
     if not RES.is_dir():
         raise EngineError("Forge isn't installed; run scripts/bootstrap-forge.sh")
+    installed, wanted = forge_build()
+    if installed != wanted:
+        raise EngineError(f"Forge build {installed or 'none'} isn't this checkout's {wanted}; run scripts/bootstrap-forge.sh")
     try:
         local_cards = card_resources.prepare()
     except ValueError as error:
@@ -66,7 +83,7 @@ def _start() -> None:
     java = str(Path(env["JAVA_HOME"]) / "bin" / "java") if "JAVA_HOME" in env else "java"
     # Detach through a shell so the engine outlives this command and isn't our child.
     subprocess.run(["/bin/sh", "-c", 'nohup "$@" >>"$0" 2>&1 </dev/null &', str(LOG),
-                    java, "-Dgoldfish.localCardsHash=" + card_resources.fingerprint(), "-Dgoldfish.localCards=" + ", ".join(local_cards), f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME)], env=env, check=True)
+                    java, "-Dgoldfish.forge=" + wanted, "-Dgoldfish.localCardsHash=" + card_resources.fingerprint(), "-Dgoldfish.localCards=" + ", ".join(local_cards), f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME)], env=env, check=True)
     deadline = time.time() + 90
     while time.time() < deadline:
         try:

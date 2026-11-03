@@ -1,8 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 15:58:09 -0700
+Subject: [PATCH] Restore counters and damage on cards a snapshot reuses
+
+GameSnapshot.restore reuses cards that still exist and copies only some of their state, so counters
+and damage added after the snapshot survived the restore. Copy both back with the rest.
+
+Goldfish-Upstream: offer
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ forge-game/src/main/java/forge/game/GameSnapshot.java | 3 +++
+ 1 file changed, 3 insertions(+)
+
 diff --git a/forge-game/src/main/java/forge/game/GameSnapshot.java b/forge-game/src/main/java/forge/game/GameSnapshot.java
-index a738fc16..b2934fcc 100644
+index 2d64547a..fa41e1be 100644
 --- a/forge-game/src/main/java/forge/game/GameSnapshot.java
 +++ b/forge-game/src/main/java/forge/game/GameSnapshot.java
-@@ -491,6 +491,9 @@ public class GameSnapshot {
+@@ -492,6 +492,9 @@ public class GameSnapshot {
          newCard.setGameTimestamp(fromCard.getGameTimestamp());
          newCard.setLayerTimestamp(fromCard.getLayerTimestamp());
          newCard.setTapped(fromCard.isTapped());

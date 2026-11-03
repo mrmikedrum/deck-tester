@@ -11,8 +11,7 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Installed by scripts/bootstrap-forge.sh from the pinned commit. -->
-        <forge.version>2.0.16-SNAPSHOT</forge.version>
+        <!-- forge.version: set by scripts/build-engine.sh from the build bootstrap-forge.sh installed. -->
     </properties>
 
     <dependencies>

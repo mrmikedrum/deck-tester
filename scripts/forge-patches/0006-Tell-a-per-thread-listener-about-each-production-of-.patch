@@ -1,3 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 15:58:09 -0700
+Subject: [PATCH] Tell a per-thread listener about each production of mana
+
+A host that records Forge AI's mana payments needs every activation that made mana, in order, with
+the mana it made, including abilities that paid another ability's cost through the pool.
+
+Goldfish-Upstream: local only, a replay hook for this host.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../java/forge/game/spellability/AbilityManaPart.java  | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
 diff --git a/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java b/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java
 index 8171a902..189d89d7 100644
 --- a/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java

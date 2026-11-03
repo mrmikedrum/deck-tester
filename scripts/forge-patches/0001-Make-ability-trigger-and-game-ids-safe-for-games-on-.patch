@@ -1,3 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 15:58:09 -0700
+Subject: [PATCH] Make ability, trigger and game ids safe for games on several
+ threads
+
+Trigger, SpellAbility, StaticAbility, ReplacementEffect, SpellAbilityStackInstance and Game number
+themselves from static int counters, and compare by those numbers. Games running side by side race on
+the counters, and Match.prepareAllZones calls Trigger.resetIDs() at every game start, which set the
+trigger counter back under a running game: it was handed ids its own triggers had, and one of them was
+lost (Maturation Chamber stopped counting casts; Warp Speed's enters trigger never fired).
+
+The counters become AtomicIntegers, resetIDs only raises the trigger counter, and the static lookup
+maps that games fill lazily (Keyword, Card.cp2card, the counter type maps) become concurrent.
+
+Goldfish-Upstream: offer
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ forge-game/src/main/java/forge/game/Game.java             | 4 ++--
+ forge-game/src/main/java/forge/game/card/Card.java        | 2 +-
+ .../src/main/java/forge/game/card/CounterCustomType.java  | 2 +-
+ .../src/main/java/forge/game/card/CounterKeywordType.java | 2 +-
+ forge-game/src/main/java/forge/game/keyword/Keyword.java  | 2 +-
+ .../java/forge/game/replacement/ReplacementEffect.java    | 4 ++--
+ .../main/java/forge/game/spellability/SpellAbility.java   | 4 ++--
+ .../game/spellability/SpellAbilityStackInstance.java      | 4 ++--
+ .../main/java/forge/game/staticability/StaticAbility.java | 4 ++--
+ forge-game/src/main/java/forge/game/trigger/Trigger.java  | 8 +++++---
+ 10 files changed, 19 insertions(+), 17 deletions(-)
+
 diff --git a/forge-game/src/main/java/forge/game/Game.java b/forge-game/src/main/java/forge/game/Game.java
 index 0271c771..62cb44aa 100644
 --- a/forge-game/src/main/java/forge/game/Game.java

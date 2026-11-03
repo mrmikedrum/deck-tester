@@ -39,7 +39,7 @@ only when the task needs it. For development or diagnosis, read [vision](docs/vi
 ## Commands
 
 ```bash
-scripts/bootstrap-forge.sh                  # once, and after moving the Forge pin (JDK 21, Maven)
+scripts/bootstrap-forge.sh                  # once, and after the Forge pin or patches change (JDK 21, Maven)
 python3 -m unittest discover -s tests -v   # all tests; the engine test needs Forge
 bin/goldfish doctor                         # toolchain and Forge status
 bin/goldfish engine stop                    # after changing engine code with sessions open

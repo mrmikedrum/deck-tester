@@ -199,7 +199,7 @@ final class Session {
                 pilot = game.getPlayers().stream().filter(p -> p.getName().equals(PILOT)).findFirst().orElseThrow();
                 game.subscribeToEvents(recorder);
                 setupMillis = (System.nanoTime() - began) / 1_000_000;
-                recorder.write("start", "local_cards", System.getProperty("goldfish.localCards"),
+                recorder.write("start", "forge", System.getProperty("goldfish.forge"), "local_cards", System.getProperty("goldfish.localCards"),
                         "local_cards_hash", System.getProperty("goldfish.localCardsHash"), "seed", setup.seed(), "deck", setup.deckName(), "hash", setup.deckHash(),
                         "commander", setup.commanders(), "turns", setup.turnLimit() > 0 ? setup.turnLimit() : null,
                         "opponents", setup.opponents(), "ai", setup.aiMode() == null ? null : setup.aiMode().name().toLowerCase(Locale.ROOT),

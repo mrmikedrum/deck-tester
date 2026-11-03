@@ -27,11 +27,13 @@ def _java_major():
 
 def doctor(_args) -> int:
     java = _java_major()
+    installed, wanted = engine.forge_build()
     checks = [
         ("python 3.9+", sys.version_info >= (3, 9), sys.version.split()[0]),
         ("java 17+", bool(java and java >= 17), f"found {java}" if java else "not found"),
         ("maven", bool(shutil.which("mvn")), "found" if shutil.which("mvn") else "not found"),
         ("forge", engine.RES.is_dir(), "vendor/forge (scripts/bootstrap-forge.sh)"),
+        ("forge build", installed == wanted, f"{installed or 'none'}" + ("" if installed == wanted else f", checkout wants {wanted}")),
     ]
     for name, ok, detail in checks:
         print(f"{'ok ' if ok else 'MISSING'} {name}: {detail}")

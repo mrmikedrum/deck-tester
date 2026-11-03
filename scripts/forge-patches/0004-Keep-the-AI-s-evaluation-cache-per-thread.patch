@@ -1,3 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 15:58:09 -0700
+Subject: [PATCH] Keep the AI's evaluation cache per thread
+
+AiCache is one process-wide map that compares cards by id. Games running side by side have cards
+with the same ids, so one game read another's evaluations. A cache per thread keeps each game's own.
+
+Goldfish-Upstream: rework first. Upstream's AI also thinks on worker threads, where a per-thread
+cache would stop sharing; keying the cache by game would fix both.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ forge-ai/src/main/java/forge/ai/AiCache.java | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
 diff --git a/forge-ai/src/main/java/forge/ai/AiCache.java b/forge-ai/src/main/java/forge/ai/AiCache.java
 index b98f7def..b6f343c8 100644
 --- a/forge-ai/src/main/java/forge/ai/AiCache.java

@@ -1,3 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 15:58:09 -0700
+Subject: [PATCH] Add a hook just before a cost's mana part is paid
+
+Forge decides every part of a cost before paying any. A host that replays a recorded payment has to
+produce the mana when the mana part is paid, after the other parts are decided, or a sacrifice choice
+sees lands tapped that weren't tapped in the original game.
+
+Goldfish-Upstream: local only, a replay hook for this host.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../src/main/java/forge/game/cost/CostDecisionMakerBase.java  | 4 ++++
+ forge-game/src/main/java/forge/game/cost/CostPayment.java     | 3 +++
+ 2 files changed, 7 insertions(+)
+
 diff --git a/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java b/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
 index eeec65b2..36235663 100644
 --- a/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
