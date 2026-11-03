@@ -19,6 +19,7 @@ import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
 import forge.game.cost.CostPayment;
+import forge.game.mana.Mana;
 import forge.game.GameActionUtil;
 import forge.game.combat.Combat;
 import forge.game.combat.CombatUtil;
@@ -32,6 +33,7 @@ import forge.game.spellability.OptionalCostValue;
 import forge.game.spellability.SpellAbility;
 import forge.game.trigger.WrappedAbility;
 import forge.game.zone.ZoneType;
+import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
@@ -535,7 +537,12 @@ public class ManualController extends PlayerControllerAi {
                 for (int i = 0; i < chosen.size(); i++) {
                     SpellAbility ability = manaAbilities.get(chosen.get(i) - 1);
                     List<String> colors = new ArrayList<>();
-                    while (i < chosen.size() && manaAbilities.get(chosen.get(i) - 1) == ability) {
+                    // As many colours as one activation makes: Crystalline Crawler's "add one mana of any colour",
+                    // picked twice in a row, is two activations.
+                    int makes = Math.max(1, ability.amountOfManaGenerated(false));
+                    boolean choosing = manaColors.get(chosen.get(i) - 1) != 0;
+                    for (int picks = 0; i < chosen.size() && manaAbilities.get(chosen.get(i) - 1) == ability
+                            && (choosing ? picks < makes : picks < 1); picks++) {
                         if (manaColors.get(chosen.get(i) - 1) != 0) {
                             colors.add(MagicColor.toShortString(manaColors.get(chosen.get(i) - 1)));
                         }
@@ -558,6 +565,13 @@ public class ManualController extends PlayerControllerAi {
         // An ability activated before keeps what paid for it last time; Forge's human play path clears this too.
         paying.clearManaPaid();
         paying.getPayingManaAbilities().clear();
+        // So do mana abilities that cost mana: what paid for each is recorded with this payment.
+        for (Card card : getPlayer().getCardsIn(ZoneType.Battlefield)) {
+            card.getManaAbilities().forEach(ability -> {
+                ability.clearManaPaid();
+                ability.getPayingManaAbilities().clear();
+            });
+        }
         try {
             paid = SeededRandom.thinking(() -> new CostPayment(paying.getPayCosts(), paying).payComputerCosts(new ManualCostDecision(this, paying, activated, activatedColors)));
         } finally {
@@ -624,40 +638,86 @@ public class ManualController extends PlayerControllerAi {
         if (!colors.isEmpty()) {
             ability.getManaPart().setExpressChoice(colors);
         }
-        if (new CostPayment(ability.getPayCosts(), ability).payComputerCosts(new AiCostDecision(getPlayer(), ability, false, true))) {
+        boolean paid = new CostPayment(ability.getPayCosts(), ability).payComputerCosts(new AiCostDecision(getPlayer(), ability, false, true));
+        if (paid) {
             getGame().getStack().addAndUnfreeze(ability);
         }
+        trace("mana " + Labels.ability(ability) + " " + colors + (paid ? "" : " (couldn't pay)") + " pool " + getPlayer().getManaPool().totalMana());
     }
 
     /** The options Forge's AI's payment amounts to: the abilities it activated, in order, with the colours they made. */
     private static List<Integer> activations(SpellAbility paid, List<SpellAbility> abilities, List<Byte> colors) {
         List<Integer> out = new ArrayList<>();
-        for (SpellAbility used : paid.getPayingManaAbilities()) {
-            List<Byte> produced = new ArrayList<>();
-            if (used.getManaPart() != null) {
-                used.getManaPart().getLastManaProduced().forEach(mana -> produced.add(mana.getColor()));
-            }
-            boolean found = false;
-            for (int i = 0; i < abilities.size() && !found; i++) {
-                SpellAbility listed = abilities.get(i);
-                if (listed != used && !(listed.getHostCard() == used.getHostCard() && listed.toString().equals(used.toString()))) {
-                    continue;
-                }
-                if (colors.get(i) == 0) {
-                    out.add(i + 1); // a fixed ability: one option
-                    found = true;
-                } else {
-                    // a choosing ability: one pick per colour it made, each the option for that colour
-                    for (byte color : produced) {
-                        for (int j = i; j < abilities.size() && abilities.get(j) == listed; j++) {
-                            if (colors.get(j) == color) {
-                                out.add(j + 1);
-                                found = true;
-                                break;
-                            }
-                        }
+        List<SpellAbility> used = paying(paid);
+        // An ability activated twice in one payment (Crystalline Crawler's "remove a counter: add one mana of
+        // any colour") remembers only its last mana; the mana spent says what each activation made, in order.
+        List<Mana> spent = new ArrayList<>(paid.getPayingMana());
+        used.forEach(ability -> spent.addAll(ability.getPayingMana()));
+        for (SpellAbility ability : used) {
+            if (ability.getPayCosts().hasManaCost()) {
+                // A mana ability that costs mana (Evendo's "{G}, {T}: Add {G} for each creature") may have been
+                // paid from the pool, by a source no list names; each mana it spent knows its source.
+                for (Mana mana : ability.getPayingMana()) {
+                    SpellAbility source = mana.getManaAbility() == null ? null : mana.getManaAbility().getSourceSA();
+                    if (source != null && used.stream().noneMatch(other -> same(other, source))) {
+                        option(out, abilities, colors, source, List.of(mana.getColor()));
                     }
                 }
+            }
+            List<Byte> produced = new ArrayList<>();
+            if (ability.getManaPart() != null) {
+                ability.getManaPart().getLastManaProduced().forEach(mana -> produced.add(mana.getColor()));
+            }
+            if (used.stream().filter(other -> other == ability).count() > 1 && produced.size() == 1) {
+                Mana mine = spent.stream().filter(mana -> mana.getManaAbility() == ability.getManaPart()).findFirst().orElse(null);
+                if (mine != null) {
+                    spent.remove(mine);
+                    produced.set(0, mine.getColor());
+                }
+            }
+            option(out, abilities, colors, ability, produced);
+        }
+        return out;
+    }
+
+    private static boolean same(SpellAbility listed, SpellAbility used) {
+        return listed == used || listed.getHostCard() == used.getHostCard() && listed.toString().equals(used.toString());
+    }
+
+    /** Adds the option for an activation: once for a fixed ability, once per colour made for a choosing one. */
+    private static void option(List<Integer> out, List<SpellAbility> abilities, List<Byte> colors, SpellAbility used, List<Byte> produced) {
+        for (int i = 0; i < abilities.size(); i++) {
+            SpellAbility listed = abilities.get(i);
+            if (!same(listed, used)) {
+                continue;
+            }
+            if (colors.get(i) == 0) {
+                out.add(i + 1);
+                return;
+            }
+            for (byte color : produced) {
+                for (int j = i; j < abilities.size() && abilities.get(j) == listed; j++) {
+                    if (colors.get(j) == color) {
+                        out.add(j + 1);
+                        break;
+                    }
+                }
+            }
+            return;
+        }
+    }
+
+    /**
+     * The mana abilities a payment used, each preceded by those that paid its own cost: a Station land's
+     * "{G}, {T}: Add {G} for each creature" had its {G} paid by another land, which the spell's own list
+     * leaves out.
+     */
+    private static List<SpellAbility> paying(SpellAbility paid) {
+        List<SpellAbility> out = new ArrayList<>();
+        for (SpellAbility used : paid.getPayingManaAbilities()) {
+            if (used != paid) {
+                paying(used).stream().filter(nested -> !out.contains(nested)).forEach(out::add);
+                out.add(used);
             }
         }
         return out;
@@ -935,7 +995,7 @@ public class ManualController extends PlayerControllerAi {
     public CardCollectionView chooseCardsForEffect(CardCollectionView sourceList, SpellAbility sa, String title, int min,
                                                    int max, boolean isOptional, Map<String, Object> params) {
         return new CardCollection(choose("choose", clean(title) + source(sa), sourceList, this::cardLabel, isOptional ? 0 : min, max,
-                () -> super.chooseCardsForEffect(sourceList, sa, title, min, max, isOptional, params)));
+                () -> super.chooseCardsForEffect(new CardCollection(sourceList), sa, title, min, max, isOptional, params)));
     }
 
     @Override
@@ -946,7 +1006,7 @@ public class ManualController extends PlayerControllerAi {
             session.recorder.look(delayedReveal.getCards(), "revealed" + source(sa));
         }
         List<T> chosen = choose("choose", clean(title) + source(sa), optionList, e -> Labels.entity(e, getPlayer()), isOptional ? 0 : 1, 1, () -> {
-            T picked = super.chooseSingleEntityForEffect(optionList, delayedReveal, sa, title, isOptional, relatedPlayer, params);
+            T picked = super.chooseSingleEntityForEffect(new FCollection<>(optionList), delayedReveal, sa, title, isOptional, relatedPlayer, params);
             return picked == null ? List.<T>of() : List.of(picked);
         });
         return chosen.isEmpty() ? null : chosen.get(0);
@@ -960,7 +1020,7 @@ public class ManualController extends PlayerControllerAi {
             session.recorder.look(delayedReveal.getCards(), "revealed" + source(sa));
         }
         return choose("choose", clean(title) + source(sa), optionList, e -> Labels.entity(e, getPlayer()), min, max,
-                () -> super.chooseEntitiesForEffect(optionList, min, max, delayedReveal, sa, title, relatedPlayer, params));
+                () -> super.chooseEntitiesForEffect(new FCollection<>(optionList), min, max, delayedReveal, sa, title, relatedPlayer, params));
     }
 
     @Override
@@ -970,7 +1030,7 @@ public class ManualController extends PlayerControllerAi {
             session.recorder.look(fetchList, "searched" + source(sa));
         }
         List<Card> chosen = choose("choose", clean(selectPrompt) + source(sa), fetchList, this::cardLabel, isOptional ? 0 : 1, 1, () -> {
-            Card card = super.chooseSingleCardForZoneChange(destination, origin, sa, fetchList, delayedReveal, selectPrompt, isOptional, decider);
+            Card card = super.chooseSingleCardForZoneChange(destination, origin, sa, new CardCollection(fetchList), delayedReveal, selectPrompt, isOptional, decider);
             return card == null ? List.<Card>of() : List.of(card);
         });
         return chosen.isEmpty() ? null : chosen.get(0);
@@ -979,14 +1039,14 @@ public class ManualController extends PlayerControllerAi {
     @Override
     public CardCollectionView choosePermanentsToSacrifice(SpellAbility sa, int min, int max, CardCollectionView validTargets, String message) {
         return new CardCollection(choose("choose", "sacrifice" + source(sa), validTargets, this::cardLabel, min, max,
-                () -> super.choosePermanentsToSacrifice(sa, min, max, validTargets, message)));
+                () -> super.choosePermanentsToSacrifice(sa, min, max, new CardCollection(validTargets), message)));
     }
 
     @Override
     public CardCollection chooseCardsToDiscardFrom(Player playerDiscard, SpellAbility sa, CardCollection validCards,
                                                    int min, int max, CardCollectionView visibleToChooser) {
         return new CardCollection(choose("choose", "discard" + source(sa), validCards, this::cardLabel, min, max,
-                () -> super.chooseCardsToDiscardFrom(playerDiscard, sa, validCards, min, max, visibleToChooser)));
+                () -> super.chooseCardsToDiscardFrom(playerDiscard, sa, new CardCollection(validCards), min, max, visibleToChooser)));
     }
 
     @Override
@@ -999,7 +1059,7 @@ public class ManualController extends PlayerControllerAi {
     public ImmutablePair<CardCollection, CardCollection> arrangeForScry(CardCollection topN) {
         session.recorder.look(topN, "scry");
         List<Card> bottom = choose("choose", "scry " + topN.size() + ": cards to put on the bottom", topN, this::cardLabel,
-                0, topN.size(), () -> super.arrangeForScry(topN).getRight());
+                0, topN.size(), () -> super.arrangeForScry(new CardCollection(topN)).getRight());
         CardCollection top = new CardCollection(topN);
         top.removeAll(bottom);
         return ImmutablePair.of(top, new CardCollection(bottom));
@@ -1009,7 +1069,7 @@ public class ManualController extends PlayerControllerAi {
     public ImmutablePair<CardCollection, CardCollection> arrangeForSurveil(CardCollection topN) {
         session.recorder.look(topN, "surveil");
         List<Card> graveyard = choose("choose", "surveil " + topN.size() + ": cards to put in the graveyard", topN, this::cardLabel,
-                0, topN.size(), () -> super.arrangeForSurveil(topN).getRight());
+                0, topN.size(), () -> super.arrangeForSurveil(new CardCollection(topN)).getRight());
         CardCollection top = new CardCollection(topN);
         top.removeAll(graveyard);
         return ImmutablePair.of(top, new CardCollection(graveyard));
@@ -1028,7 +1088,7 @@ public class ManualController extends PlayerControllerAi {
     @Override
     public CardCollectionView tuckCardsViaMulligan(CardCollectionView hand, int cardsToReturn) {
         return new CardCollection(choose("choose", "put " + cardsToReturn + " on the bottom", hand, this::cardLabel,
-                cardsToReturn, cardsToReturn, () -> super.tuckCardsViaMulligan(hand, cardsToReturn)));
+                cardsToReturn, cardsToReturn, () -> super.tuckCardsViaMulligan(new CardCollection(hand), cardsToReturn)));
     }
 
     @Override

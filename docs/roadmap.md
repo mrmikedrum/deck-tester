@@ -22,8 +22,11 @@ Done when a tested, reproducible upstream engine/resource pin supports the reque
 - More advisor roles as decks need them (`goldfish/advice.py`): sacrifice outlets, untap effects, cost
   reducers; and a scenario for each role that gets a line.
 - Confirm the after-line on 40 games against the baseline (it is measured on the bench only).
-- Fork drift under parallel load (architecture, "Measured: forks"): find the remaining shared state in
-  Forge that games running side by side disturb; sequential replay is exact.
+- New mechanics can add AI choices the log misses: run `bench/fidelity.py ai` on a new deck before trusting
+  comparisons on it, and fix any drift it names (architecture, "Measured: forks").
+- Station: Jev stations past a Spacecraft's threshold (one Atraxa game tapped seven creatures a turn up
+  to 44 charge counters); every line looks the same in development terms. A threshold fact in the deck's
+  advisor is the likely fix.
 
 ## Later
 

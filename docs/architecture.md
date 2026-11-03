@@ -197,7 +197,9 @@ line, so the default compares *lines played out by Forge's AI*:
 
 Since a line runs into the next turn, these batches run the engine two turns past `--turns` and end each
 game themselves; reports ignore the extra turns. A fork that doesn't replay into the same game is counted
-as drifted and that decision is asked plain.
+as drifted and that decision is asked plain. The report counts drifted forks and the decisions asked plain
+because of them, and names a game whose forks all failed from some turn on: the game itself left what its
+log replays, so the rest of it was played without lookahead.
 
 **Failed calls:** a call the API never answers after six retries hands that one decision to Forge's AI and
 is counted in the report (`calls failed`), rather than ending a 30-minute batch, which a single outage did.
@@ -279,9 +281,16 @@ Replaying exactly needed Forge's AI kept out of the game's state, each found by 
   game state and both consulted when checking what can be paid for; the controller clears them around
   that check;
 - it leaves the X it weighed on the ability; the controller resets X before listing plays;
-- it takes triggers out of the list it is given while ordering them; the controller hands it a copy;
+- it reorders or empties the lists it is given (triggers while ordering them, search results while picking
+  one), and a fork, which never asks it, sees them as Forge left them; the controller hands it copies;
 - it makes scratch cards while weighing, so later card ids differ; the fingerprint ignores ids and sorts
   the stack, whose triggers may be ordered by id;
+- Forge numbers triggers, abilities, static abilities and replacement effects from process-wide counters,
+  compares them by those numbers, and sets the trigger counter back each time a game starts. With games
+  side by side, a running game was handed numbers its own triggers had and lost one of them (Maturation
+  Chamber stopped counting casts; Warp Speed's enters trigger never fired), so the original game left what
+  its log replays and every later fork failed. A patch in `scripts/forge-patches/` makes the counters
+  atomic and lets a reset only raise them; each game also builds from its own copy of the deck;
 - it caches evaluations in a process-wide map that only its own play choice clears; the controller clears
   it at every priority, or games whose plays are chosen by others leak every card they ever saw. The map
   also compared cards by id across games, so games running side by side read each other's evaluations: a
@@ -296,7 +305,12 @@ Replaying exactly needed Forge's AI kept out of the game's state, each found by 
 
 The mana abilities Forge's AI activated to pay, in order and with the colours they made, are logged as its
 `pay` answer (the spell's own list of them, which Forge's AI path never clears between activations of the
-same ability, so the controller does), and a fork activates exactly those, then pays from the pool.
+same ability, so the controller does), and a fork activates exactly those, then pays from the pool. Two
+cases needed more than the spell's list. A mana ability that costs mana (a Station land's "{G}, {T}: Add
+{G} for each creature") may be paid from the pool by a source no list names, so the mana it spent supplies
+that source, and a fork activates such abilities last, from the pool. An ability activated twice in one
+payment (Crystalline Crawler's "add one mana of any colour") remembers only its last colour, so each
+activation takes its colour from the mana spent.
 
 ## Snapshots and overrides
 
@@ -437,10 +451,15 @@ at single picks, and every kind parked and handed to the AI (`bench/fidelity.py`
 | every kind parked | 39 | 5 | 0.26 s / 0.52 s / 1.25 s |
 
 After the isolations listed under Forks, with games one at a time: 45 of 45 scripted forks and 43 of 44
-with Forge's AI answering replayed exactly, across all four decks. Four at a time: 44 of 45 scripted, and
-about 38 of 44 with Forge's AI answering, so the drift left is cross-game interference between games that
-run side by side and the AI's own payment side effects under it, not anything a deck does. Before the
-isolations it was 21 of 32. Each drift is caught (a decision or fingerprint mismatch, named in the error
+with Forge's AI answering replayed exactly, across all four decks. Before the isolations it was 21 of 32.
+
+Rechecked November 3 on six lists (the four decks plus Deckmaster's two current Eternities builds, which
+add Station lands, Spacecraft and Crystalline Crawler), eight seeds, forks at turns 3, 5, 7 and 8. Before
+this round's fixes, 30 of 40 forks with Forge's AI answering replayed one at a time, and Deckmaster's
+two-game batches lost lookahead on up to 46% of decisions. The fixes were the search-list copies, the
+mana payment cases under Forks and the id counters. After them, six games at a time: 187 of 187 scripted
+and 185 of 185 with Forge's AI answering replayed exactly. Four reruns of Deckmaster's batches played out
+2,275 lines with none drifted. Each drift is caught (a decision or fingerprint mismatch, named in the error
 and the parent's record) and that decision is asked plain. `GOLDFISH_TRACE=1` in the engine's environment
 logs every priority and attack for tracing a new one. A `scripted` mode of `bench/fidelity.py` answers
 every decision by rule, so games repeat exactly and a drift there is reproducible.

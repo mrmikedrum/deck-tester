@@ -53,6 +53,8 @@ def play(deck, seed, mode, fork_turns, last):
                     a = {"answer": [d["min"]]}
                 elif d["kind"] == "pay":
                     a = {"answer": []}
+                elif d.get("repeat") or d["min"] > len(d["options"]):
+                    a = {"answer": [1] * d["min"]}  # repeats allowed (a die, a split of counters)
                 else:
                     a = {"answer": list(range(1, d["min"] + 1))}
             else:

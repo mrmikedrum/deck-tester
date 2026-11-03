@@ -1,0 +1,153 @@
+diff --git a/forge-game/src/main/java/forge/game/Game.java b/forge-game/src/main/java/forge/game/Game.java
+index 0271c771..62cb44aa 100644
+--- a/forge-game/src/main/java/forge/game/Game.java
++++ b/forge-game/src/main/java/forge/game/Game.java
+@@ -65,8 +65,8 @@ public class Game {
+ 
+     private static final TaggedLogger netLog = Logger.tag("NETWORK");
+ 
+-    private static int maxId = 0;
+-    private static int nextId() { return ++maxId; }
++    private static final java.util.concurrent.atomic.AtomicInteger maxId = new java.util.concurrent.atomic.AtomicInteger(); // games run on several threads
++    private static int nextId() { return maxId.incrementAndGet(); }
+ 
+     private boolean noGUIUser;
+ 
+diff --git a/forge-game/src/main/java/forge/game/card/Card.java b/forge-game/src/main/java/forge/game/card/Card.java
+index 6900bdbb..034c5b19 100644
+--- a/forge-game/src/main/java/forge/game/card/Card.java
++++ b/forge-game/src/main/java/forge/game/card/Card.java
+@@ -7620,7 +7620,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return CardFactory.getCard(pc, owner, owner == null ? null : owner.getGame());
+     }
+ 
+-    private static final Map<PaperCard, Card> cp2card = Maps.newHashMap();
++    private static final Map<PaperCard, Card> cp2card = new java.util.concurrent.ConcurrentHashMap<>();
+     public static Card getCardForUi(IPaperCard pc) {
+         if (pc instanceof PaperCard) {
+             Card res = cp2card.get(pc);
+diff --git a/forge-game/src/main/java/forge/game/card/CounterCustomType.java b/forge-game/src/main/java/forge/game/card/CounterCustomType.java
+index d9a72808..e32d6a9a 100644
+--- a/forge-game/src/main/java/forge/game/card/CounterCustomType.java
++++ b/forge-game/src/main/java/forge/game/card/CounterCustomType.java
+@@ -7,7 +7,7 @@ import java.util.LinkedHashSet;
+ import com.google.common.collect.Maps;
+ 
+ public record CounterCustomType(String keyword) implements CounterType {
+-    private static Map<String, CounterCustomType> sMap = Maps.newHashMap();
++    private static Map<String, CounterCustomType> sMap = new java.util.concurrent.ConcurrentHashMap<>();
+ 
+     public static CounterCustomType get(String s) {
+         if (!sMap.containsKey(s)) {
+diff --git a/forge-game/src/main/java/forge/game/card/CounterKeywordType.java b/forge-game/src/main/java/forge/game/card/CounterKeywordType.java
+index 2a4dede7..efcff10b 100644
+--- a/forge-game/src/main/java/forge/game/card/CounterKeywordType.java
++++ b/forge-game/src/main/java/forge/game/card/CounterKeywordType.java
+@@ -17,7 +17,7 @@ public record CounterKeywordType(KeywordView keyword) implements CounterType {
+     static ImmutableList<String> keywordCounter = ImmutableList.of(
+             "Flying", "First Strike", "Double Strike", "Deathtouch", "Decayed", "Exalted", "Haste", "Hexproof",
+             "Indestructible", "Lifelink", "Menace", "Reach", "Shadow", "Trample", "Vigilance");
+-    private static Map<String, CounterKeywordType> sMap = Maps.newHashMap();
++    private static Map<String, CounterKeywordType> sMap = new java.util.concurrent.ConcurrentHashMap<>();
+ 
+     public static CounterKeywordType get(String s) {
+         if (!sMap.containsKey(s)) {
+diff --git a/forge-game/src/main/java/forge/game/keyword/Keyword.java b/forge-game/src/main/java/forge/game/keyword/Keyword.java
+index 646f3131..06bfe103 100644
+--- a/forge-game/src/main/java/forge/game/keyword/Keyword.java
++++ b/forge-game/src/main/java/forge/game/keyword/Keyword.java
+@@ -292,7 +292,7 @@ public enum Keyword {
+         return getKeywordDetails(k).getKey();
+     }
+ 
+-    private static final Map<String, Set<Keyword>> cardKeywordSetLookup = new HashMap<>();
++    private static final Map<String, Set<Keyword>> cardKeywordSetLookup = new java.util.concurrent.ConcurrentHashMap<>();
+ 
+     public static Set<Keyword> getKeywordSet(PaperCard card) {
+         String name = card.getName();
+diff --git a/forge-game/src/main/java/forge/game/replacement/ReplacementEffect.java b/forge-game/src/main/java/forge/game/replacement/ReplacementEffect.java
+index fa5ebf3f..245dda84 100644
+--- a/forge-game/src/main/java/forge/game/replacement/ReplacementEffect.java
++++ b/forge-game/src/main/java/forge/game/replacement/ReplacementEffect.java
+@@ -44,8 +44,8 @@ import forge.util.TextUtil;
+  *
+  */
+ public abstract class ReplacementEffect extends TriggerReplacementBase {
+-    private static int maxId = 0;
+-    private static int nextId() { return ++maxId; }
++    private static final java.util.concurrent.atomic.AtomicInteger maxId = new java.util.concurrent.atomic.AtomicInteger(); // games run on several threads
++    private static int nextId() { return maxId.incrementAndGet(); }
+ 
+     /** The ID. */
+     private int id;
+diff --git a/forge-game/src/main/java/forge/game/spellability/SpellAbility.java b/forge-game/src/main/java/forge/game/spellability/SpellAbility.java
+index db4beef0..6b44b16b 100644
+--- a/forge-game/src/main/java/forge/game/spellability/SpellAbility.java
++++ b/forge-game/src/main/java/forge/game/spellability/SpellAbility.java
+@@ -75,8 +75,8 @@ import forge.game.zone.ZoneType;
+  * @version $Id$
+  */
+ public abstract class SpellAbility extends CardTraitBase implements ISpellAbility, IIdentifiable, Comparable<SpellAbility> {
+-    private static int maxId = 0;
+-    private static int nextId() { return ++maxId; }
++    private static final java.util.concurrent.atomic.AtomicInteger maxId = new java.util.concurrent.atomic.AtomicInteger(); // games run on several threads
++    private static int nextId() { return maxId.incrementAndGet(); }
+ 
+     public static class EmptySa extends SpellAbility {
+         public EmptySa(Card sourceCard) { super(sourceCard, Cost.Zero); setActivatingPlayer(sourceCard.getController());}
+diff --git a/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java b/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
+index bbee2448..1c312236 100644
+--- a/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
++++ b/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
+@@ -38,8 +38,8 @@ import forge.util.TextUtil;
+  * @version $Id$
+  */
+ public class SpellAbilityStackInstance implements IIdentifiable, IHasCardView {
+-    private static int maxId = 0;
+-    public static int nextId() { return ++maxId; }
++    private static final java.util.concurrent.atomic.AtomicInteger maxId = new java.util.concurrent.atomic.AtomicInteger(); // games run on several threads
++    public static int nextId() { return maxId.incrementAndGet(); }
+ 
+     // At some point I want this functioning more like Target/Target Choices
+     // where the SA has an "active"
+diff --git a/forge-game/src/main/java/forge/game/staticability/StaticAbility.java b/forge-game/src/main/java/forge/game/staticability/StaticAbility.java
+index 2a8bbe57..d4a40518 100644
+--- a/forge-game/src/main/java/forge/game/staticability/StaticAbility.java
++++ b/forge-game/src/main/java/forge/game/staticability/StaticAbility.java
+@@ -51,8 +51,8 @@ import forge.util.*;
+  * The Class StaticAbility.
+  */
+ public class StaticAbility extends CardTraitBase implements IIdentifiable, Cloneable, Comparable<StaticAbility> {
+-    private static int maxId = 0;
+-    private static int nextId() { return ++maxId; }
++    private static final java.util.concurrent.atomic.AtomicInteger maxId = new java.util.concurrent.atomic.AtomicInteger(); // games run on several threads
++    private static int nextId() { return maxId.incrementAndGet(); }
+ 
+     private int id;
+ 
+diff --git a/forge-game/src/main/java/forge/game/trigger/Trigger.java b/forge-game/src/main/java/forge/game/trigger/Trigger.java
+index 743c627c..72ea9bec 100644
+--- a/forge-game/src/main/java/forge/game/trigger/Trigger.java
++++ b/forge-game/src/main/java/forge/game/trigger/Trigger.java
+@@ -52,8 +52,8 @@ import java.util.*;
+  * @version $Id$
+  */
+ public abstract class Trigger extends TriggerReplacementBase {
+-    private static int maxId = 0;
+-    private static int nextId() { return ++maxId; }
++    private static final java.util.concurrent.atomic.AtomicInteger maxId = new java.util.concurrent.atomic.AtomicInteger(); // games run on several threads
++    private static int nextId() { return maxId.incrementAndGet(); }
+ 
+     /**
+      * <p>
+@@ -61,7 +61,9 @@ public abstract class Trigger extends TriggerReplacementBase {
+      * </p>
+      */
+     public static void resetIDs() {
+-        Trigger.maxId = 50000;
++        // Raise only: games running side by side share this counter, and setting it back hands a running game
++        // ids its triggers already have; triggers compare equal by id, so one would be lost.
++        Trigger.maxId.accumulateAndGet(50000, Math::max);
+     }
+ 
+     /** The ID. */

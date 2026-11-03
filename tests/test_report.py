@@ -28,6 +28,22 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(s["mulligans"], 1)
         self.assertEqual(s["damage"], {1: 0, 2: 3})
 
+    def test_forks_and_lost_lookahead(self):
+        def fork(turn, failed=None):
+            return {"t": "fork", "turn": turn, "session": "g9", "failed": failed}
+
+        stray = report.game_summary(GAME + [fork(1), fork(1, "drift"), fork(2), fork(2)], [])
+        self.assertEqual((stray["forks"], stray["forks_failed"], stray["blind"]), (4, 1, None))
+        # Every fork failing from a turn on means the game left its own replay there.
+        blind = report.game_summary(GAME + [fork(1), fork(1, "drift"), fork(1), fork(2, "x"), fork(2, "x"), fork(3, "x")], [])
+        self.assertEqual((blind["forks_failed"], blind["blind"]), (4, 2))
+        manifest = {"id": "b1", "deck": "d", "hash": "h", "turns": 2, "seconds": 1.0,
+                    "model": {"model": "m", "calls": 1, "cost": 0.0, "seconds_per_call": 0.1, "drifted": 2},
+                    "games": [{"seed": 7, "session": "g1"}]}
+        text = "\n".join(report.summary(manifest, [blind]))
+        self.assertIn("forks: 4 of 6 drifted", text)
+        self.assertIn("g1 from T2", text)
+
     def test_report_lines(self):
         manifest = {"id": "b1", "deck": "marath", "hash": "abc", "pilot": None, "turns": 2, "seconds": 1.0,
                     "ai_avoids": ["Marath, Will of the Wild"], "games": [{"seed": 7, "session": "g1"}]}

@@ -57,9 +57,11 @@ bin/goldfish run /tmp/eternities-nature.txt --games 2 --turns 8 --pilot examples
 bin/goldfish run /tmp/eternities-assimilation.txt --games 2 --turns 8 --pilot examples/pilots/atraxa_advisor.py --guide examples/plans/assimilation.txt --hybrid outcomes
 ```
 
-Check the manifest's `pilot` and `hybrid`, and the model's played-out-line and drift counts. A replay
-mismatch discards that lookahead and falls back to text-only selection; completed games do not prove
-all decisions received valid lookahead. The advisor still supplies facts on that fallback path.
+Check the manifest's `pilot` and `hybrid`, and the report's model line. A fork that doesn't replay into
+the same game is dropped and that decision is picked from the text alone; the report counts drifted forks
+and names any game that lost lookahead from some turn on. On a new deck, `python3 bench/fidelity.py ai
+DECK` checks that its forks replay before you trust comparisons. The advisor's facts reach the model
+either way.
 
 
 ```bash

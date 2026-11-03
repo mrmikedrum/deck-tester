@@ -2,7 +2,7 @@
 
 import statistics
 from collections import Counter, defaultdict
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from . import records
 
@@ -19,6 +19,7 @@ def game_summary(facts: List[dict], commanders: List[str]) -> dict:
     opponents = 3
     local_cards = None
     deciders = Counter()
+    forks: List[Tuple[int, bool]] = []  # (turn, replayed) for each fork made from this game
     for fact in facts:
         kind, turn = fact["t"], fact.get("turn", 0)
         if kind == "start":
@@ -32,13 +33,23 @@ def game_summary(facts: List[dict], commanders: List[str]) -> dict:
             spells[turn] += 1
             if commander_turn is None and fact["card"] in commanders:
                 commander_turn = turn
+        elif kind == "fork":
+            forks.append((turn, not fact.get("failed")))
         elif kind == "decision":
             if fact.get("by") != "forced":
                 deciders[f"ai ({fact['via']} chose Forge)" if fact.get("via") else fact.get("by")] += 1
             if fact.get("kind") == "mulligan" and fact.get("answer") == ["mulligan"]:
                 mulligans += 1
     last = max(turns) if turns else 0
-    return {"local_cards": local_cards, "turns": turns, "last": last, "missed": [t for t in range(1, last + 1) if not lands_played[t]],
+    # When the game itself leaves what its log replays, every later fork fails: the rest of the game is
+    # decided without lookahead. That shows as a run of failures to the end, not one stray drift.
+    blind = None
+    for index, (fork_turn, replayed) in enumerate(forks):
+        if not replayed and len(forks) - index >= 3 and not any(ok for _, ok in forks[index:]):
+            blind = fork_turn
+            break
+    return {"forks": len(forks), "forks_failed": sum(1 for _, ok in forks if not ok), "blind": blind,
+            "local_cards": local_cards, "turns": turns, "last": last, "missed": [t for t in range(1, last + 1) if not lands_played[t]],
             "spells": spells, "commander": commander_turn, "mulligans": mulligans, "deciders": deciders,
             "damage": {t: STARTING_LIFE * opponents - turns[t]["opponents_life"] for t in turns}}
 
@@ -67,7 +78,13 @@ def summary(manifest: dict, summaries: List[dict]) -> List[str]:
                      + (f" · {used['failed']} calls failed (Forge's AI decided)" if used.get("failed") else "")
                      + f" · {used.get('played_out', 0)} lines played out"
                      + (f" ({used['fork_ms']} ms a fork)" if used.get("fork_ms") else "")
-                     + (f" · {used['drifted']} forks drifted" if used.get("drifted") else ""))
+                     + (f" · {used['drifted']} decisions without lookahead (a fork drifted)" if used.get("drifted") else ""))
+        failed, made = sum(s["forks_failed"] for s in summaries), sum(s["forks"] for s in summaries)
+        if failed:
+            lines.append(f"forks: {failed} of {made} drifted")
+        blind = [f"{game['session']} from T{s['blind']}" for game, s in zip(games, summaries) if s["blind"]]
+        if blind:
+            lines.append("lookahead lost for the rest of the game (the game left its own replay): " + ", ".join(blind))
     deciders = sum((s["deciders"] for s in summaries), Counter())
     if set(deciders) - {"ai"}:
         total = sum(deciders.values())
@@ -121,6 +138,8 @@ def per_game(manifest: dict, summaries: List[dict]) -> List[str]:
             parts.append(f"T{last} lands {s['turns'][last]['lands']} mana {s['turns'][last]['mana']} dmg {s['damage'][last]}")
         if s["missed"]:
             parts.append("missed drop " + ",".join(f"T{t}" for t in s["missed"]))
+        if s["forks_failed"]:
+            parts.append(f"forks {s['forks_failed']}/{s['forks']} drifted" + (f", none replayed from T{s['blind']}" if s["blind"] else ""))
         if game.get("loop_guard"):
             parts.append(f"loop guard T{game['loop_guard']}")
         if game.get("over") not in (None, "turn limit"):

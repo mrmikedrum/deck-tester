@@ -180,8 +180,14 @@ final class Session {
             random = SeededRandom.seed(setup.seed());
             long began = System.nanoTime();
             try {
+                // Forks share their parent's setup and start several at once; Forge's Deck loads sections lazily
+                // and isn't safe to build games from on several threads, so each game gets its own copy.
+                Deck deck;
+                synchronized (setup.deck()) {
+                    deck = new Deck(setup.deck());
+                }
                 List<RegisteredPlayer> players = new ArrayList<>();
-                players.add(RegisteredPlayer.forCommander(setup.deck())
+                players.add(RegisteredPlayer.forCommander(deck)
                         .setPlayer(new Seat(PILOT, (g, p, l) -> new ManualController(g, p, l, this))));
                 for (int i = 1; i <= setup.opponents(); i++) {
                     players.add(RegisteredPlayer.forCommander(passiveDeck())

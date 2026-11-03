@@ -45,8 +45,15 @@ final class ManualCostDecision extends AiCostDecision {
      */
     @Override
     public void beforePayingMana(CostPartMana part) {
-        for (int i = 0; i < plan.size(); i++) {
-            controller.activate(plan.get(i), planColors.get(i));
+        // A mana ability that itself costs mana (a Station land's "{G}, {T}: Add {G} for each creature") was
+        // paid by another source in Forge's AI's payment, and that source is in the plan too. Activating the
+        // free abilities first puts its mana in the pool, where the costly ability's cost is paid from.
+        for (boolean costly : new boolean[] {false, true}) {
+            for (int i = 0; i < plan.size(); i++) {
+                if (plan.get(i).getPayCosts().hasManaCost() == costly) {
+                    controller.activate(plan.get(i), planColors.get(i));
+                }
+            }
         }
     }
 
