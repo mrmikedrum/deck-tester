@@ -1,0 +1,10 @@
+Name:Conquest Mission
+ManaCost:2 W
+Types:Enchantment
+T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Artifact.YouCtrl+!token | TriggerZones$ Battlefield | Execute$ TrigCounter | TriggerDescription$ Whenever a nontoken artifact you control enters, put a quest counter on CARDNAME. Create a 1/1 colorless Borg artifact creature token. If CARDNAME has six or more quest counters on it, create two of those tokens instead.
+SVar:TrigCounter:DB$ PutCounter | Defined$ Self | CounterType$ QUEST | CounterNum$ 1 | SubAbility$ DBToken
+SVar:DBToken:DB$ Token | TokenScript$ c_1_1_a_borg | TokenAmount$ X
+SVar:Raw:Count$CardCounters.QUEST/Minus.4
+SVar:Floor:SVar$Raw/LimitMin.1
+SVar:X:SVar$Floor/LimitMax.2
+Oracle:Whenever a nontoken artifact you control enters, put a quest counter on this enchantment. Create a 1/1 colorless Borg artifact creature token. If this enchantment has six or more quest counters on it, create two of those tokens instead.

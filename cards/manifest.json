@@ -1,0 +1,90 @@
+{
+  "borg_scout_sphere.txt": {
+    "name": "Borg Scout Sphere",
+    "origin": "local-script",
+    "analogue": "e/exploration_broodship.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3A4cfb6f06-137c-4b41-97ef-6710e899473b",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "conquest_mission.txt": {
+    "name": "Conquest Mission",
+    "origin": "local-script",
+    "analogue": "t/titan_forge.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3A35906166-71d1-4089-bbe4-4055edb81fb0",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "cooption_adjutant.txt": {
+    "name": "Co-Option Adjutant",
+    "origin": "local-script",
+    "analogue": "s/sharding_sphinx.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3Acaafecc0-adfa-478c-8a9d-234d4069300b",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "final_frontier.txt": {
+    "name": "Final Frontier",
+    "origin": "local-script",
+    "analogue": "r/rampant_growth.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3A26f7e903-2a00-4878-b8b7-d5abe35c9526",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "genesis_device.txt": {
+    "name": "Genesis Device",
+    "origin": "local-script",
+    "analogue": "s/scapeshift.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3Abb86849c-fdec-4ca5-a8c0-ed682d921759",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "hit_it.txt": {
+    "name": "Hit It!",
+    "origin": "local-script",
+    "analogue": "s/satyr_wayfinder.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3A62361438-3da4-4ce9-95b8-fc361b824f58",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "locutus_of_borg.txt": {
+    "name": "Locutus of Borg",
+    "origin": "local-script",
+    "analogue": "s/sharding_sphinx.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3Ad0cff43a-2a22-4e05-9f71-983cb297989f",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "maturation_chamber.txt": {
+    "name": "Maturation Chamber",
+    "origin": "local-script",
+    "analogue": "t/titan_forge.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3A585511e1-4cca-4e70-963d-56f98ae49c29",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "stable_wormhole.txt": {
+    "name": "Stable Wormhole",
+    "origin": "local-script",
+    "analogue": "s/seasoned_dungeoneer.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3Adba55309-cb21-42db-8968-8da07227a1be",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:30:26.976Z"
+  },
+  "uss_discovery_at_black_alert.txt": {
+    "name": "U.S.S. Discovery, at Black Alert",
+    "origin": "local-script",
+    "analogue": "e/exploration_broodship.txt + q/quintorius_kand.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3A13dbfe3f-1e04-4c4f-953c-7c949dba9d33",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  },
+  "warp_speed.txt": {
+    "name": "Warp Speed",
+    "origin": "local-script",
+    "analogue": "s/spelunking.txt + s/sylvan_scrying.txt",
+    "rules_source": "https://api.scryfall.com/cards/search?q=oracleid%3A5a824931-2b65-42b1-8653-d4313a6693d2",
+    "checked_upstream": "7c34365c749ca46ab71336c5f267340d6088e600",
+    "rules_retrieved_at": "2026-10-31T16:29:35.787191+00:00"
+  }
+}

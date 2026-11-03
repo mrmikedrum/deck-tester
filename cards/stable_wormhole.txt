@@ -1,0 +1,6 @@
+Name:Stable Wormhole
+ManaCost:2 G
+Types:Enchantment
+T:Mode$ AttackersDeclared | AttackingPlayer$ You | TriggerZones$ Battlefield | Execute$ TrigPlanet | TriggerDescription$ Whenever you attack, create a tapped Planet land token named New Planet with "{T}: Add one mana of any color."
+SVar:TrigPlanet:DB$ Token | TokenScript$ new_planet | TokenAmount$ 1 | TokenTapped$ True
+Oracle:Whenever you attack, create a tapped Planet land token named New Planet with "{T}: Add one mana of any color."

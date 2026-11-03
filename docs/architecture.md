@@ -278,9 +278,20 @@ new effects. A waiting `play` decision is asked again afterwards, so its options
 installs forge-core, forge-game and forge-ai into the local Maven repository, with no GUI modules. Card
 scripts come only from `vendor/forge/forge-gui/res/cardsfolder`; the live `Forge.start` has no custom-card
 reader. Headless startup (`engine/.../Forge.java`) is the card-data part of forge-gui's `FModel.initialize`.
-There is no long-lived fork. Mike's October 31 correction supersedes the local new-card overlay plan:
-Forge-maintained upstream resources are authoritative for card behavior. Local text-to-rules translations
-create a second implementation that can drift.
+There is no long-lived engine fork. Prefer Forge-maintained scripts; Mike's November 2 instruction
+also permits native, script-only card contributions using existing engine mechanics and analogous
+upstream cards, with behavior tests and verified replacement when upstream catches up.
+
+### Script-only card additions
+
+Mike's November 2 instruction supersedes the October 31 prohibition on locally authored card scripts.
+[`skills/forge-cards/SKILL.md`](../skills/forge-cards/SKILL.md) owns the maintenance procedure. Native
+scripts live in `cards/`, with provenance in its manifest; `goldfish.card_resources` synchronizes them
+into the ordinary upstream resource reader at idle startup. It stops on duplicate upstream names or
+edited/unmanaged destination files. Retired installed files are preserved, not deleted. No Forge engine
+changes were introduced for these cards; pre-existing host-integration patches remain separate.
+Game records carry `local_cards` availability and record headers expose it. This is not a claim that
+every available script was used in that game.
 
 ### Updating upstream support
 

@@ -1,0 +1,8 @@
+Name:Co-Option Adjutant
+ManaCost:3 U
+Types:Artifact Creature Borg
+PT:3/3
+S:Mode$ Continuous | Affected$ Creature.Artifact+YouCtrl | AddTrigger$ TrigCombat | Description$ Artifact creatures you control have "Whenever this creature deals combat damage to a player, draw a card."
+SVar:TrigCombat:Mode$ DamageDone | ValidSource$ Card.Self | ValidTarget$ Player | CombatDamage$ True | TriggerZones$ Battlefield | Execute$ CombatEffect | TriggerDescription$ Whenever CARDNAME deals combat damage to a player, draw a card.
+SVar:CombatEffect:DB$ Draw | NumCards$ 1
+Oracle:Artifact creatures you control have "Whenever this creature deals combat damage to a player, draw a card."

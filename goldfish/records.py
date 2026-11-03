@@ -82,7 +82,7 @@ def header(facts: List[dict]) -> str:
         return ""
     deck = start.get("deck") or start.get("commander", "")
     revision = f"@{start['hash']}" if start.get("hash") else ""
-    return f"{deck}{revision} seed {start.get('seed')}"
+    return f"{deck}{revision} seed {start.get('seed')}" + (f" · local card scripts: {start['local_cards']}" if start.get("local_cards") else "")
 
 
 def by_turn(facts: Iterable[dict]) -> "OrderedDict[int, List[dict]]":

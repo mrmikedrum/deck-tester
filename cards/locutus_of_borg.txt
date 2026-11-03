@@ -1,0 +1,9 @@
+Name:Locutus of Borg
+ManaCost:1 W U B
+Types:Legendary Artifact Creature Borg
+PT:3/3
+K:Lifelink
+S:Mode$ Continuous | Affected$ Creature.Artifact+YouCtrl | AddTrigger$ TrigCombat | Description$ Artifact creatures you control have "Whenever this creature deals combat damage to a player, create a 1/1 colorless Borg artifact creature token."
+SVar:TrigCombat:Mode$ DamageDone | ValidSource$ Card.Self | ValidTarget$ Player | CombatDamage$ True | TriggerZones$ Battlefield | Execute$ CombatEffect | TriggerDescription$ Whenever CARDNAME deals combat damage to a player, create a 1/1 colorless Borg artifact creature token.
+SVar:CombatEffect:DB$ Token | TokenScript$ c_1_1_a_borg | TokenAmount$ 1
+Oracle:Lifelink\nArtifact creatures you control have "Whenever this creature deals combat damage to a player, create a 1/1 colorless Borg artifact creature token."

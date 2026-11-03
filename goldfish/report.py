@@ -17,11 +17,13 @@ def game_summary(facts: List[dict], commanders: List[str]) -> dict:
     commander_turn = None
     mulligans = 0
     opponents = 3
+    local_cards = None
     deciders = Counter()
     for fact in facts:
         kind, turn = fact["t"], fact.get("turn", 0)
         if kind == "start":
             opponents = fact.get("opponents", 3)
+            local_cards = fact.get("local_cards")
         elif kind == "eot":
             turns[turn] = fact
         elif kind == "land":
@@ -36,7 +38,7 @@ def game_summary(facts: List[dict], commanders: List[str]) -> dict:
             if fact.get("kind") == "mulligan" and fact.get("answer") == ["mulligan"]:
                 mulligans += 1
     last = max(turns) if turns else 0
-    return {"turns": turns, "last": last, "missed": [t for t in range(1, last + 1) if not lands_played[t]],
+    return {"local_cards": local_cards, "turns": turns, "last": last, "missed": [t for t in range(1, last + 1) if not lands_played[t]],
             "spells": spells, "commander": commander_turn, "mulligans": mulligans, "deciders": deciders,
             "damage": {t: STARTING_LIFE * opponents - turns[t]["opponents_life"] for t in turns}}
 
@@ -54,6 +56,9 @@ def summary(manifest: dict, summaries: List[dict]) -> List[str]:
     cap = f"to turn {manifest['turns']}" if manifest.get("turns") else "uncapped"
     lines = [f"{manifest['id']} · {manifest['deck']}@{manifest['hash']} · {len(games)} games · seeds "
              f"{min(seeds)}-{max(seeds)} · {pilot} · {cap} · {manifest['seconds']}s"]
+    local_cards = sorted({game["local_cards"] for game in summaries if game.get("local_cards")})
+    if local_cards:
+        lines.append("Local Forge scripts available (not upstream-only): " + "; ".join(local_cards))
     if manifest.get("model"):
         used = manifest["model"]
         lines.append(f"model {used['model']} ({manifest.get('hybrid', 'plain')}): {used['calls']} calls · ${used['cost']:.4f} · "
