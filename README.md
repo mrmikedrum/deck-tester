@@ -49,6 +49,19 @@ the list changes. `--ask mulligan,play` asks only those kinds and lets Forge's A
 
 ## Automated mode
 
+For the current Eternities exports, attach the Python advisor **and** its strategy guide. Outcomes mode
+plays candidate actions forward; an advisor adds position-specific facts, not deterministic choices:
+
+```sh
+bin/goldfish run /tmp/eternities-nature.txt --games 2 --turns 8 --pilot examples/pilots/marath_advisor.py --guide examples/plans/living-worlds.txt --hybrid outcomes
+bin/goldfish run /tmp/eternities-assimilation.txt --games 2 --turns 8 --pilot examples/pilots/atraxa_advisor.py --guide examples/plans/assimilation.txt --hybrid outcomes
+```
+
+Check the manifest's `pilot` and `hybrid`, and the model's played-out-line and drift counts. A replay
+mismatch discards that lookahead and falls back to text-only selection; completed games do not prove
+all decisions received valid lookahead. The advisor still supplies facts on that fallback path.
+
+
 ```bash
 bin/goldfish run examples/decks/eternities-living-worlds-iii.txt --games 100 --seed 1000
 ```

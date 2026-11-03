@@ -6,6 +6,9 @@ number, confirm, order, choose, attack, pay). Each gets the decision as a dict (
 details, min, max, repeat) and returns option numbers (a list, or one int), or None to let Forge's AI decide.
 Kinds the pilot doesn't define never leave the engine. While casting a spell the pilot chose, its targets,
 modes, X and payment come back to the pilot too; a missing function there means Forge's AI decides.
+
+A pilot may also define advise(state, decision, this_turn), returning position-specific facts for the
+decision model. Use an advisor with a --guide; it does not choose actions itself.
 """
 
 import importlib.util
@@ -26,9 +29,9 @@ def load_pilot(path: str) -> Dict[str, Callable]:
     spec = importlib.util.spec_from_file_location("goldfish_pilot", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    handlers = {kind: getattr(module, kind) for kind in KINDS if callable(getattr(module, kind, None))}
+    handlers = {kind: getattr(module, kind) for kind in KINDS + ("advise",) if callable(getattr(module, kind, None))}
     if not handlers:
-        raise ValueError(f"{path} defines none of: {', '.join(KINDS)}")
+        raise ValueError(f"{path} defines none of: {', '.join(KINDS)}, advise")
     return handlers
 
 
@@ -86,7 +89,7 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     usage = model.Usage()
     if guide:
         model.key()  # fail before the first game, not in every worker
-    asks = set(handlers) | (set(model.KINDS) if guide else set())
+    asks = (set(handlers) - {"advise"}) | (set(model.KINDS) if guide else set())
     base = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "deck": deck_name,
             "hash": deck.revision(), "opponents": opponents, "ask": sorted(asks),
             "mana": "creatures" if "pay" in handlers else "auto", "ai": ai}
@@ -102,7 +105,7 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     avoids: List[str] = []
 
     def one(index: int) -> dict:
-        decider = model.Decider(guide, opponents, usage, hybrid) if guide else None
+        decider = model.Decider(guide, opponents, usage, hybrid, advise=handlers.get("advise")) if guide else None
         guarded: dict = {}
         reply = _play(dict(base, seed=seed + index), handlers, decider, avoids, turns if exploring else 0, guarded)
         game = {"session": reply["session"], "seed": seed + index, "records": reply["records"], "over": reply.get("over")}

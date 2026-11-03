@@ -183,11 +183,13 @@ def lands_in(cards: List[str], state: dict) -> int:
                or "Land" in (state.get("text", {}).get(name, "").split(" — ") + ["", ""])[1])
 
 
-def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: str = "") -> str:
+def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: str = "", guidance: Optional[str] = None) -> str:
     """The plan, the table, the agent's board with card text, this turn so far, and the decision. The
     opponents, exile and library count are left out: they measured as noise. A mulligan says how many
     lands the hand holds, since the model doesn't count."""
     lines = [f"Deck plan: {guide.strip()}", GAME.format(opponents=opponents)]
+    if guidance:
+        lines.append(f"Guidance for this position: {guidance.strip()}")
     for line in render.state(state, full=True):
         if not line.startswith(("opponents:", "exile:")):
             lines.append(re.sub(r" · library \d+", "", line))
@@ -335,8 +337,9 @@ class Decider:
     default selection; elsewhere it picks from the text alone. Plain never plays out.
     """
 
-    def __init__(self, guide: str, opponents: int, usage: Usage, hybrid: str = "outcomes", workers: int = 4):
+    def __init__(self, guide: str, opponents: int, usage: Usage, hybrid: str = "outcomes", workers: int = 4, advise=None):
         self.guide, self.opponents, self.usage, self.hybrid, self.workers = guide, opponents, usage, hybrid, workers
+        self.advise = advise
 
     # ---- the engine ----
 
@@ -427,7 +430,10 @@ class Decider:
             if not tries or len(tries) < 2:
                 return self.send(reply, {"defer": True})
             criteria = {name: option_text(decision, name) for name in tries}
-        context = describe(self.guide, state, decision, self.opponents, this_turn(reply["records"], turn(decision)))
+        this_turn_facts = [f for f in records.timeline(records.load(reply["records"])) if f.get("turn") == turn(decision)]
+        guidance = self.advise(state, decision, this_turn_facts) if self.advise else None
+        digest = records.digest(this_turn_facts)
+        context = describe(self.guide, state, decision, self.opponents, digest[0] if digest else "", guidance)
         answer = call(context, {"pick": {"type": "choice", "instructions": instructions(decision), "criteria": criteria}},
                       self.usage, session)["pick"]
         try:
