@@ -1,5 +1,45 @@
-Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.
-Cast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later
-spends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since
-proliferate and populate need them on the board. Spend your mana every turn. Removal and protection do
-nothing against these opponents: hold them.
+Living Worlds — Marath / Nature exploration pilot
+
+Goal: develop a visibly varied living galaxy through land discovery, creatures, tokens and proliferation.
+This is a passive-opponent goldfish, not a damage race or a reason to spend reactive cards pointlessly.
+Keep Song of the Worldsoul as a supported late pleasure. Do not chase an infinite combo or a single
+scripted line; build the resources the actual draw offers.
+
+Keep 2–4 lands ONLY if their colors/tapped timing cast early development and a follow-up; a five-land
+hand needs real card access. First multiplayer mulligan is free. Prioritize functional G, then W/R for
+Marath. Fetch typed fixing for the hand, not just any green source. Make your land drop before spending
+mana unless landfall sequencing or an additional-land effect gives a concrete reason to wait.
+
+Early: cheap ramp/fixing, independent card flow, and a repeatable exploration/token/counter engine.
+Pike opens top-library lands; use permitted extra land drops from Janeway/Broodship. Seed counters on
+Incubation Druid before expecting three mana. Preserve creatures as mana/board where station would
+consume the turn's development. A spacecraft without enough crew is a future payoff, not current ramp.
+
+Middle: cast Marath when its counters can support life, card flow or station, rather than mandating T3.
+His activation's X is at least 1. Use counters to seed multiple resources, or make a useful real base-sized
+Elemental; don't burn all his counters for trivial damage against 40-life passive opponents. Proliferate
+then becomes shared growth. Attack safely to trigger Wormhole/Discovery/Apparition before tapping crew
+after combat; creatures without vigilance cannot both attack and station that turn. Prioritize evolution
+and branch-specific experiences over adding redundant counter consumers.
+
+Use landfall intentionally: hold a fetch until Evolution Sage/Felidar Retreat can benefit when the delay
+costs no land drop. Genesis Device's activation is a land swap, not net ramp; activate for a real payoff
+from multiple land entries or better worlds, and remember the new lands lose old counters. Cast Discovery
+with the crew to reach 6 over time. Discovering an X spell for free has X=0: put it into hand unless zero
+is genuinely useful. Commander casting is not an automatic priority over establishing a draw engine.
+
+Late: grow a diverse board and make a telegraphed burst. Song populates ORIGINAL token characteristics,
+not added counters: real base-sized Marath Elementals, Beasts or Golems are good; a 0/0 Fractal wearing
+counters is not. Preserve a creature spell for Song's first useful trigger when feasible. Unbound
+Flourishing doubles X sorceries/casts as appropriate, not every counter placed. Hold removal/protection
+in an empty goldfish; do not erase your board with Sunfall merely to spend mana. Report stalls or awkward
+choices instead of disguising them with arbitrary overrides.
+
+Refined sequencing: an available fetchland is an early green source, not a reason to play Plains for
+several turns with green spells stranded. Tannuk is a three-mana exploration payoff: cast before the
+land drop when mana already permits it, and aim for the SECOND landfall resolution (normal land plus
+fetch/Wormhole/Frontier) for one card. A third landfall does not draw again. Wormhole's Planet tokens
+are lands, not creature tokens, so they do not charge Staff of the Storyteller. Inspiring Call is also
+card flow; use a developed countered board to replenish rather than holding it only as protection.
+If Marath dies into the graveyard and Cosmic Rebirth is used, choose hand, not battlefield: a free
+return enters with zero mana spent and no counters. Do not count that route as a new counter engine.

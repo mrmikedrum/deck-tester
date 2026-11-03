@@ -198,3 +198,39 @@ class TrekCardRules(unittest.TestCase):
         self.assertFalse(self.board('Genesis Device'))
         self.assertEqual(len(s['battlefield']),len(before['battlefield'])-1)
         self.assertEqual(s['library'],before['library'])
+
+    def test_tannuk_draws_on_second_not_third_landfall(self):
+        self.cast('Tannuk, Memorial Ensign')
+        self.ov('create','Forest','hand')
+        opts=self.r['decision']['options']
+        self.req('answer',answer=[opts.index('Forest (land)')+1]);self.settle()
+        before=self.state()['library']
+        self.cast('Final Frontier')
+        self.assertEqual(self.state()['library'],before-2)  # one searched, one drawn
+        before=self.state()['library']
+        self.cast('Genesis Device')
+        self.assertEqual(self.state()['library'],before-1)  # searched only; no third-trigger draw
+        self.assertTrue(all(p['life']==37 for p in self.state()['opponents']))
+
+    def test_decode_transmissions_independent_draw_without_void(self):
+        before=self.state()['library']
+        self.cast('Decode Transmissions')
+        self.assertEqual(self.state()['library'],before-2)
+        self.assertEqual(self.state()['life'],38)
+        self.assertTrue(all(p['life']==40 for p in self.state()['opponents']))
+
+    def test_decode_void_after_real_artifact_sacrifice(self):
+        self.cast('Haywire Mite');self.cast('Throne of Geth')
+        self.activate('Proliferate')
+        before=self.state()
+        self.cast('Decode Transmissions')
+        self.assertEqual(self.state()['library'],before['library']-2)
+        self.assertEqual(self.state()['life'],before['life'])
+        self.assertTrue(all(p['life']==38 for p in self.state()['opponents']))
+
+    def test_song_populates_base_golem_not_added_counters(self):
+        self.cast('Sandstorm Salvager')
+        self.ov('counter','Golem Token','+1/+1','3')
+        self.cast('Song of the Worldsoul')
+        self.cast('Ornithopter')
+        self.assertEqual(sorted(c['pt'] for c in self.board('Golem Token')),['3/3','6/6'])

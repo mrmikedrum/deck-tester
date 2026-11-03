@@ -1,5 +1,50 @@
-Ramp, then build a standardized board. Make a land drop every turn and cast mana rocks and land fetchers
-first. Cast Atraxa (W/U/B/G) once you have its colours; proliferate every turn with her and other
-proliferate cards. Grow a wide board of artifact creatures and tokens with +1/+1 counters: Steel Overseer,
-Throne of Geth and other counter engines are the payoff. Spend your mana every turn. Removal and wraths do
-nothing against these opponents: hold them.
+Manufactured Cosmos — Atraxa / Assimilation pilot
+
+Goal: develop an organized, increasingly uniform artifact fleet, with proliferation connecting worlds,
+Incubators, charge counters and crew. Keep Borg and Phyrexian expressions together. This goldfish tests
+assembly and resource competition, NOT win rate, opponents' agency or removal quality.
+
+Keep a hand with usable early mana, a development action and a follow-up; 2–4 lands is only a first
+filter. Account for tapped worlds and the four W/U/B/G colors Atraxa needs. A hand missing a commander
+color is fine with real fixing and productive plays. First multiplayer mulligan is free. Fetch typed
+lands for actual missing colors, particularly blue/black, rather than reflexively getting a Forest.
+
+Early: fixing and cheap artifact infrastructure; put Maturation Chamber/Conquest Mission/Brimaz ahead of
+future artifact CASTS/ENTRIES when doing so doesn't skip needed mana. Maturation triggers on casts,
+Conquest on nontoken artifact entries: Incubator tokens and transformations do not seed those engines.
+Get independent card access rather than relying only on expensive, combat-dependent Borg draw.
+
+Middle: cast Atraxa once the four colors are functional and counters/crew make her useful. Her end-step
+proliferation requires existing counters: seed Cornucopia, Chamber, spacecraft, Incubators, countered
+creatures first. Spread upgrades across several useful components. Grow Incubators before paying two
+to transform them; do not transform every token immediately and starve development. Standardized Borg
+can attack with Locutus or Co-Option Adjutant for production/cards. Sphere's fleet-wide flying needs 6
+charge counters and matters only with a fleet to carry it.
+
+Combat/station: attack with vigilant Atraxa, then use her to station afterward if mana development no
+longer needs her. Other attackers cannot also be tapped as station crew. Station Research Craft before
+subsequent artifact casts if that enables draw. Don't repeatedly spend station activations after a
+useful threshold without a reason. Use Steel Overseer/proliferation to organize the board, not a loop
+that consumes all future choices. Throne of Geth should recycle a disposable artifact when proliferation
+creates more value, not sacrifice essential mana or the last relevant engine.
+
+Resource choices: Chamber costs four mana per activation; prefer building an engine or casting an
+artifact over a tiny activation that delays the fleet. Borg combat draw is conditional, not guaranteed
+against real opponents. Warp Speed can fix a land to hand and override tapped entries; its later draw
+activation still needs UU after distinct-world discount. Genesis Device is a land swap, not ramp; use
+only when landfall, fixing/world selection or untapped-entry payoff justifies it. Discovery effects that
+cast X spells for free get X=0; take them to hand when appropriate.
+
+Late: turn assembled infrastructure into a visible fleet finish with Cyberdrive or repeated production,
+not opponent-locking or poison dependence. Cyberdrive does not give haste: existing artifacts can attack,
+newly made ones may be summoning-sick. Keep removal/counters and protection for real threats; don't
+spend them pointlessly in this passive scenario. Creature-only Sunfall spares noncreature Incubators,
+but it still erases supporting creatures; a goldfish cannot establish recovery or interaction adequacy.
+
+Refined sequencing: Decode Transmissions supplies two cards for three mana without needing a fleet.
+Void is a bonus after a real nonland permanent departure (e.g. a useful artifact sacrifice), not a
+reason to sacrifice essential infrastructure. Do not cast Sunfall into only your own developed board
+in this passive test. Preserve reaction slots in the list; lack of goldfish targets is not evidence
+that interaction is dispensable. With active Ezuri, landfall and Atraxa, prioritize starting production
+then growing Incubators together before Glissa transforms them; avoid paying individually when her
+combat mode can transform the batch. Favor concrete ship thresholds over indefinite stationing.
