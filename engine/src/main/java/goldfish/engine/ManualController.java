@@ -565,27 +565,23 @@ public class ManualController extends PlayerControllerAi {
         // An ability activated before keeps what paid for it last time; Forge's human play path clears this too.
         paying.clearManaPaid();
         paying.getPayingManaAbilities().clear();
-        // So do mana abilities that cost mana: what paid for each is recorded with this payment.
-        for (Card card : getPlayer().getCardsIn(ZoneType.Battlefield)) {
-            card.getManaAbilities().forEach(ability -> {
-                ability.clearManaPaid();
-                ability.getPayingManaAbilities().clear();
-            });
-        }
+        // Every mana ability that makes mana while this is paid, in order, with the mana it made: Forge's AI's
+        // payment as it happened, including sources that paid another mana ability's cost through the pool.
+        List<Map.Entry<SpellAbility, List<Mana>>> made = new ArrayList<>();
+        AbilityManaPart.PRODUCED.set((ability, mana) -> made.add(Map.entry(ability, mana)));
         try {
             paid = SeededRandom.thinking(() -> new CostPayment(paying.getPayCosts(), paying).payComputerCosts(new ManualCostDecision(this, paying, activated, activatedColors)));
         } finally {
+            AbilityManaPart.PRODUCED.remove();
             held.forEach(card -> AiCardMemory.forgetCard(getPlayer(), card, AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL));
         }
         List<String> used = new ArrayList<>();
         if (open != null) {
-            paying.getPayingManaAbilities().forEach(ability -> used.add(ability.getHostCard().getName()));
+            open.answer = activations(made, manaAbilities, manaColors);
+            open.answer.forEach(option -> used.add(manaAbilities.get(option - 1).getHostCard().getName()));
+            session.recorder.decision(pay, open.answer, "ai", null, null);
         } else {
             activated.forEach(ability -> used.add(ability.getHostCard().getName()));
-        }
-        if (open != null) {
-            open.answer = activations(paying, manaAbilities, manaColors);
-            session.recorder.decision(pay, open.answer, "ai", null, null);
         }
         session.recorder.paid(source.getName(), used, by);
         if (paid) {
@@ -645,79 +641,36 @@ public class ManualController extends PlayerControllerAi {
         trace("mana " + Labels.ability(ability) + " " + colors + (paid ? "" : " (couldn't pay)") + " pool " + getPlayer().getManaPool().totalMana());
     }
 
-    /** The options Forge's AI's payment amounts to: the abilities it activated, in order, with the colours they made. */
-    private static List<Integer> activations(SpellAbility paid, List<SpellAbility> abilities, List<Byte> colors) {
+    /**
+     * The options Forge's AI's payment amounts to: one per activation of a listed ability, in the order the
+     * mana was made, and for an ability that chooses colours, one per mana it made. Mana from abilities that
+     * aren't options (a trigger adding mana as a land is tapped) happens again by itself in a fork.
+     */
+    private static List<Integer> activations(List<Map.Entry<SpellAbility, List<Mana>>> made, List<SpellAbility> abilities, List<Byte> colors) {
         List<Integer> out = new ArrayList<>();
-        List<SpellAbility> used = paying(paid);
-        // An ability activated twice in one payment (Crystalline Crawler's "remove a counter: add one mana of
-        // any colour") remembers only its last mana; the mana spent says what each activation made, in order.
-        List<Mana> spent = new ArrayList<>(paid.getPayingMana());
-        used.forEach(ability -> spent.addAll(ability.getPayingMana()));
-        for (SpellAbility ability : used) {
-            if (ability.getPayCosts().hasManaCost()) {
-                // A mana ability that costs mana (Evendo's "{G}, {T}: Add {G} for each creature") may have been
-                // paid from the pool, by a source no list names; each mana it spent knows its source.
-                for (Mana mana : ability.getPayingMana()) {
-                    SpellAbility source = mana.getManaAbility() == null ? null : mana.getManaAbility().getSourceSA();
-                    if (source != null && used.stream().noneMatch(other -> same(other, source))) {
-                        option(out, abilities, colors, source, List.of(mana.getColor()));
-                    }
-                }
-            }
-            List<Byte> produced = new ArrayList<>();
-            if (ability.getManaPart() != null) {
-                ability.getManaPart().getLastManaProduced().forEach(mana -> produced.add(mana.getColor()));
-            }
-            if (used.stream().filter(other -> other == ability).count() > 1 && produced.size() == 1) {
-                Mana mine = spent.stream().filter(mana -> mana.getManaAbility() == ability.getManaPart()).findFirst().orElse(null);
-                if (mine != null) {
-                    spent.remove(mine);
-                    produced.set(0, mine.getColor());
-                }
-            }
-            option(out, abilities, colors, ability, produced);
-        }
-        return out;
-    }
-
-    private static boolean same(SpellAbility listed, SpellAbility used) {
-        return listed == used || listed.getHostCard() == used.getHostCard() && listed.toString().equals(used.toString());
-    }
-
-    /** Adds the option for an activation: once for a fixed ability, once per colour made for a choosing one. */
-    private static void option(List<Integer> out, List<SpellAbility> abilities, List<Byte> colors, SpellAbility used, List<Byte> produced) {
-        for (int i = 0; i < abilities.size(); i++) {
-            SpellAbility listed = abilities.get(i);
-            if (!same(listed, used)) {
+        for (Map.Entry<SpellAbility, List<Mana>> production : made) {
+            SpellAbility used = production.getKey();
+            if (used == null) {
                 continue;
             }
-            if (colors.get(i) == 0) {
-                out.add(i + 1);
-                return;
-            }
-            for (byte color : produced) {
-                for (int j = i; j < abilities.size() && abilities.get(j) == listed; j++) {
-                    if (colors.get(j) == color) {
-                        out.add(j + 1);
-                        break;
+            for (int i = 0; i < abilities.size(); i++) {
+                SpellAbility listed = abilities.get(i);
+                if (listed != used && !(listed.getHostCard() == used.getHostCard() && listed.toString().equals(used.toString()))) {
+                    continue;
+                }
+                if (colors.get(i) == 0) {
+                    out.add(i + 1);
+                } else {
+                    for (Mana mana : production.getValue()) {
+                        for (int j = i; j < abilities.size() && abilities.get(j) == listed; j++) {
+                            if (colors.get(j) == mana.getColor()) {
+                                out.add(j + 1);
+                                break;
+                            }
+                        }
                     }
                 }
-            }
-            return;
-        }
-    }
-
-    /**
-     * The mana abilities a payment used, each preceded by those that paid its own cost: a Station land's
-     * "{G}, {T}: Add {G} for each creature" had its {G} paid by another land, which the spell's own list
-     * leaves out.
-     */
-    private static List<SpellAbility> paying(SpellAbility paid) {
-        List<SpellAbility> out = new ArrayList<>();
-        for (SpellAbility used : paid.getPayingManaAbilities()) {
-            if (used != paid) {
-                paying(used).stream().filter(nested -> !out.contains(nested)).forEach(out::add);
-                out.add(used);
+                break;
             }
         }
         return out;

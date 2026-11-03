@@ -298,19 +298,18 @@ Replaying exactly needed Forge's AI kept out of the game's state, each found by 
 - it answers one decision by asking the controller another (proliferate chooses its permanents through a
   further choice); choices made while the AI is answering are part of its answer and aren't logged;
 - an ability activated before keeps the list of what paid for it last time, which Forge's human play path
-  clears and its AI path doesn't; the controller clears it, or the logged payment grows every activation;
+  clears and its AI path doesn't; the controller clears it;
 - Forge decides every part of a cost before paying any, so replayed mana must be produced when the mana
   part is paid, after the other parts' choices, or a sacrifice choice sees lands tapped that weren't in the
   original; a patch adds a `beforePayingMana` hook to Forge's cost decision maker for that.
 
-The mana abilities Forge's AI activated to pay, in order and with the colours they made, are logged as its
-`pay` answer (the spell's own list of them, which Forge's AI path never clears between activations of the
-same ability, so the controller does), and a fork activates exactly those, then pays from the pool. Two
-cases needed more than the spell's list. A mana ability that costs mana (a Station land's "{G}, {T}: Add
-{G} for each creature") may be paid from the pool by a source no list names, so the mana it spent supplies
-that source, and a fork activates such abilities last, from the pool. An ability activated twice in one
-payment (Crystalline Crawler's "add one mana of any colour") remembers only its last colour, so each
-activation takes its colour from the mana spent.
+Forge's AI's payment is logged as its `pay` answer from what actually happened: a patch in
+`scripts/forge-patches/` tells the controller each time a mana ability makes mana, with the mana it made,
+and every activation of a listed ability becomes an option, in order, one per colour where it chooses.
+That covers sources that paid another mana ability's cost through the pool (a Station land's "{G}, {T}:
+Add {G} for each creature") and an ability activated more than once (Crystalline Crawler), which
+reconstructing the payment from Forge's bookkeeping missed. A fork activates exactly those, abilities
+that cost mana last so they pay from the pool, then pays the spell from the pool.
 
 ## Snapshots and overrides
 
@@ -459,7 +458,8 @@ this round's fixes, 30 of 40 forks with Forge's AI answering replayed one at a t
 two-game batches lost lookahead on up to 46% of decisions. The fixes were the search-list copies, the
 mana payment cases under Forks and the id counters. After them, six games at a time: 187 of 187 scripted
 and 185 of 185 with Forge's AI answering replayed exactly. Four reruns of Deckmaster's batches played out
-2,275 lines with none drifted. Each drift is caught (a decision or fingerprint mismatch, named in the error
+2,275 lines with none drifted. With payments then recorded as they happen, the same matrix stayed exact
+and 265 of 265 forks on twelve new seeds, to turn 10, replayed exactly. Each drift is caught (a decision or fingerprint mismatch, named in the error
 and the parent's record) and that decision is asked plain. `GOLDFISH_TRACE=1` in the engine's environment
 logs every priority and attack for tracing a new one. A `scripted` mode of `bench/fidelity.py` answers
 every decision by rule, so games repeat exactly and a drift there is reproducible.

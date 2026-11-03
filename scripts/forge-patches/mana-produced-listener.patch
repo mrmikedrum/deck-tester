@@ -1,0 +1,28 @@
+diff --git a/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java b/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java
+index 8171a902..189d89d7 100644
+--- a/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java
++++ b/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java
+@@ -84,6 +84,12 @@ public class AbilityManaPart implements java.io.Serializable {
+ 
+     private transient Multiset<Mana> lastManaProduced = HashMultiset.create();
+ 
++    /**
++     * Told of each production of mana on this thread, as it happens: the ability that made it (null when an
++     * effect did) and each mana made. A host replaying games records payments with it.
++     */
++    public static final ThreadLocal<java.util.function.BiConsumer<SpellAbility, java.util.List<Mana>>> PRODUCED = new ThreadLocal<>();
++
+     private transient Card sourceCard;
+     private transient IHasSVars sVarHolder;
+ 
+@@ -199,6 +205,10 @@ public class AbilityManaPart implements java.io.Serializable {
+         }
+ 
+         manaPool.addMana(this.lastManaProduced);
++        java.util.function.BiConsumer<SpellAbility, java.util.List<Mana>> listener = PRODUCED.get();
++        if (listener != null) {
++            listener.accept(root, new java.util.ArrayList<>(this.lastManaProduced));
++        }
+ 
+         final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(source);
+         runParams.put(AbilityKey.Player, player);
