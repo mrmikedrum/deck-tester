@@ -24,7 +24,10 @@ Forge asks each player's `PlayerController` everything: 112 abstract methods at 
 agent's seat is `ManualController extends PlayerControllerAi`. Each method it overrides becomes a
 `Decision`: a kind, the turn, a short prompt, and numbered options labelled by card name. On the
 battlefield, a label also carries what tells copies apart: P/T, counters, tapped, token. Each option's full
-text (Oracle text or the whole ability) travels with it for `decision --full`. The answer is option numbers
+text (Oracle text or the whole ability) travels with it for `decision --full`. For a permanent on the
+battlefield the text is its abilities as they are now, not as printed: a clone's, gained ones, a land that
+used to be a creature (Princess Yue returning as Moon with the abilities of whatever the returning card
+copies). The answer is option numbers
 (or a value for `number`; repeats only where the card allows them). A decision with only one legal answer
 is answered as `forced` and never reaches the agent.
 
@@ -172,19 +175,32 @@ That is about 2.5–6 KB a decision. A single pick is one `choice` question; att
 nothing. Orderings, repeatable modes, wide X ranges, long lists and mana payment go to Forge's AI. Each
 answer is recorded `by: model` with the model's confidence `p`, so `log --decisions` shows how sure it was.
 
+The model doesn't count or infer, so facts it would need to are stated: at a mulligan, how many lands the
+hand holds, the colours they make, and which cards need a colour they don't, with the keep rule in the
+question (two to four lands that make the colours the spells need); at a play decision with a land in
+hand, whether the land drop is still there. Deck knowledge stays out of the model: a pilot file may define
+`advise(state, decision, this_turn)` and return a line the model reads with the plan ("you have a mana
+engine ready"); `examples/pilots/marath_advisor.py` is one. Played-out lines never name a drawn card, and
+a line that starts with pass keeps passing that turn, so pass is never dressed up by what Forge's AI did
+afterwards.
+
 **Hybrids** (`--hybrid`). Jev works best on concrete outcomes, and Forge's AI already knows how to finish a
 line, so the default compares *lines played out by Forge's AI*:
 
 - `outcomes` (default): at each decision of the agent's own turn, Forge's AI's own pick and every option
   (up to ten) are played out, each in a fork of the game (see Forks), by Forge's AI to the start of the next
-  turn. The model reads each option's text and result (what happened, then mana, damage and permanents
-  gained or lost, in words compared with the other options), with Forge's pick marked as the default
-  selection, in one question. Forks run in parallel, and the game itself is never touched.
+  turn. The model reads each option's text and the board it leads to (what happened this turn with draws
+  unnamed, then lands, mana next turn, cards in hand, mana left unspent, and the nonland permanents), with
+  Forge's pick marked as the default selection, in one question. Forks run in parallel, and the game
+  itself is never touched.
 - `plain`: the model picks from the options' text; nothing is played out.
 
 Since a line runs into the next turn, these batches run the engine two turns past `--turns` and end each
 game themselves; reports ignore the extra turns. A fork that doesn't replay into the same game is counted
 as drifted and that decision is asked plain.
+
+**Failed calls:** a call the API never answers after six retries hands that one decision to Forge's AI and
+is counted in the report (`calls failed`), rather than ending a 30-minute batch, which a single outage did.
 
 **Loop guard:** a pilot or the model can repeat itself without end (Jev declined a fetch land's search and
 then refused to cancel it, over and over). After 100 decisions in one turn, Forge's AI finishes that turn;
@@ -201,7 +217,38 @@ secret proxy, which covers only commands OpenClaw runs itself.
 A pilot is a Python file passed by path, defining functions named after decision kinds (`mulligan`,
 `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `pay`). Each gets the decision
 as a dict (kind, turn, prompt, options, details, min, max, repeat) and returns option numbers, or `None`
-to pass it on to the model or Forge's AI. Answers are recorded `by: pilot`.
+to pass it on to the model or Forge's AI. Answers are recorded `by: pilot`. A pilot may also define
+`advise(state, decision, this_turn)`, returning a line of guidance the decision model reads with the plan,
+or `None`; a file with only `advise` is an advisor, deciding nothing itself.
+
+**Writing an advisor.** The deck's designer knows which pieces matter; the advisor is where that knowledge
+goes, and the harness parses nothing on its own. `goldfish/advice.py` is the platform: a script declares
+the deck's pieces as roles (lists of this deck's cards, optionally also a phrase from card text where a
+role is better said that way) and rules of the form "when these cards or roles are in these zones, say
+this". Zones are the board, the hand, the graveyard, exile and the command zone, plus what the current
+decision offers to cast or activate and from where (`castable`, `castable_from`), which is how a card
+castable from the graveyard or exile, or an ability on the board, gets a line of its own. Every listed
+piece must be present; `any_of` names a group of which one is enough; `test` takes any further check as a
+function of the position (counters, mana, tapped, played this turn); a rule's text may be a function too,
+for numbers. The model reads the result as one line with the plan, so:
+
+- say what is true about the position ("a doubler is on the board: tokens and counters come doubled",
+  "Marath has 3 counters and you have 3 mana: it can make up to a 3/3 token"), not which line to take; the
+  played-out options show what each line does;
+- speak only when the rule holds, and keep each rule to one sentence; a line on every decision is noise;
+- measure a rule on a scenario (`bench/scenarios.py`, then `bench/try.py --advisor FILE` against the same
+  scenario without it) and keep it only if it moves the pick.
+
+`examples/pilots/marath_advisor.py` is the template; `atraxa_advisor.py`, `dack_advisor.py` and
+`blue_moon_advisor.py` are the other decks'. A rule may also name what is on the stack (`stack=`), for
+advice while a trigger waits to resolve. For an engine that takes several decisions, `bench/playturn.py`
+sets up a position with overrides and lets the model play the turn with the advisor, then shows the
+decisions it made.
+
+Mana abilities are paid automatically and never offered as plays, with one exception: an ability whose
+cost taps another permanent (Springleaf Drum, Holdout Settlement) is a choice with consequences (which
+creature taps, and what triggers), so it is offered as a play; its mana waits in the pool for the next
+cost. Without this the Blue Moon deck's tap loop could not be played on purpose.
 `examples/pilots/commander_first.py` casts the commander whenever it's offered. Where pilots live is the
 caller's choice; nothing here assumes a location.
 
@@ -242,7 +289,10 @@ Replaying exactly needed Forge's AI kept out of the game's state, each found by 
 - it answers one decision by asking the controller another (proliferate chooses its permanents through a
   further choice); choices made while the AI is answering are part of its answer and aren't logged;
 - an ability activated before keeps the list of what paid for it last time, which Forge's human play path
-  clears and its AI path doesn't; the controller clears it, or the logged payment grows every activation.
+  clears and its AI path doesn't; the controller clears it, or the logged payment grows every activation;
+- Forge decides every part of a cost before paying any, so replayed mana must be produced when the mana
+  part is paid, after the other parts' choices, or a sacrifice choice sees lands tapped that weren't in the
+  original; a patch adds a `beforePayingMana` hook to Forge's cost decision maker for that.
 
 The mana abilities Forge's AI activated to pay, in order and with the colours they made, are logged as its
 `pay` answer (the spell's own list of them, which Forge's AI path never clears between activations of the
@@ -268,9 +318,12 @@ Abilities put on the stack after a snapshot aren't taken back by a restore, so r
 taken with an empty stack, and from a state whose stack is empty.
 
 Overrides are commands on cards named by the agent: move between zones, create a card, set life, add or
-remove counters of any type, tap, untap. Use `Name#2` for the second card of that name. Triggers are
-suppressed during an override, because a correction states how the game should be; it shouldn't set off
-new effects. A waiting `play` decision is asked again afterwards, so its options match the corrected board.
+remove counters of any type, tap, untap, destroy. Use `Name#2` for the second card of that name. Triggers
+are suppressed during an override, because a correction states how the game should be; it shouldn't set
+off new effects. `destroy` is the exception, asked for so that what dies triggers; as of now Princess Yue's
+death trigger still doesn't fire from it (open: the trigger's look at what she was needs more than the
+last-known-state refresh the override does). A waiting `play` decision is asked again afterwards, so its
+options match the corrected board, and overrides are logged so a fork makes them too.
 
 ## Forge dependency
 
@@ -395,9 +448,24 @@ every decision by rule, so games repeat exactly and a drift there is reproducibl
 Memory: after 93 games with forks, a forced GC left 8 cards on the heap (150 MB used). Before clearing
 Forge's AI cache at each priority, the same run leaked 78,000 cards and ran out of a 2 GB heap.
 
+**Where a fork's time goes** (`bench/forkbench.py`, turn 8, 84 decisions replayed, one at a time, with
+stack samples of the game thread): about 1.0 s. A third is Forge recomputing static abilities as the
+replay resolves actions; a quarter is the controller's own check of what is playable at each stop (a test
+payment per ability); a fifth is building the game (400 cards for four decks); the rest is resolving.
+Evaluating playable options only at the agent's stops, not at every priority, took 11% off. Playing a line
+out after the fork costs about 0.2 s more, nearly all Forge's AI thinking, so an engine-side rollout would
+save little.
+
+**Scaling:** 1.0 forks/s one at a time, 3.1 four at a time, 4.0 eight at a time, and no more with sixteen
+(each fork then just waits twice as long). The decider caps forks in flight at eight across every game in
+the process (`GOLDFISH_FORKS` to change it). The 20-game batch above ran 24 at once.
+
 ## Measured on scenarios (2026-10-23)
 
-`bench/scenarios.py` builds nine positions with one right answer that depends on sequencing (Sol Ring
+`bench/capture.py` saves real decisions from a game, with every option played out, as situations (48 of
+them, from the four decks at seed 3002; an earlier set captured with Forge's inflated mana estimate is
+kept in `bench/situations/stale/`, out of the bench). `bench/scenarios.py` builds nine positions with one
+right answer that depends on sequencing (Sol Ring
 before a colourless one-drop; the land before the spells it pays for; the untapped land over the tapped
 one; spend all the mana; X at its largest; the commander over removal the plan says to hold; keep or
 mulligan), each set up with overrides in a real game and played out in forks like the decider does, with
@@ -421,6 +489,70 @@ design fault, not noise:
 With all of that (outcomes in words with unspent mana and sizes, the mulligan rule, the engine's own mana
 count) Jev got 9 of 9 scenarios right five times out of five, with or without the default mark; text alone
 with the mark got 8 of 9. That is what `goldfish/model.py` now sends.
+
+**The after-line.** 20 of the 48 recaptured situations have an answer worth defending (one castable card
+and nothing else to do; a rock that pays for the rest of the turn; the land that makes the colour a spell
+needs; a fetch never finding nothing; X at its largest), each labelled with its reason in the file. On
+those 20 and the nine scenarios, three times each, an option's result as the board it leads to in absolute
+terms ("after: 2 lands, 4 mana next turn, 2 cards in hand; 0 mana unspent; board: Sol Ring") scored 89%,
+against 82% for the comparative words ("the most mana next turn of these options") and 80% for the text
+alone. It fixed X at its largest, casting the one castable card instead of passing, and the doubler
+scenario; it lost one Voltaic Key case. The decider now sends the after-line.
+
+**The advisor.** On a board with Doubling Season and Marath holding three counters, Jev picked Marath's
+token 3 times in 5 without advice and 5 in 5 with the advisor's lines ("a doubler is on the board: tokens
+and +1/+1 counters you make come doubled; Marath has 3 counters and you have 3 mana: it can make up to a
+3/3 token"). A fact about the board, not an instruction, is enough.
+
+**A whole engine turn** (`bench/playturn.py`, the Blue Moon deck on turn 5 with Minamo, Deserted Temple,
+Matoya, Tui and La, Springleaf Drum, Wake Thrasher and Princess Yue on the board, Phantasmal Image and Of
+One Mind in hand, with `blue_moon_advisor.py`): Jev tapped Tui and La with the Drum (a card and a mana),
+untapped her with Minamo (a counter), untapped Minamo with Deserted Temple, untapped her again, cast Of
+One Mind, then Phantasmal Image as a copy of Princess Yue so the legend rule killed the copy and it
+returned as the land Moon, choosing which Yue stays and the Moon correctly. Before the Drum's ability was
+offered as a play it could not tap her on purpose at all, and before the advisor's fact that untapping an
+untapped permanent does nothing it untapped her first. 14 calls, 65 lines played out.
+
+**The Moon line itself.** The deck's real trick: a clone of Princess Yue dies to the legend rule, and the
+clone card returns as the land Moon entering as a copy of another creature, so a land with that creature's
+abilities that Deserted Temple and Minamo untap. Driven by hand, Forge does all of it: with Phyrexian
+Metamorph the returning card became "Moon, Legendary Land" with Tui and La's two triggers and "{T}: Add
+{C}", Deserted Temple untapped it, and the untap trigger put a +1/+1 counter on the land. With Phantasmal
+Image the copy keeps its "sacrifice when targeted" clause, so the Temple's untap killed it: Forge right,
+and worth knowing. The state view shows the land as it is, with its current abilities. At the crux, the
+"Choose a card (Moon)" decision (`scenario-moon-copy`), Jev copied Princess Yue again 5 times in 5 without
+advice (a land that only scries) and Tui and La 5 times in 5 with the advisor's line about what the choice
+makes; Forge's AI's default was Wake Thrasher.
+
+**Stability.** Asked three times, Jev gave the same answer on 45 of 47 labelled situations with outcomes
+and 42 of 47 from the text alone, and taking the plurality of three changed accuracy by one point at most
+(82% to 83% text-only; 96% either way with outcomes). Repeating a question is not worth its cost here.
+
+**Other forms tried** on the same 47 labelled situations, twice each, against the current design at 96%:
+options in reverse order 90% (so there is order bias, and the engine's order, pass first then the hand,
+is the better one); pass last 94%; a yes-or-no question per option 89% and a 0–4 score per option 90%,
+both with confidence around 0.4 against 0.73 for the single choice; without the deck plan 91%; without
+the "this turn so far" line 96%. One choice question, in the engine's order, with the plan, is the form to
+keep; the history line could go to save tokens.
+
+**Fast mode (routing on confidence).** On 76 real situations (the scenarios and captured decisions from four decks,
+47 of them labelled), asked three times each from the text alone and three times with the options played
+out: a text-only pick with confidence 0.7 or more covered 34 of the 76 and agreed with the played-out
+pick in all of them; on the labelled ones, answering those from the text and the rest from outcomes
+scored 96%, the same as outcomes everywhere. At 0.6 it covers 41 of 76 with 93% agreement and the same
+96%; at 0.5, 53 of 76 but 83% agreement and 92%. `run --fast` does this: it asks from the text first and
+plays the options out only when the pick is under 0.7, at the price of one extra call on the decisions it
+still plays out.
+
+In the 20-game batch, routing covered less than the bench suggested: 232 decisions skipped their forks,
+about 18% of the ones that would have been played out, not 45%. The batch took 1,154 s against 1,796 s
+unrouted and cost $0.35 against $0.23 (2,473 calls against 1,548). Forks per second rose from 3.2 to 4.2
+with the cap and the cheaper fork, which accounts for most of the saving; routing itself removed 16% of
+the forks, worth about the same share of the time, for 52% more spent on calls. Development was within
+the noise of 20 games (8.3 lands, 14.1 mana, 8.7 spells at turn 8 against 8.9, 13.8 and 8.6; creatures 5.7
+against 7.5). Fast mode is off by default: the saving is modest, the calls cost more, and the drop in
+creatures and lands, though within the noise of 20 games, is the shape a loss would take. The fork cap
+and cost are what moved the time.
 
 ## Measured with Jev (2026-10-23)
 
@@ -459,4 +591,21 @@ Jev now develops better than Forge's AI on every row but cards in hand, which it
 hit the loop guard, two ended early in an engine error (a choice from an empty list read as a number
 decision; fixed since), 307 forks (5%) drifted under the parallel load and were asked plain, and forks
 took twice as long as when run alone. One game won on turn 7.
+
+**40 games** (seeds 1–40, after hidden draws, honest pass lines, the land-drop fact and the Marath advisor;
+35 min, $0.36, 10,480 forks at 1.1 s, 3.4% drifted):
+
+| at turn 8 | Forge's AI | Jev with the plan |
+|---|---|---|
+| lands, mana, unspent | 7.9, 10.4, 2.8 | 8.2, 11.7, 1.3 |
+| games that missed a land drop that turn | 35% | 43% |
+| spells cast, cards in hand | 7.9, 3.4 | 8.7, 3.1 |
+| creatures, other permanents | 4.3, 2.7 | 6.5, 1.4 |
+| commander cast | never | 38 of 40, median turn 4 |
+
+Jev is ahead on lands, mana, mana used, spells, creatures and the commander, behind on missed land drops
+late and on noncreature permanents (it casts creatures over rocks and enchantments). On the first 20 seeds
+this round's changes moved lands up (8.9 to 9.2) and mana and creatures down (13.8 to 12.1, 7.5 to 6.4),
+within what 20 games can tell. Missed land drops late in the game, with a land in hand by a rough count
+about as often as Forge's AI, are the next scenario to build.
 

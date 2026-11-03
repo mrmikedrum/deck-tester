@@ -1,0 +1,627 @@
+{
+ "id": "scenario-doubler-token",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T4 main1",
+  "life": 40,
+  "mana": 3,
+  "land_drop": true,
+  "library": 96,
+  "hand": [
+   "Beast Within"
+  ],
+  "battlefield": [
+   {
+    "name": "Forest"
+   },
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Mountain"
+   },
+   {
+    "name": "Doubling Season"
+   },
+   {
+    "name": "Marath, Will of the Wild",
+    "pt": "3/3",
+    "sick": true,
+    "counters": {
+     "+1/+1": 3
+    }
+   }
+  ],
+  "command": [],
+  "graveyard": [
+   "Forest",
+   "Scalding Tarn",
+   "Chaos Warp"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Beast Within": "Beast Within {2}{G} — Instant — Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+   "Doubling Season": "Doubling Season {4}{G} — Enchantment — If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead. / If an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on that permanent instead.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T4 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Beast Within",
+   "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…"
+  ],
+  "details": [
+   "pass priority",
+   "Beast Within {2}{G} — Instant — Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+   "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Marath: Choose one. X can't be 0. • Put X +1/+1 counters on target creature. • Marath deals X damage to any target. • Create an X/X green Elemental creature token."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 4
+  },
+  {
+   "t": "draw",
+   "turn": 4,
+   "card": "Glacier Godmaw",
+   "id": 73
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Arid Mesa",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Spelunking",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Forest",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Verdant Catacombs",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Pollenbright Druid",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Exploration Broodship",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Ornithopter of Paradise",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Glacier Godmaw",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Beast Within",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Forest",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Plains",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Mountain",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Doubling Season",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 4,
+   "card": "Marath, Will of the Wild",
+   "from": "command",
+   "to": "battlefield"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g39576"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g39579"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g39577"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g39578"
+  }
+ ],
+ "default": "pass",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 3,
+     "unspent": 3,
+     "hand": 1,
+     "creatures": 1,
+     "power": 3,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Glacier Godmaw",
+     "id": 73
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 40,
+    "mana": 3,
+    "land_drop": true,
+    "library": 95,
+    "hand": [
+     "Beast Within",
+     "Glacier Godmaw"
+    ],
+    "battlefield": [
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mountain"
+     },
+     {
+      "name": "Doubling Season"
+     },
+     {
+      "name": "Marath, Will of the Wild",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 3
+      }
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Forest",
+     "Scalding Tarn",
+     "Chaos Warp"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Beast Within": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Beast Within"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for Destroy target permanent. Its controller creates …",
+     "options": 17,
+     "answer": [
+      "Wastes (Opp 3)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{G} for Beast Within, in order; none = automatic",
+     "options": 3,
+     "answer": [
+      "Forest (G)",
+      "Plains (W)",
+      "Mountain (R)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Beast Within",
+     "sources": [
+      "Forest",
+      "Plains",
+      "Mountain"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Beast Within",
+     "id": 405,
+     "as": "Beast Within",
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 3,
+     "unspent": 0,
+     "hand": 0,
+     "creatures": 1,
+     "power": 3,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Glacier Godmaw",
+     "id": 73
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 40,
+    "mana": 3,
+    "land_drop": true,
+    "library": 95,
+    "hand": [
+     "Glacier Godmaw"
+    ],
+    "battlefield": [
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mountain"
+     },
+     {
+      "name": "Doubling Season"
+     },
+     {
+      "name": "Marath, Will of the Wild",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 3
+      }
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Forest",
+     "Scalding Tarn",
+     "Chaos Warp",
+     "Beast Within"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 1
+     }
+    ]
+   }
+  },
+  "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "number",
+     "prompt": "X for Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+     "options": 0,
+     "answer": [
+      "3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "mode",
+     "prompt": "modes for Marath, Will of the Wild",
+     "options": 3,
+     "answer": [
+      "Put X +1/+1 counters on target creature."
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for Put X +1/+1 counters on target creature.",
+     "options": 1,
+     "answer": [
+      "Marath, Will of the Wild 3/3 [+1/+1 3]"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {X} for Marath, Will of the Wild, in order; none = automatic",
+     "options": 3,
+     "answer": [
+      "Plains (W)",
+      "Mountain (R)",
+      "Forest (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "sources": [
+      "Plains",
+      "Mountain",
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "id": 100,
+     "as": "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+     "x": 3,
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 3,
+     "unspent": 0,
+     "hand": 1,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Glacier Godmaw",
+     "id": 73
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 40,
+    "mana": 3,
+    "land_drop": true,
+    "library": 95,
+    "hand": [
+     "Beast Within",
+     "Glacier Godmaw"
+    ],
+    "battlefield": [
+     {
+      "name": "Forest"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Mountain"
+     },
+     {
+      "name": "Doubling Season"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Forest",
+     "Scalding Tarn",
+     "Chaos Warp",
+     "Marath, Will of the Wild"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…"
+ ],
+ "note": "Doubling Season and Marath with counters: the X/X token comes out doubled, so Marath's token beats casting a creature of that size."
+}

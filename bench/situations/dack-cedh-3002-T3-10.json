@@ -1,0 +1,515 @@
+{
+ "id": "dack-cedh-3002-T3-10",
+ "plan": "Fast mana into an early commander. Play fast mana (Sol Ring, Mana Vault, moxen, monoliths, Ancient Tomb)\nas soon as you can and cast Dack Fayden as early as possible; his entry hands each opponent a goaded\ncreature from your library. Stax and protection pieces (Rule of Law, Trinisphere, Silence and the like) do\nlittle against these opponents; cast them only with mana to spare after developing. Tutors should find mana\nor more development. Removal has no targets: hold it.\n",
+ "state": {
+  "turn": "T3 main2",
+  "life": 40,
+  "mana": 1,
+  "land_drop": false,
+  "library": 89,
+  "hand": [
+   "Windswept Heath",
+   "Arid Mesa",
+   "Abdel Adrian, Gorion's Ward",
+   "Vexing Bauble"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains",
+    "tapped": true
+   },
+   {
+    "name": "Voltaic Key"
+   },
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Damping Sphere"
+   },
+   {
+    "name": "Mishra's Workshop",
+    "tapped": true
+   }
+  ],
+  "command": [
+   "Dack Fayden, Helping Hand"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [
+   "Grim Monolith"
+  ],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Abdel Adrian, Gorion's Ward": "Abdel Adrian, Gorion's Ward {4}{W} — Legendary Creature - Human Warrior — When Abdel Adrian, Gorion's Ward enters, exile any number of other nonland permanents you control until Abdel Adrian leaves the battlefield. Create a 1/1 white Soldier creature token for each permanent exiled this way. / Choose a Background (You can have a Background as a second commander.)",
+   "Arid Mesa": "Arid Mesa — Land — {T}, Pay 1 life, Sacrifice Arid Mesa: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+   "Dack Fayden, Helping Hand": "Dack Fayden, Helping Hand {4}{W}{W} — Legendary Creature - Human Advisor — When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen.",
+   "Damping Sphere": "Damping Sphere {2} — Artifact — If a land is tapped for two or more mana, it produces {C} instead of any other type and amount. / Each spell a player casts costs {1} more to cast for each other spell that player has cast this turn.",
+   "Mishra's Workshop": "Mishra's Workshop — Land — {T}: Add {C}{C}{C}. Spend this mana only to cast artifact spells.",
+   "Vexing Bauble": "Vexing Bauble {1} — Artifact — Whenever a player casts a spell, if no mana was spent to cast it, counter that spell. / {1}, {T}, Sacrifice Vexing Bauble: Draw a card.",
+   "Voltaic Key": "Voltaic Key {1} — Artifact — {1}, {T}: Untap target artifact.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T3 main2",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Voltaic Key: {1}, {T}: Untap target artifact."
+  ],
+  "details": [
+   "pass priority",
+   "Voltaic Key: {1}, {T}: Untap target artifact."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 3
+  },
+  {
+   "t": "draw",
+   "turn": 3,
+   "card": "Mishra's Workshop",
+   "id": 85
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28201"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28200"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28203"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28202"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28204"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28205"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28206"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28207"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "options": 7,
+   "answer": [
+    "Mishra's Workshop (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 3,
+   "card": "Mishra's Workshop",
+   "id": 85
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28209"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28208"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28211"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28210"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28212"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "options": 4,
+   "answer": [
+    "pass"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28214"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28213"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28216"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28215"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28217"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "options": 4,
+   "answer": [
+    "Grim Monolith"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "pay",
+   "prompt": "mana to pay {2} for Grim Monolith, in order; none = automatic",
+   "options": 3,
+   "answer": [
+    "Mishra's Workshop (C)",
+    "Plains (W)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 3,
+   "card": "Grim Monolith",
+   "sources": [
+    "Mishra's Workshop",
+    "Plains"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "cast",
+   "turn": 3,
+   "card": "Grim Monolith",
+   "id": 89,
+   "as": "Grim Monolith",
+   "by": "ai"
+  }
+ ],
+ "default": "pass",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 8,
+     "unspent": 4,
+     "hand": 4,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Angel's Grace",
+     "id": 29
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 40,
+    "mana": 8,
+    "land_drop": true,
+    "library": 88,
+    "hand": [
+     "Windswept Heath",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Vexing Bauble",
+     "Angel's Grace"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Damping Sphere"
+     },
+     {
+      "name": "Mishra's Workshop"
+     },
+     {
+      "name": "Grim Monolith"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Voltaic Key: {1}, {T}: Untap target artifact.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Voltaic Key: {1}, {T}: Untap target artifact."
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "targets",
+     "prompt": "target for {1}, {T}: Untap target artifact.",
+     "options": 2,
+     "answer": [
+      "Damping Sphere"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 3,
+     "card": "Voltaic Key",
+     "id": 99,
+     "as": "Voltaic Key: {1}, {T}: Untap target artifact.",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Vexing Bauble"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 3,
+     "card": "Vexing Bauble",
+     "id": 93,
+     "as": "Vexing Bauble",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 3,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Angel's Grace",
+     "id": 29
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 40,
+    "mana": 5,
+    "land_drop": true,
+    "library": 88,
+    "hand": [
+     "Windswept Heath",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Angel's Grace"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Damping Sphere"
+     },
+     {
+      "name": "Mishra's Workshop"
+     },
+     {
+      "name": "Grim Monolith",
+      "tapped": true
+     },
+     {
+      "name": "Vexing Bauble"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": null,
+ "note": ""
+}

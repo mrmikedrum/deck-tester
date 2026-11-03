@@ -2,7 +2,7 @@
 deck plan the agent writes once. At each decision of the agent's own turn, every option is played out in a
 fork of the game (the engine replays the game's recorded decisions from its seed, then Forge's AI finishes
 the turn), and the model picks among the options reading the plan, the board with card text, and each
-option's text and result. Anything it can't express (orderings, repeatable modes, mana payment) goes to
+option's text and the board it leads to. Anything it can't express (orderings, repeatable modes, mana payment) goes to
 Forge's AI, and the record says so. What the model reads was chosen by measuring alternatives on captured
 situations (bench/; docs/architecture.md, "Measured with Jev").
 """
@@ -59,8 +59,8 @@ GAME = ("Commander goldfish against {opponents} opponents at 40 life who only pl
         "interact. Develop as the plan says, and attack whenever it deals damage: the aim is to win fast.")
 
 INSTRUCTIONS = {
-    "mulligan": ("Keep this opening hand, or shuffle it away for a new one? Keep a hand with two to four lands; "
-                 "mulligan the rest."),  # the model doesn't count, and without the rule it keeps anything
+    "mulligan": ("Keep this opening hand, or shuffle it away for a new one? Keep a hand with two to four lands "
+                 "that make the colours its spells need; mulligan the rest."),  # it doesn't count: the rule and the facts are stated
     "play": ("You have priority. Pick the next thing to do, or pass. Passing in your first main phase moves on "
              "to combat and then your second main phase; passing there ends your turn. With something on the "
              "stack, you are responding to it."),
@@ -107,9 +107,15 @@ class Usage:
         self.input_tokens = 0
         self.cost = 0.0
         self.seconds = 0.0
+        self.failed = 0  # calls the API never answered, even after retries: Forge's AI decided those
+        self.routed = 0  # fast mode: decisions answered from the text alone, confidently enough to skip the forks
         self.played_out = 0  # lines played out in forks to show the model their results
         self.drifted = 0  # forks that didn't replay into the same game
-        self.fork_ms = 0
+        self.fork_ms = 0  # replaying the game to the decision
+        self.setup_ms = 0  # of which, building the game
+        self.rollout_ms = 0  # playing the line out to the next turn
+        self.rollout_steps = 0  # decisions Forge's AI answered while doing so
+        self.end_ms = 0
 
     def add(self, usage: dict, seconds: float) -> None:
         with self.lock:
@@ -121,12 +127,16 @@ class Usage:
     def summary(self) -> dict:
         return {"model": provider().model, "calls": self.calls, "input_tokens": self.input_tokens, "cost": round(self.cost, 4),
                 "seconds_per_call": round(self.seconds / self.calls, 2) if self.calls else None,
-                "played_out": self.played_out, "drifted": self.drifted,
-                "fork_ms": round(self.fork_ms / self.played_out) if self.played_out else None}
+                "routed": self.routed, "failed": self.failed, "played_out": self.played_out, "drifted": self.drifted,
+                "fork_ms": round(self.fork_ms / self.played_out) if self.played_out else None,
+                "setup_ms": round(self.setup_ms / self.played_out) if self.played_out else None,
+                "rollout_ms": round(self.rollout_ms / self.played_out) if self.played_out else None,
+                "rollout_steps": round(self.rollout_steps / self.played_out, 1) if self.played_out else None,
+                "end_ms": round(self.end_ms / self.played_out) if self.played_out else None}
 
 
 def call(state: str, questions: Dict[str, dict], usage: Optional[Usage] = None, session: Optional[str] = None,
-         retries: int = 4) -> Dict[str, dict]:
+         retries: int = 6) -> Dict[str, dict]:
     """One request to the decisions API; returns the answers by question name."""
     used = provider()
     body = {"model": used.model, "state": state, "questions": questions}
@@ -174,19 +184,54 @@ def this_turn(path: str, now: int) -> str:
     return digest[0] if digest else ""
 
 
-BASIC_LANDS = ("Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes")
+BASIC_LANDS = {"Plains": "W", "Island": "U", "Swamp": "B", "Mountain": "R", "Forest": "G", "Wastes": "C"}
+COLOURS = "WUBRG"
+
+
+def is_land(name: str, state: dict) -> bool:
+    """A land: a basic by name, or by the type line in the state's card text."""
+    return name.split(" ")[0] in BASIC_LANDS and name in BASIC_LANDS or (
+        "Land" in (state.get("text", {}).get(name, "").split(" — ") + ["", ""])[1])
 
 
 def lands_in(cards: List[str], state: dict) -> int:
-    """How many of these cards are lands: basics by name, the rest by their type line in the state's card text."""
-    return sum(1 for name in cards if name.startswith(BASIC_LANDS)
-               or "Land" in (state.get("text", {}).get(name, "").split(" — ") + ["", ""])[1])
+    return sum(1 for name in cards if is_land(name, state))
+
+
+def colours_made(name: str, state: dict) -> set:
+    """The colours a land in hand would make, from its name or text ("Add {G} or {U}", "any color")."""
+    if name in BASIC_LANDS:
+        return {BASIC_LANDS[name]} - {"C"}
+    text = state.get("text", {}).get(name, "")
+    if "any color" in text or "any type" in text or "commander's color identity" in text:
+        return set(COLOURS)
+    return {c for c in COLOURS if "{" + c + "}" in text.split(" — ")[-1]}
+
+
+def colours_needed(name: str, state: dict) -> set:
+    """The colours in a spell's mana cost, from the cost after its name in the card text."""
+    head = state.get("text", {}).get(name, "").split(" — ")[0]
+    return {c for c in COLOURS if "{" + c + "}" in head or "/" + c + "}" in head}
+
+
+def mulligan_facts(state: dict) -> str:
+    """What the model can't count or infer about an opening hand: how many lands, which colours they make, and
+    which cards need a colour they don't."""
+    hand = state["hand"]
+    lands = [n for n in hand if is_land(n, state)]
+    made = set().union(*(colours_made(n, state) for n in lands)) if lands else set()
+    short = [n for n in hand if n not in lands and colours_needed(n, state) - made]
+    line = f"Lands in hand: {len(lands)} of {len(hand)}" + (f", making {' '.join(c for c in COLOURS if c in made)}" if made else "")
+    if short:
+        line += f". Cards needing a colour these lands don't make: {', '.join(short)}"
+    return line + "."
 
 
 def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: str = "", guidance: Optional[str] = None) -> str:
     """The plan, the table, the agent's board with card text, this turn so far, and the decision. The
     opponents, exile and library count are left out: they measured as noise. A mulligan says how many
-    lands the hand holds, since the model doesn't count."""
+    lands the hand holds and what they make, since the model doesn't count; a play decision says whether
+    the land drop is still there. Guidance is the pilot's line about this position, when it gives one."""
     lines = [f"Deck plan: {guide.strip()}", GAME.format(opponents=opponents)]
     if guidance:
         lines.append(f"Guidance for this position: {guidance.strip()}")
@@ -194,7 +239,9 @@ def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: st
         if not line.startswith(("opponents:", "exile:")):
             lines.append(re.sub(r" · library \d+", "", line))
     if decision["kind"] == "mulligan":
-        lines.append(f"Lands in hand: {lands_in(state['hand'], state)} of {len(state['hand'])}")
+        lines.append(mulligan_facts(state))
+    elif decision["kind"] == "play" and ours(decision) and "land_drop" in state and lands_in(state["hand"], state):
+        lines.append("A land can still be played this turn." if state["land_drop"] else "The land drop is used this turn.")
     if state.get("text"):
         lines.append("Card text:")
         lines += [f"- {text}" for text in state["text"].values()]
@@ -269,7 +316,9 @@ def summarize(before: dict, facts: List[dict], after: Optional[dict], now: int) 
     # Lands leaving play are usually fetches doing their job; losing other permanents is what to flag.
     lands = {n for n, t in before.get("text", {}).items() if "Land" in (t.split(" — ") + ["", ""])[1]}
     eot = next((f for f in facts if f["t"] == "eot" and f.get("turn") == now), None)
-    return {"acts": records.happened([f for f in facts if f.get("turn") == now]) or "nothing else this turn",
+    # Drawn cards stay hidden: a line that names the next draw would tell the model what the library holds.
+    shown = [dict(f, card="a card") if f["t"] == "draw" else f for f in facts if f.get("turn") == now]
+    return {"acts": records.happened(shown) or "nothing else this turn",
             "mana": after["mana"], "unspent": eot["unspent"] if eot else None,
             "damage": sum(o["life"] for o in before["opponents"]) - sum(o["life"] for o in after["opponents"]),
             "new": [n + (f" {sizes[n]}" if n in sizes else "") for n in new], "lost": [n for n in gone if n not in lands]}
@@ -300,6 +349,24 @@ def worded(results: Dict[str, Optional[dict]]) -> Dict[str, str]:
     return out
 
 
+def after_line(before: dict, facts: List[dict], after: Optional[dict], now: int) -> str:
+    """A played-out line as the board it leads to, in absolute terms, the way a player pictures a play: what
+    happened this turn (draws unnamed), then lands, mana next turn, cards in hand, mana left unspent, and the
+    nonland permanents. Measured against the comparative wording on 29 labelled situations: 89% to 82%."""
+    if after is None:
+        return "the game ends"
+    shown = [dict(f, card="a card") if f["t"] == "draw" else f for f in facts if f.get("turn") == now]
+    lands = [p for p in after["battlefield"] if is_land(p["name"], before)]
+    others = [p["name"] + (f" {p['pt']}" if p.get("pt") else "") for p in after["battlefield"] if p not in lands]
+    eot = next((f for f in shown if f["t"] == "eot"), None)
+    parts = [records.happened(shown) or "nothing else this turn",
+             f"after: {len(lands)} lands, {after['mana']} mana next turn, {len(after['hand'])} cards in hand"]
+    if eot:
+        parts.append(f"{eot['unspent']} mana unspent this turn")
+    parts.append("board: " + (", ".join(others) if others else "no nonland permanents"))
+    return "; ".join(parts)
+
+
 def plain_options(decision: dict) -> Optional[Dict[str, list]]:
     """Options asked without results (outside the agent's turn, or too many to play out): single picks
     and numbers only; None hands the decision to Forge's AI."""
@@ -321,6 +388,10 @@ def plain_options(decision: dict) -> Optional[Dict[str, list]]:
 
 ROLLOUT = 400  # decisions in one played-out line before it's abandoned
 HYBRIDS = ("outcomes", "plain")
+FAST = 0.7  # fast mode: a plain pick at least this confident is played without playing the options out (docs: "Routing")
+# Forks replaying at once across every game in this process: throughput stops growing at about eight on ten
+# cores (bench/forkbench.py), and beyond that each fork only waits longer.
+FORKS_AT_ONCE = threading.BoundedSemaphore(int(os.environ.get("GOLDFISH_FORKS", "8")))
 
 
 class Line:
@@ -337,9 +408,11 @@ class Decider:
     default selection; elsewhere it picks from the text alone. Plain never plays out.
     """
 
-    def __init__(self, guide: str, opponents: int, usage: Usage, hybrid: str = "outcomes", workers: int = 4, advise=None):
+    def __init__(self, guide: str, opponents: int, usage: Usage, hybrid: str = "outcomes", workers: int = 4,
+                 fast: bool = False, advise=None):
         self.guide, self.opponents, self.usage, self.hybrid, self.workers = guide, opponents, usage, hybrid, workers
-        self.advise = advise
+        self.route = FAST if fast else 0.0  # the confidence at which a text-only pick skips the forks; 0 never skips
+        self.advise = advise  # the pilot's advise(state, decision, this_turn), or None
 
     # ---- the engine ----
 
@@ -354,8 +427,17 @@ class Decider:
         fork didn't replay into the same game."""
         decision = reply["decision"]
         now = turn(decision)
+        with FORKS_AT_ONCE:
+            return self._play_out(reply, decision, now, first)
+
+    def _play_out(self, reply: dict, decision: dict, now: int, first: Optional[list]) -> Line:
         fork = engine.request({"cmd": "fork", "session": reply["session"]})
         session = fork["session"]
+        # Passing means doing nothing more this turn, so a pass line keeps passing its later play decisions
+        # instead of letting Forge's AI play on and make "pass" look productive.
+        passing = decision["kind"] == "play" and first == ["pass"]
+        steps = 0
+        clock = time.time()
         try:
             began = os.path.getsize(fork["records"])  # the line's facts are what the fork's record gains from here
             request = {"cmd": "answer", "session": session, "by": "model"}
@@ -369,16 +451,25 @@ class Decider:
                     state = engine.request({"cmd": "state", "session": session})["state"]
                     if not state["stack"]:
                         break  # the next turn, at rest
-                after = engine.request({"cmd": "answer", "session": session, "defer": True})
+                if passing and after["decision"]["kind"] == "play" and turn(after["decision"]) == now and ours(after["decision"]):
+                    after = engine.request({"cmd": "answer", "session": session, "answer": [1], "by": "model"})
+                else:
+                    after = engine.request({"cmd": "answer", "session": session, "defer": True})
+                steps += 1
             with open(fork["records"], encoding="utf-8") as handle:
                 handle.seek(began)
                 facts = [json.loads(line) for line in handle if line.strip()]
+            rolled = time.time()
         finally:
             engine.request({"cmd": "end", "session": session})
         picked = next((f["answer"] for f in facts if f["t"] == "decision" and f["kind"] == decision["kind"]), [])
         with self.usage.lock:
             self.usage.played_out += 1
             self.usage.fork_ms += fork.get("ms", 0)
+            self.usage.setup_ms += fork.get("setup_ms", 0)
+            self.usage.rollout_ms += int(1000 * (rolled - clock))
+            self.usage.rollout_steps += steps
+            self.usage.end_ms += int(1000 * (time.time() - rolled))
         return Line(picked, facts, state, after.get("over"), fork.get("ms", 0))
 
     def explore(self, reply: dict, tries: Dict[str, list]) -> Tuple[Dict[str, Line], Optional[str]]:
@@ -401,13 +492,41 @@ class Decider:
     # ---- deciding ----
 
     def step(self, reply: dict) -> dict:
-        """Decide the waiting decision, answer it, and return the engine's next reply."""
+        """Decide the waiting decision, answer it, and return the engine's next reply. A decision the API never
+        answers goes to Forge's AI and is counted, rather than ending the game."""
+        try:
+            return self._step(reply)
+        except ModelError:
+            with self.usage.lock:
+                self.usage.failed += 1
+            return self.send(reply, {"defer": True})
+
+    def _step(self, reply: dict) -> dict:
         decision, session = reply["decision"], reply["session"]
         if decision["kind"] not in KINDS or decision.get("repeat"):
             return self.send(reply, {"defer": True})
         state = engine.request({"cmd": "state", "session": session, "text": True})["state"]
+        this_turn_facts = [f for f in records.timeline(records.load(reply["records"])) if f.get("turn") == turn(decision)]
+        guidance = self.advise(state, decision, this_turn_facts) if self.advise else None
+        digest = records.digest(this_turn_facts)
+        context = describe(self.guide, state, decision, self.opponents, digest[0] if digest else "", guidance)
         tries = lines_to_try(decision) if self.hybrid != "plain" and ours(decision) else {}
         lines, default = {}, None
+        if len(tries) >= 2 and self.route > 0:
+            # Fast mode: ask from the text first, play a confident pick as it is, and play the options out only
+            # for an unsure one. Saves about a sixth of the forks for half as many calls again, and whether it
+            # costs play quality couldn't be told from 20 games (docs/architecture.md), so it is off by default.
+            plain = {name: option_text(decision, name) for name in tries}
+            answer = call(context, {"pick": {"type": "choice", "instructions": instructions(decision), "criteria": plain}},
+                          self.usage, session)["pick"]
+            if answer.get("confidence", 0.0) >= self.route and answer.get("choice") in tries:
+                with self.usage.lock:
+                    self.usage.routed += 1
+                try:
+                    return self.send(reply, {"answer": _numbers(decision, tries[answer["choice"]]), "by": "model",
+                                             "p": answer.get("confidence", 0.0)})
+                except (ValueError, engine.EngineError):
+                    pass
         if len(tries) >= 2:
             try:
                 lines, default = self.explore(reply, tries)
@@ -418,22 +537,17 @@ class Decider:
                     self.usage.drifted += 1
                 lines, default = {}, None
         if lines:
-            results = {name: summarize(state, line.facts, line.state, turn(decision)) for name, line in lines.items()}
-            words = worded(results)
             tries = {name: (tries[name] if name in tries else _as_answer(decision, lines[name].picked)) for name in lines}
             criteria = {}
-            for name in lines:
+            for name, line in lines.items():
                 text = option_text(decision, name)
-                criteria[name] = (text + " → " if text != name else "") + words[name] + (DEFAULT if name == default else "")
+                result = after_line(state, line.facts, line.state, turn(decision))
+                criteria[name] = (text + " → " if text != name else "") + result + (DEFAULT if name == default else "")
         else:
             tries = plain_options(decision)
             if not tries or len(tries) < 2:
                 return self.send(reply, {"defer": True})
             criteria = {name: option_text(decision, name) for name in tries}
-        this_turn_facts = [f for f in records.timeline(records.load(reply["records"])) if f.get("turn") == turn(decision)]
-        guidance = self.advise(state, decision, this_turn_facts) if self.advise else None
-        digest = records.digest(this_turn_facts)
-        context = describe(self.guide, state, decision, self.opponents, digest[0] if digest else "", guidance)
         answer = call(context, {"pick": {"type": "choice", "instructions": instructions(decision), "criteria": criteria}},
                       self.usage, session)["pick"]
         try:

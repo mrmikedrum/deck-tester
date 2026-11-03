@@ -192,22 +192,22 @@
   {
    "t": "fork",
    "turn": 1,
-   "session": "g3546"
+   "session": "g27984"
   },
   {
    "t": "fork",
    "turn": 1,
-   "session": "g3547"
+   "session": "g27982"
   },
   {
    "t": "fork",
    "turn": 1,
-   "session": "g3548"
+   "session": "g27985"
   },
   {
    "t": "fork",
    "turn": 1,
-   "session": "g3545"
+   "session": "g27983"
   }
  ],
  "default": "pass",
@@ -230,28 +230,20 @@
      "kind": "play",
      "options": 3,
      "answer": [
-      "Hope of Ghirapur"
+      "pass"
      ],
-     "by": "ai"
-    },
-    {
-     "t": "cast",
-     "turn": 1,
-     "card": "Hope of Ghirapur",
-     "id": 408,
-     "as": "Hope of Ghirapur",
-     "by": "ai"
+     "by": "model"
     },
     {
      "t": "eot",
      "turn": 1,
      "lands": 1,
      "mana": 1,
-     "unspent": 0,
-     "hand": 4,
-     "creatures": 1,
-     "power": 1,
-     "permanents": 1,
+     "unspent": 1,
+     "hand": 5,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
      "opponents_life": 120
     },
     {
@@ -273,6 +265,7 @@
     "hand": [
      "Plains",
      "Sol Ring",
+     "Hope of Ghirapur",
      "Cultivate",
      "Beast Within",
      "Pollenbright Druid"
@@ -280,10 +273,6 @@
     "battlefield": [
      {
       "name": "Forest"
-     },
-     {
-      "name": "Hope of Ghirapur",
-      "pt": "1/1"
      }
     ],
     "command": [

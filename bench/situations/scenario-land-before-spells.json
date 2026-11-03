@@ -170,22 +170,22 @@
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3555"
+   "session": "g27995"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3558"
+   "session": "g27992"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3556"
+   "session": "g27993"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3557"
+   "session": "g27994"
   }
  ],
  "default": "Forest (land)",
@@ -208,64 +208,20 @@
      "kind": "play",
      "options": 3,
      "answer": [
-      "Forest (land)"
+      "pass"
      ],
-     "by": "ai"
-    },
-    {
-     "t": "land",
-     "turn": 2,
-     "card": "Forest",
-     "id": 405
-    },
-    {
-     "t": "decision",
-     "turn": 2,
-     "kind": "play",
-     "options": 3,
-     "answer": [
-      "Llanowar Elves"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "decision",
-     "turn": 2,
-     "kind": "pay",
-     "prompt": "mana to pay {G} for Llanowar Elves, in order; none = automatic",
-     "options": 2,
-     "answer": [
-      "Forest (G)"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "paid",
-     "turn": 2,
-     "card": "Llanowar Elves",
-     "sources": [
-      "Forest"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "cast",
-     "turn": 2,
-     "card": "Llanowar Elves",
-     "id": 406,
-     "as": "Llanowar Elves",
-     "by": "ai"
+     "by": "model"
     },
     {
      "t": "eot",
      "turn": 2,
-     "lands": 2,
-     "mana": 3,
+     "lands": 1,
+     "mana": 1,
      "unspent": 1,
-     "hand": 2,
-     "creatures": 1,
-     "power": 1,
-     "permanents": 1,
+     "hand": 4,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
      "opponents_life": 120
     },
     {
@@ -282,9 +238,11 @@
    "state": {
     "turn": "T3 main1",
     "life": 40,
-    "mana": 3,
+    "mana": 1,
     "library": 97,
     "hand": [
+     "Forest",
+     "Llanowar Elves",
      "Rampant Growth",
      "Beast Within",
      "Exploration Broodship"
@@ -292,13 +250,6 @@
     "battlefield": [
      {
       "name": "Forest"
-     },
-     {
-      "name": "Forest"
-     },
-     {
-      "name": "Llanowar Elves",
-      "pt": "1/1"
      }
     ],
     "command": [

@@ -1,0 +1,2569 @@
+{
+ "id": "eternities-assimilation-iii-3002-T4-12",
+ "plan": "Ramp, then build a standardized board. Make a land drop every turn and cast mana rocks and land fetchers\nfirst. Cast Atraxa (W/U/B/G) once you have its colours; proliferate every turn with her and other\nproliferate cards. Grow a wide board of artifact creatures and tokens with +1/+1 counters: Steel Overseer,\nThrone of Geth and other counter engines are the payoff. Spend your mana every turn. Removal and wraths do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T4 main1",
+  "life": 39,
+  "mana": 3,
+  "land_drop": false,
+  "library": 87,
+  "hand": [
+   "Uthros Research Craft",
+   "Loading Zone",
+   "Phyrexian Metamorph",
+   "Evolution Witness",
+   "Tome of Legends"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Breeding Pool"
+   },
+   {
+    "name": "Expedition Map"
+   },
+   {
+    "name": "Adagia, Windswept Bastion",
+    "counters": {
+     "Charge": 1
+    }
+   },
+   {
+    "name": "Grateful Apparition",
+    "pt": "1/1"
+   },
+   {
+    "name": "Windswept Heath"
+   }
+  ],
+  "command": [
+   "Atraxa, Praetors' Voice"
+  ],
+  "graveyard": [
+   "Wooded Foothills"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Adagia, Windswept Bastion": "Adagia, Windswept Bastion — Land - Planet — This land enters tapped. / {T}: Add {W}. / Station (Tap another creature you control: Put charge counters equal to its power on this Planet. Station only as a sorcery.) / STATION 12+ / {3}{W}, {T}: Create a token that's a copy of target artifact or enchantment you control, except it's legendary. Activate only as a sorcery.",
+   "Atraxa, Praetors' Voice": "Atraxa, Praetors' Voice {G}{W}{U}{B} — Legendary Creature - Phyrexian Angel Horror — Flying, vigilance, deathtouch, lifelink / At the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Breeding Pool": "Breeding Pool — Land - Forest Island — ({T}: Add {G} or {U}.) / As Breeding Pool enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Evolution Witness": "Evolution Witness {2}{G} — Creature - Elf Shaman Mutant — {1}{G}: Adapt 2. (If this creature has no +1/+1 counters on it, put two +1/+1 counters on it.) / Whenever one or more +1/+1 counters are put on Evolution Witness, return target permanent card from your graveyard to your hand.",
+   "Expedition Map": "Expedition Map {1} — Artifact — {2}, {T}, Sacrifice Expedition Map: Search your library for a land card, reveal it, put it into your hand, then shuffle.",
+   "Grateful Apparition": "Grateful Apparition {1}{W} — Creature - Spirit — Flying / Whenever Grateful Apparition deals combat damage to a player or planeswalker, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Loading Zone": "Loading Zone {3}{G} — Enchantment — If one or more counters would be put on a creature, Spacecraft, or Planet you control, twice that many of each of those kinds of counters are put on it instead. / Warp {G} (You may cast this card from your hand for its warp cost. Exile this enchantment at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "Phyrexian Metamorph": "Phyrexian Metamorph {3}{U/P} — Artifact Creature - Phyrexian Shapeshifter — ({U/P} can be paid with either {U} or 2 life.) / You may have Phyrexian Metamorph enter as a copy of any artifact or creature on the battlefield, except it's an artifact in addition to its other types.",
+   "Tome of Legends": "Tome of Legends {2} — Artifact - Book — Tome of Legends enters with a page counter on it. / Whenever your commander enters or attacks, put a page counter on Tome of Legends. / {1}, {T}, Remove a page counter from Tome of Legends: Draw a card.",
+   "Uthros Research Craft": "Uthros Research Craft {2}{U} — Artifact - Spacecraft — Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.) / STATION 3+ / Whenever you cast an artifact spell, draw a card. Put a charge counter on this Spacecraft. / STATION 12+ / Flying / This Spacecraft gets +1/+0 for each artifact you control.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T4 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Uthros Research Craft",
+   "Loading Zone (warp)",
+   "Evolution Witness",
+   "Tome of Legends",
+   "Expedition Map: {2}, {T}, Sacrifice this: Search your library for…",
+   "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…",
+   "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+  ],
+  "details": [
+   "pass priority",
+   "Uthros Research Craft {2}{U} — Artifact - Spacecraft — Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.) / STATION 3+ / Whenever you cast an artifact spell, draw a card. Put a charge counter on this Spacecraft. / STATION 12+ / Flying / This Spacecraft gets +1/+0 for each artifact you control.",
+   "Loading Zone {3}{G} — Enchantment — If one or more counters would be put on a creature, Spacecraft, or Planet you control, twice that many of each of those kinds of counters are put on it instead. / Warp {G} (You may cast this card from your hand for its warp cost. Exile this enchantment at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "Evolution Witness {2}{G} — Creature - Elf Shaman Mutant — {1}{G}: Adapt 2. (If this creature has no +1/+1 counters on it, put two +1/+1 counters on it.) / Whenever one or more +1/+1 counters are put on Evolution Witness, return target permanent card from your graveyard to your hand.",
+   "Tome of Legends {2} — Artifact - Book — Tome of Legends enters with a page counter on it. / Whenever your commander enters or attacks, put a page counter on Tome of Legends. / {1}, {T}, Remove a page counter from Tome of Legends: Draw a card.",
+   "Expedition Map: {2}, {T}, Sacrifice Expedition Map: Search your library for a land card, reveal it, put it into your hand, then shuffle.",
+   "Adagia, Windswept Bastion: Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It’s an artifact creature at 12+.)",
+   "Windswept Heath: {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 4
+  },
+  {
+   "t": "draw",
+   "turn": 4,
+   "card": "Tome of Legends",
+   "id": 9
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28154"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28152"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28153"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28151"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28155"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28156"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28157"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28158"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28159"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 8,
+   "answer": [
+    "Windswept Heath (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 4,
+   "card": "Windswept Heath",
+   "id": 99
+  }
+ ],
+ "default": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Grateful Apparition 1/1 -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Grateful Apparition)",
+     "options": 1,
+     "answer": [
+      "Adagia, Windswept Bastion [Charge 1]"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 7,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 3,
+     "unspent": 3,
+     "hand": 5,
+     "creatures": 1,
+     "power": 1,
+     "permanents": 2,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Exploration Broodship",
+     "id": 69
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 39,
+    "mana": 3,
+    "land_drop": true,
+    "library": 86,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Evolution Witness",
+     "Tome of Legends",
+     "Exploration Broodship"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 2
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Windswept Heath"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 39,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Uthros Research Craft": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "Uthros Research Craft"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{U} for Uthros Research Craft, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Breeding Pool (U)",
+      "Plains (W)",
+      "Adagia, Windswept Bastion [Charge 1] (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Uthros Research Craft",
+     "sources": [
+      "Breeding Pool",
+      "Plains",
+      "Adagia, Windswept Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Uthros Research Craft",
+     "id": 97,
+     "as": "Uthros Research Craft",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "id": 99,
+     "as": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Temple Garden"
+     ],
+     "ids": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      77,
+      48,
+      49,
+      50,
+      52,
+      86
+     ],
+     "why": "searched (Windswept Heath)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Windswept Heath)",
+     "options": 14,
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Grateful Apparition 1/1 -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 2",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Grateful Apparition)",
+     "options": 1,
+     "answer": [
+      "Adagia, Windswept Bastion [Charge 1] (tapped)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 1,
+     "power": 1,
+     "permanents": 3,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Evolution Witness",
+     "Tome of Legends",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 2
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Uthros Research Craft"
+     },
+     {
+      "name": "Godless Shrine"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Windswept Heath"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 39,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Loading Zone (warp)": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "Loading Zone (warp)"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {G} for Loading Zone, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Breeding Pool (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Loading Zone",
+     "sources": [
+      "Breeding Pool"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Loading Zone",
+     "id": 45,
+     "as": "Loading Zone (warp)",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "id": 99,
+     "as": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Temple Garden"
+     ],
+     "ids": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      77,
+      48,
+      49,
+      50,
+      52,
+      86
+     ],
+     "why": "searched (Windswept Heath)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Windswept Heath)",
+     "options": 14,
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Grateful Apparition 1/1 -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 2",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Grateful Apparition)",
+     "options": 1,
+     "answer": [
+      "Adagia, Windswept Bastion [Charge 1]"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Tome of Legends"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2} for Tome of Legends, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)",
+      "Adagia, Windswept Bastion [Charge 3] (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Tome of Legends",
+     "sources": [
+      "Plains",
+      "Adagia, Windswept Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Tome of Legends",
+     "id": 9,
+     "as": "Tome of Legends",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 3,
+     "creatures": 1,
+     "power": 1,
+     "permanents": 4,
+     "opponents_life": 119
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Loading Zone",
+     "from": "battlefield",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Warped Loading Zone (45)",
+     "to": "command"
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Uthros Research Craft",
+     "Phyrexian Metamorph",
+     "Evolution Witness",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 3
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Godless Shrine"
+     },
+     {
+      "name": "Tome of Legends",
+      "counters": {
+       "Page": 1
+      }
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Windswept Heath"
+    ],
+    "exile": [
+     "Loading Zone"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 39,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Evolution Witness": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "Evolution Witness"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{G} for Evolution Witness, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Breeding Pool (G)",
+      "Plains (W)",
+      "Adagia, Windswept Bastion [Charge 1] (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Evolution Witness",
+     "sources": [
+      "Breeding Pool",
+      "Plains",
+      "Adagia, Windswept Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Evolution Witness",
+     "id": 89,
+     "as": "Evolution Witness",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "id": 99,
+     "as": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Temple Garden"
+     ],
+     "ids": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      77,
+      48,
+      49,
+      50,
+      52,
+      86
+     ],
+     "why": "searched (Windswept Heath)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Windswept Heath)",
+     "options": 14,
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Grateful Apparition 1/1 -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 2",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Grateful Apparition)",
+     "options": 1,
+     "answer": [
+      "Adagia, Windswept Bastion [Charge 1] (tapped)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "tap for Adagia, Windswept Bastion",
+     "options": 1,
+     "answer": [
+      "Evolution Witness 2/1"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Adagia, Windswept Bastion",
+     "id": 70,
+     "as": "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "power": 3,
+     "permanents": 3,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Tome of Legends",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 4
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Evolution Witness",
+      "pt": "2/1"
+     },
+     {
+      "name": "Godless Shrine"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Windswept Heath"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 39,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Tome of Legends": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "Tome of Legends"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2} for Tome of Legends, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Plains (W)",
+      "Breeding Pool (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Tome of Legends",
+     "sources": [
+      "Plains",
+      "Breeding Pool"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Tome of Legends",
+     "id": 9,
+     "as": "Tome of Legends",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "id": 99,
+     "as": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Temple Garden"
+     ],
+     "ids": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      77,
+      48,
+      49,
+      50,
+      52,
+      86
+     ],
+     "why": "searched (Windswept Heath)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Windswept Heath)",
+     "options": 14,
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Grateful Apparition 1/1 -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 2",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Grateful Apparition)",
+     "options": 2,
+     "answer": [
+      "Adagia, Windswept Bastion [Charge 1]",
+      "Tome of Legends [Page 1]"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Tome of Legends: {1}, {T}, Remove a page counter from this: Draw a…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Tome of Legends",
+     "id": 9,
+     "as": "Tome of Legends: {1}, {T}, Remove a page counter from this: Draw a…",
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Forest",
+     "id": 26
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 1,
+     "power": 1,
+     "permanents": 3,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Harmonize",
+     "id": 72
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 84,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Evolution Witness",
+     "Forest",
+     "Harmonize"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 2
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Tome of Legends",
+      "counters": {
+       "Page": 1
+      }
+     },
+     {
+      "name": "Godless Shrine"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Windswept Heath"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 39,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Expedition Map: {2}, {T}, Sacrifice this: Search your library for…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "Expedition Map: {2}, {T}, Sacrifice this: Search your library for…"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Expedition Map",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2} for Expedition Map, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Plains (W)",
+      "Breeding Pool (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Expedition Map",
+     "sources": [
+      "Plains",
+      "Breeding Pool"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Expedition Map",
+     "id": 93,
+     "as": "Expedition Map: {2}, {T}, Sacrifice this: Search your library for…",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Command Tower",
+      "Evendo, Waking Haven",
+      "Fabled Passage",
+      "Flooded Strand",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Island",
+      "Island",
+      "Karn's Bastion",
+      "Mana Confluence",
+      "Marsh Flats",
+      "Misty Rainforest",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Polluted Delta",
+      "Reflecting Pool",
+      "Scalding Tarn",
+      "Scavenger Grounds",
+      "Susur Secundi, Void Altar",
+      "Swamp",
+      "Temple Garden",
+      "Uthros, Titanic Godcore",
+      "Verdant Catacombs",
+      "Watery Grave"
+     ],
+     "ids": [
+      35,
+      83,
+      81,
+      5,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      21,
+      22,
+      32,
+      73,
+      62,
+      11,
+      77,
+      48,
+      49,
+      50,
+      52,
+      10,
+      98,
+      95,
+      66,
+      37,
+      13,
+      86,
+      53,
+      14,
+      34
+     ],
+     "why": "searched (Expedition Map)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Expedition Map)",
+     "options": 33,
+     "answer": [
+      "Susur Secundi, Void Altar"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Susur Secundi, Void Altar",
+     "id": 37
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "id": 99,
+     "as": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Temple Garden"
+     ],
+     "ids": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      77,
+      48,
+      49,
+      50,
+      52,
+      86
+     ],
+     "why": "searched (Windswept Heath)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Windswept Heath)",
+     "options": 14,
+     "answer": [
+      "Overgrown Tomb"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Overgrown Tomb",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Grateful Apparition 1/1 -> Opp 1"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 1",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Grateful Apparition)",
+     "options": 1,
+     "answer": [
+      "Adagia, Windswept Bastion [Charge 1]"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 1,
+     "hand": 6,
+     "creatures": 1,
+     "power": 1,
+     "permanents": 1,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Karn's Bastion",
+     "id": 32
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 84,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Evolution Witness",
+     "Tome of Legends",
+     "Susur Secundi, Void Altar",
+     "Karn's Bastion"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 2
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Overgrown Tomb"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Expedition Map",
+     "Windswept Heath"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 39,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "tap for Adagia, Windswept Bastion",
+     "options": 1,
+     "answer": [
+      "Grateful Apparition 1/1"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Adagia, Windswept Bastion",
+     "id": 70,
+     "as": "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 7,
+     "answer": [
+      "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "id": 99,
+     "as": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Temple Garden"
+     ],
+     "ids": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      77,
+      48,
+      49,
+      50,
+      52,
+      86
+     ],
+     "why": "searched (Windswept Heath)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Windswept Heath)",
+     "options": 14,
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Evolution Witness"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{G} for Evolution Witness, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Breeding Pool (G)",
+      "Plains (W)",
+      "Adagia, Windswept Bastion [Charge 2] (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Evolution Witness",
+     "sources": [
+      "Breeding Pool",
+      "Plains",
+      "Adagia, Windswept Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Evolution Witness",
+     "id": 89,
+     "as": "Evolution Witness",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "tap for Adagia, Windswept Bastion",
+     "options": 1,
+     "answer": [
+      "Evolution Witness 2/1"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Adagia, Windswept Bastion",
+     "id": 70,
+     "as": "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "power": 3,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Tome of Legends",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 4
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Godless Shrine"
+     },
+     {
+      "name": "Evolution Witness",
+      "pt": "2/1"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Windswept Heath"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 8,
+     "answer": [
+      "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "You",
+     "life": 38
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Windswept Heath",
+     "id": 99,
+     "as": "Windswept Heath: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 4,
+     "cards": [
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Godless Shrine",
+      "Hallowed Fountain",
+      "Overgrown Tomb",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Plains",
+      "Temple Garden"
+     ],
+     "ids": [
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      41,
+      47,
+      77,
+      48,
+      49,
+      50,
+      52,
+      86
+     ],
+     "why": "searched (Windswept Heath)"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Windswept Heath)",
+     "options": 14,
+     "answer": [
+      "Godless Shrine"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Godless Shrine",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 7,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Grateful Apparition 1/1 -> Opp 2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 4,
+     "player": "Opp 2",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "Choose any number of permanents and/or players for proliferate (Grateful Apparition)",
+     "options": 1,
+     "answer": [
+      "Adagia, Windswept Bastion [Charge 1]"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Evolution Witness"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{G} for Evolution Witness, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Breeding Pool (G)",
+      "Plains (W)",
+      "Adagia, Windswept Bastion [Charge 2] (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Evolution Witness",
+     "sources": [
+      "Breeding Pool",
+      "Plains",
+      "Adagia, Windswept Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 4,
+     "card": "Evolution Witness",
+     "id": 89,
+     "as": "Evolution Witness",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "choose",
+     "prompt": "tap for Adagia, Windswept Bastion",
+     "options": 1,
+     "answer": [
+      "Evolution Witness 2/1"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Adagia, Windswept Bastion",
+     "id": 70,
+     "as": "Adagia, Windswept Bastion: Station (Tap another creature you control: Put ch…",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "power": 3,
+     "permanents": 3,
+     "opponents_life": 119
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Forest",
+     "id": 26
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Tome of Legends",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Adagia, Windswept Bastion",
+      "counters": {
+       "Charge": 4
+      }
+     },
+     {
+      "name": "Grateful Apparition",
+      "pt": "1/1"
+     },
+     {
+      "name": "Godless Shrine"
+     },
+     {
+      "name": "Evolution Witness",
+      "pt": "2/1"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Windswept Heath"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 39,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": null,
+ "note": ""
+}

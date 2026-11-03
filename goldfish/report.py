@@ -61,8 +61,11 @@ def summary(manifest: dict, summaries: List[dict]) -> List[str]:
         lines.append("Local Forge scripts available (not upstream-only): " + "; ".join(local_cards))
     if manifest.get("model"):
         used = manifest["model"]
-        lines.append(f"model {used['model']} ({manifest.get('hybrid', 'plain')}): {used['calls']} calls · ${used['cost']:.4f} · "
-                     f"{used['seconds_per_call']}s per call · {used.get('played_out', 0)} lines played out"
+        lines.append(f"model {used['model']} ({manifest.get('hybrid', 'plain')}{', fast' if manifest.get('fast') else ''}): {used['calls']} calls · ${used['cost']:.4f} · "
+                     f"{used['seconds_per_call']}s per call"
+                     + (f" · {used['routed']} decisions from the text alone" if used.get("routed") else "")
+                     + (f" · {used['failed']} calls failed (Forge's AI decided)" if used.get("failed") else "")
+                     + f" · {used.get('played_out', 0)} lines played out"
                      + (f" ({used['fork_ms']} ms a fork)" if used.get("fork_ms") else "")
                      + (f" · {used['drifted']} forks drifted" if used.get("drifted") else ""))
     deciders = sum((s["deciders"] for s in summaries), Counter())

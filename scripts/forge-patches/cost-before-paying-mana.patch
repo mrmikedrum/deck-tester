@@ -1,0 +1,29 @@
+diff --git a/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java b/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
+index eeec65b2..36235663 100644
+--- a/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
++++ b/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
+@@ -20,6 +20,10 @@ public abstract class CostDecisionMakerBase implements ICostVisitor<PaymentDecis
+ 
+     public Player getPlayer() { return player; }
+     public abstract boolean paysRightAfterDecision();
++
++    /** Called just before the mana part of a cost is paid; a decision maker that produces the mana itself does so here. */
++    public void beforePayingMana(CostPartMana part) {
++    }
+     public boolean isEffect() {
+         return effect;
+     }
+diff --git a/forge-game/src/main/java/forge/game/cost/CostPayment.java b/forge-game/src/main/java/forge/game/cost/CostPayment.java
+index b651a731..217b3cbf 100644
+--- a/forge-game/src/main/java/forge/game/cost/CostPayment.java
++++ b/forge-game/src/main/java/forge/game/cost/CostPayment.java
+@@ -211,6 +211,9 @@ public class CostPayment extends ManaConversionMatrix {
+             try {
+                 game.costPaymentStack.push(part, this);
+ 
++                if (part instanceof CostPartMana) {
++                    decisionMaker.beforePayingMana((CostPartMana) part);
++                }
+                 if (!part.payAsDecided(decisionMaker.getPlayer(), decisions.get(part), this.ability, decisionMaker.isEffect())) {
+                     return false;
+                 }

@@ -1,0 +1,1588 @@
+{
+ "id": "eternities-living-worlds-iii-3002-T5-12",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T5 main1",
+  "life": 38,
+  "mana": 7,
+  "land_drop": false,
+  "library": 86,
+  "hand": [
+   "Felidar Retreat",
+   "Dyadrine, Synthesis Amalgam",
+   "Windswept Heath",
+   "Scalding Tarn",
+   "Roaring Earth"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Scavenger Grounds"
+   },
+   {
+    "name": "Mana Confluence"
+   },
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Stomping Ground"
+   },
+   {
+    "name": "Rishkar, Peema Renegade",
+    "pt": "3/3",
+    "counters": {
+     "+1/+1": 1
+    }
+   },
+   {
+    "name": "Command Tower"
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [
+   "Rampant Growth"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Command Tower": "Command Tower — Land — {T}: Add one mana of any color in your commander's color identity.",
+   "Dyadrine, Synthesis Amalgam": "Dyadrine, Synthesis Amalgam {X}{G}{W} — Legendary Artifact Creature - Construct — Trample / Dyadrine enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / Whenever you attack, you may remove a +1/+1 counter from each of two creatures you control. If you do, draw a card and create a colorless 2/2 Robot artifact creature token.",
+   "Felidar Retreat": "Felidar Retreat {3}{W} — Enchantment — Landfall — Whenever a land you control enters, choose one — / • Create a 2/2 white Cat Beast creature token. / • Put a +1/+1 counter on each creature you control. Those creatures gain vigilance until end of turn.",
+   "Mana Confluence": "Mana Confluence — Land — {T}, Pay 1 life: Add one mana of any color.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Rishkar, Peema Renegade": "Rishkar, Peema Renegade {2}{G} — Legendary Creature - Elf Druid — When Rishkar, Peema Renegade enters, put a +1/+1 counter on each of up to two target creatures. / Each creature you control with a counter on it has \"{T}: Add {G}.\"",
+   "Roaring Earth": "Roaring Earth {1}{G} — Enchantment — Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature or Vehicle you control. / Channel — {X}{G}{G}, Discard Roaring Earth: Put X +1/+1 counters on target land you control. It becomes a 0/0 green Spirit creature with haste. It's still a land.",
+   "Scalding Tarn": "Scalding Tarn — Land — {T}, Pay 1 life, Sacrifice Scalding Tarn: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
+   "Scavenger Grounds": "Scavenger Grounds — Land - Desert — {T}: Add {C}. / {2}, {T}, Sacrifice a Desert: Exile all graveyards.",
+   "Stomping Ground": "Stomping Ground — Land - Mountain Forest — ({T}: Add {R} or {G}.) / As Stomping Ground enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "number",
+  "turn": "T5 main1",
+  "prompt": "X for Dyadrine, Synthesis Amalgam",
+  "options": [],
+  "min": 0,
+  "max": 5,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 5
+  },
+  {
+   "t": "draw",
+   "turn": 5,
+   "card": "Roaring Earth",
+   "id": 87
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28081"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28079"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28080"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28078"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28083"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28082"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28085"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28084"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28086"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28087"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28088"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 10,
+   "answer": [
+    "Command Tower (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 5,
+   "card": "Command Tower",
+   "id": 36
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28091"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28090"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28089"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28092"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28093"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28094"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28096"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g28095"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 7,
+   "answer": [
+    "Dyadrine, Synthesis Amalgam"
+   ],
+   "by": "ai"
+  }
+ ],
+ "default": "X = 5",
+ "lines": {
+  "X = 0": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "number",
+     "prompt": "X for Dyadrine, Synthesis Amalgam",
+     "options": 0,
+     "answer": [
+      "0"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{G}{W} for Dyadrine, Synthesis Amalgam, in order; none = automatic",
+     "options": 14,
+     "answer": [
+      "Plains (W)",
+      "Stomping Ground (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "sources": [
+      "Plains",
+      "Stomping Ground"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "id": 89,
+     "as": "Dyadrine, Synthesis Amalgam",
+     "x": 0,
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Rishkar, Peema Renegade 3/3 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "confirm",
+     "prompt": "use Dyadrine, Synthesis Amalgam: Whenever you attack, you may remove a +1/+1 count…",
+     "options": 2,
+     "answer": [
+      "no"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 3",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "Felidar Retreat"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "green"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "options": 1,
+     "answer": [
+      "white"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {3}{W} for Felidar Retreat, in order; none = automatic",
+     "options": 10,
+     "answer": [
+      "Plains (W)",
+      "Command Tower (G)",
+      "Scavenger Grounds (C)",
+      "Mana Confluence (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Felidar Retreat",
+     "sources": [
+      "Plains",
+      "Command Tower",
+      "Scavenger Grounds",
+      "Mana Confluence"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Felidar Retreat",
+     "id": 45,
+     "as": "Felidar Retreat",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 3,
+     "creatures": 2,
+     "power": 5,
+     "permanents": 3,
+     "opponents_life": 117
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Pollenbright Druid",
+     "id": 32
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 37,
+    "mana": 8,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Roaring Earth",
+     "Pollenbright Druid"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Dyadrine, Synthesis Amalgam",
+      "pt": "2/3",
+      "counters": {
+       "+1/+1": 2
+      }
+     },
+     {
+      "name": "Felidar Retreat"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 37,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 1": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "number",
+     "prompt": "X for Dyadrine, Synthesis Amalgam",
+     "options": 0,
+     "answer": [
+      "1"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{G}{W} for Dyadrine, Synthesis Amalgam, in order; none = automatic",
+     "options": 14,
+     "answer": [
+      "Plains (W)",
+      "Stomping Ground (G)",
+      "Plains (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "sources": [
+      "Plains",
+      "Stomping Ground",
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "id": 89,
+     "as": "Dyadrine, Synthesis Amalgam",
+     "x": 1,
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 6,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Rishkar, Peema Renegade 3/3 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "confirm",
+     "prompt": "use Dyadrine, Synthesis Amalgam: Whenever you attack, you may remove a +1/+1 count…",
+     "options": 2,
+     "answer": [
+      "no"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 3",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Roaring Earth"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "green"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {1}{G} for Roaring Earth, in order; none = automatic",
+     "options": 9,
+     "answer": [
+      "Command Tower (G)",
+      "Scavenger Grounds (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Roaring Earth",
+     "sources": [
+      "Command Tower",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Roaring Earth",
+     "id": 87,
+     "as": "Roaring Earth",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 8,
+     "unspent": 1,
+     "hand": 3,
+     "creatures": 2,
+     "power": 6,
+     "permanents": 3,
+     "opponents_life": 117
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Pollenbright Druid",
+     "id": 32
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 38,
+    "mana": 8,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Felidar Retreat",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Pollenbright Druid"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Dyadrine, Synthesis Amalgam",
+      "pt": "3/4",
+      "counters": {
+       "+1/+1": 3
+      }
+     },
+     {
+      "name": "Roaring Earth"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 37,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 2": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "number",
+     "prompt": "X for Dyadrine, Synthesis Amalgam",
+     "options": 0,
+     "answer": [
+      "2"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "white"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{G}{W} for Dyadrine, Synthesis Amalgam, in order; none = automatic",
+     "options": 14,
+     "answer": [
+      "Plains (W)",
+      "Stomping Ground (G)",
+      "Plains (W)",
+      "Command Tower (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "sources": [
+      "Plains",
+      "Stomping Ground",
+      "Plains",
+      "Command Tower"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "id": 89,
+     "as": "Dyadrine, Synthesis Amalgam",
+     "x": 2,
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Rishkar, Peema Renegade 3/3 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "confirm",
+     "prompt": "use Dyadrine, Synthesis Amalgam: Whenever you attack, you may remove a +1/+1 count…",
+     "options": 2,
+     "answer": [
+      "no"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 3",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Roaring Earth"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "options": 1,
+     "answer": [
+      "green"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {1}{G} for Roaring Earth, in order; none = automatic",
+     "options": 6,
+     "answer": [
+      "Mana Confluence (G)",
+      "Scavenger Grounds (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Roaring Earth",
+     "sources": [
+      "Mana Confluence",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Roaring Earth",
+     "id": 87,
+     "as": "Roaring Earth",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 3,
+     "creatures": 2,
+     "power": 7,
+     "permanents": 3,
+     "opponents_life": 117
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Pollenbright Druid",
+     "id": 32
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 37,
+    "mana": 8,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Felidar Retreat",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Pollenbright Druid"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Dyadrine, Synthesis Amalgam",
+      "pt": "4/5",
+      "counters": {
+       "+1/+1": 4
+      }
+     },
+     {
+      "name": "Roaring Earth"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 37,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 3": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "number",
+     "prompt": "X for Dyadrine, Synthesis Amalgam",
+     "options": 0,
+     "answer": [
+      "3"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "white"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{G}{W} for Dyadrine, Synthesis Amalgam, in order; none = automatic",
+     "options": 14,
+     "answer": [
+      "Plains (W)",
+      "Stomping Ground (G)",
+      "Plains (W)",
+      "Command Tower (W)",
+      "Scavenger Grounds (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "sources": [
+      "Plains",
+      "Stomping Ground",
+      "Plains",
+      "Command Tower",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "id": 89,
+     "as": "Dyadrine, Synthesis Amalgam",
+     "x": 3,
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Rishkar, Peema Renegade 3/3 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "confirm",
+     "prompt": "use Dyadrine, Synthesis Amalgam: Whenever you attack, you may remove a +1/+1 count…",
+     "options": 2,
+     "answer": [
+      "no"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "Opp 3",
+     "life": 37
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 8,
+     "unspent": 1,
+     "hand": 4,
+     "creatures": 2,
+     "power": 8,
+     "permanents": 2,
+     "opponents_life": 117
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Pollenbright Druid",
+     "id": 32
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 38,
+    "mana": 8,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Felidar Retreat",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Roaring Earth",
+     "Pollenbright Druid"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Dyadrine, Synthesis Amalgam",
+      "pt": "5/6",
+      "counters": {
+       "+1/+1": 5
+      }
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 37,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 4": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "number",
+     "prompt": "X for Dyadrine, Synthesis Amalgam",
+     "options": 0,
+     "answer": [
+      "4"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "white"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{G}{W} for Dyadrine, Synthesis Amalgam, in order; none = automatic",
+     "options": 14,
+     "answer": [
+      "Plains (W)",
+      "Stomping Ground (G)",
+      "Plains (W)",
+      "Command Tower (W)",
+      "Scavenger Grounds (C)",
+      "Rishkar, Peema Renegade 3/3 [+1/+1 1] (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "sources": [
+      "Plains",
+      "Stomping Ground",
+      "Plains",
+      "Command Tower",
+      "Scavenger Grounds",
+      "Rishkar, Peema Renegade"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "id": 89,
+     "as": "Dyadrine, Synthesis Amalgam",
+     "x": 4,
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 8,
+     "unspent": 1,
+     "hand": 4,
+     "creatures": 2,
+     "power": 9,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Pollenbright Druid",
+     "id": 32
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 38,
+    "mana": 8,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Felidar Retreat",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Roaring Earth",
+     "Pollenbright Druid"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Dyadrine, Synthesis Amalgam",
+      "pt": "6/7",
+      "counters": {
+       "+1/+1": 6
+      }
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 5": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "number",
+     "prompt": "X for Dyadrine, Synthesis Amalgam",
+     "options": 0,
+     "answer": [
+      "5"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "white"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "life",
+     "turn": 5,
+     "player": "You",
+     "life": 37
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Mana Confluence)",
+     "options": 1,
+     "answer": [
+      "white"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{G}{W} for Dyadrine, Synthesis Amalgam, in order; none = automatic",
+     "options": 14,
+     "answer": [
+      "Plains (W)",
+      "Stomping Ground (G)",
+      "Plains (W)",
+      "Command Tower (W)",
+      "Scavenger Grounds (C)",
+      "Rishkar, Peema Renegade 3/3 [+1/+1 1] (G)",
+      "Mana Confluence (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "sources": [
+      "Plains",
+      "Stomping Ground",
+      "Plains",
+      "Command Tower",
+      "Scavenger Grounds",
+      "Rishkar, Peema Renegade",
+      "Mana Confluence"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Dyadrine, Synthesis Amalgam",
+     "id": 89,
+     "as": "Dyadrine, Synthesis Amalgam",
+     "x": 5,
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 8,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "power": 10,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Pollenbright Druid",
+     "id": 32
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 37,
+    "mana": 8,
+    "land_drop": true,
+    "library": 85,
+    "hand": [
+     "Felidar Retreat",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Roaring Earth",
+     "Pollenbright Druid"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Command Tower"
+     },
+     {
+      "name": "Dyadrine, Synthesis Amalgam",
+      "pt": "7/8",
+      "counters": {
+       "+1/+1": 7
+      }
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "X = 5"
+ ],
+ "note": "seven mana, X spell: X at its largest spends it all"
+}

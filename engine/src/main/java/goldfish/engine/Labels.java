@@ -47,11 +47,15 @@ final class Labels {
         return label.toString();
     }
 
-    /** The full text behind a card option, for agents that ask for detail. */
+    /**
+     * The full text behind a card option, for agents that ask for detail. On the battlefield a permanent's
+     * abilities as they are now (a copy's, gained ones, a clone's drawback), since what it does is what
+     * matters there; elsewhere the printed text.
+     */
     static String detail(Card card) {
-        // Forge's Oracle text separates abilities with a literal backslash-n, and sometimes a real newline.
-        String text = card.getOracleText() == null ? ""
-                : card.getOracleText().replace("\\n", "\n").replaceAll("\\s*\n\\s*", " / ").trim();
+        String raw = card.isInZone(ZoneType.Battlefield) ? card.getAbilityText() : card.getOracleText();
+        // Forge separates abilities with a literal backslash-n, and sometimes a real newline.
+        String text = raw == null ? "" : raw.replace("\\n", "\n").replaceAll("\\s*\n\\s*", " / ").trim();
         String cost = card.getManaCost() == null || card.getManaCost().isNoCost() ? "" : " " + card.getManaCost();
         return card.getName() + cost + " — " + card.getType() + (text.isEmpty() ? "" : " — " + text);
     }

@@ -1,0 +1,1310 @@
+{
+ "id": "scenario-moon-copy",
+ "plan": "Blue creatures and copies. Make a land drop every turn and cast Sol Ring early. Springleaf Drum only makes mana by tapping a creature, so cast creatures first. Princess Yue is cheap: cast her early; when she dies she returns as a land named Moon. Clones and copy effects (Phantasmal Image, Phyrexian Metamorph, Vizier of Many Faces and the like) are best copying your best creature. Tap and untap tricks and repeated enter-the-battlefield triggers grow a large board; attack with it. Counterspells and bounce have no targets here: hold them, and draw cards with spare mana.\n",
+ "state": {
+  "turn": "T5 main1",
+  "life": 40,
+  "mana": 3,
+  "land_drop": false,
+  "library": 95,
+  "hand": [],
+  "battlefield": [
+   {
+    "name": "Island",
+    "tapped": true
+   },
+   {
+    "name": "Island",
+    "tapped": true
+   },
+   {
+    "name": "Island",
+    "tapped": true
+   },
+   {
+    "name": "Island",
+    "tapped": true
+   },
+   {
+    "name": "Minamo, School at Water's Edge"
+   },
+   {
+    "name": "Deserted Temple"
+   },
+   {
+    "name": "Matoya, Archon Elder",
+    "pt": "1/4",
+    "sick": true
+   },
+   {
+    "name": "Tui and La, Moon and Ocean",
+    "pt": "3/3",
+    "sick": true
+   },
+   {
+    "name": "Wake Thrasher",
+    "pt": "1/1",
+    "sick": true
+   },
+   {
+    "name": "Princess Yue",
+    "pt": "3/2",
+    "sick": true
+   },
+   {
+    "name": "Island"
+   }
+  ],
+  "command": [],
+  "graveyard": [
+   "Deserted Temple",
+   "Mirror Image",
+   "Nykthos, Shrine to Nyx",
+   "Loyal Drake",
+   "Moon"
+  ],
+  "exile": [],
+  "stack": [
+   "When Princess Yue dies, if she was a nonland crea…"
+  ],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Deserted Temple": "Deserted Temple — Land — {T}: Add {C}. / {1}, {T}: Untap target land.",
+   "Matoya, Archon Elder": "Matoya, Archon Elder {2}{U} — Legendary Creature - Human Warlock — Whenever you scry or surveil, draw a card. (Draw after you scry or surveil.)",
+   "Minamo, School at Water's Edge": "Minamo, School at Water's Edge — Legendary Land — {T}: Add {U}. / {U}, {T}: Untap target legendary permanent.",
+   "Princess Yue": "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2.",
+   "Tui and La, Moon and Ocean": "Tui and La, Moon and Ocean {3}{U} — Legendary Creature - Fish Spirit — Whenever Tui and La becomes tapped, draw a card. / Whenever Tui and La become untapped, put a +1/+1 counter on them.",
+   "Wake Thrasher": "Wake Thrasher {2}{U} — Creature - Merfolk Soldier — Whenever a permanent you control becomes untapped, Wake Thrasher gets +1/+1 until end of turn."
+  }
+ },
+ "decision": {
+  "kind": "choose",
+  "turn": "T5 main1",
+  "prompt": "Choose a card (Moon)",
+  "options": [
+   "Matoya, Archon Elder 1/4",
+   "Princess Yue 3/2",
+   "Tui and La, Moon and Ocean 3/3",
+   "Wake Thrasher 1/1"
+  ],
+  "details": [
+   "Matoya, Archon Elder {2}{U} — Legendary Creature - Human Warlock — Whenever you scry or surveil, draw a card. (Draw after you scry or surveil.)",
+   "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2.",
+   "Tui and La, Moon and Ocean {3}{U} — Legendary Creature - Fish Spirit — Whenever Tui and La becomes tapped, draw a card. / Whenever Tui and La become untapped, put a +1/+1 counter on them.",
+   "Wake Thrasher {2}{U} — Creature - Merfolk Soldier — Whenever a permanent you control becomes untapped, Wake Thrasher gets +1/+1 until end of turn."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 5
+  },
+  {
+   "t": "draw",
+   "turn": 5,
+   "card": "Island",
+   "id": 41
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Springleaf Drum",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Faerie Mastermind",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Blade of Shared Souls",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Glasspool Mimic",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Phyrexian Metamorph",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Minamo, School at Water's Edge",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Deserted Temple",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Matoya, Archon Elder",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Tui and La, Moon and Ocean",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Wake Thrasher",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Princess Yue",
+   "from": "command",
+   "to": "battlefield"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "Island (land)"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "land",
+   "turn": 5,
+   "card": "Island",
+   "id": 406
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 4,
+   "answer": [
+    "Phyrexian Metamorph"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "pay",
+   "prompt": "mana to pay {3}{U/P} for Phyrexian Metamorph, in order; none = automatic",
+   "options": 7,
+   "answer": [
+    "Island (U)",
+    "Island (U)",
+    "Island (U)",
+    "Island (U)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 5,
+   "card": "Phyrexian Metamorph",
+   "sources": [
+    "Island",
+    "Island",
+    "Island",
+    "Island"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "cast",
+   "turn": 5,
+   "card": "Phyrexian Metamorph",
+   "id": 405,
+   "as": "Phyrexian Metamorph",
+   "by": "agent"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 3,
+   "answer": [
+    "pass"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "choose",
+   "prompt": "Choose a card (Phyrexian Metamorph)",
+   "options": 4,
+   "answer": [
+    "Princess Yue 3/2"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "choose",
+   "prompt": "You have multiple legendary permanents named \"Princess Yue\" in play. Choose the one to stay on battlefield (the rest will be moved to graveyard) ()",
+   "options": 2,
+   "answer": [
+    "Princess Yue 3/2"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Princess Yue",
+   "from": "battlefield",
+   "to": "graveyard"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 3,
+   "answer": [
+    "pass"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g39941"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g39942"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g39944"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g39943"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g39945"
+  }
+ ],
+ "default": "Wake Thrasher 1/1",
+ "lines": {
+  "Matoya, Archon Elder 1/4": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Moon)",
+     "options": 4,
+     "answer": [
+      "Matoya, Archon Elder 1/4"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Moon",
+     "from": "graveyard",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 8,
+     "mana": 8,
+     "unspent": 3,
+     "hand": 0,
+     "creatures": 4,
+     "power": 8,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "order",
+     "prompt": "triggers onto the stack, first in resolves last",
+     "options": 5,
+     "answer": [
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 8,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Deserted Temple"
+     },
+     {
+      "name": "Matoya, Archon Elder",
+      "pt": "1/4"
+     },
+     {
+      "name": "Tui and La, Moon and Ocean",
+      "pt": "3/3"
+     },
+     {
+      "name": "Wake Thrasher",
+      "pt": "6/6"
+     },
+     {
+      "name": "Princess Yue",
+      "pt": "3/2"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Moon"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Mirror Image",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Princess Yue 3/2": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Moon)",
+     "options": 4,
+     "answer": [
+      "Princess Yue 3/2"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Moon",
+     "from": "graveyard",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 8,
+     "mana": 8,
+     "unspent": 3,
+     "hand": 0,
+     "creatures": 4,
+     "power": 8,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "order",
+     "prompt": "triggers onto the stack, first in resolves last",
+     "options": 5,
+     "answer": [
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 8,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Deserted Temple"
+     },
+     {
+      "name": "Matoya, Archon Elder",
+      "pt": "1/4"
+     },
+     {
+      "name": "Tui and La, Moon and Ocean",
+      "pt": "3/3"
+     },
+     {
+      "name": "Wake Thrasher",
+      "pt": "6/6"
+     },
+     {
+      "name": "Princess Yue",
+      "pt": "3/2"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Moon"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Mirror Image",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Tui and La, Moon and Ocean 3/3": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Moon)",
+     "options": 4,
+     "answer": [
+      "Tui and La, Moon and Ocean 3/3"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Moon",
+     "from": "graveyard",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 8,
+     "mana": 8,
+     "unspent": 3,
+     "hand": 0,
+     "creatures": 4,
+     "power": 8,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "order",
+     "prompt": "triggers onto the stack, first in resolves last",
+     "options": 6,
+     "answer": [
+      "Moon: Whenever this become untapped, put a +1/+1 counte…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 8,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Deserted Temple"
+     },
+     {
+      "name": "Matoya, Archon Elder",
+      "pt": "1/4"
+     },
+     {
+      "name": "Tui and La, Moon and Ocean",
+      "pt": "3/3"
+     },
+     {
+      "name": "Wake Thrasher",
+      "pt": "6/6"
+     },
+     {
+      "name": "Princess Yue",
+      "pt": "3/2"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Moon",
+      "counters": {
+       "+1/+1": 1
+      }
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Mirror Image",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Wake Thrasher 1/1": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Moon)",
+     "options": 4,
+     "answer": [
+      "Wake Thrasher 1/1"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Moon",
+     "from": "graveyard",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 8,
+     "mana": 8,
+     "unspent": 3,
+     "hand": 0,
+     "creatures": 4,
+     "power": 8,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "order",
+     "prompt": "triggers onto the stack, first in resolves last",
+     "options": 10,
+     "answer": [
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Moon: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Moon: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Moon: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Moon: Whenever a permanent you control becomes untapped…",
+      "Wake Thrasher: Whenever a permanent you control becomes untapped…",
+      "Moon: Whenever a permanent you control becomes untapped…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 8,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Minamo, School at Water's Edge"
+     },
+     {
+      "name": "Deserted Temple"
+     },
+     {
+      "name": "Matoya, Archon Elder",
+      "pt": "1/4"
+     },
+     {
+      "name": "Tui and La, Moon and Ocean",
+      "pt": "3/3"
+     },
+     {
+      "name": "Wake Thrasher",
+      "pt": "6/6"
+     },
+     {
+      "name": "Princess Yue",
+      "pt": "3/2"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Moon"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Mirror Image",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Tui and La, Moon and Ocean 3/3"
+ ],
+ "note": "The Blue Moon line: a clone of Princess Yue died to the legend rule and returns as the land Moon copying a creature. Copying Tui and La puts her tap and untap triggers on a land that Deserted Temple and Minamo untap; copying Yue again only scries."
+}

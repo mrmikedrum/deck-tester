@@ -1,0 +1,716 @@
+{
+ "id": "eternities-living-worlds-iii-3002-T3-5",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T3 main1",
+  "life": 39,
+  "mana": 1,
+  "land_drop": false,
+  "library": 89,
+  "hand": [
+   "Rishkar, Peema Renegade",
+   "Felidar Retreat",
+   "Stomping Ground",
+   "Dyadrine, Synthesis Amalgam",
+   "Windswept Heath",
+   "Scalding Tarn"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains",
+    "tapped": true
+   },
+   {
+    "name": "Scavenger Grounds"
+   },
+   {
+    "name": "Mana Confluence",
+    "tapped": true
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [
+   "Rampant Growth (85) - Search your library for a b…"
+  ],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Dyadrine, Synthesis Amalgam": "Dyadrine, Synthesis Amalgam {X}{G}{W} — Legendary Artifact Creature - Construct — Trample / Dyadrine enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / Whenever you attack, you may remove a +1/+1 counter from each of two creatures you control. If you do, draw a card and create a colorless 2/2 Robot artifact creature token.",
+   "Felidar Retreat": "Felidar Retreat {3}{W} — Enchantment — Landfall — Whenever a land you control enters, choose one — / • Create a 2/2 white Cat Beast creature token. / • Put a +1/+1 counter on each creature you control. Those creatures gain vigilance until end of turn.",
+   "Mana Confluence": "Mana Confluence — Land — {T}, Pay 1 life: Add one mana of any color.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Rishkar, Peema Renegade": "Rishkar, Peema Renegade {2}{G} — Legendary Creature - Elf Druid — When Rishkar, Peema Renegade enters, put a +1/+1 counter on each of up to two target creatures. / Each creature you control with a counter on it has \"{T}: Add {G}.\"",
+   "Scalding Tarn": "Scalding Tarn — Land — {T}, Pay 1 life, Sacrifice Scalding Tarn: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
+   "Scavenger Grounds": "Scavenger Grounds — Land - Desert — {T}: Add {C}. / {2}, {T}, Sacrifice a Desert: Exile all graveyards.",
+   "Stomping Ground": "Stomping Ground — Land - Mountain Forest — ({T}: Add {R} or {G}.) / As Stomping Ground enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "choose",
+  "turn": "T3 main1",
+  "prompt": "Select a card from your library (Rampant Growth)",
+  "options": [
+   "Forest",
+   "Forest",
+   "Forest",
+   "Forest",
+   "Forest",
+   "Forest",
+   "Forest",
+   "Forest",
+   "Forest",
+   "Forest",
+   "Mountain",
+   "Plains",
+   "Plains",
+   "Plains",
+   "Plains",
+   "Plains"
+  ],
+  "details": [
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Mountain — Basic Land - Mountain — ({T}: Add {R}.)",
+   "Plains — Basic Land - Plains — ({T}: Add {W}.)",
+   "Plains — Basic Land - Plains — ({T}: Add {W}.)",
+   "Plains — Basic Land - Plains — ({T}: Add {W}.)",
+   "Plains — Basic Land - Plains — ({T}: Add {W}.)",
+   "Plains — Basic Land - Plains — ({T}: Add {W}.)"
+  ],
+  "min": 0,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 3
+  },
+  {
+   "t": "draw",
+   "turn": 3,
+   "card": "Rampant Growth",
+   "id": 85
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28039"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28037"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28036"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28038"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28040"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28041"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "Mana Confluence (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 3,
+   "card": "Mana Confluence",
+   "id": 71
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28042"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28043"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28044"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28045"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28046"
+  },
+  {
+   "t": "fork",
+   "turn": 3,
+   "session": "g28047"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "Rampant Growth"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "life",
+   "turn": 3,
+   "player": "You",
+   "life": 39
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "choose",
+   "prompt": "Select Mana to Produce (Mana Confluence)",
+   "options": 1,
+   "answer": [
+    "green"
+   ],
+   "by": "forced"
+  },
+  {
+   "t": "decision",
+   "turn": 3,
+   "kind": "pay",
+   "prompt": "mana to pay {1}{G} for Rampant Growth, in order; none = automatic",
+   "options": 7,
+   "answer": [
+    "Mana Confluence (G)",
+    "Plains (W)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 3,
+   "card": "Rampant Growth",
+   "sources": [
+    "Mana Confluence",
+    "Plains"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "cast",
+   "turn": 3,
+   "card": "Rampant Growth",
+   "id": 85,
+   "as": "Rampant Growth",
+   "by": "ai"
+  },
+  {
+   "t": "look",
+   "turn": 3,
+   "cards": [
+    "Forest",
+    "Forest",
+    "Forest",
+    "Forest",
+    "Forest",
+    "Forest",
+    "Forest",
+    "Forest",
+    "Forest",
+    "Forest",
+    "Mountain",
+    "Plains",
+    "Plains",
+    "Plains",
+    "Plains",
+    "Plains"
+   ],
+   "ids": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    8,
+    49,
+    50,
+    52,
+    53,
+    54
+   ],
+   "why": "searched (Rampant Growth)"
+  }
+ ],
+ "default": "Plains",
+ "lines": {
+  "Forest": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Rampant Growth)",
+     "options": 16,
+     "answer": [
+      "Forest"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Forest",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 1,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Forest",
+     "id": 21
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 4,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Rishkar, Peema Renegade",
+     "Felidar Retreat",
+     "Stomping Ground",
+     "Dyadrine, Synthesis Amalgam",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Forest"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Forest"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Mountain": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Rampant Growth)",
+     "options": 16,
+     "answer": [
+      "Mountain"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Mountain",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 1,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Command Tower",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 4,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Rishkar, Peema Renegade",
+     "Felidar Retreat",
+     "Stomping Ground",
+     "Dyadrine, Synthesis Amalgam",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Command Tower"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Mountain"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Plains": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Rampant Growth)",
+     "options": 16,
+     "answer": [
+      "Plains"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 3,
+     "card": "Plains",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 4,
+     "mana": 4,
+     "unspent": 1,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Command Tower",
+     "id": 36
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 4,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Rishkar, Peema Renegade",
+     "Felidar Retreat",
+     "Stomping Ground",
+     "Dyadrine, Synthesis Amalgam",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Command Tower"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "nothing": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Rampant Growth)",
+     "options": 16,
+     "answer": [],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 3,
+     "kind": "confirm",
+     "prompt": "Cancel Search? Up to 1 more card(s) can be selected. (Rampant Growth)",
+     "options": 2,
+     "answer": [
+      "yes"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 3,
+     "lands": 3,
+     "mana": 3,
+     "unspent": 1,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 4
+    },
+    {
+     "t": "draw",
+     "turn": 4,
+     "card": "Awaken the Woods",
+     "id": 95
+    }
+   ],
+   "state": {
+    "turn": "T4 main1",
+    "life": 39,
+    "mana": 3,
+    "land_drop": true,
+    "library": 88,
+    "hand": [
+     "Rishkar, Peema Renegade",
+     "Felidar Retreat",
+     "Stomping Ground",
+     "Dyadrine, Synthesis Amalgam",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Awaken the Woods"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Forest",
+  "Mountain"
+ ],
+ "note": "Marath needs R and G; the board has W and any; never nothing"
+}

@@ -201,27 +201,27 @@
   {
    "t": "fork",
    "turn": 3,
-   "session": "g3570"
+   "session": "g28007"
   },
   {
    "t": "fork",
    "turn": 3,
-   "session": "g3573"
+   "session": "g28010"
   },
   {
    "t": "fork",
    "turn": 3,
-   "session": "g3571"
+   "session": "g28008"
   },
   {
    "t": "fork",
    "turn": 3,
-   "session": "g3572"
+   "session": "g28009"
   },
   {
    "t": "fork",
    "turn": 3,
-   "session": "g3574"
+   "session": "g28011"
   }
  ],
  "default": "pass",
@@ -246,7 +246,7 @@
      "answer": [
       "pass"
      ],
-     "by": "ai"
+     "by": "model"
     },
     {
      "t": "eot",

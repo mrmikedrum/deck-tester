@@ -103,6 +103,8 @@ final class Session {
     volatile Game game;
     volatile Player pilot;
     volatile String over;
+    /** Milliseconds building the game (decks, cards) before the first action, for measuring forks. */
+    volatile long setupMillis;
     private volatile SeededRandom.Source random;
     private final Map<String, Snapshot> snapshots = new LinkedHashMap<>();
 
@@ -176,6 +178,7 @@ final class Session {
     void start() {
         Thread thread = new Thread(() -> {
             random = SeededRandom.seed(setup.seed());
+            long began = System.nanoTime();
             try {
                 List<RegisteredPlayer> players = new ArrayList<>();
                 players.add(RegisteredPlayer.forCommander(setup.deck())
@@ -189,6 +192,7 @@ final class Session {
                 game.setNoGUIUser();
                 pilot = game.getPlayers().stream().filter(p -> p.getName().equals(PILOT)).findFirst().orElseThrow();
                 game.subscribeToEvents(recorder);
+                setupMillis = (System.nanoTime() - began) / 1_000_000;
                 recorder.write("start", "local_cards", System.getProperty("goldfish.localCards"),
                         "local_cards_hash", System.getProperty("goldfish.localCardsHash"), "seed", setup.seed(), "deck", setup.deckName(), "hash", setup.deckHash(),
                         "commander", setup.commanders(), "turns", setup.turnLimit() > 0 ? setup.turnLimit() : null,
@@ -296,6 +300,9 @@ final class Session {
         for (ZoneType zone : List.of(ZoneType.Library, ZoneType.Hand, ZoneType.Battlefield, ZoneType.Graveyard, ZoneType.Exile, ZoneType.Command)) {
             text.append(zone.name().toLowerCase(Locale.ROOT)).append(':');
             for (Card card : pilot.getCardsIn(zone)) {
+                if (card.isImmutable()) {
+                    continue; // Forge's own effect cards, named with their id ("Commander Effect Static Effect #1117")
+                }
                 text.append(' ').append(card.getName());
                 if (ids) {
                     text.append('#').append(card.getId());
@@ -457,14 +464,21 @@ final class Session {
 
     private String applyOverride(List<String> args) {
         String op = args.get(0);
-        // A correction states how the game should be; it must not set off triggers of its own.
-        game.getTriggerHandler().setSuppressAllTriggers(true);
+        // A correction states how the game should be; it must not set off triggers of its own. Destroying is
+        // the exception: it is asked for precisely so that what dies triggers.
+        boolean quiet = !op.equals("destroy");
+        game.getTriggerHandler().setSuppressAllTriggers(quiet);
         String result;
         try {
             result = apply(op, args);
         } finally {
-            game.getTriggerHandler().setSuppressAllTriggers(false);
+            if (quiet) {
+                game.getTriggerHandler().setSuppressAllTriggers(false);
+            }
         }
+        // Triggers that look at what a card was ("if she was a nonland creature") read the game's last known
+        // state, which the game loop refreshes; a correction made while it is parked must refresh it too.
+        game.copyLastState();
         recorder.write("override", "what", String.join(" ", args), "result", result);
         return result;
     }
@@ -503,6 +517,13 @@ final class Session {
                 card.setCounters(type, count);
                 yield card.getName() + " " + args.get(2) + " counters " + count;
             }
+            case "destroy" -> {
+                need(args, 2, "destroy CARD");
+                Card card = find(args.get(1));
+                game.getAction().destroy(card, null, true, null);
+                game.getAction().checkStateEffects(true);
+                yield "destroyed " + card.getName();
+            }
             case "tap" -> {
                 need(args, 2, "tap CARD");
                 Card card = find(args.get(1));
@@ -515,7 +536,7 @@ final class Session {
                 card.untap();
                 yield "untapped " + card.getName();
             }
-            default -> throw new IllegalArgumentException("overrides: move, create, life, counter, tap, untap");
+            default -> throw new IllegalArgumentException("overrides: move, create, life, counter, tap, untap, destroy");
         };
     }
 
@@ -600,6 +621,7 @@ final class Session {
         view.put("turn", turnLabel());
         view.put("life", pilot.getLife());
         view.put("mana", manaEstimate(pilot, true)); // untapped, usable now
+        view.put("land_drop", pilot.getMaxLandPlaysInfinite() || pilot.getLandsPlayedThisTurn() < pilot.getMaxLandPlays());
         view.put("library", pilot.getCardsIn(ZoneType.Library).size());
         view.put("hand", names(pilot.getCardsIn(ZoneType.Hand)));
         List<Map<String, Object>> board = new ArrayList<>();

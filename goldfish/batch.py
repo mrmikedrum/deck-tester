@@ -7,8 +7,9 @@ details, min, max, repeat) and returns option numbers (a list, or one int), or N
 Kinds the pilot doesn't define never leave the engine. While casting a spell the pilot chose, its targets,
 modes, X and payment come back to the pilot too; a missing function there means Forge's AI decides.
 
-A pilot may also define advise(state, decision, this_turn), returning position-specific facts for the
-decision model. Use an advisor with a --guide; it does not choose actions itself.
+A pilot may also define advise(state, decision, this_turn) -> str or None: a line of guidance for the
+decision model about this position (a mana engine it should use, say), which it reads with the plan. The
+state is the engine's view with card text, and this_turn the facts recorded so far this turn.
 """
 
 import importlib.util
@@ -82,7 +83,7 @@ def _play(start: dict, handlers: Dict[str, Callable], decider: Optional[model.De
 
 def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
         pilot: Optional[str], workers: int, ai: str = "default", guide: Optional[str] = None,
-        hybrid: str = "outcomes") -> dict:
+        hybrid: str = "outcomes", fast: bool = False) -> dict:
     """Play a batch and write its manifest; returns the manifest. A guide (the deck plan) brings in the model,
     working with Forge's AI as the hybrid names (see model.Decider)."""
     handlers = load_pilot(pilot) if pilot else {}
@@ -105,7 +106,7 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     avoids: List[str] = []
 
     def one(index: int) -> dict:
-        decider = model.Decider(guide, opponents, usage, hybrid, advise=handlers.get("advise")) if guide else None
+        decider = model.Decider(guide, opponents, usage, hybrid, fast=fast, advise=handlers.get("advise")) if guide else None
         guarded: dict = {}
         reply = _play(dict(base, seed=seed + index), handlers, decider, avoids, turns if exploring else 0, guarded)
         game = {"session": reply["session"], "seed": seed + index, "records": reply["records"], "over": reply.get("over")}
@@ -121,6 +122,7 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     if guide:
         manifest["guide"] = guide
         manifest["hybrid"] = hybrid
+        manifest["fast"] = fast
         manifest["model"] = usage.summary()
     BATCHES.mkdir(parents=True, exist_ok=True)
     batch_id = f"b{len(list(BATCHES.glob('b*.json'))) + 1}"

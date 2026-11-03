@@ -287,13 +287,24 @@ public class ManualController extends PlayerControllerAi {
                 if (sa.costHasManaX()) {
                     sa.setXManaCostPaid(null); // Forge's AI leaves the X it weighed on the ability; it isn't chosen yet
                 }
-                if (!sa.isManaAbility() && targetable(sa) && (sa.isLandAbility() || ComputerUtilCost.canPayCost(sa, me, false))
-                        && payableX(sa)) {
+                // Mana abilities are paid automatically, except ones whose cost taps another permanent (Springleaf
+                // Drum): which creature to tap is a choice with consequences, so they are offered as plays, and the
+                // mana they make waits in the pool for the next cost.
+                if (sa.isManaAbility() && !tapsAnother(sa)) {
+                    continue;
+                }
+                if (targetable(sa) && (sa.isLandAbility() || ComputerUtilCost.canPayCost(sa, me, false)) && payableX(sa)) {
                     result.add(sa);
                 }
             }
         }
         return result;
+    }
+
+    /** A cost that taps a permanent other than the source ("Tap an untapped creature you control"). */
+    private static boolean tapsAnother(SpellAbility sa) {
+        return sa.getPayCosts() != null && sa.getPayCosts().getCostParts().stream()
+                .anyMatch(part -> part instanceof forge.game.cost.CostTapType);
     }
 
     /** False when some part of the ability needs more targets than exist; casting it would fail. */
@@ -361,6 +372,9 @@ public class ManualController extends PlayerControllerAi {
     public List<SpellAbility> chooseSpellAbilityToPlay() {
         boolean reasking = false; // after an override or restore: keep the game parked even with nothing to play
         while (true) {
+            if (!isStop()) {
+                return null; // outside the agent's stops priority passes, and what is playable isn't even evaluated
+            }
             List<SpellAbility> playable = withoutHeldMana(this::playable);
             if (TRACE) {
                 List<String> labels = new ArrayList<>();
@@ -368,8 +382,8 @@ public class ManualController extends PlayerControllerAi {
                 trace("priority stack=" + getGame().getStack().size() + " stop=" + isStop() + " mana="
                         + ComputerUtilMana.getAvailableManaEstimate(getPlayer(), true) + " playable=" + labels);
             }
-            if (!isStop() || (playable.isEmpty() && !reasking)) {
-                return null; // nothing to do, or outside the agent's stops: priority passes
+            if (playable.isEmpty() && !reasking) {
+                return null; // nothing to do: priority passes
             }
             List<String> options = new ArrayList<>();
             List<String> details = new ArrayList<>();

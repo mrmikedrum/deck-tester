@@ -28,7 +28,7 @@ KNOBS = {
     "text": ("all", "options", "none"),         # card text for hand, board and command; options' cards; none
     "history": ("decisions", "summary", "none"),  # this turn: events and decisions; events; nothing
     "criteria": ("text", "short", "outcome", "both"),  # what describes each option
-    "result": ("hand", "nohand", "words"),       # result with counts, without hand count, or compared in words
+    "result": ("hand", "nohand", "words", "after"),  # result with counts, without hand count, compared in words, or an absolute after-line
     "order": ("engine", "passlast", "reverse", "avg"),  # option order; avg averages engine and reversed orders
     "format": ("text", "json"),                  # state as lines of text, or as named JSON fields
     "method": ("choice", "nouls", "scores"),     # one pick; a yes/no per option; a 0-4 score per option
@@ -57,13 +57,13 @@ ASK = {"current": None,
        "plain": "Which of these should you do now?"}
 
 
-def load(only=None, everything=False):
+def load(only=None, everything=False, unlabelled=False):
     found = []
     for path in sorted(SITUATIONS.glob("*.json")):
         x = json.loads(path.read_text())
         if x["id"].startswith("blue-moon") and not (everything or only):
             continue  # its engine is beyond any decider; kept for curiosity
-        if x.get("expected") and (not only or x["id"] in only):
+        if (x.get("expected") or unlabelled) and (not only or x["id"] in only):
             found.append(x)
     return found
 
@@ -126,6 +126,12 @@ def outcome(x, name, now, hand=True):
     return "; ".join(parts)
 
 
+def after_line(x, name, now):
+    """The decider's own wording: the board after the line, in absolute terms (model.after_line)."""
+    line = x["lines"][name]
+    return model.after_line(x["state"], line["facts"], line["state"], now)
+
+
 def worded(x, name, now):
     """The decider's own wording of results (model.worded), over this situation's lines."""
     names = options(x)
@@ -142,6 +148,9 @@ def detail_of(x, name):
     return name
 
 
+ADVISOR = None  # advise(state, decision, this_turn) from --advisor, if any
+
+
 def render_case(x, v):
     """The state text and the question for one situation under variant v."""
     d, state, now = x["decision"], x["state"], model.turn(x["decision"])
@@ -150,6 +159,9 @@ def render_case(x, v):
         lines.append("Deck plan: " + x["plan"].strip() + (" Keep an opening hand with two to four lands; mulligan the rest."
                                                         if v["advice"] == "on" else ""))
     lines.append(GOALS[v["goal"]].format(opponents=3))
+    guidance = ADVISOR(state, d, x.get("so_far", [])) if ADVISOR else None
+    if guidance:
+        lines.append(f"Guidance for this position: {guidance.strip()}")
     if v["board"] == "full":
         for l in render.state(state, full=True):
             if v["trim"] == "light":
@@ -162,7 +174,7 @@ def render_case(x, v):
         if state["command"]:
             lines.append("command: " + ", ".join(state["command"]))
     if v["facts"] == "on" and d["kind"] == "mulligan":
-        lines.append(f"Lands in hand: {model.lands_in(state['hand'], state)} of {len(state['hand'])}")
+        lines.append(model.mulligan_facts(state))
     names = options(x)
     if v["order"] == "passlast":
         names = [n for n in names if n != "pass"] + [n for n in names if n == "pass"]
@@ -202,7 +214,8 @@ def render_case(x, v):
         elif v["criteria"] == "short":
             c = keys[n]
         else:
-            result = worded(x, n, now) if v["result"] == "words" else outcome(x, n, now, v["result"] == "hand")
+            result = (worded(x, n, now) if v["result"] == "words" else after_line(x, n, now) if v["result"] == "after"
+                      else outcome(x, n, now, v["result"] == "hand"))
             if v["criteria"] == "outcome":
                 c = result
             elif v["format"] == "json":
@@ -282,10 +295,10 @@ def ask(x, v, usage):
     else:
         odds, text, question = odds_for(x, v, usage)
     chosen = max(odds, key=odds.get) if odds else None
-    right = sum(odds.get(e, 0) for e in x["expected"])
+    right = sum(odds.get(e, 0) for e in x["expected"] or [])
     size = len(text if isinstance(text, str) else json.dumps(text)) + len(json.dumps(question))
-    return {"id": x["id"], "chosen": chosen, "ok": chosen in x["expected"], "p_right": right,
-            "confidence": odds.get(chosen, 0) if chosen else 0, "bytes": size}
+    return {"id": x["id"], "chosen": chosen, "ok": chosen in x["expected"] if x.get("expected") else None, "p_right": right,
+            "confidence": odds.get(chosen, 0) if chosen else 0, "bytes": size, "default": default_option(x)}
 
 
 def run(name, v, cases):
@@ -293,7 +306,7 @@ def run(name, v, cases):
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(lambda x: ask(x, v, usage), cases))
     n = len(results)
-    acc = sum(r["ok"] for r in results) / n
+    acc = sum(1 for r in results if r["ok"]) / n
     p = sum(r["p_right"] for r in results) / n
     sure = [r["confidence"] for r in results if r["ok"]]
     conf = sum(sure) / len(sure) if sure else 0
@@ -323,8 +336,15 @@ def main():
     parser.add_argument("--repeat", type=int, default=1, help="run each variant this many times")
     parser.add_argument("--scenarios", action="store_true", help="only the hand-built scenarios (bench/scenarios.py)")
     parser.add_argument("--by-case", action="store_true", help="per situation, how often each variant was right over the repeats")
+    parser.add_argument("--dump", help="append every answer (variant, repeat, id, chosen, confidence, p_right, ok) as JSON lines here")
+    parser.add_argument("--advisor", help="a pilot file whose advise(state, decision, this_turn) adds a guidance line")
+    parser.add_argument("--unlabelled", action="store_true", help="include situations without an expected answer (ok is then null)")
     args = parser.parse_args()
-    cases = load(args.only.split(",") if args.only else None, args.all)
+    global ADVISOR
+    if args.advisor:
+        from goldfish import batch
+        ADVISOR = batch.load_pilot(args.advisor).get("advise")
+    cases = load(args.only.split(",") if args.only else None, args.all, args.unlabelled)
     if args.scenarios:
         cases = [x for x in cases if x["id"].startswith("scenario-")]
     if not args.attacks:
@@ -341,12 +361,16 @@ def main():
         for r in range(args.repeat):
             results = run(name if args.repeat == 1 else f"{name} #{r + 1}", v, cases)
             runs.append(results)
+            if args.dump:
+                with open(args.dump, "a") as out:
+                    for item in results:
+                        out.write(json.dumps(dict(item, variant=name, repeat=r)) + "\n")
         if args.repeat > 1:
-            acc = sum(r["ok"] for rs in runs for r in rs) / sum(len(rs) for rs in runs)
+            acc = sum(1 for rs in runs for r in rs if r["ok"]) / sum(len(rs) for rs in runs)
             print(f"{name:28s} over {args.repeat} runs: right {acc:4.0%}")
         if args.by_case:
             for i, x in enumerate(cases):
-                oks = [rs[i]["ok"] for rs in runs]
+                oks = [bool(rs[i]["ok"]) for rs in runs]
                 chosen = sorted({str(rs[i]["chosen"]) for rs in runs if not rs[i]["ok"]})
                 print(f"    {x['id']:36s} right {sum(oks)}/{len(oks)}" + (f" · wrong picks: {', '.join(chosen)}" if chosen else ""))
         if args.misses:  # from the last repeat

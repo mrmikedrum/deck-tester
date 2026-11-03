@@ -88,7 +88,10 @@ those kinds; returning `None` hands one back to the AI. See `examples/pilots/com
 |--------|------|
 | `--games N`, `--seed N` | How many games; game N uses seed+N, so any game can be replayed with `start --seed` |
 | `--turns N` | Turns per game (default 8; 0 for no limit) |
-| `--pilot FILE` | Answer some decision kinds yourself |
+| `--pilot FILE` | Answer some decision kinds yourself; a pilot may also define `advise(state, decision, this_turn)` to give the model a line of deck guidance |
+| `--guide PLAN` | Put the decision model (Jev) in the seat with this plain-language deck plan; each option is played out in a fork of the game and the model picks (see architecture) |
+| `--hybrid plain` | With `--guide`: the model picks from the text alone, nothing played out |
+| `--fast` | With `--guide`: a confident text-only pick skips the forks; quicker, more calls, possibly worse play (off by default) |
 | `--ai hybrid\|sim` | Forge's experimental lookahead; slower and no better so far, and `sim` crashes (see architecture) |
 | `--per-game`, `--cards` | Add a line per game; add how often each card was seen and played |
 | `report [bN]` | Show a batch's report again, with the same flags |

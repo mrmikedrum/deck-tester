@@ -287,6 +287,7 @@ public final class Server {
         }
         reply.put("replayed", fork.replayed());
         reply.put("ms", (System.nanoTime() - began) / 1_000_000);
+        reply.put("setup_ms", fork.setupMillis);
         return reply;
     }
 

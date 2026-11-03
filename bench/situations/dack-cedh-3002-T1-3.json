@@ -1,0 +1,339 @@
+{
+ "id": "dack-cedh-3002-T1-3",
+ "plan": "Fast mana into an early commander. Play fast mana (Sol Ring, Mana Vault, moxen, monoliths, Ancient Tomb)\nas soon as you can and cast Dack Fayden as early as possible; his entry hands each opponent a goaded\ncreature from your library. Stax and protection pieces (Rule of Law, Trinisphere, Silence and the like) do\nlittle against these opponents; cast them only with mana to spare after developing. Tutors should find mana\nor more development. Removal has no targets: hold it.\n",
+ "state": {
+  "turn": "T1 main2",
+  "life": 40,
+  "mana": 1,
+  "land_drop": false,
+  "library": 91,
+  "hand": [
+   "Windswept Heath",
+   "Plains",
+   "Damping Sphere",
+   "Arid Mesa",
+   "Abdel Adrian, Gorion's Ward",
+   "Grim Monolith",
+   "Voltaic Key"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   }
+  ],
+  "command": [
+   "Dack Fayden, Helping Hand"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 1,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Abdel Adrian, Gorion's Ward": "Abdel Adrian, Gorion's Ward {4}{W} — Legendary Creature - Human Warrior — When Abdel Adrian, Gorion's Ward enters, exile any number of other nonland permanents you control until Abdel Adrian leaves the battlefield. Create a 1/1 white Soldier creature token for each permanent exiled this way. / Choose a Background (You can have a Background as a second commander.)",
+   "Arid Mesa": "Arid Mesa — Land — {T}, Pay 1 life, Sacrifice Arid Mesa: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+   "Dack Fayden, Helping Hand": "Dack Fayden, Helping Hand {4}{W}{W} — Legendary Creature - Human Advisor — When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen.",
+   "Damping Sphere": "Damping Sphere {2} — Artifact — If a land is tapped for two or more mana, it produces {C} instead of any other type and amount. / Each spell a player casts costs {1} more to cast for each other spell that player has cast this turn.",
+   "Grim Monolith": "Grim Monolith {2} — Artifact — This artifact doesn't untap during your untap step. / {T}: Add {C}{C}{C}. / {4}: Untap this artifact.",
+   "Voltaic Key": "Voltaic Key {1} — Artifact — {1}, {T}: Untap target artifact.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T1 main2",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Voltaic Key"
+  ],
+  "details": [
+   "pass priority",
+   "Voltaic Key {1} — Artifact — {1}, {T}: Untap target artifact."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 1
+  },
+  {
+   "t": "draw",
+   "turn": 1,
+   "card": "Voltaic Key",
+   "id": 99
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28171"
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28172"
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28170"
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28173"
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28174"
+  },
+  {
+   "t": "decision",
+   "turn": 1,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "Plains (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 1,
+   "card": "Plains",
+   "id": 45
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28176"
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28177"
+  },
+  {
+   "t": "fork",
+   "turn": 1,
+   "session": "g28175"
+  },
+  {
+   "t": "decision",
+   "turn": 1,
+   "kind": "play",
+   "options": 2,
+   "answer": [
+    "pass"
+   ],
+   "by": "ai"
+  }
+ ],
+ "default": "Voltaic Key",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 1,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 1,
+     "lands": 1,
+     "mana": 1,
+     "unspent": 1,
+     "hand": 7,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 2
+    },
+    {
+     "t": "draw",
+     "turn": 2,
+     "card": "Vexing Bauble",
+     "id": 93
+    }
+   ],
+   "state": {
+    "turn": "T2 main1",
+    "life": 40,
+    "mana": 1,
+    "land_drop": true,
+    "library": 90,
+    "hand": [
+     "Windswept Heath",
+     "Plains",
+     "Damping Sphere",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Grim Monolith",
+     "Voltaic Key",
+     "Vexing Bauble"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 1,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 1,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Voltaic Key": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 1,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Voltaic Key"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "cast",
+     "turn": 1,
+     "card": "Voltaic Key",
+     "id": 99,
+     "as": "Voltaic Key",
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 1,
+     "lands": 1,
+     "mana": 1,
+     "unspent": 0,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 2
+    },
+    {
+     "t": "draw",
+     "turn": 2,
+     "card": "Vexing Bauble",
+     "id": 93
+    }
+   ],
+   "state": {
+    "turn": "T2 main1",
+    "life": 40,
+    "mana": 1,
+    "land_drop": true,
+    "library": 90,
+    "hand": [
+     "Windswept Heath",
+     "Plains",
+     "Damping Sphere",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Grim Monolith",
+     "Vexing Bauble"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 1,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 1,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Voltaic Key"
+ ],
+ "note": "same at main 2"
+}

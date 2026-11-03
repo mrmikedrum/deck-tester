@@ -39,13 +39,15 @@ final class ManualCostDecision extends AiCostDecision {
         this.planColors = planColors;
     }
 
-    /** The mana part: activate the chosen abilities here, where Forge's AI would tap, then pay from the pool. */
+    /**
+     * Just before the mana part is paid (Forge decides every part of a cost before paying any, so this is after
+     * the other parts' choices, where Forge's AI taps): activate the chosen abilities, then the pool pays.
+     */
     @Override
-    public PaymentDecision visit(CostPartMana cost) {
+    public void beforePayingMana(CostPartMana part) {
         for (int i = 0; i < plan.size(); i++) {
             controller.activate(plan.get(i), planColors.get(i));
         }
-        return super.visit(cost);
     }
 
     @Override

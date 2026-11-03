@@ -1,0 +1,515 @@
+{
+ "id": "eternities-living-worlds-iii-3002-T4-9",
+ "plan": "Ramp, then grow. Make a land drop every turn and cast mana rocks, mana creatures and land fetchers first.\nCast Marath (R/G/W) as soon as you have its colours; it enters with a +1/+1 counter per mana spent and later\nspends them to grow creatures or make X/X tokens. Then develop creatures, counters and tokens, since\nproliferate and populate need them on the board. Spend your mana every turn. Removal and protection do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T4 main2",
+  "life": 38,
+  "mana": 1,
+  "land_drop": false,
+  "library": 87,
+  "hand": [
+   "Felidar Retreat",
+   "Dyadrine, Synthesis Amalgam",
+   "Windswept Heath",
+   "Scalding Tarn",
+   "Command Tower"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains",
+    "tapped": true
+   },
+   {
+    "name": "Scavenger Grounds"
+   },
+   {
+    "name": "Mana Confluence",
+    "tapped": true
+   },
+   {
+    "name": "Plains",
+    "tapped": true
+   },
+   {
+    "name": "Stomping Ground",
+    "tapped": true
+   },
+   {
+    "name": "Rishkar, Peema Renegade",
+    "pt": "2/2",
+    "sick": true
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [
+   "Rampant Growth"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Command Tower": "Command Tower — Land — {T}: Add one mana of any color in your commander's color identity.",
+   "Dyadrine, Synthesis Amalgam": "Dyadrine, Synthesis Amalgam {X}{G}{W} — Legendary Artifact Creature - Construct — Trample / Dyadrine enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / Whenever you attack, you may remove a +1/+1 counter from each of two creatures you control. If you do, draw a card and create a colorless 2/2 Robot artifact creature token.",
+   "Felidar Retreat": "Felidar Retreat {3}{W} — Enchantment — Landfall — Whenever a land you control enters, choose one — / • Create a 2/2 white Cat Beast creature token. / • Put a +1/+1 counter on each creature you control. Those creatures gain vigilance until end of turn.",
+   "Mana Confluence": "Mana Confluence — Land — {T}, Pay 1 life: Add one mana of any color.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Rishkar, Peema Renegade": "Rishkar, Peema Renegade {2}{G} — Legendary Creature - Elf Druid — When Rishkar, Peema Renegade enters, put a +1/+1 counter on each of up to two target creatures. / Each creature you control with a counter on it has \"{T}: Add {G}.\"",
+   "Scalding Tarn": "Scalding Tarn — Land — {T}, Pay 1 life, Sacrifice Scalding Tarn: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
+   "Scavenger Grounds": "Scavenger Grounds — Land - Desert — {T}: Add {C}. / {2}, {T}, Sacrifice a Desert: Exile all graveyards.",
+   "Stomping Ground": "Stomping Ground — Land - Mountain Forest — ({T}: Add {R} or {G}.) / As Stomping Ground enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "targets",
+  "turn": "T4 main2",
+  "prompt": "target for When this enters, put a +1/+1 counter on each of …",
+  "options": [
+   "Rishkar, Peema Renegade 2/2"
+  ],
+  "details": [
+   "Rishkar, Peema Renegade {2}{G} — Legendary Creature - Elf Druid — When Rishkar, Peema Renegade enters, put a +1/+1 counter on each of up to two target creatures. / Each creature you control with a counter on it has \"{T}: Add {G}.\""
+  ],
+  "min": 0,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 4
+  },
+  {
+   "t": "draw",
+   "turn": 4,
+   "card": "Command Tower",
+   "id": 36
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28054"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28053"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28055"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28056"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28057"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28058"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28059"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28060"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28061"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28062"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 9,
+   "answer": [
+    "Stomping Ground (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 4,
+   "card": "Stomping Ground",
+   "id": 38
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28063"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28065"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28066"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28064"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28067"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28068"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "pass"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28069"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28070"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28071"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28072"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28073"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28074"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "Rishkar, Peema Renegade"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "life",
+   "turn": 4,
+   "player": "You",
+   "life": 38
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "choose",
+   "prompt": "Select Mana to Produce (Mana Confluence)",
+   "options": 1,
+   "answer": [
+    "green"
+   ],
+   "by": "forced"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "pay",
+   "prompt": "mana to pay {2}{G} for Rishkar, Peema Renegade, in order; none = automatic",
+   "options": 8,
+   "answer": [
+    "Mana Confluence (G)",
+    "Plains (W)",
+    "Plains (W)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 4,
+   "card": "Rishkar, Peema Renegade",
+   "sources": [
+    "Mana Confluence",
+    "Plains",
+    "Plains"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "cast",
+   "turn": 4,
+   "card": "Rishkar, Peema Renegade",
+   "id": 97,
+   "as": "Rishkar, Peema Renegade",
+   "by": "ai"
+  }
+ ],
+ "default": "Rishkar, Peema Renegade 2/2",
+ "lines": {
+  "Rishkar, Peema Renegade 2/2": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for When this enters, put a +1/+1 counter on each of …",
+     "options": 1,
+     "answer": [
+      "Rishkar, Peema Renegade 2/2"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 5,
+     "mana": 6,
+     "unspent": 1,
+     "hand": 5,
+     "creatures": 1,
+     "power": 3,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Roaring Earth",
+     "id": 87
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 6,
+    "land_drop": true,
+    "library": 86,
+    "hand": [
+     "Felidar Retreat",
+     "Dyadrine, Synthesis Amalgam",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Command Tower",
+     "Roaring Earth"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 1
+      }
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "nothing": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for When this enters, put a +1/+1 counter on each of …",
+     "options": 1,
+     "answer": [],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 5,
+     "mana": 5,
+     "unspent": 1,
+     "hand": 5,
+     "creatures": 1,
+     "power": 2,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Roaring Earth",
+     "id": 87
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 5,
+    "land_drop": true,
+    "library": 86,
+    "hand": [
+     "Felidar Retreat",
+     "Dyadrine, Synthesis Amalgam",
+     "Windswept Heath",
+     "Scalding Tarn",
+     "Command Tower",
+     "Roaring Earth"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Scavenger Grounds"
+     },
+     {
+      "name": "Mana Confluence"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Stomping Ground"
+     },
+     {
+      "name": "Rishkar, Peema Renegade",
+      "pt": "2/2"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Rampant Growth"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Rishkar, Peema Renegade 2/2"
+ ],
+ "note": "a free +1/+1 counter: on the only creature, never nothing"
+}

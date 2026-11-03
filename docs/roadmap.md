@@ -16,9 +16,12 @@ Done when a tested, reproducible upstream engine/resource pin supports the reque
 
 ## Decision model, next
 
-- More scenarios (`bench/scenarios.py`): fetch-land timing, when to hold a land, counters versus tokens
-  for Marath, draw engines; then confirm the context design on full games scored by development (lands,
-  mana, board, hand), not damage, against the Forge-AI baseline in architecture.
+- More scenarios (`bench/scenarios.py`): the late land drop held in hand (Jev misses more than Forge's AI
+  from turn 6), fetch-land timing, rocks versus creatures, counters versus tokens for Marath, draw
+  engines; then confirm on 40 games against the baseline in architecture.
+- More advisor roles as decks need them (`goldfish/advice.py`): sacrifice outlets, untap effects, cost
+  reducers; and a scenario for each role that gets a line.
+- Confirm the after-line on 40 games against the baseline (it is measured on the bench only).
 - Fork drift under parallel load (architecture, "Measured: forks"): find the remaining shared state in
   Forge that games running side by side disturb; sequential replay is exact.
 

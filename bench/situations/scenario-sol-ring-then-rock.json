@@ -180,22 +180,22 @@
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3551"
+   "session": "g27987"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3550"
+   "session": "g27990"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3552"
+   "session": "g27989"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3553"
+   "session": "g27988"
   }
  ],
  "default": "pass",
@@ -218,68 +218,20 @@
      "kind": "play",
      "options": 3,
      "answer": [
-      "Mind Stone"
+      "pass"
      ],
-     "by": "ai"
-    },
-    {
-     "t": "decision",
-     "turn": 2,
-     "kind": "pay",
-     "prompt": "mana to pay {2} for Mind Stone, in order; none = automatic",
-     "options": 2,
-     "answer": [
-      "Plains (W)",
-      "Forest (G)"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "paid",
-     "turn": 2,
-     "card": "Mind Stone",
-     "sources": [
-      "Plains",
-      "Forest"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "cast",
-     "turn": 2,
-     "card": "Mind Stone",
-     "id": 406,
-     "as": "Mind Stone",
-     "by": "ai"
-    },
-    {
-     "t": "decision",
-     "turn": 2,
-     "kind": "play",
-     "options": 2,
-     "answer": [
-      "Sol Ring"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "cast",
-     "turn": 2,
-     "card": "Sol Ring",
-     "id": 405,
-     "as": "Sol Ring",
-     "by": "ai"
+     "by": "model"
     },
     {
      "t": "eot",
      "turn": 2,
      "lands": 2,
-     "mana": 5,
+     "mana": 2,
      "unspent": 2,
-     "hand": 2,
+     "hand": 4,
      "creatures": 0,
      "power": 0,
-     "permanents": 2,
+     "permanents": 0,
      "opponents_life": 120
     },
     {
@@ -296,9 +248,11 @@
    "state": {
     "turn": "T3 main1",
     "life": 40,
-    "mana": 5,
+    "mana": 2,
     "library": 97,
     "hand": [
+     "Sol Ring",
+     "Mind Stone",
      "Cultivate",
      "Beast Within",
      "Exploration Broodship"
@@ -309,12 +263,6 @@
      },
      {
       "name": "Plains"
-     },
-     {
-      "name": "Mind Stone"
-     },
-     {
-      "name": "Sol Ring"
      }
     ],
     "command": [

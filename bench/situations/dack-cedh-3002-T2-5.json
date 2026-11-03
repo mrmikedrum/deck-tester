@@ -1,0 +1,896 @@
+{
+ "id": "dack-cedh-3002-T2-5",
+ "plan": "Fast mana into an early commander. Play fast mana (Sol Ring, Mana Vault, moxen, monoliths, Ancient Tomb)\nas soon as you can and cast Dack Fayden as early as possible; his entry hands each opponent a goaded\ncreature from your library. Stax and protection pieces (Rule of Law, Trinisphere, Silence and the like) do\nlittle against these opponents; cast them only with mana to spare after developing. Tutors should find mana\nor more development. Removal has no targets: hold it.\n",
+ "state": {
+  "turn": "T2 main1",
+  "life": 40,
+  "mana": 2,
+  "land_drop": false,
+  "library": 90,
+  "hand": [
+   "Windswept Heath",
+   "Damping Sphere",
+   "Arid Mesa",
+   "Abdel Adrian, Gorion's Ward",
+   "Grim Monolith",
+   "Vexing Bauble"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Voltaic Key"
+   },
+   {
+    "name": "Plains"
+   }
+  ],
+  "command": [
+   "Dack Fayden, Helping Hand"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 1,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 1,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Abdel Adrian, Gorion's Ward": "Abdel Adrian, Gorion's Ward {4}{W} — Legendary Creature - Human Warrior — When Abdel Adrian, Gorion's Ward enters, exile any number of other nonland permanents you control until Abdel Adrian leaves the battlefield. Create a 1/1 white Soldier creature token for each permanent exiled this way. / Choose a Background (You can have a Background as a second commander.)",
+   "Arid Mesa": "Arid Mesa — Land — {T}, Pay 1 life, Sacrifice Arid Mesa: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+   "Dack Fayden, Helping Hand": "Dack Fayden, Helping Hand {4}{W}{W} — Legendary Creature - Human Advisor — When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen.",
+   "Damping Sphere": "Damping Sphere {2} — Artifact — If a land is tapped for two or more mana, it produces {C} instead of any other type and amount. / Each spell a player casts costs {1} more to cast for each other spell that player has cast this turn.",
+   "Grim Monolith": "Grim Monolith {2} — Artifact — This artifact doesn't untap during your untap step. / {T}: Add {C}{C}{C}. / {4}: Untap this artifact.",
+   "Vexing Bauble": "Vexing Bauble {1} — Artifact — Whenever a player casts a spell, if no mana was spent to cast it, counter that spell. / {1}, {T}, Sacrifice Vexing Bauble: Draw a card.",
+   "Voltaic Key": "Voltaic Key {1} — Artifact — {1}, {T}: Untap target artifact.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T2 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Damping Sphere",
+   "Grim Monolith",
+   "Vexing Bauble",
+   "Voltaic Key: {1}, {T}: Untap target artifact."
+  ],
+  "details": [
+   "pass priority",
+   "Damping Sphere {2} — Artifact — If a land is tapped for two or more mana, it produces {C} instead of any other type and amount. / Each spell a player casts costs {1} more to cast for each other spell that player has cast this turn.",
+   "Grim Monolith {2} — Artifact — This artifact doesn't untap during your untap step. / {T}: Add {C}{C}{C}. / {4}: Untap this artifact.",
+   "Vexing Bauble {1} — Artifact — Whenever a player casts a spell, if no mana was spent to cast it, counter that spell. / {1}, {T}, Sacrifice Vexing Bauble: Draw a card.",
+   "Voltaic Key: {1}, {T}: Untap target artifact."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 2
+  },
+  {
+   "t": "draw",
+   "turn": 2,
+   "card": "Vexing Bauble",
+   "id": 93
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28182"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28183"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28181"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28184"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28185"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28186"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28187"
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "options": 6,
+   "answer": [
+    "Plains (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 2,
+   "card": "Plains",
+   "id": 38
+  }
+ ],
+ "default": "pass",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 2,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Mishra's Workshop",
+     "id": 85
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "land_drop": true,
+    "library": 89,
+    "hand": [
+     "Windswept Heath",
+     "Damping Sphere",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Grim Monolith",
+     "Vexing Bauble",
+     "Mishra's Workshop"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     },
+     {
+      "name": "Plains"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Damping Sphere": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "Damping Sphere"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {2} for Damping Sphere, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)",
+      "Plains (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Damping Sphere",
+     "sources": [
+      "Plains",
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Damping Sphere",
+     "id": 71,
+     "as": "Damping Sphere",
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Mishra's Workshop",
+     "id": 85
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "land_drop": true,
+    "library": 89,
+    "hand": [
+     "Windswept Heath",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Grim Monolith",
+     "Vexing Bauble",
+     "Mishra's Workshop"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Damping Sphere"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Grim Monolith": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "Grim Monolith"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {2} for Grim Monolith, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)",
+      "Plains (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Grim Monolith",
+     "sources": [
+      "Plains",
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Grim Monolith",
+     "id": 89,
+     "as": "Grim Monolith",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Damping Sphere"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Damping Sphere",
+     "id": 71,
+     "as": "Damping Sphere",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Voltaic Key: {1}, {T}: Untap target artifact."
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "targets",
+     "prompt": "target for {1}, {T}: Untap target artifact.",
+     "options": 3,
+     "answer": [
+      "Grim Monolith (tapped)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Voltaic Key",
+     "id": 99,
+     "as": "Voltaic Key: {1}, {T}: Untap target artifact.",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Vexing Bauble"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Vexing Bauble",
+     "id": 93,
+     "as": "Vexing Bauble",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 5,
+     "unspent": 0,
+     "hand": 3,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Mishra's Workshop",
+     "id": 85
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "land_drop": true,
+    "library": 89,
+    "hand": [
+     "Windswept Heath",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Mishra's Workshop"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Grim Monolith",
+      "tapped": true
+     },
+     {
+      "name": "Damping Sphere"
+     },
+     {
+      "name": "Vexing Bauble"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Vexing Bauble": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "Vexing Bauble"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {1} for Vexing Bauble, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Vexing Bauble",
+     "sources": [
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Vexing Bauble",
+     "id": 93,
+     "as": "Vexing Bauble",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 1,
+     "hand": 5,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Mishra's Workshop",
+     "id": 85
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "land_drop": true,
+    "library": 89,
+    "hand": [
+     "Windswept Heath",
+     "Damping Sphere",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Grim Monolith",
+     "Mishra's Workshop"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Vexing Bauble"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Voltaic Key: {1}, {T}: Untap target artifact.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 5,
+     "answer": [
+      "Voltaic Key: {1}, {T}: Untap target artifact."
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "targets",
+     "prompt": "target for {1}, {T}: Untap target artifact.",
+     "options": 1,
+     "answer": [
+      "Voltaic Key"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "pay",
+     "prompt": "mana to pay {1} for Voltaic Key, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Plains (W)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 2,
+     "card": "Voltaic Key",
+     "sources": [
+      "Plains"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Voltaic Key",
+     "id": 99,
+     "as": "Voltaic Key: {1}, {T}: Untap target artifact.",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Vexing Bauble"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Vexing Bauble",
+     "id": 93,
+     "as": "Vexing Bauble",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 0,
+     "hand": 5,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Mishra's Workshop",
+     "id": 85
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 2,
+    "land_drop": true,
+    "library": 89,
+    "hand": [
+     "Windswept Heath",
+     "Damping Sphere",
+     "Arid Mesa",
+     "Abdel Adrian, Gorion's Ward",
+     "Grim Monolith",
+     "Mishra's Workshop"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Voltaic Key"
+     },
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Vexing Bauble"
+     }
+    ],
+    "command": [
+     "Dack Fayden, Helping Hand"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Grim Monolith"
+ ],
+ "note": "two mana: the rock that pays for everything else this turn"
+}

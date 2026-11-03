@@ -188,22 +188,22 @@
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3561"
+   "session": "g27999"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3562"
+   "session": "g27997"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3563"
+   "session": "g27998"
   },
   {
    "t": "fork",
    "turn": 2,
-   "session": "g3560"
+   "session": "g28000"
   }
  ],
  "default": "Rampant Growth",
@@ -226,48 +226,20 @@
      "kind": "play",
      "options": 3,
      "answer": [
-      "Llanowar Elves"
+      "pass"
      ],
-     "by": "ai"
-    },
-    {
-     "t": "decision",
-     "turn": 2,
-     "kind": "pay",
-     "prompt": "mana to pay {G} for Llanowar Elves, in order; none = automatic",
-     "options": 2,
-     "answer": [
-      "Forest (G)"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "paid",
-     "turn": 2,
-     "card": "Llanowar Elves",
-     "sources": [
-      "Forest"
-     ],
-     "by": "ai"
-    },
-    {
-     "t": "cast",
-     "turn": 2,
-     "card": "Llanowar Elves",
-     "id": 406,
-     "as": "Llanowar Elves",
-     "by": "ai"
+     "by": "model"
     },
     {
      "t": "eot",
      "turn": 2,
      "lands": 2,
-     "mana": 3,
-     "unspent": 1,
-     "hand": 2,
-     "creatures": 1,
-     "power": 1,
-     "permanents": 1,
+     "mana": 2,
+     "unspent": 2,
+     "hand": 3,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
      "opponents_life": 120
     },
     {
@@ -284,9 +256,10 @@
    "state": {
     "turn": "T3 main1",
     "life": 40,
-    "mana": 3,
+    "mana": 2,
     "library": 97,
     "hand": [
+     "Llanowar Elves",
      "Rampant Growth",
      "Beast Within",
      "Exploration Broodship"
@@ -297,10 +270,6 @@
      },
      {
       "name": "Forest"
-     },
-     {
-      "name": "Llanowar Elves",
-      "pt": "1/1"
      }
     ],
     "command": [

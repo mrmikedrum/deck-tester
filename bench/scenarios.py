@@ -50,6 +50,20 @@ SCENARIOS = {
         "note": "Walking Ballista with four mana: X is two; less throws mana away.",
         "turn": 3, "battlefield": ["Forest", "Plains", "Mountain", "Sol Ring"], "hand": ["Walking Ballista", "Beast Within"],
         "first": ["Walking Ballista"], "expected": ["X = 2"]},
+    "doubler-token": {
+        "note": "Doubling Season and Marath with counters: the X/X token comes out doubled, so Marath's token beats casting a creature of that size.",
+        "turn": 4, "battlefield": ["Forest", "Plains", "Mountain", "Doubling Season"], "hand": ["Beast Within"],
+        "setup": [["move", "Marath, Will of the Wild", "battlefield"], ["counter", "Marath, Will of the Wild", "+1/+1", "+3"]],
+        "expected": ["Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…"]},
+    "moon-copy": {
+        "note": "The Blue Moon line: a clone of Princess Yue died to the legend rule and returns as the land Moon copying a creature. "
+                "Copying Tui and La puts her tap and untap triggers on a land that Deserted Temple and Minamo untap; copying Yue again only scries.",
+        "deck": "blue-moon-combat-revision", "plan": "blue-moon", "turn": 5,
+        "battlefield": ["Island", "Island", "Island", "Island", "Minamo, School at Water's Edge", "Deserted Temple", "Matoya, Archon Elder",
+                        "Tui and La, Moon and Ocean", "Wake Thrasher"],
+        "hand": ["Phyrexian Metamorph", "Island"], "setup": [["move", "Princess Yue", "battlefield"]],
+        "first": ["Island (land)", "Phyrexian Metamorph", "Princess Yue 3/2", "Princess Yue 3/2", "pass"],
+        "expected": ["Tui and La, Moon and Ocean 3/3"]},
     "mulligan-no-lands": {
         "note": "Seven spells and no land: mulligan.",
         "mulligan": True, "hand": ["Cultivate", "Beast Within", "Rampant Growth", "Llanowar Elves", "Mind Stone", "Sol Ring", "Eternal Witness"],
@@ -75,16 +89,21 @@ def set_up(reply: dict, scenario: dict) -> dict:
         reply = override(session, "create", card, "hand")
     for card in scenario.get("battlefield", []):
         reply = override(session, "create", card, "battlefield")
+    for args in scenario.get("setup", []):
+        reply = override(session, *args)
     return reply
 
 
 def answer(reply: dict, label: str) -> dict:
     decision = reply["decision"]
-    return engine.request({"cmd": "answer", "session": reply["session"], "answer": model._numbers(decision, [label])})
+    full = next(o for o in decision["options"] if o == label or o.startswith(label))
+    return engine.request({"cmd": "answer", "session": reply["session"], "answer": model._numbers(decision, [full])})
 
 
 def build(name: str, scenario: dict, decider: model.Decider) -> dict:
-    deck = decklist.load(DECK)
+    root = Path(__file__).resolve().parent.parent
+    deck = decklist.load(root / "examples" / "decks" / (scenario["deck"] + ".txt")) if "deck" in scenario else decklist.load(DECK)
+    plan = (root / "examples" / "plans" / (scenario["plan"] + ".txt")).read_text() if "plan" in scenario else PLAN.read_text()
     reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 101,
                             "turns": 6, "ask": list(model.KINDS), "mana": "auto"})
     session = reply["session"]
@@ -102,6 +121,16 @@ def build(name: str, scenario: dict, decider: model.Decider) -> dict:
             assert reply.get("decision"), f"{name}: never reached {target}"
             reply = set_up(reply, scenario)
             for label in scenario.get("first", []):
+                # Reach the next decision that offers this label: pass priority while something is on the stack,
+                # and let Forge's AI take any other decision on the way (a payment, a confirmation).
+                for _ in range(40):
+                    decision = reply["decision"]
+                    if any(o == label or o.startswith(label) for o in decision["options"]):
+                        break
+                    stacked = decision["kind"] == "play" and engine.request({"cmd": "state", "session": session})["state"]["stack"]
+                    reply = engine.request({"cmd": "answer", "session": session, **({"answer": [1]} if stacked else {"defer": True})})
+                else:
+                    raise AssertionError(f"{name}: never offered {label!r}")
                 reply = answer(reply, label)
         decision = reply["decision"]
         state = engine.request({"cmd": "state", "session": session, "text": True})["state"]
@@ -115,7 +144,7 @@ def build(name: str, scenario: dict, decider: model.Decider) -> dict:
             f for f in records.timeline(records.load(reply["records"])) if f.get("turn") == now and f["t"] != "override"]
         for expected in scenario["expected"]:
             assert expected in lines, f"{name}: expected {expected!r} isn't among {list(lines)}"
-        return {"id": f"scenario-{name}", "plan": PLAN.read_text(), "state": state, "decision": decision, "so_far": so_far,
+        return {"id": f"scenario-{name}", "plan": plan, "state": state, "decision": decision, "so_far": so_far,
                 "default": default, "lines": {n: {"facts": l.facts, "state": l.state} for n, l in lines.items()},
                 "expected": scenario["expected"], "note": scenario["note"]}
     finally:

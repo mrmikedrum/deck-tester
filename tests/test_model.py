@@ -66,6 +66,23 @@ class ResultsTest(unittest.TestCase):
         self.assertEqual(model.worded({"win": None}), {"win": "the game ends"})
 
 
+class MulliganFactsTest(unittest.TestCase):
+    def test_lands_colours_and_cards_the_lands_cannot_cast(self):
+        state = {"hand": ["Forest", "Temple Garden", "Sol Ring", "Counterspell", "Llanowar Elves"],
+                 "text": {"Temple Garden": "Temple Garden — Land - Forest Plains — ({T}: Add {G} or {W}.) As Temple Garden enters…",
+                          "Sol Ring": "Sol Ring {1} — Artifact — {T}: Add {C}{C}.",
+                          "Counterspell": "Counterspell {U}{U} — Instant — Counter target spell.",
+                          "Llanowar Elves": "Llanowar Elves {G} — Creature - Elf Druid — {T}: Add {G}."}}
+        self.assertEqual(model.mulligan_facts(state),
+                         "Lands in hand: 2 of 5, making W G. Cards needing a colour these lands don't make: Counterspell.")
+
+    def test_a_played_out_line_hides_what_was_drawn(self):
+        before = {"battlefield": [], "opponents": [{"life": 40}], "text": {}}
+        line = model.summarize(before, [{"t": "draw", "turn": 2, "card": "Sol Ring"}, {"t": "cast", "turn": 2, "card": "Cultivate"}],
+                               {"battlefield": [], "opponents": [{"life": 40}], "mana": 2}, 2)
+        self.assertEqual(line["acts"], "drew a card · cast Cultivate")
+
+
 class ContextTest(unittest.TestCase):
     def test_the_board_leaves_out_opponents_exile_and_library(self):
         state = {"turn": "T2 main1", "life": 40, "mana": 2, "library": 90, "hand": ["Sol Ring"], "battlefield": [],
@@ -80,3 +97,30 @@ class ContextTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AdviceTest(unittest.TestCase):
+    def test_rules_match_cards_and_roles_by_zone_and_what_is_castable(self):
+        from goldfish.advice import Advisor, text_matches
+        adv = Advisor()
+        adv.role("doubler", "Parallel Lives", text=text_matches("twice that many"))
+        adv.when("doubled", board=["doubler"], castable_from={"command": ["Marath, Will of the Wild"]})
+        adv.when("from the yard", castable_from={"graveyard": ["Fertilid"]})
+        adv.when(lambda p: f"{p.counters('Marath, Will of the Wild')} counters", board=["Marath, Will of the Wild"], test=lambda p: p.mana > 0)
+        state = {"battlefield": [{"name": "Doubling Season"}, {"name": "Marath, Will of the Wild", "counters": {"P1P1": 2}}], "hand": [],
+                 "graveyard": ["Fertilid"], "command": [], "mana": 3,
+                 "text": {"Doubling Season": "Doubling Season {4}{G} — Enchantment — … creates twice that many of those tokens instead."}}
+        decision = {"kind": "play", "options": ["pass", "Fertilid (from graveyard)", "Marath, Will of the Wild (commander)"]}
+        self.assertEqual(adv.advise(state, decision, []), "doubled from the yard 2 counters")
+        self.assertIsNone(adv.advise(state, {"kind": "targets", "options": ["you"]}, []))
+        self.assertIsNone(adv.advise(dict(state, battlefield=[]), decision, []).replace("from the yard", "").strip() or None)
+
+
+class AfterLineTest(unittest.TestCase):
+    def test_the_line_names_the_board_it_leads_to_without_naming_draws(self):
+        before = {"battlefield": [{"name": "Forest"}], "text": {"Sol Ring": "Sol Ring {1} — Artifact — {T}: Add {C}{C}."}}
+        facts = [{"t": "draw", "turn": 2, "card": "Cultivate"}, {"t": "cast", "turn": 2, "card": "Sol Ring"},
+                 {"t": "eot", "turn": 2, "unspent": 0}]
+        after = {"battlefield": [{"name": "Forest"}, {"name": "Plains"}, {"name": "Sol Ring"}], "mana": 4, "hand": ["Cultivate", "Elves"]}
+        self.assertEqual(model.after_line(before, facts, after, 2),
+                         "drew a card · cast Sol Ring; after: 2 lands, 4 mana next turn, 2 cards in hand; 0 mana unspent this turn; board: Sol Ring")

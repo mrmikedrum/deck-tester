@@ -1,0 +1,598 @@
+{
+ "id": "blue-moon-combat-revision-3002-T4-12",
+ "plan": "Blue creatures and copies. Make a land drop every turn and cast Sol Ring early. Springleaf Drum only makes mana by tapping a creature, so cast creatures first. Princess Yue is cheap: cast her early; when she dies she returns as a land named Moon. Clones and copy effects (Phantasmal Image, Phyrexian Metamorph, Vizier of Many Faces and the like) are best copying your best creature. Tap and untap tricks and repeated enter-the-battlefield triggers grow a large board; attack with it. Counterspells and bounce have no targets here: hold them, and draw cards with spare mana.\n",
+ "state": {
+  "turn": "T4 main2",
+  "life": 40,
+  "mana": 1,
+  "land_drop": false,
+  "library": 88,
+  "hand": [
+   "Of One Mind",
+   "Vesuva",
+   "Reality Shift",
+   "Naga Fleshcrafter",
+   "Mirror Image"
+  ],
+  "battlefield": [
+   {
+    "name": "Island",
+    "tapped": true
+   },
+   {
+    "name": "Moonsnare Prototype"
+   },
+   {
+    "name": "Thespian's Stage",
+    "tapped": true
+   },
+   {
+    "name": "Oboro, Palace in the Clouds",
+    "tapped": true
+   },
+   {
+    "name": "Princess Yue",
+    "tapped": true,
+    "pt": "3/2"
+   },
+   {
+    "name": "Island",
+    "tapped": true
+   },
+   {
+    "name": "Whirler Rogue",
+    "pt": "2/2",
+    "sick": true
+   }
+  ],
+  "command": [],
+  "graveyard": [],
+  "exile": [],
+  "stack": [
+   "When Whirler Rogue enters, create two 1/1 colorle…"
+  ],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 3,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 37,
+    "lands": 4,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Mirror Image": "Mirror Image {2}{U} — Creature - Shapeshifter — You may have Mirror Image enter as a copy of a creature you control.",
+   "Moonsnare Prototype": "Moonsnare Prototype {U} — Artifact — {T}, Tap an untapped artifact or creature you control: Add {C}. / Channel — {4}{U}, Discard Moonsnare Prototype: The owner of target nonland permanent puts it on the top or bottom of their library.",
+   "Naga Fleshcrafter": "Naga Fleshcrafter {3}{U} — Creature - Snake Shapeshifter — You may have this creature enter as a copy of any creature on the battlefield. / Renew — {2}{U}, Exile this card from your graveyard: Put a +1/+1 counter on target nonlegendary creature you control. Each other creature you control becomes a copy of that creature until end of turn. Activate only as a sorcery.",
+   "Oboro, Palace in the Clouds": "Oboro, Palace in the Clouds — Legendary Land — {T}: Add {U}. / {1}: Return Oboro, Palace in the Clouds to its owner's hand.",
+   "Of One Mind": "Of One Mind {2}{U} — Sorcery — This spell costs {2} less to cast if you control a Human creature and a non-Human creature. / Draw two cards.",
+   "Princess Yue": "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2.",
+   "Reality Shift": "Reality Shift {1}{U} — Instant — Exile target creature. Its controller manifests the top card of their library. (That player puts the top card of their library onto the battlefield face down as a 2/2 creature. If it's a creature card, it can be turned face up any time for its mana cost.)",
+   "Thespian's Stage": "Thespian's Stage — Land — {T}: Add {C}. / {2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability.",
+   "Vesuva": "Vesuva — Land — You may have Vesuva enter tapped as a copy of any land on the battlefield.",
+   "Whirler Rogue": "Whirler Rogue {2}{U}{U} — Creature - Human Rogue Artificer — When Whirler Rogue enters, create two 1/1 colorless Thopter artifact creature tokens with flying. / Tap two untapped artifacts you control: Target creature can't be blocked this turn."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T4 main2",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Oboro, Palace in the Clouds: {1}: Return this to its owner's hand."
+  ],
+  "details": [
+   "pass priority",
+   "Oboro, Palace in the Clouds: {1}: Return Oboro, Palace in the Clouds to its owner's hand."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 4
+  },
+  {
+   "t": "draw",
+   "turn": 4,
+   "card": "Island",
+   "id": 29
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 11,
+   "answer": [
+    "Island (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 4,
+   "card": "Island",
+   "id": 29
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28267"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28268"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28265"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28266"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28269"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28270"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28271"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28272"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28273"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28274"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 9,
+   "answer": [
+    "pass"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28276"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28277"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28275"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "attack",
+   "prompt": "attackers, at most one defender each",
+   "options": 3,
+   "answer": [
+    "Princess Yue 3/2 -> Opp 3"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "life",
+   "turn": 4,
+   "player": "Opp 3",
+   "life": 37
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28279"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28280"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28278"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28281"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28282"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28283"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28285"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28284"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g28286"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 8,
+   "answer": [
+    "Whirler Rogue"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "pay",
+   "prompt": "mana to pay {2}{U}{U} for Whirler Rogue, in order; none = automatic",
+   "options": 4,
+   "answer": [
+    "Island (U)",
+    "Island (U)",
+    "Thespian's Stage (C)",
+    "Oboro, Palace in the Clouds (U)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 4,
+   "card": "Whirler Rogue",
+   "sources": [
+    "Island",
+    "Island",
+    "Thespian's Stage",
+    "Oboro, Palace in the Clouds"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "cast",
+   "turn": 4,
+   "card": "Whirler Rogue",
+   "id": 71,
+   "as": "Whirler Rogue",
+   "by": "ai"
+  }
+ ],
+ "default": "pass",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Thopter Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Thopter Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 4,
+     "mana": 5,
+     "unspent": 1,
+     "hand": 5,
+     "creatures": 4,
+     "power": 7,
+     "permanents": 5,
+     "opponents_life": 117
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Walking Atlas",
+     "id": 78
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 40,
+    "mana": 5,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Of One Mind",
+     "Vesuva",
+     "Reality Shift",
+     "Naga Fleshcrafter",
+     "Mirror Image",
+     "Walking Atlas"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Moonsnare Prototype"
+     },
+     {
+      "name": "Thespian's Stage"
+     },
+     {
+      "name": "Oboro, Palace in the Clouds"
+     },
+     {
+      "name": "Princess Yue",
+      "pt": "3/2"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Whirler Rogue",
+      "pt": "2/2"
+     },
+     {
+      "name": "Thopter Token",
+      "pt": "1/1",
+      "token": true
+     },
+     {
+      "name": "Thopter Token",
+      "pt": "1/1",
+      "token": true
+     }
+    ],
+    "command": [],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 37,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Oboro, Palace in the Clouds: {1}: Return this to its owner's hand.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Oboro, Palace in the Clouds: {1}: Return this to its owner's hand."
+     ],
+     "by": "model"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Oboro, Palace in the Clouds",
+     "id": 85,
+     "as": "Oboro, Palace in the Clouds: {1}: Return this to its owner's hand.",
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Oboro, Palace in the Clouds",
+     "from": "battlefield",
+     "to": "hand"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Thopter Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Thopter Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 6,
+     "creatures": 4,
+     "power": 7,
+     "permanents": 5,
+     "opponents_life": 117
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Walking Atlas",
+     "id": 78
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 40,
+    "mana": 4,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Of One Mind",
+     "Vesuva",
+     "Reality Shift",
+     "Naga Fleshcrafter",
+     "Mirror Image",
+     "Oboro, Palace in the Clouds",
+     "Walking Atlas"
+    ],
+    "battlefield": [
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Moonsnare Prototype"
+     },
+     {
+      "name": "Thespian's Stage"
+     },
+     {
+      "name": "Princess Yue",
+      "pt": "3/2"
+     },
+     {
+      "name": "Island"
+     },
+     {
+      "name": "Whirler Rogue",
+      "pt": "2/2"
+     },
+     {
+      "name": "Thopter Token",
+      "pt": "1/1",
+      "token": true
+     },
+     {
+      "name": "Thopter Token",
+      "pt": "1/1",
+      "token": true
+     }
+    ],
+    "command": [],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 4,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 37,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": null,
+ "note": ""
+}

@@ -1,0 +1,608 @@
+{
+ "id": "eternities-assimilation-iii-3002-T2-3",
+ "plan": "Ramp, then build a standardized board. Make a land drop every turn and cast mana rocks and land fetchers\nfirst. Cast Atraxa (W/U/B/G) once you have its colours; proliferate every turn with her and other\nproliferate cards. Grow a wide board of artifact creatures and tokens with +1/+1 counters: Steel Overseer,\nThrone of Geth and other counter engines are the payoff. Spend your mana every turn. Removal and wraths do\nnothing against these opponents: hold them.\n",
+ "state": {
+  "turn": "T2 main1",
+  "life": 40,
+  "mana": 1,
+  "land_drop": false,
+  "library": 90,
+  "hand": [
+   "Uthros Research Craft",
+   "Loading Zone",
+   "Phyrexian Metamorph",
+   "Grateful Apparition",
+   "Evolution Witness",
+   "Windswept Heath",
+   "Expedition Map"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains"
+   },
+   {
+    "name": "Wooded Foothills"
+   }
+  ],
+  "command": [
+   "Atraxa, Praetors' Voice"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 1,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 1,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 2,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Atraxa, Praetors' Voice": "Atraxa, Praetors' Voice {G}{W}{U}{B} — Legendary Creature - Phyrexian Angel Horror — Flying, vigilance, deathtouch, lifelink / At the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Evolution Witness": "Evolution Witness {2}{G} — Creature - Elf Shaman Mutant — {1}{G}: Adapt 2. (If this creature has no +1/+1 counters on it, put two +1/+1 counters on it.) / Whenever one or more +1/+1 counters are put on Evolution Witness, return target permanent card from your graveyard to your hand.",
+   "Expedition Map": "Expedition Map {1} — Artifact — {2}, {T}, Sacrifice Expedition Map: Search your library for a land card, reveal it, put it into your hand, then shuffle.",
+   "Grateful Apparition": "Grateful Apparition {1}{W} — Creature - Spirit — Flying / Whenever Grateful Apparition deals combat damage to a player or planeswalker, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Loading Zone": "Loading Zone {3}{G} — Enchantment — If one or more counters would be put on a creature, Spacecraft, or Planet you control, twice that many of each of those kinds of counters are put on it instead. / Warp {G} (You may cast this card from your hand for its warp cost. Exile this enchantment at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+   "Phyrexian Metamorph": "Phyrexian Metamorph {3}{U/P} — Artifact Creature - Phyrexian Shapeshifter — ({U/P} can be paid with either {U} or 2 life.) / You may have Phyrexian Metamorph enter as a copy of any artifact or creature on the battlefield, except it's an artifact in addition to its other types.",
+   "Uthros Research Craft": "Uthros Research Craft {2}{U} — Artifact - Spacecraft — Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 12+.) / STATION 3+ / Whenever you cast an artifact spell, draw a card. Put a charge counter on this Spacecraft. / STATION 12+ / Flying / This Spacecraft gets +1/+0 for each artifact you control.",
+   "Windswept Heath": "Windswept Heath — Land — {T}, Pay 1 life, Sacrifice Windswept Heath: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle.",
+   "Wooded Foothills": "Wooded Foothills — Land — {T}, Pay 1 life, Sacrifice Wooded Foothills: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T2 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Expedition Map",
+   "Wooded Foothills: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+  ],
+  "details": [
+   "pass priority",
+   "Expedition Map {1} — Artifact — {2}, {T}, Sacrifice Expedition Map: Search your library for a land card, reveal it, put it into your hand, then shuffle.",
+   "Wooded Foothills: {T}, Pay 1 life, Sacrifice Wooded Foothills: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 2
+  },
+  {
+   "t": "draw",
+   "turn": 2,
+   "card": "Expedition Map",
+   "id": 93
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28110"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28112"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28111"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28113"
+  },
+  {
+   "t": "fork",
+   "turn": 2,
+   "session": "g28114"
+  },
+  {
+   "t": "decision",
+   "turn": 2,
+   "kind": "play",
+   "options": 4,
+   "answer": [
+    "Wooded Foothills (land)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "land",
+   "turn": 2,
+   "card": "Wooded Foothills",
+   "id": 64
+  }
+ ],
+ "default": "Wooded Foothills: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 1,
+     "unspent": 1,
+     "hand": 7,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 0,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Nature's Lore",
+     "id": 85
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 40,
+    "mana": 1,
+    "land_drop": true,
+    "library": 89,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Grateful Apparition",
+     "Evolution Witness",
+     "Windswept Heath",
+     "Expedition Map",
+     "Nature's Lore"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Wooded Foothills"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Expedition Map": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Expedition Map"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Expedition Map",
+     "id": 93,
+     "as": "Expedition Map",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Wooded Foothills: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 2,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "Wooded Foothills",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Wooded Foothills",
+     "id": 64,
+     "as": "Wooded Foothills: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "ai"
+    },
+    {
+     "t": "look",
+     "turn": 2,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Overgrown Tomb",
+      "Temple Garden"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      77,
+      86
+     ],
+     "why": "searched (Wooded Foothills)"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Wooded Foothills)",
+     "options": 9,
+     "answer": [
+      "Breeding Pool"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "Breeding Pool",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 0,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Adagia, Windswept Bastion",
+     "id": 70
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 2,
+    "land_drop": true,
+    "library": 88,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Grateful Apparition",
+     "Evolution Witness",
+     "Windswept Heath",
+     "Adagia, Windswept Bastion"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Expedition Map"
+     },
+     {
+      "name": "Breeding Pool"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Wooded Foothills: {T}, Pay 1 life, Sacrifice this: Search your libr…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Wooded Foothills: {T}, Pay 1 life, Sacrifice this: Search your libr…"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "life",
+     "turn": 2,
+     "player": "You",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "Wooded Foothills",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "activate",
+     "turn": 2,
+     "card": "Wooded Foothills",
+     "id": 64,
+     "as": "Wooded Foothills: {T}, Pay 1 life, Sacrifice this: Search your libr…",
+     "by": "model"
+    },
+    {
+     "t": "look",
+     "turn": 2,
+     "cards": [
+      "Breeding Pool",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Forest",
+      "Overgrown Tomb",
+      "Temple Garden"
+     ],
+     "ids": [
+      68,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      77,
+      86
+     ],
+     "why": "searched (Wooded Foothills)"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "choose",
+     "prompt": "Select a card from your library (Wooded Foothills)",
+     "options": 9,
+     "answer": [
+      "Breeding Pool"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 2,
+     "card": "Breeding Pool",
+     "from": "library",
+     "to": "battlefield"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 2,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Expedition Map"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 2,
+     "card": "Expedition Map",
+     "id": 93,
+     "as": "Expedition Map",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 2,
+     "lands": 2,
+     "mana": 2,
+     "unspent": 0,
+     "hand": 6,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 3
+    },
+    {
+     "t": "draw",
+     "turn": 3,
+     "card": "Adagia, Windswept Bastion",
+     "id": 70
+    }
+   ],
+   "state": {
+    "turn": "T3 main1",
+    "life": 39,
+    "mana": 2,
+    "land_drop": true,
+    "library": 88,
+    "hand": [
+     "Uthros Research Craft",
+     "Loading Zone",
+     "Phyrexian Metamorph",
+     "Grateful Apparition",
+     "Evolution Witness",
+     "Windswept Heath",
+     "Adagia, Windswept Bastion"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains"
+     },
+     {
+      "name": "Breeding Pool"
+     },
+     {
+      "name": "Expedition Map"
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Wooded Foothills"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 2,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 3,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": null,
+ "note": ""
+}

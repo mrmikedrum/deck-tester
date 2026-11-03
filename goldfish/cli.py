@@ -220,7 +220,7 @@ def run(args) -> int:
     seed = args.seed if args.seed is not None else int.from_bytes(__import__("os").urandom(2), "big") * 100
     guide = Path(args.guide).read_text() if args.guide and Path(args.guide).is_file() else args.guide
     manifest = batch.run(deck, Path(args.deck).stem, args.games, seed, args.turns, args.opponents, args.pilot,
-                         args.workers, args.ai, guide, args.hybrid)
+                         args.workers, args.ai, guide, args.hybrid, args.fast)
     for line in report.build(manifest, show_games=args.per_game, show_cards=args.cards):
         print(line)
     return 0
@@ -289,6 +289,9 @@ def main(argv=None) -> int:
     play.add_argument("--hybrid", choices=model.HYBRIDS, default="outcomes",
                       help="with --guide: outcomes (Forge's AI plays each option out and the model picks by text and "
                       "result) or plain (the model picks by text alone)")
+    play.add_argument("--fast", action="store_true",
+                      help="with --guide: a pick the model makes confidently from the text alone is played without "
+                      "playing the options out; quicker, more calls, and possibly worse play")
     play.add_argument("--pilot", help="Python file answering some decision kinds before the model or Forge's AI")
     play.add_argument("--opponents", type=int, default=3)
     play.add_argument("--workers", type=int, default=8, help="games played at once")
