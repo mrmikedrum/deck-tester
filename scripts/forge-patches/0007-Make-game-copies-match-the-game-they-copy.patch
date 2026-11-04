@@ -30,15 +30,16 @@ Goldfish-Upstream: offer
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- .../java/forge/ai/simulation/GameCopier.java  | 287 ++++++++++++++++--
+ .../java/forge/ai/simulation/GameCopier.java  | 301 ++++++++++++++++--
  .../main/java/forge/game/combat/Combat.java   |  20 +-
  .../java/forge/game/phase/PhaseHandler.java   |  20 ++
+ .../SpellAbilityStackInstance.java            |   5 +
  .../main/java/forge/game/zone/MagicStack.java |   8 +
  .../src/main/java/forge/game/zone/Zone.java   |  19 ++
- 5 files changed, 325 insertions(+), 29 deletions(-)
+ 6 files changed, 342 insertions(+), 31 deletions(-)
 
 diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
-index bbca851bda2..2283282e43e 100644
+index bbca851bda2..640ee7cfed3 100644
 --- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
 +++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
 @@ -21,7 +21,14 @@ import forge.game.player.RegisteredPlayer;
@@ -152,10 +153,19 @@ index bbca851bda2..2283282e43e 100644
                  }
              }
          }
-@@ -218,6 +270,19 @@ public class GameCopier {
+@@ -213,11 +265,26 @@ public class GameCopier {
+             newGame.getPhaseHandler().setCombat(new Combat(origPhaseHandler.getCombat(), gameObjectMap));
+         }
+ 
+-        newGame.getAction().checkStateEffects(true); //ensure state based effects and triggers are updated
+-        newGame.getTriggerHandler().resetActiveTriggers();
++        newGame.getAction().checkStaticAbilities(); // abilities statics grant, for the stack's entries to be found
  
          if (copyStack)
              copyStack(origGame, newGame, gameObjectMap);
++        // after the stack: a Saga or dungeon whose last chapter or room is still on it stays
++        newGame.getAction().checkStateEffects(true); //ensure state based effects and triggers are updated
++        newGame.getTriggerHandler().resetActiveTriggers();
 +        // which cards entered each zone this turn: copying put every card into its zone just now
 +        final IEntityMap entered = lenientMap(newGame);
 +        for (Player origPlayer : playerMap.keySet()) {
@@ -172,7 +182,7 @@ index bbca851bda2..2283282e43e 100644
  
          // TODO update thisTurnCast
  
-@@ -236,32 +301,187 @@ public class GameCopier {
+@@ -236,32 +303,189 @@ public class GameCopier {
              entries.add(origEntry);
          }
          Collections.reverse(entries);
@@ -215,14 +225,18 @@ index bbca851bda2..2283282e43e 100644
 +                }
 +                if (newSa == null && Boolean.getBoolean("forge.copier.trace")) {
 +                    System.err.println("[copier] stack entry not found in the copy: " + origEntry.getSpellAbility());
++                }
++                if (newSa != null) {
++                    newGame.getStack().add(newSa, origEntry.getId());
++                    // the entry's text as it was put on the stack, with its modes and its source's name then (an
++                    // activated ability would describe itself anew, from its source as it is now)
++                    newGame.getStack().peek().setStackDescription(origEntry.getStackDescription());
++                    stackMap.put(origEntry.getSpellAbility(), newSa);
                  }
 -                newGame.getStack().add(newSa);
 -                stackMap.put(origSa, newSa);
-+                if (newSa != null) {
-+                    newGame.getStack().add(newSa, origEntry.getId());
-+                    stackMap.put(origEntry.getSpellAbility(), newSa);
-+                }
-+            }
+             }
+-        } 
 +        } finally {
 +            newGame.getTriggerHandler().setSuppressAllTriggers(false);
 +        }
@@ -247,7 +261,6 @@ index bbca851bda2..2283282e43e 100644
 +            final Player decider = wrapped.getDecider() == null ? null : playerMap.get(wrapped.getDecider());
 +            final WrappedAbility newWrapped = new WrappedAbility(copyTrigger(wrapped.getTrigger(), newHost), newInner, decider);
 +            newWrapped.setActivatingPlayer(activator);
-+            newWrapped.setStackDescription(origSa.getStackDescription());
 +            return newWrapped;
 +        }
 +        SpellAbility newSa = findSAInCard(origSa, newHost);
@@ -263,8 +276,7 @@ index bbca851bda2..2283282e43e 100644
 +            newSa = SpellAbilityChoiceCopier.copyCastChoices(origSa, newSa, activator);
 +            if (newSa == null) {
 +                return null;
-             }
--        } 
++            }
 +            chainChosenModes(origSa, newSa);
 +        } else {
 +            newSa.setXManaCostPaid(origSa.getXManaCostPaid());
@@ -383,7 +395,7 @@ index bbca851bda2..2283282e43e 100644
      }
  
      private RegisteredPlayer clonePlayer(RegisteredPlayer p) {
-@@ -316,6 +536,7 @@ public class GameCopier {
+@@ -316,6 +540,7 @@ public class GameCopier {
              otherCard.setGameTimestamp(card.getGameTimestamp());
              otherCard.setLayerTimestamp(card.getLayerTimestamp());
              otherCard.setSickness(card.hasSickness());
@@ -391,7 +403,7 @@ index bbca851bda2..2283282e43e 100644
              otherCard.setState(card.getCurrentStateName(), false);
              if (card.isAttachedToEntity()) {
                  GameEntity ge = gameObjectMap.map(card.getEntityAttachedTo());
-@@ -418,6 +639,8 @@ public class GameCopier {
+@@ -418,6 +643,8 @@ public class GameCopier {
              } else {
                  newCard = CardFactory.getCard(c.getPaperCard(), newOwner, c.getId(), newGame);
              }
@@ -400,7 +412,7 @@ index bbca851bda2..2283282e43e 100644
              newCard.setCommander(c.isCommander());
              return newCard;
          }
-@@ -426,6 +649,13 @@ public class GameCopier {
+@@ -426,6 +653,13 @@ public class GameCopier {
          // The issue is that it requires parsing the original card from scratch from the paper card. We should
          // improve the copier to accurately copy the card from its actual state, so that the paper card shouldn't
          // be needed. Once the below code accurately copies the card, remove the USE_FROM_PAPER_CARD code path.
@@ -414,7 +426,7 @@ index bbca851bda2..2283282e43e 100644
          Card newCard;
          if (c instanceof DetachedCardEffect)
              newCard = new DetachedCardEffect((DetachedCardEffect) c, newGame, false);
-@@ -455,6 +685,9 @@ public class GameCopier {
+@@ -455,6 +689,9 @@ public class GameCopier {
          final Player owner = playerMap.get(c.getOwner());
          final Card newCard = createCardCopy(newGame, owner, c, aiPlayer);
          cardMap.put(c, newCard);
@@ -424,6 +436,19 @@ index bbca851bda2..2283282e43e 100644
  
          // TODO ExiledWith
  
+@@ -509,6 +746,12 @@ public class GameCopier {
+             if (c.isSuspected()) {
+                 newCard.setSuspected(true);
+             }
++            for (Map.Entry<Long, Player> goad : c.getGoadMap().entrySet()) {
++                final Player goader = playerMap.get(goad.getValue());
++                if (goader != null) { // a goad by a player who has left the game ends with them
++                    newCard.addGoad(goad.getKey(), goader);
++                }
++            }
+             if (c.isPlaneswalker()) {
+                 for (SpellAbility sa : c.getAllSpellAbilities()) {
+                     int active = sa.getActivationsThisTurn();
 diff --git a/forge-game/src/main/java/forge/game/combat/Combat.java b/forge-game/src/main/java/forge/game/combat/Combat.java
 index 302c6deabc5..e7ca71c2c43 100644
 --- a/forge-game/src/main/java/forge/game/combat/Combat.java
@@ -500,6 +525,22 @@ index 26cdb56821b..3352d3c011e 100644
      public final void devModeSet(final PhaseType phase0, final Player player0, boolean endCombat, int cturn) {
          if (phase0 != null) {
              setPhase(phase0);
+diff --git a/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java b/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
+index 1c31223683d..6ae649e622c 100644
+--- a/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
++++ b/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
+@@ -92,6 +92,11 @@ public class SpellAbilityStackInstance implements IIdentifiable, IHasCardView {
+         return ability;
+     }
+ 
++    /** For a copy of a game: the text the original entry got when it was put on the stack. */
++    public final void setStackDescription(final String text) {
++        stackDescription = text;
++    }
++
+     // A bit of SA shared abilities to restrict conflicts
+     public final String getStackDescription() {
+         return stackDescription.replaceAll("\\\\r\\\\n", "").replaceAll("\\.\u2022", ";").replaceAll("\u2022", "");
 diff --git a/forge-game/src/main/java/forge/game/zone/MagicStack.java b/forge-game/src/main/java/forge/game/zone/MagicStack.java
 index 03c543700e3..a102361af70 100644
 --- a/forge-game/src/main/java/forge/game/zone/MagicStack.java

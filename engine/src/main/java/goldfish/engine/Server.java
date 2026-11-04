@@ -11,6 +11,7 @@ import forge.util.MyRandom;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.net.StandardProtocolFamily;
 import java.net.UnixDomainSocketAddress;
@@ -18,6 +19,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.AbstractMap;
@@ -44,6 +46,8 @@ public final class Server {
     /** Whether this engine hosts tables: started with Forge's full model and a headless GUI (see main). */
     private static boolean tableMode;
     private volatile Table table;
+    /** The open table's agent seats, released with it. */
+    private List<Session> tableSeats = List.of();
     private int lastId;
 
     private Server(Path home) throws IOException {
@@ -147,10 +151,7 @@ public final class Server {
             return reply;
         }
         if (cmd.equals("table_end")) {
-            if (table != null) {
-                table.stop();
-                table = null;
-            }
+            endTable();
             return ok();
         }
         if (cmd.equals("table_state")) {
@@ -193,7 +194,8 @@ public final class Server {
                 return reply;
             }
             case "fork":
-                return fork(session, request.has("via") ? request.get("via").getAsString() : null);
+                return fork(session, request.has("via") ? request.get("via").getAsString() : null,
+                        request.has("horizon") ? request.get("horizon").getAsInt() : 0);
             case "snapshot": {
                 session.channel.await(WAIT_MILLIS);
                 String name = request.has("name") ? request.get("name").getAsString() : null;
@@ -281,6 +283,19 @@ public final class Server {
      * Opens a Commander table on a port: one seat per entry of "seats" (each like a start request, with a "name"),
      * driven through its own session, and "people" open slots for people joining from their own Forge.
      */
+    /** Stops the open table and lets go of its seats, whose games and copies would otherwise stay in memory. */
+    private synchronized void endTable() throws InterruptedException {
+        if (table != null) {
+            table.stop();
+            table = null;
+        }
+        for (Session seat : tableSeats) {
+            seat.end("table ended");
+            sessions.remove(seat.id);
+        }
+        tableSeats = List.of();
+    }
+
     private Map<String, Object> openTable(JsonObject request) throws Exception {
         if (!tableMode) {
             throw new IllegalStateException("tables are hosted by the table engine (goldfish table)");
@@ -306,6 +321,7 @@ public final class Server {
             ids.put(name, seat.id);
         }
         table = new Table(port, agents, decks, people);
+        tableSeats = agents;
         Map<String, Object> reply = new LinkedHashMap<>();
         reply.put("port", port);
         reply.put("seats", ids);
@@ -315,9 +331,10 @@ public final class Server {
 
     /**
      * A new session that replays this parked one's decisions from the same seed, checks it arrived at the same
-     * decision in the same state, and waits there. The parent stays parked; the fork is a game of its own.
+     * decision in the same state, and waits there. The parent stays parked; the fork is a game of its own. With a
+     * horizon, the fork ends at the first main phase of that turn of its player's (see Session.atHorizon).
      */
-    private Map<String, Object> fork(Session parent, String via) throws Exception {
+    private Map<String, Object> fork(Session parent, String via, int horizon) throws Exception {
         Decision parked = parent.channel.await(WAIT_MILLIS);
         if (parked == null) {
             throw new IllegalStateException("fork while the game waits for a decision");
@@ -332,6 +349,7 @@ public final class Server {
             throw refused;
         }
         sessions.put(fork.id, fork);
+        fork.horizon = horizon;
         fork.start();
         Decision reached = fork.channel.await(WAIT_MILLIS);
         String problem = null;
@@ -367,8 +385,20 @@ public final class Server {
         return reply;
     }
 
+    /** The next free session id. Its record file is claimed here, so the table engine and the goldfish engine,
+     * running at once over the same runs folder, never share one. */
     private synchronized String nextId() {
-        return "g" + (++lastId);
+        while (true) {
+            String id = "g" + (++lastId);
+            try {
+                Files.createFile(home.resolve("runs").resolve(id + ".jsonl"));
+                return id;
+            } catch (FileAlreadyExistsException taken) {
+                // the other engine took it
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
     }
 
     private static Map<String, Object> ok() {

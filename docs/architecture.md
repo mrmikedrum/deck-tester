@@ -50,7 +50,8 @@ In manual mode, the agent decides:
   surveil, optional costs, the permanents a cost taps or sacrifices, colours, creature types, card names
   from a short list, and two-way choices such as heads or tails;
 - `order`: simultaneous triggers, and cards going back to the library;
-- `attack`: attackers, each with a defender.
+- `attack`: attackers, each with a defender;
+- `block`: blockers, each with the attacker it blocks (at a table; blocks the rules refuse go to Forge's AI).
 
 Every decision passes through one method (`ManualController.decide`), whoever answers it, and is logged with
 its options and answer: the agent's, a forced one, Forge's AI's (`by: ai`, including the ones the agent hands
@@ -60,12 +61,12 @@ from the game's shuffles.
 
 Forge's AI still decides, recorded `unlogged` so a fork lets it choose again: card names matching a
 predicate (too many to list), discard, exile and return costs, and unusual tap or sacrifice cost variants.
-It also answers, unrecorded: blocks (which never come up against passive opponents), new targets for
-copies, piles, votes, dice, and the rarer prompts no example deck has needed yet. Surface any of them when
+It also answers, unrecorded: new targets for copies, piles, votes, dice, and the rarer prompts no example deck has needed yet. Surface any of them when
 a deck needs it, following the pattern in `ManualController`.
 
 Priority stops: the agent is asked about priority during its own main phases and whenever something is on
-the stack, and only when it has a playable option; elsewhere priority passes, in every mode. `--stops all`
+the stack (at a table also when it is attacked, and at the end of the turn before its own), and only when it
+has a playable option; elsewhere priority passes, in every mode. `--stops all`
 asks at every priority. What is playable is evaluated as if Forge's AI held no mana back and had cached
 nothing, so the options never depend on what its AI was planning.
 
@@ -190,7 +191,8 @@ line, so the default compares *lines played out by Forge's AI*:
 
 - `outcomes` (default): at each decision of the agent's own turn, Forge's AI's own pick and every option
   (up to ten) are played out, each in a fork of the game (see Forks), by Forge's AI to the start of the next
-  turn. The model reads each option's text and the board it leads to (what happened this turn with draws
+  turn (the engine ends each fork at the agent's next first main phase, so every line stops at the same
+  point, whatever was asked on the way). The model reads each option's text and the board it leads to (what happened this turn with draws
   unnamed, then lands, mana next turn, cards in hand, mana left unspent, and the nonland permanents), with
   Forge's pick marked as the default selection, in one question. Forks run in parallel, and the game
   itself is never touched.
@@ -327,10 +329,10 @@ run it on a deck with new mechanics before trusting comparisons on it.
 
 ### Copy forks
 
-At each of the pilot's play decisions, a session started with copy forks keeps a copy of the game made by
+At each of the pilot's priority stops, a session started with copy forks keeps a copy of the game made by
 Forge's `GameCopier` (with our patch, which makes a copy match the original: the stack and its abilities,
-priority, the turn's history, links between cards), with the log's length and the random sequence then. A
-copy fork copies that copy again, puts its own controller in the seat and passive controllers in the others,
+priority, the turn's history, links between cards), with the log's length, the random sequence and what the
+seat's AI holds in mind (mana it keeps back, cards a cost will tap). A copy fork copies that copy again, puts its own controller in the seat and passive controllers in the others,
 answers the few decisions logged since, and runs Forge's game loop from there; the same decision and
 fingerprint checks follow. It takes about 20-40 ms at any turn, against a replay's 0.3-1.2 s that grows with
 the game, and needs no record of the other players' decisions, which is what makes lookahead possible at a
@@ -345,15 +347,25 @@ their own Forge (Online Multiplayer, Join, the address printed). A second engine
 (`HeadlessGui`), from an assets folder of its own under `.goldfish/table/` so Forge's user files stay out of
 the person's own Forge, and runs Forge's network server and lobby. A patch lets the lobby seat our players
 in its AI slots; each seat is a session (`Session.atTable`) attached to the shared game, parking its
-decisions like a goldfish game. Its lookahead uses copy forks in which every other player casts nothing and
-never attacks but blocks as Forge's AI would. What the model doesn't answer goes to Forge's AI, Monte Carlo
-layer included (its match host turns that on): blocks, and decisions on other players' turns, for now.
+decisions like a goldfish game. Besides its own main phases and anything on the stack, a seat stops on other
+players' turns when it is attacked (declare attackers) and at the end of the turn just before its own, and it
+declares its own blocks (decision `block`, one option per legal blocker and attacker; blocks the rules refuse go
+to Forge's AI, on the record). Its lookahead uses copy forks in which every other player casts nothing and never
+attacks but blocks as Forge's AI would; a copy made when the seat is attacked lets blocks be played out. A fork
+is refused once another player has cast or played something since the copy, and the decision is then asked from
+the text alone or left to Forge's AI. What the model doesn't answer goes to Forge's AI, Monte Carlo layer
+included (its match host turns that on).
 
 The goldfish decider stays as measured; a table seat's is `goldfish/table_model.py`, which changes only what
-differs at a table through the decider's hooks (`context`, `instructions`, `explores`): the model reads a table
-framing and each other player's life, hand size, lands, board and commander, with their cards' text, which
-the engine's state view gives a table seat. A change to table play is measured at tables, not on the goldfish
-bench. Each table writes a manifest to `.goldfish/tables/t<N>.json` when it ends; `goldfish table-report [tN]`
+differs at a table through the decider's hooks (`context`, `instructions`, `explores`, `lines`, `result`): the
+model reads a table framing and each other player's life, hand size, lands, board (with who attacks or blocks
+whom) and commander, with their cards' text, which the engine's state view gives a table seat; it plays out its
+decisions on other players' turns too, with an instruction naming the moment (end of turn, attacked, responding).
+Each line's result adds what each player lost and everyone's life, mana left unused before the seat's turn,
+and what the forks can't show, since the others pass in them: how many of its creatures stay untapped to block
+until its next turn and what the others' creatures could attack it for. Decisions say whether they come in the
+seat's own turn (`mine`). A change to table play is measured at tables (`bench/table_scenarios.py`,
+`bench/table_fidelity.py`, table reports), not on the goldfish bench. Each table writes a manifest to `.goldfish/tables/t<N>.json` when it ends; `goldfish table-report [tN]`
 summarises it from the seats' records: the result, each player's life by round, and per agent seat who
 decided, how its forks went, its commander and its development.
 

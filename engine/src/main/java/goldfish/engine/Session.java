@@ -3,6 +3,7 @@ package goldfish.engine;
 import forge.StaticData;
 import forge.ai.AIOption;
 import forge.LobbyPlayer;
+import forge.ai.AiCardMemory;
 import forge.ai.simulation.GameCopier;
 import forge.ai.LobbyPlayerAi;
 import forge.ai.PlayerControllerAi;
@@ -10,6 +11,7 @@ import forge.deck.Deck;
 import forge.deck.DeckSection;
 import forge.game.Game;
 import forge.game.GameEndReason;
+import forge.game.GameEntity;
 import forge.game.GameOutcome;
 import forge.game.GameRules;
 import forge.game.GameSnapshot;
@@ -18,6 +20,8 @@ import forge.game.Match;
 import forge.game.card.Card;
 import forge.game.card.CounterEnumType;
 import forge.game.card.CounterType;
+import forge.game.combat.Combat;
+import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.player.RegisteredPlayer;
 import forge.game.zone.ZoneType;
@@ -98,10 +102,13 @@ final class Session {
     private record Snapshot(GameSnapshot copy, int pilotTurn, Random random) { }
 
     /**
-     * A copy of the game at the pilot's latest play decision, with the log's length and the random sequence then:
-     * where a fork made from a copy starts (see {@link #fork}).
+     * A copy of the game at the pilot's latest priority stop, with the log's length and the random sequence then:
+     * where a fork made from a copy starts (see {@link #fork}). Memory is what the seat's AI held in mind (mana
+     * kept back, cards a cost will tap), by card id, since it decides what can be paid; reasking, whether the copy
+     * was made while the pilot was asked again after an override.
      */
-    private record Checkpoint(Game copy, int logSize, Random random, int pilotTurn) { }
+    private record Checkpoint(Game copy, int logSize, Random random, int pilotTurn,
+                              Map<AiCardMemory.MemorySet, List<Integer>> memory, boolean reasking) { }
 
     final String id;
     final Setup setup;
@@ -217,15 +224,39 @@ final class Session {
         othersActed = true;
     }
 
-    /** Keeps a copy of the game where it stands, at a pilot's play decision, for copy forks; a fork keeps none. */
-    void checkpoint() {
+    /**
+     * Keeps a copy of the game where it stands, at a priority stop of the pilot's, for copy forks; a fork keeps none.
+     * Reasking: the pilot is being asked again after an override, so a fork from here is too.
+     */
+    void checkpoint(boolean reasking) {
         if (random == null) {
             random = SeededRandom.current(); // a seat at a table: the table's game thread's sequence
         }
         if (setup.copyForks() && parent == null) {
             othersActed = false;
-            checkpoint = new Checkpoint(new GameCopier(game).withStack(true).makeCopy(), log.size(), random.copy(), pilotTurn);
+            checkpoint = new Checkpoint(new GameCopier(game).withStack(true).makeCopy(), log.size(), random.copy(), pilotTurn,
+                    memory(pilot), reasking);
         }
+    }
+
+    /** Whether this copy fork's first play decision is asked again, as its parent's was when the copy was made. */
+    boolean startsReasking() {
+        boolean reasking = from != null && from.reasking() && !startedReasking;
+        startedReasking = true;
+        return reasking;
+    }
+
+    private boolean startedReasking;
+
+    private static Map<AiCardMemory.MemorySet, List<Integer>> memory(Player player) {
+        Map<AiCardMemory.MemorySet, List<Integer>> held = new LinkedHashMap<>();
+        for (AiCardMemory.MemorySet set : AiCardMemory.MemorySet.values()) {
+            Set<Card> cards = AiCardMemory.getMemorySet(player, set);
+            if (cards != null && !cards.isEmpty()) {
+                held.put(set, cards.stream().map(Card::getId).toList());
+            }
+        }
+        return held;
     }
 
     /** The game a copy fork plays: a copy of the checkpoint (which stays reusable), with this session's controllers. */
@@ -235,6 +266,14 @@ final class Session {
             LobbyPlayer seat = player.getLobbyPlayer();
             player.dangerouslySetController(player.getName().equals(seatName) ? new ManualController(copy, player, seat, this)
                     : new PassiveController(copy, player, seat, atTable));
+            if (player.getName().equals(seatName)) {
+                from.memory().forEach((set, ids) -> ids.forEach(id -> {
+                    Card card = copy.findById(id);
+                    if (card != null) {
+                        AiCardMemory.rememberCard(player, card, set);
+                    }
+                }));
+            }
         }
         return copy;
     }
@@ -495,6 +534,24 @@ final class Session {
         return text.length() <= 300 ? text : text.substring(0, 299) + "…";
     }
 
+    /** For a fork: the turn of its player's at whose first main phase it ends ("horizon"); 0 for none. */
+    volatile int horizon;
+
+    /**
+     * Whether a fork has reached its horizon: its player's first main phase of that turn, with nothing on the stack,
+     * the board as the turn's plays find it. The game ends there, so a line in which the player has nothing to
+     * decide still stops at the same point as the others.
+     */
+    boolean atHorizon() {
+        if (horizon <= 0 || pilotTurn < horizon || !myTurn() || !game.getPhaseHandler().is(PhaseType.MAIN1)
+                || !game.getStack().isEmpty()) {
+            return false;
+        }
+        over = "horizon";
+        game.setGameOver(GameEndReason.Draw);
+        return true;
+    }
+
     /** Called by the recorder when the agent's turn begins; false once past the turn limit, which ends the game. */
     boolean beginPilotTurn() {
         pilotTurn++;
@@ -504,6 +561,16 @@ final class Session {
             return false;
         }
         return true;
+    }
+
+    boolean atTable() {
+        return atTable;
+    }
+
+    /** Whether it is this session's player's own turn. */
+    boolean myTurn() {
+        Player active = game == null ? null : game.getPhaseHandler().getPlayerTurn();
+        return active == null || active.equals(pilot);
     }
 
     String turnLabel() {
@@ -576,6 +643,7 @@ final class Session {
         if (over == null) {
             over = reason;
         }
+        checkpoint = null; // a copy of the whole game: let it go with the game
         if (game != null) {
             game.setGameOver(GameEndReason.Draw);
         }
@@ -596,7 +664,7 @@ final class Session {
             throw new IllegalArgumentException("override what?");
         }
         String result = applyOverride(args);
-        log.add(new Entry(new Decision("override", turnLabel(), "", List.copyOf(args), null, 0, 0, false), List.of(), "agent", null));
+        log.add(new Entry(new Decision("override", turnLabel(), "", List.copyOf(args), null, 0, 0, false, myTurn()), List.of(), "agent", null));
         Decision pending = channel.pending();
         if (pending != null && pending.kind().equals("play")) {
             channel.resume(new Channel.Interrupt(true)); // the options changed with the board: ask again
@@ -635,15 +703,17 @@ final class Session {
                 yield "moved " + card.getName() + " to " + zone.name().toLowerCase(Locale.ROOT);
             }
             case "create" -> {
-                need(args, 2, "create CARD [ZONE]");
+                need(args, 2, "create CARD [ZONE [PLAYER]]");
                 PaperCard paper = StaticData.instance().getCommonCards().getCard(args.get(1));
                 if (paper == null) {
                     throw new IllegalArgumentException("unknown card " + args.get(1));
                 }
                 ZoneType zone = args.size() > 2 ? zone(args.get(2)) : ZoneType.Battlefield;
-                Card card = Card.fromPaperCard(paper, pilot);
+                Player owner = args.size() > 3 ? player(args.get(3)) : pilot;
+                Card card = Card.fromPaperCard(paper, owner);
                 game.getAction().moveTo(zone, card, null, null);
-                yield "created " + paper.getName() + " in " + zone.name().toLowerCase(Locale.ROOT);
+                yield "created " + paper.getName() + " in " + zone.name().toLowerCase(Locale.ROOT)
+                        + (owner.equals(pilot) ? "" : " for " + owner.getName());
             }
             case "life" -> {
                 need(args, 2, "life N [PLAYER]");
@@ -755,7 +825,7 @@ final class Session {
     // ---- state view ----
 
     /** A permanent as the state view shows it: name, tapped, P/T and sickness for a creature, counters, token. */
-    private static Map<String, Object> permanent(Card card) {
+    private Map<String, Object> permanent(Card card) {
         Map<String, Object> permanent = new LinkedHashMap<>();
         permanent.put("name", card.getName());
         if (card.isTapped()) {
@@ -765,6 +835,13 @@ final class Session {
             permanent.put("pt", card.getNetPower() + "/" + card.getNetToughness());
             if (card.isSick()) {
                 permanent.put("sick", true);
+            }
+            Combat combat = game.getCombat();
+            if (combat != null && combat.isAttacking(card)) {
+                GameEntity defender = combat.getDefenderByAttacker(card);
+                permanent.put("attacking", defender == null ? "?" : defender.equals(pilot) ? "you" : defender.getName());
+            } else if (combat != null && combat.isBlocking(card)) {
+                permanent.put("blocking", names(combat.getAttackersBlockedBy(card)));
             }
         }
         if (!card.getCounters().isEmpty()) {

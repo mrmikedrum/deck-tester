@@ -21,7 +21,7 @@ from typing import Callable, Dict, List, Optional
 
 from . import engine, model
 
-KINDS = ("mulligan", "play", "targets", "mode", "number", "confirm", "order", "choose", "attack", "pay")
+KINDS = ("mulligan", "play", "targets", "mode", "number", "confirm", "order", "choose", "attack", "block", "pay")
 BATCHES = engine.HOME / "batches"
 MAX_DECISIONS = 100  # decisions in one turn before the loop guard hands the rest of it to Forge's AI
 

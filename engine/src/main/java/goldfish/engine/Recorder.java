@@ -140,6 +140,10 @@ final class Recorder {
             }
         } else if (event instanceof GameEventTurnPhase phase && phase.phase() == PhaseType.END_OF_TURN && isPilot(phase.playerTurn())) {
             endOfTurn();
+        } else if (event instanceof GameEventTurnPhase phase && phase.phase() == PhaseType.CLEANUP && session.atTable()
+                && session.pilot.getGame().getNextPlayerAfter(session.pilot.getGame().getPhaseHandler().getPlayerTurn()).equals(session.pilot)) {
+            // at a table, the mana the agent left unused through the other players' turns, as they end
+            write("held", "unspent", Session.manaEstimate(session.pilot, true));
         } else if (event instanceof GameEventLandPlayed land && isPilot(land.player())) {
             write("land", "card", land.land().getName(), "id", land.land().getId());
         } else if (event instanceof GameEventPlayerLivesChanged life) {
@@ -158,14 +162,35 @@ final class Recorder {
                 opponentsLife += player.getLife();
             }
         }
+        // at a table, what stands between the agent and the others' attacks until its next turn
+        Map<String, Integer> othersPower = null;
+        if (session.atTable()) {
+            othersPower = new LinkedHashMap<>();
+            for (Player player : pilot.getGame().getPlayers()) {
+                if (!player.equals(pilot)) {
+                    othersPower.put(player.getName(), power(player.getCreaturesInPlay()));
+                }
+            }
+        }
+        long untapped = pilot.getCreaturesInPlay().stream().filter(c -> !c.isTapped()).count();
         write("eot", "lands", pilot.getLandsInPlay().size(),
                 "mana", Session.manaEstimate(pilot, false),
                 "unspent", Session.manaEstimate(pilot, true),
                 "hand", pilot.getCardsIn(ZoneType.Hand).size(),
                 "creatures", pilot.getCreaturesInPlay().size(),
-                "power", pilot.getCreaturesInPlay().stream().mapToInt(c -> Math.max(0, c.getNetPower())).sum(),
+                "power", power(pilot.getCreaturesInPlay()),
                 "permanents", pilot.getCardsIn(ZoneType.Battlefield).size() - pilot.getLandsInPlay().size(),
-                "opponents_life", opponentsLife);
+                "opponents_life", opponentsLife,
+                "untapped", session.atTable() ? untapped : null,
+                "others_power", othersPower);
+    }
+
+    private static int power(Iterable<Card> creatures) {
+        int power = 0;
+        for (Card creature : creatures) {
+            power += Math.max(0, creature.getNetPower());
+        }
+        return power;
     }
 
     private void zoneChange(GameEventCardChangeZone move) {

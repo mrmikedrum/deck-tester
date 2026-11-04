@@ -35,6 +35,60 @@ class TableDeciderTest(unittest.TestCase):
         self.assertEqual(decider.line_name(decision, ["Bear 2/2 -> Bo"], lines), "attack Bo with everything that can")
         self.assertEqual(decider.line_name(decision, ["Elf 1/1 -> Ana"], lines), "the attack Forge's AI would make")
 
+    def test_blocks_offer_each_single_block(self):
+        decision = {"kind": "block", "options": ["Wurm 6/4 blocks Bear 2/2", "Elf 1/1 blocks Bear 2/2"]}
+        self.assertEqual(table_model.block_lines(decision), {"Wurm 6/4 blocks Bear 2/2": ["Wurm 6/4 blocks Bear 2/2"],
+                                                             "Elf 1/1 blocks Bear 2/2": ["Elf 1/1 blocks Bear 2/2"],
+                                                             "no blocks": []})
+        decider = table_model.TableDecider("", 2, model.Usage())
+        lines = decider.lines(decision)
+        self.assertEqual(decider.line_name(decision, [], lines), "no blocks")
+        self.assertEqual(decider.line_name(decision, decision["options"], lines), "the blocks Forge's AI would make")
+
+    def test_other_players_turns_are_looked_ahead_on(self):
+        decider = table_model.TableDecider("", 2, model.Usage())
+        theirs = {"kind": "play", "turn": "T3 Ana end", "mine": False}
+        self.assertFalse(model.ours(theirs))
+        self.assertTrue(decider.explores(theirs))
+        self.assertIn("end of another player's turn", decider.instructions(theirs, STATE))
+        self.assertIn("respond", decider.instructions(theirs, dict(STATE, stack=["Lightning Bolt"])))
+        self.assertIn("attacking you", decider.instructions(dict(theirs, turn="T3 Ana attackers"), STATE))
+        self.assertFalse(model.Decider("", 3, model.Usage()).explores(theirs))
+        self.assertTrue(model.ours({"kind": "play", "turn": "T3 main1"}))  # decisions recorded before the flag
+
+    def test_combat_is_shown(self):
+        self.assertEqual(table_model.render._permanent({"name": "Bear", "pt": "2/2", "tapped": True, "attacking": "you"}),
+                         "Bear 2/2 (tapped, attacking you)")
+        self.assertEqual(table_model.render._permanent({"name": "Wurm", "pt": "6/4", "blocking": ["Bear"]}),
+                         "Wurm 6/4 (blocking Bear)")
+
+    def test_a_line_shows_everyones_life(self):
+        before = dict(STATE, battlefield=[])
+        after = dict(before, life=35, opponents=[{"name": "Ana", "life": 33}, {"name": "Bo", "life": 40}])
+        line = model.Line([], [], after, None, 0)
+        text = table_model.TableDecider("", 2, model.Usage()).result(before, line, 3)
+        self.assertTrue(text.endswith("; life: you 35, Ana 33, Bo 40"))
+
+    def test_a_line_names_what_each_player_lost(self):
+        before = dict(STATE, battlefield=[{"name": "Forest"}, {"name": "Craw Wurm", "pt": "6/4"}],
+                      opponents=[{"name": "Ana", "life": 40, "battlefield": [{"name": "Typhoid Rats", "pt": "1/1"}]}])
+        after = dict(before, battlefield=[{"name": "Forest"}], opponents=[{"name": "Ana", "life": 40, "battlefield": []}])
+        text = table_model.TableDecider("", 1, model.Usage()).result(before, model.Line([], [], after, None, 0), 3)
+        self.assertIn("; gone: your Craw Wurm, Ana's Typhoid Rats; life: you 38, Ana 40", text)
+
+    def test_a_line_says_what_could_attack_back(self):
+        eot = {"t": "eot", "turn": 3, "lands": 3, "mana": 3, "unspent": 0, "hand": 1, "creatures": 1, "power": 6,
+               "permanents": 1, "untapped": 0, "others_power": {"Ana": 0, "Bo": 6}}
+        line = model.Line([], [eot], dict(STATE, opponents=[]), None, 0)
+        text = table_model.TableDecider("", 2, model.Usage()).result(dict(STATE, opponents=[]), line, 3)
+        self.assertIn("; until your next turn: 0 of your creatures untapped to block; the others' creatures could attack you "
+                      "for Ana 0, Bo 6", text)
+
+    def test_a_line_says_what_mana_went_unused_before_the_turn(self):
+        line = model.Line([], [{"t": "held", "turn": 3, "unspent": 4}], dict(STATE, opponents=[]), None, 0)
+        text = table_model.TableDecider("", 2, model.Usage()).result(dict(STATE, opponents=[]), line, 3)
+        self.assertIn("; leaves 4 mana unspent before your turn", text)
+
 
 class TableReportTest(unittest.TestCase):
     def test_life_by_round_and_seat_summary(self):

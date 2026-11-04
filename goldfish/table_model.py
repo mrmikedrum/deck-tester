@@ -1,6 +1,7 @@
 """The decision model at a table, where the other players act. The goldfish decider (model.Decider) stays as it is,
 measured against passive opponents; this one changes only what differs at a table, through the decider's hooks:
-what the model reads (the table, and the other players' boards) and, in the engine, forks in which the other
+what the model reads (the table, the other players' boards, everyone's life after each line), which decisions it
+plays out (its blocks, and its plays on the others' turns too) and, in the engine, forks in which the other
 players block. Measure a change here at a table (bench/table_fidelity.py, table reports), not on the goldfish bench.
 """
 
@@ -8,6 +9,18 @@ from collections import OrderedDict
 from typing import Dict, List, Optional
 
 from . import model, render
+
+KINDS = model.KINDS + ("block",)  # blocks: in a goldfish game nobody attacks
+
+BLOCK = ("Block with these creatures? Each blocker stops one attacker's damage to you; a blocker that takes lethal "
+         "damage dies.")
+
+# On another player's turn, what the moment is (measured: one wording for all of them made the model pass)
+END_OF_TURN = ("It is the end of another player's turn and you have priority. Your lands untap at the start of your own "
+               "turn, so mana you leave unused until then is wasted. Play something now, or pass.")
+ATTACKED = "Another player is attacking you, and you have priority before blockers are declared. Play something now, or pass."
+RESPONDING = ("It is another player's turn and you have priority, with something on the stack to respond to. Play "
+              "something now, or pass.")
 
 TABLE = ("Commander game against {opponents} opponents at 40 life who play their own decks: they cast spells, "
          "attack, block and answer threats. Develop as the plan says; attack where damage gets through without "
@@ -30,6 +43,25 @@ def others(state: dict) -> List[str]:
     return lines
 
 
+def lost(before: List[dict], after: List[dict], state: dict) -> List[str]:
+    """Nonland permanents in before that aren't in after, by name."""
+    left = [p["name"] for p in after]
+    gone = []
+    for permanent in before:
+        if permanent["name"] in left:
+            left.remove(permanent["name"])
+        elif not model.is_land(permanent["name"], state):
+            gone.append(permanent["name"])
+    return gone
+
+
+def block_lines(decision: dict) -> Dict[str, list]:
+    """Each single block, and no blocks (Forge's AI's own blocks are played out too, as the default)."""
+    lines = {label: [label] for label in decision["options"][:model.MAX_LINES - 2]}
+    lines["no blocks"] = []
+    return lines
+
+
 def attack_lines(decision: dict) -> Dict[str, list]:
     """At a table, whom to attack is the choice: each opponent with everything that can attack them, or no attack.
     (Forge's AI's own attack is played out too, as the default.)"""
@@ -47,17 +79,61 @@ def attack_lines(decision: dict) -> Dict[str, list]:
 class TableDecider(model.Decider):
     """A seat's decisions at a table; see the module's description."""
 
+    kinds = KINDS
+
+    def explores(self, decision: dict) -> bool:
+        """Its own turn, and plays on the others' turns: a response, a removal spell for an attacker or a play
+        at the end of the turn is weighed by playing it out like any other."""
+        return (model.ours(decision) or decision["kind"] == "block"
+                or decision["kind"] == "play" and not decision["turn"].endswith("setup"))
+
+    def instructions(self, decision: dict, state: dict) -> str:
+        if decision["kind"] == "play" and not model.ours(decision):
+            if state.get("stack"):
+                return RESPONDING
+            if decision["turn"].endswith(" attackers"):
+                return ATTACKED
+            return END_OF_TURN
+        if decision["kind"] == "block":
+            return BLOCK
+        return model.instructions(decision)
+
+    def result(self, before: dict, line: model.Line, now: int) -> str:
+        """As in a goldfish game, with what each player lost and everyone's life: at a table, what a line costs or
+        saves counts as much as what it builds."""
+        text = super().result(before, line, now)
+        eot = next((f for f in line.facts if f["t"] == "eot" and f.get("others_power") is not None), None)
+        if eot:
+            # what the forks can't show, since the others pass in them: what could come back at you
+            text += (f"; until your next turn: {eot['untapped']} of your creatures untapped to block; the others' "
+                     "creatures could attack you for " + ", ".join(f"{name} {power}" for name, power in eot["others_power"].items()))
+        held = next((f for f in line.facts if f["t"] == "held"), None)
+        if held and not eot:  # a line from your own turn says what its end step left unspent already
+            text += f"; leaves {held['unspent']} mana unspent before your turn"
+        if line.state:
+            gone = [f"your {n}" for n in lost(before["battlefield"], line.state["battlefield"], before)]
+            after = {o["name"]: o for o in line.state.get("opponents", [])}
+            for o in before.get("opponents", []):
+                gone += [f"{o['name']}'s {n}" for n in lost(o.get("battlefield", []), after.get(o["name"], {}).get("battlefield", []), before)]
+            if gone:
+                text += "; gone: " + ", ".join(gone)
+            text += "; life: you " + str(line.state["life"]) + "".join(
+                f", {o['name']} {o['life']}" for o in line.state.get("opponents", []))
+        return text
+
     def lines(self, decision: dict) -> Dict[str, list]:
         if decision["kind"] == "attack":
             return attack_lines(decision)
+        if decision["kind"] == "block":
+            return block_lines(decision)
         return model.lines_to_try(decision)
 
     def line_name(self, decision: dict, picked: List[str], tries: Dict[str, list]) -> str:
-        if decision["kind"] == "attack":
+        if decision["kind"] in ("attack", "block"):
             for name, labels in tries.items():
                 if sorted(labels) == sorted(picked):
                     return name
-            return "the attack Forge's AI would make"
+            return "the blocks Forge's AI would make" if decision["kind"] == "block" else "the attack Forge's AI would make"
         return model.line_name(decision, picked, tries)
 
     def context(self, state: dict, decision: dict, so_far: str, guidance: Optional[str]) -> str:

@@ -37,9 +37,13 @@ Local card scripts work today ([architecture](architecture.md#local-card-scripts
 `goldfish table` hosts agents with people (architecture, Tables). Next:
 
 - A game with a person at the table: the desktop client against Jev seats, start to finish.
-- Interaction the model answers itself: blocks, responses on other players' turns, which opponent to attack or
-  target; until then Forge's AI decides them.
-- What Jev reads at a table: the other players' boards and threats, not only its own development.
+- Pace: one Jev turn at a four-Jev table took 40 minutes (51 forks); find what made those forks slow.
+- Jev's table misses (`bench/table_scenarios.py`, measurements): blocking a deathtouch attacker with a big
+  creature, holding a flash creature at the end of the turn before its own. More situations: counterspells and
+  other responses to a spell, combat tricks after blocks, repeated activations that undo each other.
+- A fork is refused when another player acted after the seat's last stop (blocks after an attacker's combat
+  trick, say), and that decision is asked from the text alone: copies taken at the other players' priority
+  would let it be played out.
 - Retire replaying whole games from the seed once copy forks have held across a few pin bumps.
 - Compare Jev with Forge's Monte Carlo AI (`run --ai flatmc`), the AI people meet in the desktop app.
 

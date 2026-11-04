@@ -84,8 +84,8 @@ mulligans: 0 in 84, 1 in 11, 2 in 4, 3 in 1
 ```
 
 Forge's AI plays every game unless `--pilot FILE` names a Python file whose functions (named after decision
-kinds: `mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `pay`) answer
-those kinds; returning `None` hands one back to the AI. See `examples/pilots/commander_first.py`.
+kinds: `mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `block`,
+`pay`) answer those kinds; returning `None` hands one back to the AI. See `examples/pilots/commander_first.py`.
 
 | Option | Does |
 |--------|------|

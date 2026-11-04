@@ -1,7 +1,7 @@
 """A Commander table: seats played by the decision model (Jev), each with its deck, plan and advisor, and open seats
 for people joining from their own Forge (Online Multiplayer, Join). The table engine hosts it: Forge's network
 server, with the seats' decisions parked like a goldfish game's. Each seat looks ahead in copies of the game in
-which the other players pass, and hands what the model doesn't answer (blocks, say) to Forge's AI.
+which the other players pass (and block), and hands what the model doesn't answer to Forge's AI.
 """
 
 import socket
@@ -25,7 +25,7 @@ class Seat:
         self.handlers = batch.load_pilot(pilot) if pilot else {}
 
     def request(self) -> dict:
-        asks = (set(self.handlers) - {"advise"}) | (set(model.KINDS) if self.plan else set())
+        asks = (set(self.handlers) - {"advise"}) | (set(table_model.KINDS) if self.plan else set())
         return {"name": self.name, "commanders": self.deck.commanders, "main": self.deck.main,
                 "deck": Path(self.deck_path).stem, "hash": self.deck.revision(), "ask": sorted(asks), "mana": "auto"}
 
@@ -105,6 +105,7 @@ def host(seats: List[Seat], people: int, port: int = PORT) -> Dict[str, str]:
     for thread in threads:
         thread.join(timeout=5)
     result = engine.request({"cmd": "table_state"})["state"] if state["state"] != "stopped" else "stopped"
+    engine.request({"cmd": "table_end"})  # lets the engine go of the game and its seats
     joined = [slot.split(" · ")[0] for slot in state["slots"] if " · remote" in slot]
     path = table_report.save(table_report.manifest(reply, seats, joined, began, result, usage))
     for line in table_report.build(table_report.load(path.stem)):

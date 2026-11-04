@@ -248,3 +248,39 @@ forks against 82 s with replay forks, 19 ms a fork against 645 ms; Jev's own pic
 12.3, commander median turn 5 and 4. About three times the time (71 s against 22 s). Its rollouts swap Forge's
 global random object, so games beside each other would disturb each other's draws.
 
+
+## Tables (2026-11-04)
+
+**Copy forks at a table** (`bench/table_fidelity.py`, the four example decks to turn 8, every seat forking at
+each play and block decision, the first seat activating Marath for tokens so the others meet it on the stack):
+364 of 364 landed in the same game, 6 of them at blocks, median 16 ms. On the way, copies had lost a modal
+ability's chosen mode (Marath on the stack), the AI memory that decides what can be paid (a waterbend cost's
+tapped creatures), and a Saga or dungeon whose last chapter or room was still on the stack (state-based
+actions ran before the stack was copied).
+
+**Table situations** (`bench/table_scenarios.py`): thirteen hand-built positions in a three-player table, each
+with an answer fixed before any run, decided by a Jev seat as at a table (forks, then the model), with Forge's
+AI's own pick (the default line) scored the same way. Three runs each: Jev 32 of 39, Forge's AI 36 of 39. Both
+right every time: blocks (a good block, no chump at 40 life, a chump to survive, surviving three attackers at
+6 life), Swords on a lethal attacker and on the biggest threat, finishing a player at 3 life, not attacking
+into two 6/4s, holding back when the crack-back is lethal. Jev only: attacking the open player rather than the
+one with a blocker (Forge's AI doesn't attack). Jev's misses: blocking a deathtouch 1/1 with a 6/4 at 40 life
+(0 of 3), and at the end of the turn before its own, holding Restoration Angel (0 of 3) and once Secure the
+Wastes (2 of 3). On these basics Jev is right most of the time and doesn't beat Forge's AI.
+
+What moved the results, each measured on the situation's own context before adopting it: one instruction for
+every moment of another player's turn made Jev pass at end of turn (0 of 6); naming the moment (end of turn,
+attacked, responding) made it play (5 of 5 on the token spell). Forks can't show the crack-back, since the
+others pass in them, so a line states it: "the others' creatures could attack you for Bo 6" held Jev back 5 of
+5 where "others' creature power: Bo 6" did 0 of 5. Lines also had to stop at the same point (the engine ends a
+fork at the seat's next first main phase; before, a line with nothing to decide ran on for turns) and name what
+each player lost (a block line didn't say the attacker died).
+
+**A four-Jev table** (the example decks and plans, no people): Jev 2 (Assimilation) won in round 13, 31 minutes,
+431 model calls, $0.15; 1,998 forks, 57 failed: an Incubator token's transform on the stack after another had
+resolved (the copy described the entry from the token as it is now), and a goaded creature Dack Fayden gave
+away (the copy dropped goad), both fixed since. Two plays it showed: an all-out attack that left Jev 1 open to
+a 30-point crack-back (now stated in the lines), and the same token transformed six times in a row.
+A second four-Jev table after those fixes, stopped in round 7: 994 forks, none failed or refused, Dack Fayden
+cast. One of Jev 3's turns took about 40 minutes for 17 decisions and 51 forks; what made those forks slow is
+not yet known.

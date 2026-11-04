@@ -171,8 +171,10 @@ def turn(decision: dict) -> int:
 
 
 def ours(decision: dict) -> bool:
-    """A decision in the agent's own turn ("T3 main1", not "T3 Opp 1 upkeep")."""
-    return not re.match(r"T\d+ Opp ", decision["turn"]) and not decision["turn"].endswith("setup")
+    """A decision in the agent's own turn ("T3 main1", not "T3 Opp 1 upkeep" or another player's at a table)."""
+    if decision["turn"].endswith("setup"):
+        return False
+    return decision["mine"] if "mine" in decision else not re.match(r"T\d+ Opp ", decision["turn"])
 
 
 # ---- what the model reads ----
@@ -410,6 +412,8 @@ class Decider:
     default selection; elsewhere it picks from the text alone. Plain never plays out.
     """
 
+    kinds = KINDS  # the decisions it answers; the rest go to Forge's AI
+
     def __init__(self, guide: str, opponents: int, usage: Usage, hybrid: str = "outcomes", workers: int = 4,
                  fast: bool = False, advise=None):
         self.guide, self.opponents, self.usage, self.hybrid, self.workers = guide, opponents, usage, hybrid, workers
@@ -434,13 +438,14 @@ class Decider:
             return self._play_out(reply, decision, now, first)
 
     def _play_out(self, reply: dict, decision: dict, now: int, first: Optional[list]) -> Line:
-        request = {"cmd": "fork", "session": reply["session"]}
+        request = {"cmd": "fork", "session": reply["session"], "horizon": now + 1}
         if self.fork_via:
             request["via"] = self.fork_via
         fork = engine.request(request)
         session = fork["session"]
-        # Passing means doing nothing more this turn, so a pass line keeps passing its later play decisions
-        # instead of letting Forge's AI play on and make "pass" look productive.
+        # Passing means doing nothing more this turn (or, on another player's turn, before this player's next),
+        # so a pass line keeps passing its later play decisions instead of letting Forge's AI play on and make
+        # "pass" look productive.
         passing = decision["kind"] == "play" and first == ["pass"]
         steps = 0
         clock = time.time()
@@ -453,15 +458,22 @@ class Decider:
             for _ in range(ROLLOUT):
                 if not after.get("decision"):
                     break
-                if after["decision"]["kind"] == "play" and turn(after["decision"]) > now:
+                # the next turn, at rest: its first play decision with nothing on the stack, or its attack when
+                # nothing could be played before it
+                if after["decision"]["kind"] in ("play", "attack") and turn(after["decision"]) > now:
                     state = engine.request({"cmd": "state", "session": session})["state"]
                     if not state["stack"]:
-                        break  # the next turn, at rest
-                if passing and after["decision"]["kind"] == "play" and turn(after["decision"]) == now and ours(after["decision"]):
+                        break
+                if (passing and after["decision"]["kind"] == "play" and turn(after["decision"]) == now
+                        and ours(after["decision"]) == ours(decision)):
                     after = engine.request({"cmd": "answer", "session": session, "answer": [1], "by": "model"})
                 else:
                     after = engine.request({"cmd": "answer", "session": session, "defer": True})
                 steps += 1
+            if after.get("over") == "horizon":
+                # the engine stopped the line at the next turn's first main phase: nothing was asked on the way
+                state = engine.request({"cmd": "state", "session": session})["state"]
+                after = {}
             with open(fork["records"], encoding="utf-8") as handle:
                 handle.seek(began)
                 facts = [json.loads(line) for line in handle if line.strip()]
@@ -500,7 +512,7 @@ class Decider:
     def context(self, state: dict, decision: dict, so_far: str, guidance: Optional[str]) -> str:
         return describe(self.guide, state, decision, self.opponents, so_far, guidance)
 
-    def instructions(self, decision: dict) -> str:
+    def instructions(self, decision: dict, state: dict) -> str:
         return instructions(decision)
 
     def explores(self, decision: dict) -> bool:
@@ -514,6 +526,10 @@ class Decider:
     def line_name(self, decision: dict, picked: List[str], tries: Dict[str, list]) -> str:
         """The name of Forge's AI's own pick among the lines (added as a line of its own when it isn't one)."""
         return line_name(decision, picked, tries)
+
+    def result(self, before: dict, line: Line, now: int) -> str:
+        """A played-out line as the model reads it."""
+        return after_line(before, line.facts, line.state, now)
 
     # ---- deciding ----
 
@@ -529,7 +545,7 @@ class Decider:
 
     def _step(self, reply: dict) -> dict:
         decision, session = reply["decision"], reply["session"]
-        if decision["kind"] not in KINDS or decision.get("repeat"):
+        if decision["kind"] not in self.kinds or decision.get("repeat"):
             return self.send(reply, {"defer": True})
         state = engine.request({"cmd": "state", "session": session, "text": True})["state"]
         this_turn_facts = [f for f in records.timeline(records.load(reply["records"])) if f.get("turn") == turn(decision)]
@@ -543,7 +559,7 @@ class Decider:
             # for an unsure one. Saves about a sixth of the forks for half as many calls again, and whether it
             # costs play quality couldn't be told from 20 games (docs/measurements.md), so it is off by default.
             plain = {name: option_text(decision, name) for name in tries}
-            answer = call(context, {"pick": {"type": "choice", "instructions": self.instructions(decision), "criteria": plain}},
+            answer = call(context, {"pick": {"type": "choice", "instructions": self.instructions(decision, state), "criteria": plain}},
                           self.usage, session)["pick"]
             if answer.get("confidence", 0.0) >= self.route and answer.get("choice") in tries:
                 with self.usage.lock:
@@ -567,14 +583,14 @@ class Decider:
             criteria = {}
             for name, line in lines.items():
                 text = option_text(decision, name)
-                result = after_line(state, line.facts, line.state, turn(decision))
+                result = self.result(state, line, turn(decision))
                 criteria[name] = (text + " → " if text != name else "") + result + (DEFAULT if name == default else "")
         else:
             tries = plain_options(decision)
             if not tries or len(tries) < 2:
                 return self.send(reply, {"defer": True})
             criteria = {name: option_text(decision, name) for name in tries}
-        answer = call(context, {"pick": {"type": "choice", "instructions": self.instructions(decision), "criteria": criteria}},
+        answer = call(context, {"pick": {"type": "choice", "instructions": self.instructions(decision, state), "criteria": criteria}},
                       self.usage, session)["pick"]
         try:
             picks = _numbers(decision, tries[answer["choice"]])

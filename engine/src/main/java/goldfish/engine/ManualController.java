@@ -23,6 +23,8 @@ import forge.game.mana.Mana;
 import forge.game.GameActionUtil;
 import forge.game.combat.Combat;
 import forge.game.combat.CombatUtil;
+import forge.game.phase.PhaseHandler;
+import forge.game.phase.PhaseType;
 import forge.game.player.DelayedReveal;
 import forge.game.player.Player;
 import forge.game.player.PlayerActionConfirmMode;
@@ -193,12 +195,12 @@ public class ManualController extends PlayerControllerAi {
     private List<Integer> ask(String kind, String prompt, List<String> options, List<String> details, int min, int max,
                               boolean repeat, Supplier<List<Integer>> ai) {
         Decision decision = new Decision(kind, session.turnLabel(), prompt, options, details, min,
-                repeat ? max : Math.min(max, options.size()), repeat);
+                repeat ? max : Math.min(max, options.size()), repeat, session.myTurn());
         return decide(decision, ai);
     }
 
     private int askNumber(String prompt, int min, int max, Supplier<Integer> ai) {
-        Decision decision = new Decision("number", session.turnLabel(), prompt, List.of(), null, min, max, false);
+        Decision decision = new Decision("number", session.turnLabel(), prompt, List.of(), null, min, max, false, session.myTurn());
         return decide(decision, () -> List.of(ai.get())).get(0);
     }
 
@@ -228,7 +230,7 @@ public class ManualController extends PlayerControllerAi {
             }
         }
         Decision decision = new Decision(kind, session.turnLabel(), prompt, options, details,
-                Math.min(min, list.size()), Math.min(max, list.size()), false);
+                Math.min(min, list.size()), Math.min(max, list.size()), false, session.myTurn());
         List<Integer> picks = decide(decision, () -> indices(list, ai.get()), preset == null ? null : indices(list, preset));
         List<T> chosen = new ArrayList<>();
         for (int pick : picks) {
@@ -366,7 +368,22 @@ public class ManualController extends PlayerControllerAi {
         if (!game.getStack().isEmpty() || session.setup.stopsAll()) {
             return true;
         }
-        return game.getPhaseHandler().isPlayerTurn(getPlayer()) && game.getPhaseHandler().getPhase().isMain();
+        PhaseHandler ph = game.getPhaseHandler();
+        if (ph.isPlayerTurn(getPlayer())) {
+            return ph.getPhase().isMain();
+        }
+        // At a table, where the others act: when this player is attacked, and at the end of the turn just before
+        // its own, the moments to use what it held up (removal for an attacker, a flash creature, a draw spell).
+        return attacked() || session.atTable() && ph.is(PhaseType.END_OF_TURN)
+                && game.getNextPlayerAfter(ph.getPlayerTurn()).equals(getPlayer());
+    }
+
+    /** At a table, another player's declare-attackers step with creatures attacking this player. */
+    private boolean attacked() {
+        Game game = getGame();
+        Combat combat = game.getCombat();
+        return session.atTable() && game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_ATTACKERS) && combat != null
+                && combat.isPlayerAttacked(getPlayer());
     }
 
     /** The option number of Forge's AI's pick among the listed plays: 0 when it chose something not listed. */
@@ -386,7 +403,12 @@ public class ManualController extends PlayerControllerAi {
 
     @Override
     public List<SpellAbility> chooseSpellAbilityToPlay() {
-        boolean reasking = false; // after an override or restore: keep the game parked even with nothing to play
+        // after an override or restore: keep the game parked even with nothing to play (a copy fork made while the
+        // parent was asked again starts out asked again too)
+        boolean reasking = session.startsReasking();
+        if (session.atHorizon()) {
+            return null;
+        }
         while (true) {
             if (!isStop()) {
                 return null; // outside the agent's stops priority passes, and what is playable isn't even evaluated
@@ -399,6 +421,9 @@ public class ManualController extends PlayerControllerAi {
                         + ComputerUtilMana.getAvailableManaEstimate(getPlayer(), true) + " playable=" + labels);
             }
             if (playable.isEmpty() && !reasking) {
+                // a later decision with nothing played before it (an attack, blocks once attackers are declared) is
+                // looked ahead on from a copy made here
+                session.checkpoint(false);
                 return null; // nothing to do: priority passes
             }
             List<String> options = new ArrayList<>();
@@ -409,8 +434,8 @@ public class ManualController extends PlayerControllerAi {
                 options.add(Labels.ability(sa));
                 details.add(Labels.detail(sa));
             });
-            Decision decision = new Decision("play", session.turnLabel(), "", options, details, 1, 1, false);
-            session.checkpoint();
+            Decision decision = new Decision("play", session.turnLabel(), "", options, details, 1, 1, false, session.myTurn());
+            session.checkpoint(reasking);
             List<SpellAbility> aiPick = new ArrayList<>();
             List<Integer> answer;
             try {
@@ -528,7 +553,7 @@ public class ManualController extends PlayerControllerAi {
         Session.Entry open = null;
         if (options.size() > 1) {
             pay = new Decision("pay", session.turnLabel(), "mana to pay " + sa.getPayCosts().getTotalMana() + " for "
-                    + source.getName() + ", in order; none = automatic", options, null, 0, options.size(), true);
+                    + source.getName() + ", in order; none = automatic", options, null, 0, options.size(), true, session.myTurn());
             List<Integer> chosen = null;
             Session.Entry scripted = session.scripted(pay);
             if (scripted != null) {
@@ -1102,5 +1127,54 @@ public class ManualController extends PlayerControllerAi {
             }
         }
         trace("attackers picks=" + picks + " ai=" + declared[0] + " declared=" + combat.getAttackers());
+    }
+
+    @Override
+    public void declareBlockers(Player defender, Combat combat) {
+        List<Card> blockers = new ArrayList<>();
+        List<Card> attackers = new ArrayList<>();
+        List<String> options = new ArrayList<>();
+        for (Card blocker : defender.getCreaturesInPlay()) {
+            for (Card attacker : combat.getAttackers()) {
+                if (defender.equals(combat.getDefendingPlayerRelatedTo(attacker)) && CombatUtil.canBlock(attacker, blocker, combat)) {
+                    blockers.add(blocker);
+                    attackers.add(attacker);
+                    options.add(cardLabel(blocker) + " blocks " + cardLabel(attacker));
+                }
+            }
+        }
+        if (options.isEmpty()) {
+            return;
+        }
+        boolean[] declared = {false};
+        List<Integer> picks = ask("block", "blockers, each blocking one attacker", options, null, 0, options.size(), false, () -> {
+            super.declareBlockers(defender, combat);
+            declared[0] = true;
+            List<Integer> out = new ArrayList<>();
+            for (int i = 0; i < blockers.size(); i++) {
+                if (combat.isBlocking(blockers.get(i), attackers.get(i))) {
+                    out.add(i + 1);
+                }
+            }
+            return out;
+        });
+        if (!declared[0]) {
+            List<Card> chosen = new ArrayList<>();
+            for (int pick : picks) {
+                Card blocker = blockers.get(pick - 1);
+                if (!chosen.contains(blocker)) {
+                    chosen.add(blocker);
+                    combat.addBlocker(attackers.get(pick - 1), blocker);
+                }
+            }
+            String problem = CombatUtil.validateBlocks(combat, defender);
+            if (problem != null) {
+                // blocks the rules don't allow (a menace creature blocked by one): Forge's AI blocks instead, on the record
+                chosen.forEach(combat::undoBlockingAssignment);
+                session.recorder.write("block", "failed", problem, "by", "ai");
+                super.declareBlockers(defender, combat);
+            }
+        }
+        trace("blockers picks=" + picks + " ai=" + declared[0] + " declared=" + combat.getAllBlockers());
     }
 }
