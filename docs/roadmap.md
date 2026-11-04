@@ -32,6 +32,17 @@ Local card scripts work today ([architecture](architecture.md#local-card-scripts
   to 44 charge counters); every line looks the same in development terms. A threshold fact in the deck's
   advisor is the likely fix.
 
+## Tables
+
+`goldfish table` hosts agents with people (architecture, Tables). Next:
+
+- A game with a person at the table: the desktop client against Jev seats, start to finish.
+- Interaction the model answers itself: blocks, responses on other players' turns, which opponent to attack or
+  target; until then Forge's AI decides them.
+- What Jev reads at a table: the other players' boards and threats, not only its own development.
+- Retire replaying whole games from the seed once copy forks have held across a few pin bumps.
+- Compare Jev with Forge's Monte Carlo AI (`run --ai flatmc`), the AI people meet in the desktop app.
+
 ## Overrides
 
 - Princess Yue's death trigger doesn't fire from a `destroy` override (architecture, Overrides).

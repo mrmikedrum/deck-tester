@@ -41,6 +41,9 @@ public final class Server {
 
     private final Path home;
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
+    /** Whether this engine hosts tables: started with Forge's full model and a headless GUI (see main). */
+    private static boolean tableMode;
+    private volatile Table table;
     private int lastId;
 
     private Server(Path home) throws IOException {
@@ -57,10 +60,15 @@ public final class Server {
     public static void main(String[] args) throws Exception {
         Path res = Path.of(args[0]);
         Path home = Path.of(args[1]);
-        Forge.start(res.toString(), false);
+        tableMode = args.length > 2 && args[2].equals("table");
+        if (tableMode) {
+            Forge.startForTables(res, home.resolve("table"));
+        } else {
+            Forge.start(res.toString(), false);
+        }
         MyRandom.setRandom(new SeededRandom());
         Server server = new Server(home);
-        Path socket = home.resolve("engine.sock");
+        Path socket = home.resolve(tableMode ? "table.sock" : "engine.sock");
         if (Files.exists(socket)) {
             try (SocketChannel running = SocketChannel.open(UnixDomainSocketAddress.of(socket))) {
                 System.err.println("another goldfish engine is already listening on " + socket);
@@ -133,6 +141,24 @@ public final class Server {
             reply.put("bye", "shutdown");
             return reply;
         }
+        if (cmd.equals("table")) {
+            Map<String, Object> reply = ok();
+            reply.putAll(openTable(request));
+            return reply;
+        }
+        if (cmd.equals("table_end")) {
+            if (table != null) {
+                table.stop();
+                table = null;
+            }
+            return ok();
+        }
+        if (cmd.equals("table_state")) {
+            Map<String, Object> reply = ok();
+            reply.put("state", table == null ? "no table" : table.state());
+            reply.put("slots", table == null ? List.of() : table.slots());
+            return reply;
+        }
         Session session = sessions.get(request.get("session").getAsString());
         if (session == null) {
             throw new IllegalArgumentException("no session " + request.get("session").getAsString());
@@ -167,7 +193,7 @@ public final class Server {
                 return reply;
             }
             case "fork":
-                return fork(session);
+                return fork(session, request.has("via") ? request.get("via").getAsString() : null);
             case "snapshot": {
                 session.channel.await(WAIT_MILLIS);
                 String name = request.has("name") ? request.get("name").getAsString() : null;
@@ -200,6 +226,18 @@ public final class Server {
     }
 
     private Map<String, Object> start(JsonObject request) throws Exception {
+        Session.Setup setup = setup(request, request.has("opponents") ? request.get("opponents").getAsInt() : 3, false);
+        Session session = new Session(nextId(), setup, home.resolve("runs"), null, null);
+        sessions.put(session.id, session);
+        session.start();
+        Map<String, Object> reply = progress(session);
+        reply.put("seed", setup.seed());
+        reply.put("ai_avoids", Session.aiAvoids(setup.deck()));
+        return reply;
+    }
+
+    /** A game's setup from a start request (or a seat of a table request); forks are copies unless asked to replay. */
+    private static Session.Setup setup(JsonObject request, int opponents, boolean table) {
         List<String> commanders = new ArrayList<>();
         request.getAsJsonArray("commanders").forEach(e -> commanders.add(e.getAsString()));
         List<Map.Entry<Integer, String>> main = new ArrayList<>();
@@ -214,7 +252,6 @@ public final class Server {
         }
         long seed = request.has("seed") ? request.get("seed").getAsLong() : ThreadLocalRandom.current().nextLong(1, 1_000_000);
         int turns = request.has("turns") ? request.get("turns").getAsInt() : 0;
-        int opponents = request.has("opponents") ? request.get("opponents").getAsInt() : 3;
         boolean stopsAll = request.has("stops") && request.get("stops").getAsString().equals("all");
         Session.ManaChoice mana = Session.ManaChoice.valueOf(
                 (request.has("mana") ? request.get("mana").getAsString() : "creatures").toUpperCase(java.util.Locale.ROOT));
@@ -232,16 +269,47 @@ public final class Server {
             case "default" -> null;
             case "hybrid" -> forge.ai.AIOption.USE_HYBRID_SIMULATION;
             case "sim" -> forge.ai.AIOption.USE_FULL_SIMULATION;
-            default -> throw new IllegalArgumentException("ai is default, hybrid or sim");
+            case "flatmc" -> null;
+            default -> throw new IllegalArgumentException("ai is default, hybrid, sim or flatmc");
         };
-        Session.Setup setup = new Session.Setup(deck, opponents, seed, turns, stopsAll, mana, asks, aiMode,
-                String.join(" + ", commanders), deckName, deckHash);
-        Session session = new Session(nextId(), setup, home.resolve("runs"), null, null);
-        sessions.put(session.id, session);
-        session.start();
-        Map<String, Object> reply = progress(session);
-        reply.put("seed", seed);
-        reply.put("ai_avoids", Session.aiAvoids(deck));
+        return new Session.Setup(deck, opponents, seed, turns, stopsAll, mana, asks, aiMode,
+                String.join(" + ", commanders), deckName, deckHash, ai.equals("flatmc"),
+                table || !(request.has("forks") && request.get("forks").getAsString().equals("replay")));
+    }
+
+    /**
+     * Opens a Commander table on a port: one seat per entry of "seats" (each like a start request, with a "name"),
+     * driven through its own session, and "people" open slots for people joining from their own Forge.
+     */
+    private Map<String, Object> openTable(JsonObject request) throws Exception {
+        if (!tableMode) {
+            throw new IllegalStateException("tables are hosted by the table engine (goldfish table)");
+        }
+        if (table != null) {
+            throw new IllegalStateException("a table is already open on port " + table.port);
+        }
+        int people = request.has("people") ? request.get("people").getAsInt() : 1;
+        int port = request.has("port") ? request.get("port").getAsInt() : 36743;
+        JsonArray seatRequests = request.getAsJsonArray("seats");
+        int players = seatRequests.size() + people;
+        List<Session> agents = new ArrayList<>();
+        List<Deck> decks = new ArrayList<>();
+        Map<String, Object> ids = new LinkedHashMap<>();
+        for (JsonElement entry : seatRequests) {
+            JsonObject seatRequest = entry.getAsJsonObject();
+            Session.Setup setup = setup(seatRequest, players - 1, true);
+            String name = seatRequest.get("name").getAsString();
+            Session seat = Session.atTable(nextId(), setup, home.resolve("runs"), name);
+            sessions.put(seat.id, seat);
+            agents.add(seat);
+            decks.add(setup.deck());
+            ids.put(name, seat.id);
+        }
+        table = new Table(port, agents, decks, people);
+        Map<String, Object> reply = new LinkedHashMap<>();
+        reply.put("port", port);
+        reply.put("seats", ids);
+        reply.put("slots", table.slots());
         return reply;
     }
 
@@ -249,13 +317,14 @@ public final class Server {
      * A new session that replays this parked one's decisions from the same seed, checks it arrived at the same
      * decision in the same state, and waits there. The parent stays parked; the fork is a game of its own.
      */
-    private Map<String, Object> fork(Session parent) throws Exception {
+    private Map<String, Object> fork(Session parent, String via) throws Exception {
         Decision parked = parent.channel.await(WAIT_MILLIS);
         if (parked == null) {
             throw new IllegalStateException("fork while the game waits for a decision");
         }
         long began = System.nanoTime();
-        Session fork = parent.fork(nextId(), home.resolve("runs"));
+        Session fork = via == null ? parent.fork(nextId(), home.resolve("runs"))
+                : parent.fork(nextId(), home.resolve("runs"), via.equals("copy"));
         sessions.put(fork.id, fork);
         fork.start();
         Decision reached = fork.channel.await(WAIT_MILLIS);
@@ -264,7 +333,8 @@ public final class Server {
             problem = fork.channel.isFinished() ? fork.over : "still replaying after " + WAIT_MILLIS / 1000 + "s";
         } else if (!parked.same(reached)) {
             problem = "replay reached " + reached.kind() + " " + reached.options() + " at " + reached.turn()
-                    + " instead of " + parked.kind() + " " + parked.options() + " at " + parked.turn();
+                    + " instead of " + parked.kind() + " " + parked.options() + " at " + parked.turn()
+                    + " (state: " + Session.firstDifference(parent.fingerprint(), fork.fingerprint()) + ")";
         } else {
             String difference = Session.firstDifference(parent.fingerprint(), fork.fingerprint());
             if (!difference.isEmpty()) {

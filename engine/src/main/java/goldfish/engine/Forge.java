@@ -44,6 +44,33 @@ public final class Forge {
                 false, true, false, false);
         data.setMulliganRule(MulliganDefs.MulliganRule.London);
         AiProfileUtil.loadAllProfiles(res + "ai/");
+        // Copying a game (copy forks) looks up card image keys; with no images here, their folders are empty.
+        forge.ImageKeys.initializeDirs("", new java.util.HashMap<>(), "", "", "", "", "", "", "");
         return data;
+    }
+
+    /**
+     * Forge's full start-up, for hosting tables: its network server and lobby need the whole model (preferences,
+     * the match host), not only the card data. The model reads its assets from a folder of the engine's own, which
+     * links Forge's resources and keeps Forge's user files (preferences, logs) out of the person's own Forge.
+     */
+    public static void startForTables(java.nio.file.Path res, java.nio.file.Path dir) throws java.io.IOException {
+        java.nio.file.Path assets = dir.resolve("assets");
+        java.nio.file.Files.createDirectories(assets);
+        java.nio.file.Path link = assets.resolve("res");
+        if (!java.nio.file.Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            java.nio.file.Files.createSymbolicLink(link, res.toAbsolutePath());
+        }
+        java.nio.file.Path user = dir.resolve("user").toAbsolutePath();
+        java.nio.file.Files.writeString(assets.resolve("forge.profile.properties"),
+                "userDir=" + user + "/\ncacheDir=" + user + "/cache/\n");
+        forge.gui.GuiBase.setInterface(new HeadlessGui(assets.toAbsolutePath().toString()));
+        forge.model.FModel.initialize(null, preferences -> {
+            preferences.setPref(forge.localinstance.properties.ForgePreferences.FPref.LOAD_CARD_SCRIPTS_LAZILY, false);
+            preferences.setPref(forge.localinstance.properties.ForgePreferences.FPref.UI_LANGUAGE, "en-US");
+            preferences.setPref(forge.localinstance.properties.ForgePreferences.FPref.ENFORCE_DECK_LEGALITY, false);
+            return null;
+        });
+        forge.model.FModel.getNetPreferences().setPref(forge.localinstance.properties.ForgeNetPreferences.FNetPref.UPnP, "NEVER");
     }
 }

@@ -14,7 +14,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 3 insertions(+)
 
 diff --git a/forge-game/src/main/java/forge/game/GameSnapshot.java b/forge-game/src/main/java/forge/game/GameSnapshot.java
-index 2d64547a..fa41e1be 100644
+index 2d64547a76c..fa41e1bea0b 100644
 --- a/forge-game/src/main/java/forge/game/GameSnapshot.java
 +++ b/forge-game/src/main/java/forge/game/GameSnapshot.java
 @@ -492,6 +492,9 @@ public class GameSnapshot {

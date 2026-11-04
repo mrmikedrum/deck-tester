@@ -265,16 +265,21 @@ caller's choice; nothing here assumes a location.
 newer Forge pin or a local card script, and a card that misbehaves mid-game can be corrected with an
 override; see [Forge dependency](#forge-dependency) and Overrides. Each override is recorded.
 
-## Forks: a game replayed from its seed
+## Forks
 
-`fork` makes a new session from a parked one: the same deck, seed and settings, answering every decision
-from the parent's log instead of asking. Nothing weighs anything during the replay, so it is only Forge
+`fork` makes a new session from a parked one, parked at the same decision in the same game, for lookahead;
+the parent is never touched. Forks start from a copy of the game (see Copy forks); `--forks replay` (and
+`"forks": "replay"` on `start`) replays the whole game from its seed instead. Both check where they land the
+same way.
+
+**Replay forks** use the same deck, seed and settings, answering every decision from the parent's log
+instead of asking. Nothing weighs anything during the replay, so it is only Forge
 resolving the same actions in the same order: a turn-8 position replays in about a second and a half. It
 then checks it reached the same decision in the same state (a fingerprint: turn, life, mana pools, every
 zone of the agent's in order, each permanent's tapped, sick, damage, counters and P/T, the stack) and
 parks there, a game of its own. A mismatch ends the fork and the request fails with the first difference;
-the parent is never touched. This is the only lookahead mechanism; the in-place restore it replaces
-(`snapshot`/`restore`, kept for manual play) could not be made exact.
+the parent is never touched. The in-place restore these replace (`snapshot`/`restore`, kept for manual play)
+could not be made exact.
 
 Replaying exactly needs Forge's AI kept out of the game's state:
 
@@ -320,6 +325,34 @@ attack for tracing a new one. `bench/fidelity.py` forks games at fixed turns and
 with Forge's AI answering (`ai`) or with every decision answered by rule (`scripted`, so a drift repeats);
 run it on a deck with new mechanics before trusting comparisons on it.
 
+### Copy forks
+
+At each of the pilot's play decisions, a session started with copy forks keeps a copy of the game made by
+Forge's `GameCopier` (with our patch, which makes a copy match the original: the stack and its abilities,
+priority, the turn's history, links between cards), with the log's length and the random sequence then. A
+copy fork copies that copy again, puts its own controller in the seat and passive controllers in the others,
+answers the few decisions logged since, and runs Forge's game loop from there; the same decision and
+fingerprint checks follow. It takes about 20-40 ms at any turn, against a replay's 0.3-1.2 s that grows with
+the game, and needs no record of the other players' decisions, which is what makes lookahead possible at a
+table where people play. `bench/fidelity.py --forks copy` and `bench/table_fidelity.py` measure it.
+
+## Tables: agents playing with people
+
+`goldfish table DECK[,PLAN[,PILOT]]... --people N` hosts a Commander game over Forge's network play: one agent
+seat per deck, driven by the decision model with its plan and advisor, and N open seats people join from
+their own Forge (Online Multiplayer, Join, the address printed). A second engine process, the table engine
+(`.goldfish/table.sock`, `table.log`), hosts it: it starts Forge's full model with a headless GUI
+(`HeadlessGui`), from an assets folder of its own under `.goldfish/table/` so Forge's user files stay out of
+the person's own Forge, and runs Forge's network server and lobby. A patch lets the lobby seat our players
+in its AI slots; each seat is a session (`Session.atTable`) attached to the shared game, parking its
+decisions like a goldfish game, so the same decider plays it. Its lookahead uses copy forks in which every
+other player passes. What the model doesn't answer goes to Forge's AI, Monte Carlo layer included (its
+match host turns that on): blocks, and decisions on other players' turns, for now.
+
+People need the Forge desktop app at the engine's exact build: `scripts/build-forge-client.sh` builds it from a
+full Forge checkout holding the pin and the series. With no people seated, Forge's match host adds a
+spectator, which pauses on each event as if someone watched; agent-only tables run slowly for that reason.
+
 ## Snapshots and overrides
 
 Snapshots use forge-game's `GameSnapshot`, the copy behind Forge's own experimental undo. They also save the
@@ -350,8 +383,8 @@ options match the corrected board, and overrides are logged so a fork makes them
 ## Forge dependency
 
 `scripts/bootstrap-forge.sh` sparse-fetches a pinned upstream commit into `vendor/forge` (gitignored),
-applies our patch series as commits on its `goldfish` branch, and installs forge-core, forge-game and
-forge-ai into the local Maven repository, with no GUI modules. Headless startup (`engine/.../Forge.java`)
+applies our patch series as commits on its `goldfish` branch, and installs forge-core, forge-game, forge-ai
+and forge-gui (the network server and match host tables use) into the local Maven repository. Headless startup (`engine/.../Forge.java`)
 is the card-data part of forge-gui's `FModel.initialize`, reading card scripts from
 `vendor/forge/forge-gui/res/cardsfolder`. Engine and card data always come from the same commit.
 

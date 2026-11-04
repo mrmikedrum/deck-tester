@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import batch, decklist, engine, model, records, render, report
+from . import batch, decklist, engine, model, records, render, report, table
 
 ROOT = Path(__file__).resolve().parent.parent
 CURRENT = engine.HOME / "current"
@@ -213,6 +213,19 @@ def cards(args) -> int:
     return 0
 
 
+def host_table(args) -> int:
+    seats = [table.parse(spec, i + 1) for i, spec in enumerate(args.seats)]
+    for seat in seats:
+        problems = seat.deck.problems()
+        if problems:
+            print(f"{seat.deck_path}: " + "; ".join(problems))
+            return 1
+    outcome = table.host(seats, args.people, args.port)
+    for name, result in outcome.items():
+        print(f"{name}: {result}")
+    return 0
+
+
 def run(args) -> int:
     deck = decklist.load(args.deck)
     problems = deck.problems()
@@ -222,7 +235,7 @@ def run(args) -> int:
     seed = args.seed if args.seed is not None else int.from_bytes(__import__("os").urandom(2), "big") * 100
     guide = Path(args.guide).read_text() if args.guide and Path(args.guide).is_file() else args.guide
     manifest = batch.run(deck, Path(args.deck).stem, args.games, seed, args.turns, args.opponents, args.pilot,
-                         args.workers, args.ai, guide, args.hybrid, args.fast)
+                         args.workers, args.ai, guide, args.hybrid, args.fast, args.forks)
     for line in report.build(manifest, show_games=args.per_game, show_cards=args.cards):
         print(line)
     return 0
@@ -277,7 +290,7 @@ def main(argv=None) -> int:
     begin.add_argument("--ask", help="decision kinds you answer, comma-separated, or 'none' (default: all); "
                        "Forge's AI answers the rest. Kinds: " + ", ".join(batch.KINDS))
     begin.add_argument("--opponents", type=int, default=3)
-    begin.add_argument("--ai", choices=("default", "hybrid", "sim"), default="default",
+    begin.add_argument("--ai", choices=("default", "hybrid", "sim", "flatmc"), default="default",
                        help="how Forge's AI decides the kinds you don't (see run --help)")
     begin.set_defaults(run=start)
 
@@ -297,11 +310,20 @@ def main(argv=None) -> int:
     play.add_argument("--pilot", help="Python file answering some decision kinds before the model or Forge's AI")
     play.add_argument("--opponents", type=int, default=3)
     play.add_argument("--workers", type=int, default=8, help="games played at once")
-    play.add_argument("--ai", choices=("default", "hybrid", "sim"), default="default",
+    play.add_argument("--ai", choices=("default", "hybrid", "sim", "flatmc"), default="default",
                       help="Forge's AI: its rules; rules with a one-play safety simulation; or a 3-action lookahead search")
+    play.add_argument("--forks", choices=("copy", "replay"), default="copy",
+                      help="with --guide: play options out in forks made from a copy of the game (default), or replayed from the seed")
     play.add_argument("--per-game", action="store_true", help="add a line per game")
     play.add_argument("--cards", action="store_true", help="add how often each card was seen and played")
     play.set_defaults(run=run)
+
+    hosting = commands.add_parser("table", help="host a Commander table: agent seats play, people join from Forge")
+    hosting.add_argument("seats", nargs="+", metavar="DECK[,PLAN[,PILOT]]",
+                         help="one agent seat each: a decklist, its plan (text or file) and a pilot or advisor file")
+    hosting.add_argument("--people", type=int, default=1, help="open seats for people joining from Forge")
+    hosting.add_argument("--port", type=int, default=table.PORT)
+    hosting.set_defaults(run=host_table)
 
     summary = commands.add_parser("report", help="report on a batch again (default: the last one)")
     summary.add_argument("batch", nargs="?")

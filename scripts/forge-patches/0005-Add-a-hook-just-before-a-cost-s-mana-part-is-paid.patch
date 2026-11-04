@@ -16,7 +16,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 7 insertions(+)
 
 diff --git a/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java b/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
-index eeec65b2..36235663 100644
+index eeec65b2208..3623566314a 100644
 --- a/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
 +++ b/forge-game/src/main/java/forge/game/cost/CostDecisionMakerBase.java
 @@ -20,6 +20,10 @@ public abstract class CostDecisionMakerBase implements ICostVisitor<PaymentDecis
@@ -31,7 +31,7 @@ index eeec65b2..36235663 100644
          return effect;
      }
 diff --git a/forge-game/src/main/java/forge/game/cost/CostPayment.java b/forge-game/src/main/java/forge/game/cost/CostPayment.java
-index b651a731..217b3cbf 100644
+index b651a7317ba..217b3cbf6b8 100644
 --- a/forge-game/src/main/java/forge/game/cost/CostPayment.java
 +++ b/forge-game/src/main/java/forge/game/cost/CostPayment.java
 @@ -211,6 +211,9 @@ public class CostPayment extends ManaConversionMatrix {

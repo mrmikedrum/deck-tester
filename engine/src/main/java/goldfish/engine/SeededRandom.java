@@ -41,6 +41,11 @@ final class SeededRandom extends Random {
 
     private static final ThreadLocal<Source> LOCAL = ThreadLocal.withInitial(() -> new Source(System.nanoTime()));
 
+    /** The calling thread's sequences, as they stand (a table's game thread, which nobody seeded). */
+    static Source current() {
+        return LOCAL.get();
+    }
+
     /** Seed the calling thread's game; the session keeps the returned source. */
     static Source seed(long seed) {
         Source source = new Source(seed);

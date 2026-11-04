@@ -2,6 +2,8 @@ package goldfish.engine;
 
 import forge.StaticData;
 import forge.ai.AIOption;
+import forge.LobbyPlayer;
+import forge.ai.simulation.GameCopier;
 import forge.ai.LobbyPlayerAi;
 import forge.ai.PlayerControllerAi;
 import forge.deck.Deck;
@@ -48,7 +50,8 @@ final class Session {
 
     /** Everything a game starts from; a fork starts from its parent's. */
     record Setup(Deck deck, int opponents, long seed, int turnLimit, boolean stopsAll, ManaChoice manaChoice,
-                 Set<String> asks, AIOption aiMode, String commanders, String deckName, String deckHash) { }
+                 Set<String> asks, AIOption aiMode, String commanders, String deckName, String deckHash,
+                 boolean flatMc, boolean copyForks) { }
 
     /** One answered decision, however it was answered: what a fork replays. */
     static final class Entry {
@@ -72,6 +75,7 @@ final class Session {
     /** A lobby seat that creates the controller we choose instead of Forge's AI. */
     static final class Seat extends LobbyPlayerAi {
         private final ControllerFactory factory;
+        private final java.util.concurrent.atomic.AtomicBoolean seated = new java.util.concurrent.atomic.AtomicBoolean();
 
         Seat(String name, ControllerFactory factory) {
             super(name, null);
@@ -80,6 +84,11 @@ final class Session {
 
         @Override
         public Player createIngamePlayer(Game game, int id) {
+            // Forge's simulation copies keep this seat. Only the session's own game, always built first, gets this
+            // seat's controller; a copy is Forge's AI's to play and never writes to the session.
+            if (!seated.compareAndSet(false, true)) {
+                return super.createIngamePlayer(game, id);
+            }
             Player player = new Player(getName(), game, id);
             player.setFirstController(factory.create(game, player, this));
             return player;
@@ -87,6 +96,12 @@ final class Session {
     }
 
     private record Snapshot(GameSnapshot copy, int pilotTurn, Random random) { }
+
+    /**
+     * A copy of the game at the pilot's latest play decision, with the log's length and the random sequence then:
+     * where a fork made from a copy starts (see {@link #fork}).
+     */
+    private record Checkpoint(Game copy, int logSize, Random random, int pilotTurn) { }
 
     final String id;
     final Setup setup;
@@ -107,8 +122,18 @@ final class Session {
     volatile long setupMillis;
     private volatile SeededRandom.Source random;
     private final Map<String, Snapshot> snapshots = new LinkedHashMap<>();
+    private volatile Checkpoint checkpoint;
+    /** For a fork made from a copy: the parent's checkpoint it starts from; null for a game played from its seed. */
+    private final Checkpoint from;
+    /** The name of the seat this session plays: the pilot's in a goldfish game, a player's at a table. */
+    private String seatName = PILOT;
 
     Session(String id, Setup setup, Path runsDir, List<Entry> script, String parent) throws IOException {
+        this(id, setup, runsDir, script, parent, null);
+    }
+
+    private Session(String id, Setup setup, Path runsDir, List<Entry> script, String parent, Checkpoint from) throws IOException {
+        this.from = from;
         this.id = id;
         this.setup = setup;
         this.script = script;
@@ -117,9 +142,85 @@ final class Session {
         this.recorder = new Recorder(this, recordFile);
     }
 
-    /** A fork: the same setup, answering from this session's log so far. Call while this game is parked. */
+    /**
+     * A fork: the same setup, answering from this session's log so far. Call while this game is parked. With copy
+     * forks it starts from a copy of the game at the pilot's latest play decision and answers only what was decided
+     * since; otherwise it replays the whole game from its seed.
+     */
     Session fork(String id, Path runsDir) throws IOException {
+        return fork(id, runsDir, setup.copyForks());
+    }
+
+    /** A fork made the given way: from a copy (when there is one) or by replaying from the seed. */
+    Session fork(String id, Path runsDir, boolean fromCopy) throws IOException {
+        Checkpoint at = checkpoint;
+        if (fromCopy && at != null) {
+            Session fork = new Session(id, setup, runsDir, new ArrayList<>(log.subList(at.logSize(), log.size())), this.id, at);
+            fork.seatName = seatName;
+            return fork;
+        }
         return new Session(id, setup, runsDir, new ArrayList<>(log), this.id);
+    }
+
+    /**
+     * A seat at a table: a player in a game hosted elsewhere (see {@link Table}). The session has no game of its own;
+     * it attaches when the table's game creates its player, and parks that player's decisions like a goldfish game.
+     */
+    static Session atTable(String id, Setup setup, Path runsDir, String name) throws IOException {
+        Session session = new Session(id, setup, runsDir, null, null);
+        session.seatName = name;
+        return session;
+    }
+
+    String seatName() {
+        return seatName;
+    }
+
+    /** The table's player for this seat: built into the game the table hosts, with this session's controller. */
+    LobbyPlayerAi seat() {
+        return new Seat(seatName, (g, p, l) -> {
+            attach(g, p);
+            return new ManualController(g, p, l, this);
+        });
+    }
+
+    private void attach(Game table, Player player) {
+        game = table;
+        pilot = player;
+        table.subscribeToEvents(recorder);
+        recorder.write("start", "forge", System.getProperty("goldfish.forge"), "deck", setup.deckName(), "hash", setup.deckHash(),
+                "commander", setup.commanders(), "seat", seatName, "table", true);
+    }
+
+    /** The table's game is over (or was stopped): this seat's record ends and nothing more is asked. */
+    void finishAtTable(String reason) {
+        if (over == null) {
+            over = reason;
+        }
+        recorder.write("end", "reason", over);
+        recorder.close();
+        channel.finish();
+    }
+
+    /** Keeps a copy of the game where it stands, at a pilot's play decision, for copy forks; a fork keeps none. */
+    void checkpoint() {
+        if (random == null) {
+            random = SeededRandom.current(); // a seat at a table: the table's game thread's sequence
+        }
+        if (setup.copyForks() && parent == null) {
+            checkpoint = new Checkpoint(new GameCopier(game).withStack(true).makeCopy(), log.size(), random.copy(), pilotTurn);
+        }
+    }
+
+    /** The game a copy fork plays: a copy of the checkpoint (which stays reusable), with this session's controllers. */
+    private Game copyOfCheckpoint() {
+        Game copy = new GameCopier(from.copy()).withStack(true).makeCopy();
+        for (Player player : copy.getPlayers()) {
+            LobbyPlayer seat = player.getLobbyPlayer();
+            player.dangerouslySetController(player.getName().equals(seatName) ? new ManualController(copy, player, seat, this)
+                    : new PassiveController(copy, player, seat));
+        }
+        return copy;
     }
 
     /** Cards whose Forge scripts say its AI can't play them well (AI:RemoveDeck:All). */
@@ -180,6 +281,24 @@ final class Session {
             random = SeededRandom.seed(setup.seed());
             long began = System.nanoTime();
             try {
+                if (from != null) {
+                    random.rewind(from.random()); // the same shuffles and draws as the parent had from here
+                    game = copyOfCheckpoint();
+                    game.setNoGUIUser();
+                    game.AI_FLAT_MONTE_CARLO = setup.flatMc();
+                    pilot = game.getPlayers().stream().filter(p -> p.getName().equals(seatName)).findFirst().orElseThrow();
+                    pilotTurn = from.pilotTurn();
+                    game.subscribeToEvents(recorder);
+                    setupMillis = (System.nanoTime() - began) / 1_000_000;
+                    recorder.write("start", "forge", System.getProperty("goldfish.forge"), "seed", setup.seed(), "deck", setup.deckName(),
+                            "hash", setup.deckHash(), "commander", setup.commanders(), "opponents", setup.opponents(),
+                            "fork", parent, "via", "copy", "replays", script.size());
+                    game.getPhaseHandler().mainGameLoop();
+                    if (over == null) {
+                        over = outcome();
+                    }
+                    return;
+                }
                 // Forks share their parent's setup and start several at once; Forge's Deck loads sections lazily
                 // and isn't safe to build games from on several threads, so each game gets its own copy.
                 Deck deck;
@@ -196,13 +315,14 @@ final class Session {
                 Match match = new Match(new GameRules(GameType.Commander), players, "goldfish");
                 game = match.createGame();
                 game.setNoGUIUser();
+                game.AI_FLAT_MONTE_CARLO = setup.flatMc(); // Forge's Monte Carlo layer; its match host turns it on
                 pilot = game.getPlayers().stream().filter(p -> p.getName().equals(PILOT)).findFirst().orElseThrow();
                 game.subscribeToEvents(recorder);
                 setupMillis = (System.nanoTime() - began) / 1_000_000;
                 recorder.write("start", "forge", System.getProperty("goldfish.forge"), "local_cards", System.getProperty("goldfish.localCards"),
                         "local_cards_hash", System.getProperty("goldfish.localCardsHash"), "seed", setup.seed(), "deck", setup.deckName(), "hash", setup.deckHash(),
                         "commander", setup.commanders(), "turns", setup.turnLimit() > 0 ? setup.turnLimit() : null,
-                        "opponents", setup.opponents(), "ai", setup.aiMode() == null ? null : setup.aiMode().name().toLowerCase(Locale.ROOT),
+                        "opponents", setup.opponents(), "ai", setup.flatMc() ? "flatmc" : setup.aiMode() == null ? null : setup.aiMode().name().toLowerCase(Locale.ROOT),
                         "fork", parent, "replays", script == null ? null : script.size());
                 match.startGame(game);
                 if (over == null) {

@@ -15,6 +15,14 @@ ROOT = Path(__file__).resolve().parent.parent
 HOME = ROOT / ".goldfish"
 SOCKET = HOME / "engine.sock"
 LOG = HOME / "engine.log"
+MODE = []  # extra arguments for the engine: ["table"] for the table engine (see use_table)
+
+
+def use_table() -> None:
+    """Talk to the table engine from here on: a second engine process that hosts networked tables (Forge's full
+    model and network server), with its own socket and log, alongside the goldfish engine."""
+    global SOCKET, LOG, MODE
+    SOCKET, LOG, MODE = HOME / "table.sock", HOME / "table.log", ["table"]
 ENGINE = ROOT / "engine"
 CLASSPATH = ENGINE / "target" / "classpath.txt"
 RES = ROOT / "vendor" / "forge" / "forge-gui" / "res"
@@ -83,7 +91,7 @@ def _start() -> None:
     java = str(Path(env["JAVA_HOME"]) / "bin" / "java") if "JAVA_HOME" in env else "java"
     # Detach through a shell so the engine outlives this command and isn't our child.
     subprocess.run(["/bin/sh", "-c", 'nohup "$@" >>"$0" 2>&1 </dev/null &', str(LOG),
-                    java, "-Dgoldfish.forge=" + wanted, "-Dgoldfish.localCardsHash=" + card_resources.fingerprint(), "-Dgoldfish.localCards=" + ", ".join(local_cards), f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME)], env=env, check=True)
+                    java, "-Dgoldfish.forge=" + wanted, "-Dgoldfish.localCardsHash=" + card_resources.fingerprint(), "-Dgoldfish.localCards=" + ", ".join(local_cards), f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME), *MODE], env=env, check=True)
     deadline = time.time() + 90
     while time.time() < deadline:
         try:

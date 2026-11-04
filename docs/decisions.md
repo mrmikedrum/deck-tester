@@ -18,11 +18,18 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 - **Scale:** about 100 automated games in about a minute, each with a full trace kept for later inspection.
 - **Table:** three passive opponents at 40 life who play a land each turn; configurable.
 - **Engine records facts, Python derives meaning**, so metrics and reports change without a JVM rebuild.
-- **Lookahead forks the game by replaying it from the seed, never by restoring in place.** Every decision
-  at the agent's seat is logged with its answer, whoever gave it, and Forge's AI never acts between
-  decisions or weighs anything during a replay. Restoring Forge's snapshot in place kept drifting (counters,
-  AI memory, static abilities, the stack); a replay only resolves the same actions again, and a fingerprint
-  check proves it landed in the same game. The parent game is never touched, so forks can run in parallel.
+- **Lookahead forks into a game of its own, never by restoring in place.** Restoring Forge's snapshot in place
+  kept drifting (counters, AI memory, static abilities, the stack). A goldfish game forks by replaying its
+  logged decisions from the seed; a fingerprint check proves the fork landed in the same game, and the parent
+  is never touched, so forks run in parallel.
+- **Forks start from a copy of the game.** A copy is 20-40 times quicker than replaying from the seed, and
+  needs no record of other players' decisions, which a table with people can't have. Forge's copier is patched
+  until a copy matches the game it copies, the same checks apply, and what the decision model reads from a
+  copy fork matched a replay fork's at every decision measured. In a fork the other players pass. Replay
+  stays available as a cross-check while the copier patch proves itself across pin bumps.
+- **Tables are hosted by the engine over Forge's network play.** The agents' seats need the game in-process for
+  lookahead, so the engine hosts and people join with the stock Forge desktop app (built at the engine's
+  version); Forge itself keeps no agent code beyond a lobby hook.
 - **The decision model picks; it doesn't plan.** Jev chooses among named options, reading each one played
   out by Forge's AI. The agent's reasoning is spent once, on a few sentences of deck plan.
 - **Deck knowledge lives in the deck's advisor script.** The harness parses no card text for strategy; a

@@ -221,3 +221,30 @@ late and on noncreature permanents (it casts creatures over rocks and enchantmen
 this round's changes moved lands up (8.9 to 9.2) and mana and creatures down (13.8 to 12.1, 7.5 to 6.4),
 within what 20 games can tell. Missed land drops late in the game, with a land in hand by a rough count
 about as often as Forge's AI, are the next scenario to build.
+
+## Copy forks (2026-11-03)
+
+Forks made from a copy of the game (architecture, Copy forks), on Forge `e7020aa1` with the copier patch. On
+the six lists and seeds of the forks recheck, then twelve new seeds to turn 10, with Forge's AI answering and
+scripted: 94 of 94 and 95 of 95, then 168 of 168 and 170 of 170, then (after the last copier fixes) 139 of 139
+and 143 of 143 landed in the same game, the same as replay forks. A copy fork took a median 20-40 ms at every
+turn, against a replay's 0.36 s at turn 3 and 1.17 s at turn 8. Before the patch, 76-87% of copies matched
+their game and up to 3.8% failed: the stack lost its abilities, the copy lost dungeons, priority, warp and
+imprint links, class levels and what entered this turn.
+
+At a four-player table with every seat forking at each play decision (`bench/table_fidelity.py`, four example
+decks to turn 7): 172 of 180 at first (abilities whose source was sacrificed to pay for them, two-faced lands),
+then 234 of 234, median 16 ms.
+
+What the model reads: at every play decision of four Living Worlds and four Assimilation games to turn 6
+(`bench/forks_compare.py`), every option was played out in a replay fork and in a copy fork and its result
+line compared. 202 of 204 decisions read identically; the 2 that didn't also differ between two replay
+forks, where Forge's AI plays the line out differently. A Jev batch (4 games to turn 6) took 27 s with copy
+forks against 82 s with replay forks, 19 ms a fork against 645 ms; Jev's own picks vary between runs (seed
+302's opening hand: mulligan at p 0.3 one run, keep at p 0.14 the next), so batches don't match game for game.
+
+**Forge's Monte Carlo AI** (`run --ai flatmc`), 20 games to turn 8, seeds 1-20, one at a time: Living Worlds
+7.6 lands and 9.6 mana with the plain AI, 8.4 and 11.7 with Monte Carlo; Assimilation 7.3 and 13.0, 7.5 and
+12.3, commander median turn 5 and 4. About three times the time (71 s against 22 s). Its rollouts swap Forge's
+global random object, so games beside each other would disturb each other's draws.
+

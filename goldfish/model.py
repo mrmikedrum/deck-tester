@@ -413,6 +413,7 @@ class Decider:
         self.guide, self.opponents, self.usage, self.hybrid, self.workers = guide, opponents, usage, hybrid, workers
         self.route = FAST if fast else 0.0  # the confidence at which a text-only pick skips the forks; 0 never skips
         self.advise = advise  # the pilot's advise(state, decision, this_turn), or None
+        self.fork_via = None  # "replay" or "copy" to choose how forks are made; None: as the game was set up
 
     # ---- the engine ----
 
@@ -431,7 +432,10 @@ class Decider:
             return self._play_out(reply, decision, now, first)
 
     def _play_out(self, reply: dict, decision: dict, now: int, first: Optional[list]) -> Line:
-        fork = engine.request({"cmd": "fork", "session": reply["session"]})
+        request = {"cmd": "fork", "session": reply["session"]}
+        if self.fork_via:
+            request["via"] = self.fork_via
+        fork = engine.request(request)
         session = fork["session"]
         # Passing means doing nothing more this turn, so a pass line keeps passing its later play decisions
         # instead of letting Forge's AI play on and make "pass" look productive.

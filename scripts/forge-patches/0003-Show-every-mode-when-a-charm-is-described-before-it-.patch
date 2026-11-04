@@ -16,7 +16,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java b/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java
-index 92517d0d..eaf95a3f 100644
+index 92517d0db12..eaf95a3f090 100644
 --- a/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java
 +++ b/forge-game/src/main/java/forge/game/ability/effects/CharmEffect.java
 @@ -36,7 +36,9 @@ public class CharmEffect extends SpellAbilityEffect {

@@ -14,7 +14,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 10 insertions(+)
 
 diff --git a/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java b/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java
-index 8171a902..189d89d7 100644
+index 8171a902306..189d89d70ae 100644
 --- a/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java
 +++ b/forge-game/src/main/java/forge/game/spellability/AbilityManaPart.java
 @@ -84,6 +84,12 @@ public class AbilityManaPart implements java.io.Serializable {

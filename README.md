@@ -95,9 +95,26 @@ those kinds; returning `None` hands one back to the AI. See `examples/pilots/com
 | `--guide PLAN` | Put the decision model (Jev) in the seat with this plain-language deck plan; each option is played out in a fork of the game and the model picks (see architecture) |
 | `--hybrid plain` | With `--guide`: the model picks from the text alone, nothing played out |
 | `--fast` | With `--guide`: a confident text-only pick skips the forks; quicker, more calls, possibly worse play (off by default) |
-| `--ai hybrid\|sim` | Forge's experimental lookahead; slower and no better so far, and `sim` crashes (see measurements) |
+| `--forks replay` | With `--guide`: play options out in forks replayed from the seed instead of made from a copy of the game (the default, about 30 times quicker) |
+| `--ai hybrid\|sim\|flatmc` | Forge's other AIs: `flatmc` is its Monte Carlo layer, as its desktop app plays; `hybrid` and `sim` are older lookahead, slower and no better (see measurements) |
 | `--per-game`, `--cards` | Add a line per game; add how often each card was seen and played |
 | `report [bN]` | Show a batch's report again, with the same flags |
 
 `mana` is everything that could tap; `unspent` is what was left untapped at the end step.
 `bin/goldfish --session g3 log` addresses an older game; the default is the last one started.
+
+## Tables: agents and people
+
+`goldfish table` hosts a Commander game over Forge's network play: agent seats (Jev, with a deck plan and advisor)
+and open seats for people, who join from the Forge desktop app built at the engine's version.
+
+```sh
+scripts/build-forge-client.sh ../forge   # once per Forge build: the desktop app people join with
+bin/goldfish table examples/decks/eternities-living-worlds-iii.txt,examples/plans/living-worlds.txt,examples/pilots/marath_advisor.py \
+  examples/decks/eternities-assimilation-iii.txt,examples/plans/assimilation.txt,examples/pilots/atraxa_advisor.py \
+  examples/decks/blue-moon-combat-revision.txt,examples/plans/blue-moon.txt,examples/pilots/blue_moon_advisor.py --people 1
+```
+
+It prints the address to join (Online Multiplayer, Join) and plays until the game ends; Ctrl-C ends it. A seat
+given only a deck is played by Forge's AI. Each seat's record is in `.goldfish/runs/` like any game's.
+

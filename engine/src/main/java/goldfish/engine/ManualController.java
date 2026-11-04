@@ -86,8 +86,9 @@ public class ManualController extends PlayerControllerAi {
     // ---- deciding ----
 
     /** Whether the agent answers this kind: the session asks it to, or it's casting something it chose. */
+    /** Whether the agent answers this kind: the kinds it asks for, and every part of a cast of a play it chose. */
     private boolean mine(String kind) {
-        return casting || session.asks(kind);
+        return session.asks(kind) || (casting && !playedBy.equals("ai") && !playedBy.equals("forced"));
     }
 
     /**
@@ -285,6 +286,13 @@ public class ManualController extends PlayerControllerAi {
         Player me = getPlayer();
         List<SpellAbility> result = new ArrayList<>();
         for (Card card : me.getCardsIn(ZoneType.Hand, ZoneType.Battlefield, ZoneType.Command, ZoneType.Graveyard, ZoneType.Exile)) {
+            if (TRACE) {
+                for (SpellAbility sa : card.getAllPossibleAbilities(me, false)) {
+                    if (!sa.isManaAbility() && !sa.canPlay()) {
+                        trace("unplayable " + card.getName() + " in " + card.getZone() + ": " + Labels.ability(sa));
+                    }
+                }
+            }
             for (SpellAbility sa : card.getAllPossibleAbilities(me, true)) {
                 if (sa.costHasManaX()) {
                     sa.setXManaCostPaid(null); // Forge's AI leaves the X it weighed on the ability; it isn't chosen yet
@@ -297,6 +305,12 @@ public class ManualController extends PlayerControllerAi {
                 }
                 if (targetable(sa) && (sa.isLandAbility() || ComputerUtilCost.canPayCost(sa, me, false)) && payableX(sa)) {
                     result.add(sa);
+                }
+                else if (TRACE) {
+                    trace("unpaid " + card.getName() + ": " + Labels.ability(sa) + " targetable=" + targetable(sa)
+                            + " payable=" + (sa.isLandAbility() || ComputerUtilCost.canPayCost(sa, me, false))
+                            + " sources=" + ComputerUtilMana.getAvailableManaSources(me, true).stream()
+                                    .map(c -> c.getName() + (c.isTapped() ? "/T" : "") + (c.isSick() ? "/sick" : "")).toList());
                 }
             }
         }
@@ -396,6 +410,7 @@ public class ManualController extends PlayerControllerAi {
                 details.add(Labels.detail(sa));
             });
             Decision decision = new Decision("play", session.turnLabel(), "", options, details, 1, 1, false);
+            session.checkpoint();
             List<SpellAbility> aiPick = new ArrayList<>();
             List<Integer> answer;
             try {

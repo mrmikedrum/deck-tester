@@ -1,16 +1,18 @@
 #!/bin/sh
 # Fetch Forge at the pinned commit into vendor/forge, apply our patch series as commits on the `goldfish`
-# branch, and install the headless modules (forge-core, forge-game, forge-ai) into the local Maven
+# branch, and install the headless modules (forge-core, forge-game, forge-ai, forge-gui) into the local Maven
 # repository under a version naming this build, so builds never replace each other.
 # Resolve the current daily: git ls-remote https://github.com/Card-Forge/forge.git refs/tags/daily-snapshots
 # Patches and updates: docs/architecture.md, "Forge dependency".
 # Isolate builds: GOLDFISH_MAVEN_ARGS=-Dmaven.repo.local=/absolute/path
 set -eu
 
-FORGE_COMMIT=cec1aaea3c5e57fbd77c11c9ede9a800d55cf8c6
+FORGE_COMMIT=e7020aa13c376001a7c13e9d2a069a17efe7ab12
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/vendor/forge"
 STAMP="$ROOT/.goldfish/forge-build"
+# The goldfish branch tip as the series last left it, so a failed build can be retried.
+APPLIED="$ROOT/.goldfish/forge-applied"
 
 if [ ! -d "$DEST/.git" ]; then
   mkdir -p "$DEST"
@@ -18,15 +20,12 @@ if [ ! -d "$DEST/.git" ]; then
   git -C "$DEST" remote add origin https://github.com/Card-Forge/forge.git
 fi
 
-# Only what a headless host needs: the engine modules, card data, and GUI sources kept as
-# reference for how Forge initialises itself. No images, music or mobile apps.
+# What a headless host needs: the engine modules and Forge's GUI module with its resources (tables run
+# Forge's network server and full model). No images, music, skins or mobile apps.
 git -C "$DEST" sparse-checkout set --no-cone \
-  '/pom.xml' '/.mvn/' '/forge-core/' '/forge-game/' '/forge-ai/' \
-  '/*/pom.xml' '/forge-gui/src/' '/forge-gui-desktop/src/main/java/forge/view/' \
-  '/forge-gui/res/cardsfolder/' '/forge-gui/res/editions/' '/forge-gui/res/blockdata/' \
-  '/forge-gui/res/formats/' '/forge-gui/res/tokenscripts/' '/forge-gui/res/ai/' \
-  '/forge-gui/res/languages/' '/forge-gui/res/lists/' '/forge-gui/res/effects/' \
-  '/forge-gui/res/setlookup/' '/forge-gui/res/puzzle/' '/forge-gui/res/defaults/'
+  '/pom.xml' '/.mvn/' '/forge-core/' '/forge-game/' '/forge-ai/' '/forge-gui/' \
+  '/*/pom.xml' '/forge-gui-desktop/src/main/java/forge/view/' \
+  '!/forge-gui/res/adventure/' '!/forge-gui/res/music/' '!/forge-gui/res/sound/' '!/forge-gui/res/skins/'
 
 # The build is named by the pin and the patch series; the same name means the same engine.
 SERIES="$(cat "$ROOT"/scripts/forge-patches/*.patch | shasum -a 256 | cut -c1-8)"
@@ -40,7 +39,7 @@ if [ -n "$TIP" ]; then
     echo "vendor/forge has uncommitted edits; commit and export them, or discard them, then rerun" >&2
     exit 1
   fi
-  if [ -f "$STAMP" ] && [ "$(sed -n 's/^head=//p' "$STAMP")" != "$TIP" ]; then
+  if [ -f "$APPLIED" ] && [ "$(cat "$APPLIED")" != "$TIP" ]; then
     echo "vendor/forge's goldfish branch has commits the series lacks; export them, then rerun" >&2
     exit 1
   fi
@@ -60,11 +59,13 @@ if ! git -C "$DEST" -c user.name=goldfish -c user.email=goldfish@localhost \
   echo "then export the series again" >&2
   exit 1
 fi
+mkdir -p "$ROOT/.goldfish"
+git -C "$DEST" rev-parse HEAD > "$APPLIED"
 
 VERSION="$(sed -n 's:.*<versionCode>\(.*\)</versionCode>.*:\1:p' "$DEST/pom.xml" | head -1)-goldfish-$BUILD"
 JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}"
 export JAVA_HOME
-(cd "$DEST" && mvn ${GOLDFISH_MAVEN_ARGS:-} -q -pl forge-core,forge-game,forge-ai -am -DskipTests \
+(cd "$DEST" && mvn ${GOLDFISH_MAVEN_ARGS:-} -q -pl forge-core,forge-game,forge-ai,forge-gui -am -DskipTests \
   -Dcheckstyle.skip -Drevision="$VERSION" flatten:flatten install)
 mkdir -p "$ROOT/.goldfish"
 printf 'build=%s\nversion=%s\ncommit=%s\nhead=%s\n' "$BUILD" "$VERSION" "$FORGE_COMMIT" \

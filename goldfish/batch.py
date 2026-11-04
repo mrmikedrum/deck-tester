@@ -45,6 +45,27 @@ def _answer(handler: Optional[Callable], decision: dict) -> Optional[List[int]]:
     return [picked] if isinstance(picked, int) else list(picked)
 
 
+def respond(reply: dict, handlers: Dict[str, Callable], decider: Optional[model.Decider], asked: Dict[int, int],
+            guarded: dict) -> dict:
+    """Answer the waiting decision: the pilot first, then the decision model, then Forge's AI; returns the
+    engine's next reply. Counts decisions per turn in asked, and notes in guarded where the loop guard took over."""
+    decision = reply["decision"]
+    turn = model.turn(decision)
+    asked[turn] = asked.get(turn, 0) + 1
+    picks = _answer(handlers.get(decision["kind"]), decision)
+    send = model.Decider.send
+    if asked[turn] > MAX_DECISIONS:
+        # A pilot or model can repeat itself forever (an ability it can activate again and again, a search it
+        # keeps declining) and hang the batch; Forge's AI finishes the turn, and the report flags the game.
+        guarded.setdefault("loop", turn)
+        return send(reply, {"defer": True})
+    if picks is not None:
+        return send(reply, {"answer": picks, "by": "pilot"})
+    if decider:
+        return decider.step(reply)
+    return send(reply, {"defer": True})
+
+
 def _play(start: dict, handlers: Dict[str, Callable], decider: Optional[model.Decider], avoids: List[str],
           turns: int = 0, guarded: Optional[dict] = None) -> dict:
     """Play one game to the end, or past the given turn; returns the engine's final reply. Notes in guarded the
@@ -54,25 +75,9 @@ def _play(start: dict, handlers: Dict[str, Callable], decider: Optional[model.De
     session = reply["session"]
     avoids[:] = reply.get("ai_avoids", [])
     asked: Dict[int, int] = {}
-    send = model.Decider.send
     try:
         while reply.get("decision") and not (turns and model.turn(reply["decision"]) > turns):
-            decision = reply["decision"]
-            turn = model.turn(decision)
-            asked[turn] = asked.get(turn, 0) + 1
-            picks = _answer(handlers.get(decision["kind"]), decision)
-            if asked[turn] > MAX_DECISIONS:
-                # A pilot or model can repeat itself forever (an ability it can activate again and again, a
-                # search it keeps declining) and hang the batch; Forge's AI finishes the turn, and the report
-                # flags the game.
-                guarded.setdefault("loop", turn)
-                reply = send(reply, {"defer": True})
-            elif picks is not None:
-                reply = send(reply, {"answer": picks, "by": "pilot"})
-            elif decider:
-                reply = decider.step(reply)
-            else:
-                reply = send(reply, {"defer": True})
+            reply = respond(reply, handlers, decider, asked, guarded)
     finally:
         end = {"cmd": "end", "session": session}
         if turns and reply.get("decision") and model.turn(reply["decision"]) > turns:
@@ -83,7 +88,7 @@ def _play(start: dict, handlers: Dict[str, Callable], decider: Optional[model.De
 
 def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
         pilot: Optional[str], workers: int, ai: str = "default", guide: Optional[str] = None,
-        hybrid: str = "outcomes", fast: bool = False) -> dict:
+        hybrid: str = "outcomes", fast: bool = False, forks: str = "copy") -> dict:
     """Play a batch and write its manifest; returns the manifest. A guide (the deck plan) brings in the model,
     working with Forge's AI as the hybrid names (see model.Decider)."""
     handlers = load_pilot(pilot) if pilot else {}
@@ -93,7 +98,7 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     asks = (set(handlers) - {"advise"}) | (set(model.KINDS) if guide else set())
     base = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "deck": deck_name,
             "hash": deck.revision(), "opponents": opponents, "ask": sorted(asks),
-            "mana": "creatures" if "pay" in handlers else "auto", "ai": ai}
+            "mana": "creatures" if "pay" in handlers else "auto", "ai": ai, "forks": forks}
     # Playing options out runs forks into the next turn, so the engine's limit sits past the batch's and the
     # batch stops each game at its own limit.
     exploring = bool(guide) and hybrid != "plain"
