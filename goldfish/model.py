@@ -4,7 +4,7 @@ fork of the game (the engine replays the game's recorded decisions from its seed
 the turn), and the model picks among the options reading the plan, the board with card text, and each
 option's text and the board it leads to. Anything it can't express (orderings, repeatable modes, mana payment) goes to
 Forge's AI, and the record says so. What the model reads was chosen by measuring alternatives on captured
-situations (bench/; docs/architecture.md, "Measured with Jev").
+situations (bench/; docs/measurements.md).
 """
 
 import json
@@ -515,7 +515,7 @@ class Decider:
         if len(tries) >= 2 and self.route > 0:
             # Fast mode: ask from the text first, play a confident pick as it is, and play the options out only
             # for an unsure one. Saves about a sixth of the forks for half as many calls again, and whether it
-            # costs play quality couldn't be told from 20 games (docs/architecture.md), so it is off by default.
+            # costs play quality couldn't be told from 20 games (docs/measurements.md), so it is off by default.
             plain = {name: option_text(decision, name) for name in tries}
             answer = call(context, {"pick": {"type": "choice", "instructions": instructions(decision), "criteria": plain}},
                           self.usage, session)["pick"]

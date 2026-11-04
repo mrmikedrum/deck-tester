@@ -5,7 +5,8 @@ deck's first turns against passive opponents, either by hand (manual mode, avail
 script or Forge's AI (automated mode), and gets back compact reports on how the deck develops.
 
 - [Vision](docs/vision.md): what this is for, the two modes, and principles
-- [Architecture](docs/architecture.md): components, the decision seam, records, and what's measured
+- [Architecture](docs/architecture.md): components, the decision seam, records, forks and Forge
+- [Measurements](docs/measurements.md): speed, fork fidelity and decision-model results
 - [Roadmap](docs/roadmap.md) and [decisions](docs/decisions.md)
 - [AGENTS.md](AGENTS.md): how to work on this repo
 
@@ -94,7 +95,7 @@ those kinds; returning `None` hands one back to the AI. See `examples/pilots/com
 | `--guide PLAN` | Put the decision model (Jev) in the seat with this plain-language deck plan; each option is played out in a fork of the game and the model picks (see architecture) |
 | `--hybrid plain` | With `--guide`: the model picks from the text alone, nothing played out |
 | `--fast` | With `--guide`: a confident text-only pick skips the forks; quicker, more calls, possibly worse play (off by default) |
-| `--ai hybrid\|sim` | Forge's experimental lookahead; slower and no better so far, and `sim` crashes (see architecture) |
+| `--ai hybrid\|sim` | Forge's experimental lookahead; slower and no better so far, and `sim` crashes (see measurements) |
 | `--per-game`, `--cards` | Add a line per game; add how often each card was seen and played |
 | `report [bN]` | Show a batch's report again, with the same flags |
 

@@ -28,9 +28,9 @@ Both modes run the same games on the same engine; they differ only in who answer
 
 ## Principles
 
-- **Forge decides the rules; we don't.** Rules accuracy comes from embedding [Forge](https://github.com/Card-Forge/forge).
-  We never reimplement rules. A card Forge gets wrong is fixed as a Forge card script, in Forge's own
-  language.
+- **Forge decides the rules; we don't.** Rules accuracy comes from embedding
+  [Forge](https://github.com/Card-Forge/forge). We never reimplement rules. A card Forge gets wrong is fixed
+  as a Forge card script, in Forge's own language.
 - **Tokens are the budget.** Default outputs are short digests, and detail is one command away. Every field
   an agent reads has to earn its place. Decisions with only one legal answer never reach the agent.
 - **Reasoning is spent once.** Whatever the agent learns in manual mode should become pilot rules, so later
