@@ -39,13 +39,10 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
   patches doesn't justify a second codebase; the series rebases with git's three-way merge, and every game
   record names its build, so results from different engines are never mixed. General fixes are offered
   upstream from a GitHub fork (`mrmikedrum/forge`); hooks only this host needs stay local.
-- **Fresh history.** The old code and its history are in `../mtg-goldfish-legacy` (still pointing at the
-  old remotes). This repo starts on `main` with no remote.
+- **Fresh history in a standalone repo.** This repo lives at `mrmikedrum/deck-tester`, not as a fork of
+  the old `mrmikedrum/mtg-goldfish`. The old code and its history stay in `../mtg-goldfish-legacy`.
+- **GPL-3.0.** Forge is GPL-3.0, the engine links it, and the patch series and card scripts derive from it.
 
 ## Open
 
-- **GitHub home.** `origin` was `mrmikedrum/mtg-goldfish`, a public fork of `Godrek/mtg`. Force-pushing this
-  history there keeps the fork link and needs the default branch changed from `mainline`. A new standalone
-  repo avoids both.
-- **License.** Forge is GPL-3.0, and the engine links it, so publishing means GPL-3.0.
 - **Where pilots live.** Passed by path for now; Deckmaster decides whether they belong with a project.
