@@ -27,7 +27,7 @@ only when the task needs it. For development or diagnosis, read [vision](docs/vi
 
 | Path | What |
 |------|------|
-| `goldfish/` | Python package: CLI (`cli.py`), engine client (`engine.py`), record digests (`records.py`), text views (`render.py`), batches and pilots (`batch.py`), batch reports (`report.py`), tables (`table.py`) |
+| `goldfish/` | Python package: CLI (`cli.py`), engine client (`engine.py`), record digests (`records.py`), text views (`render.py`), batches and pilots (`batch.py`), batch reports (`report.py`), tables (`table.py`, with the table seats' decider in `table_model.py` and reports in `table_report.py`) |
 | `bin/goldfish` | CLI entry point |
 | `engine/` | Forge host: `Server` (socket), `Session` (one game or one table seat), `ManualController` (decisions), `Recorder` (facts), `Table` (a networked table) |
 | `scripts/` | `bootstrap-forge.sh` (fetch, patch and install pinned Forge), `build-engine.sh` (compile; the CLI runs it when needed), `build-forge-client.sh` (the desktop app people join tables with), `forge-patches/` (our patch series) |

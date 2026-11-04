@@ -345,9 +345,17 @@ their own Forge (Online Multiplayer, Join, the address printed). A second engine
 (`HeadlessGui`), from an assets folder of its own under `.goldfish/table/` so Forge's user files stay out of
 the person's own Forge, and runs Forge's network server and lobby. A patch lets the lobby seat our players
 in its AI slots; each seat is a session (`Session.atTable`) attached to the shared game, parking its
-decisions like a goldfish game, so the same decider plays it. Its lookahead uses copy forks in which every
-other player passes. What the model doesn't answer goes to Forge's AI, Monte Carlo layer included (its
-match host turns that on): blocks, and decisions on other players' turns, for now.
+decisions like a goldfish game. Its lookahead uses copy forks in which every other player casts nothing and
+never attacks but blocks as Forge's AI would. What the model doesn't answer goes to Forge's AI, Monte Carlo
+layer included (its match host turns that on): blocks, and decisions on other players' turns, for now.
+
+The goldfish decider stays as measured; a table seat's is `goldfish/table_model.py`, which changes only what
+differs at a table through the decider's hooks (`context`, `instructions`, `explores`): the model reads a table
+framing and each other player's life, hand size, lands, board and commander, with their cards' text, which
+the engine's state view gives a table seat. A change to table play is measured at tables, not on the goldfish
+bench. Each table writes a manifest to `.goldfish/tables/t<N>.json` when it ends; `goldfish table-report [tN]`
+summarises it from the seats' records: the result, each player's life by round, and per agent seat who
+decided, how its forks went, its commander and its development.
 
 People need the Forge desktop app at the engine's exact build: `scripts/build-forge-client.sh` builds it from a
 full Forge checkout holding the pin and the series. With no people seated, Forge's match host adds a

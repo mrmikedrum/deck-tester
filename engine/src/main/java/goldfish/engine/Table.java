@@ -25,6 +25,7 @@ final class Table {
     private final ServerGameLobby lobby;
     private volatile String state = "waiting for players";
     private volatile Game game;
+    private volatile boolean stopped;
 
     Table(int port, List<Session> agents, List<Deck> decks, int people) {
         this.port = port;
@@ -82,9 +83,15 @@ final class Table {
                 Thread.sleep(500);
             }
             GameOutcome outcome = game == null ? null : game.getOutcome();
-            state = "over" + (outcome == null || outcome.getWinningLobbyPlayer() == null ? "" : ": " + outcome.getWinningLobbyPlayer().getName() + " won");
+            if (stopped) {
+                state = "stopped";
+            } else if (outcome == null || outcome.isDraw() || outcome.getWinningLobbyPlayer() == null) {
+                state = "over: a draw";
+            } else {
+                state = "over: " + outcome.getWinningLobbyPlayer().getName() + " won";
+            }
             seats.values().forEach(s -> s.finishAtTable(state));
-        } catch (InterruptedException stopped) {
+        } catch (InterruptedException interrupted) {
             state = "stopped";
             seats.values().forEach(s -> s.finishAtTable(state));
         } catch (RuntimeException error) {
@@ -96,6 +103,7 @@ final class Table {
 
     /** Ends the game where it stands (a draw) and closes the table to people. */
     void stop() {
+        stopped = true;
         Game playing = game;
         if (playing != null && !playing.isGameOver()) {
             playing.setGameOver(forge.game.GameEndReason.Draw);

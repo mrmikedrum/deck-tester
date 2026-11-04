@@ -11,10 +11,21 @@ import forge.LobbyPlayer;
 
 import java.util.List;
 
-/** A goldfish opponent: keeps seven, plays a land on each of its turns, and never does anything else. */
+/**
+ * A goldfish opponent: keeps seven, plays a land on each of its turns, and never does anything else. As another
+ * player in a table seat's fork it also blocks as Forge's AI would, so a line that attacks meets the blockers
+ * that are there; it still casts nothing and never attacks (a fork assumes the others pass).
+ */
 public class PassiveController extends PlayerControllerAi {
+    private final boolean blocks;
+
     public PassiveController(Game game, Player player, LobbyPlayer lobbyPlayer) {
+        this(game, player, lobbyPlayer, false);
+    }
+
+    public PassiveController(Game game, Player player, LobbyPlayer lobbyPlayer, boolean blocks) {
         super(game, player, lobbyPlayer);
+        this.blocks = blocks;
     }
 
     @Override
@@ -26,7 +37,11 @@ public class PassiveController extends PlayerControllerAi {
     public void declareAttackers(Player attacker, Combat combat) { }
 
     @Override
-    public void declareBlockers(Player defender, Combat combat) { }
+    public void declareBlockers(Player defender, Combat combat) {
+        if (blocks) {
+            super.declareBlockers(defender, combat);
+        }
+    }
 
     @Override
     public List<SpellAbility> chooseSpellAbilityToPlay() {

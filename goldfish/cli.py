@@ -213,6 +213,17 @@ def cards(args) -> int:
     return 0
 
 
+def table_report_cmd(args) -> int:
+    try:
+        manifest = table.table_report.load(args.table)
+    except FileNotFoundError as error:
+        print(error)
+        return 1
+    for line in table.table_report.build(manifest):
+        print(line)
+    return 0
+
+
 def host_table(args) -> int:
     seats = [table.parse(spec, i + 1) for i, spec in enumerate(args.seats)]
     for seat in seats:
@@ -324,6 +335,10 @@ def main(argv=None) -> int:
     hosting.add_argument("--people", type=int, default=1, help="open seats for people joining from Forge")
     hosting.add_argument("--port", type=int, default=table.PORT)
     hosting.set_defaults(run=host_table)
+
+    tables = commands.add_parser("table-report", help="report on a table game again (default: the last one)")
+    tables.add_argument("table", nargs="?")
+    tables.set_defaults(run=table_report_cmd)
 
     summary = commands.add_parser("report", help="report on a batch again (default: the last one)")
     summary.add_argument("batch", nargs="?")

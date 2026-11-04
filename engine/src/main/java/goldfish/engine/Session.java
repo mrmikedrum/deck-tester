@@ -123,10 +123,14 @@ final class Session {
     private volatile SeededRandom.Source random;
     private final Map<String, Snapshot> snapshots = new LinkedHashMap<>();
     private volatile Checkpoint checkpoint;
+    /** Whether another player has cast or played something since the checkpoint (see othersActed). */
+    private volatile boolean othersActed;
     /** For a fork made from a copy: the parent's checkpoint it starts from; null for a game played from its seed. */
     private final Checkpoint from;
     /** The name of the seat this session plays: the pilot's in a goldfish game, a player's at a table. */
     private String seatName = PILOT;
+    /** A seat at a table (or a fork of one): its other players act, so the state view shows them in full. */
+    private boolean atTable;
 
     Session(String id, Setup setup, Path runsDir, List<Entry> script, String parent) throws IOException {
         this(id, setup, runsDir, script, parent, null);
@@ -154,9 +158,14 @@ final class Session {
     /** A fork made the given way: from a copy (when there is one) or by replaying from the seed. */
     Session fork(String id, Path runsDir, boolean fromCopy) throws IOException {
         Checkpoint at = checkpoint;
+        if (fromCopy && at != null && othersActed && atTable) {
+            // the decisions since the copy follow other players' actions, which a fork doesn't make
+            throw new IllegalStateException("fork drifted: other players acted since the last copy of the game");
+        }
         if (fromCopy && at != null) {
             Session fork = new Session(id, setup, runsDir, new ArrayList<>(log.subList(at.logSize(), log.size())), this.id, at);
             fork.seatName = seatName;
+            fork.atTable = atTable;
             return fork;
         }
         return new Session(id, setup, runsDir, new ArrayList<>(log), this.id);
@@ -169,6 +178,7 @@ final class Session {
     static Session atTable(String id, Setup setup, Path runsDir, String name) throws IOException {
         Session session = new Session(id, setup, runsDir, null, null);
         session.seatName = name;
+        session.atTable = true;
         return session;
     }
 
@@ -202,12 +212,18 @@ final class Session {
         channel.finish();
     }
 
+    /** Another player cast a spell or played a land: a copy fork from the last checkpoint couldn't follow it. */
+    void othersActed() {
+        othersActed = true;
+    }
+
     /** Keeps a copy of the game where it stands, at a pilot's play decision, for copy forks; a fork keeps none. */
     void checkpoint() {
         if (random == null) {
             random = SeededRandom.current(); // a seat at a table: the table's game thread's sequence
         }
         if (setup.copyForks() && parent == null) {
+            othersActed = false;
             checkpoint = new Checkpoint(new GameCopier(game).withStack(true).makeCopy(), log.size(), random.copy(), pilotTurn);
         }
     }
@@ -218,7 +234,7 @@ final class Session {
         for (Player player : copy.getPlayers()) {
             LobbyPlayer seat = player.getLobbyPlayer();
             player.dangerouslySetController(player.getName().equals(seatName) ? new ManualController(copy, player, seat, this)
-                    : new PassiveController(copy, player, seat));
+                    : new PassiveController(copy, player, seat, atTable));
         }
         return copy;
     }
@@ -738,6 +754,30 @@ final class Session {
 
     // ---- state view ----
 
+    /** A permanent as the state view shows it: name, tapped, P/T and sickness for a creature, counters, token. */
+    private static Map<String, Object> permanent(Card card) {
+        Map<String, Object> permanent = new LinkedHashMap<>();
+        permanent.put("name", card.getName());
+        if (card.isTapped()) {
+            permanent.put("tapped", true);
+        }
+        if (card.isCreature()) {
+            permanent.put("pt", card.getNetPower() + "/" + card.getNetToughness());
+            if (card.isSick()) {
+                permanent.put("sick", true);
+            }
+        }
+        if (!card.getCounters().isEmpty()) {
+            Map<String, Integer> counters = new TreeMap<>();
+            card.getCounters().entrySet().forEach(e -> counters.put(e.getElement().getName(), e.getCount()));
+            permanent.put("counters", counters);
+        }
+        if (card.isToken()) {
+            permanent.put("token", true);
+        }
+        return permanent;
+    }
+
     /** The pilot's view of the game; with text, also each nonbasic card's full text by name, for deciders that can't look cards up. */
     Map<String, Object> state(boolean text) {
         Map<String, Object> view = new LinkedHashMap<>();
@@ -752,26 +792,7 @@ final class Session {
         view.put("hand", names(pilot.getCardsIn(ZoneType.Hand)));
         List<Map<String, Object>> board = new ArrayList<>();
         for (Card card : pilot.getCardsIn(ZoneType.Battlefield)) {
-            Map<String, Object> permanent = new LinkedHashMap<>();
-            permanent.put("name", card.getName());
-            if (card.isTapped()) {
-                permanent.put("tapped", true);
-            }
-            if (card.isCreature()) {
-                permanent.put("pt", card.getNetPower() + "/" + card.getNetToughness());
-                if (card.isSick()) {
-                    permanent.put("sick", true);
-                }
-            }
-            if (!card.getCounters().isEmpty()) {
-                Map<String, Integer> counters = new TreeMap<>();
-                card.getCounters().entrySet().forEach(e -> counters.put(e.getElement().getName(), e.getCount()));
-                permanent.put("counters", counters);
-            }
-            if (card.isToken()) {
-                permanent.put("token", true);
-            }
-            board.add(permanent);
+            board.add(permanent(card));
         }
         view.put("battlefield", board);
         view.put("command", names(pilot.getCardsIn(ZoneType.Command)));
@@ -788,6 +809,18 @@ final class Session {
                 opponent.put("life", player.getLife());
                 opponent.put("lands", player.getLandsInPlay().size());
                 opponent.put("other", player.getCardsIn(ZoneType.Battlefield).size() - player.getLandsInPlay().size());
+                if (atTable) {
+                    // at a table the other players act: what they hold and have out matters to every decision
+                    opponent.put("hand", player.getCardsIn(ZoneType.Hand).size());
+                    List<Map<String, Object>> theirs = new ArrayList<>();
+                    for (Card card : player.getCardsIn(ZoneType.Battlefield)) {
+                        if (!card.isLand() || card.isCreature()) {
+                            theirs.add(permanent(card));
+                        }
+                    }
+                    opponent.put("battlefield", theirs);
+                    opponent.put("command", names(player.getCardsIn(ZoneType.Command)));
+                }
                 opponents.add(opponent);
             }
         }
@@ -798,6 +831,17 @@ final class Session {
                 for (Card card : pilot.getCardsIn(zone)) {
                     if (!card.isImmutable() && !card.isBasicLand()) {
                         texts.putIfAbsent(card.getName(), Labels.detail(card));
+                    }
+                }
+            }
+            if (atTable) {
+                for (Player player : game.getPlayers()) {
+                    if (!player.equals(pilot)) {
+                        for (Card card : player.getCardsIn(ZoneType.Battlefield, ZoneType.Command)) {
+                            if (!card.isImmutable() && !card.isLand()) {
+                                texts.putIfAbsent(card.getName(), Labels.detail(card));
+                            }
+                        }
                     }
                 }
             }

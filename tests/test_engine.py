@@ -78,11 +78,16 @@ class ForkTest(unittest.TestCase):
             while reply.get("decision") and model.turn(reply["decision"]) < 3:
                 reply = engine.request({"cmd": "answer", "session": session, "defer": True})
             parked = reply["decision"]
-            fork = engine.request({"cmd": "fork", "session": session})
+            fork = engine.request({"cmd": "fork", "session": session, "via": "replay"})
             forks.append(fork["session"])
             self.assertEqual(fork["parent"], session)
             self.assertGreaterEqual(fork["replayed"], 2)  # the mulligan and turn 1 and 2 plays, at least
             self.assertEqual(fork["decision"], parked)
+            # A copy fork (the default) starts from a copy of the game here: nothing to replay, same decision.
+            copy = engine.request({"cmd": "fork", "session": session})
+            forks.append(copy["session"])
+            self.assertEqual(copy["replayed"], 0)
+            self.assertEqual(copy["decision"], parked)
             # The fork is a game of its own: answering it leaves the parent parked where it was.
             engine.request({"cmd": "answer", "session": fork["session"], "defer": True})
             self.assertEqual(engine.request({"cmd": "decision", "session": session})["decision"], parked)

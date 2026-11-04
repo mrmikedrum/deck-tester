@@ -323,8 +323,14 @@ public final class Server {
             throw new IllegalStateException("fork while the game waits for a decision");
         }
         long began = System.nanoTime();
-        Session fork = via == null ? parent.fork(nextId(), home.resolve("runs"))
-                : parent.fork(nextId(), home.resolve("runs"), via.equals("copy"));
+        Session fork;
+        try {
+            fork = via == null ? parent.fork(nextId(), home.resolve("runs"))
+                    : parent.fork(nextId(), home.resolve("runs"), via.equals("copy"));
+        } catch (IllegalStateException refused) {
+            parent.recorder.write("fork", "refused", refused.getMessage());
+            throw refused;
+        }
         sessions.put(fork.id, fork);
         fork.start();
         Decision reached = fork.channel.await(WAIT_MILLIS);

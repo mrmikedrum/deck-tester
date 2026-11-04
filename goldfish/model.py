@@ -227,17 +227,19 @@ def mulligan_facts(state: dict) -> str:
     return line + "."
 
 
-def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: str = "", guidance: Optional[str] = None) -> str:
+def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: str = "", guidance: Optional[str] = None,
+             table: Optional[str] = None, others: Optional[List[str]] = None) -> str:
     """The plan, the table, the agent's board with card text, this turn so far, and the decision. The
     opponents, exile and library count are left out: they measured as noise. A mulligan says how many
     lands the hand holds and what they make, since the model doesn't count; a play decision says whether
     the land drop is still there. Guidance is the pilot's line about this position, when it gives one."""
-    lines = [f"Deck plan: {guide.strip()}", GAME.format(opponents=opponents)]
+    lines = [f"Deck plan: {guide.strip()}", (table or GAME).format(opponents=opponents)]
     if guidance:
         lines.append(f"Guidance for this position: {guidance.strip()}")
     for line in render.state(state, full=True):
         if not line.startswith(("opponents:", "exile:")):
             lines.append(re.sub(r" · library \d+", "", line))
+    lines += others or []  # a table's decider shows the other players here
     if decision["kind"] == "mulligan":
         lines.append(mulligan_facts(state))
     elif decision["kind"] == "play" and ours(decision) and "land_drop" in state and lands_in(state["hand"], state):
@@ -488,10 +490,30 @@ class Decider:
         decision = reply["decision"]
         if not default.picked and (decision["min"] >= 1 or not decision["options"]):
             return lines, None  # Forge's AI answered nothing where something was required: no line to show
-        default_name = line_name(decision, default.picked, tries)
+        default_name = self.line_name(decision, default.picked, tries)
         if default_name not in lines:
             lines[default_name] = default
         return lines, default_name
+
+    # ---- what the model reads, and which decisions it looks ahead on (a table's decider changes these) ----
+
+    def context(self, state: dict, decision: dict, so_far: str, guidance: Optional[str]) -> str:
+        return describe(self.guide, state, decision, self.opponents, so_far, guidance)
+
+    def instructions(self, decision: dict) -> str:
+        return instructions(decision)
+
+    def explores(self, decision: dict) -> bool:
+        """Whether this decision's options are played out: the agent's own turn."""
+        return ours(decision)
+
+    def lines(self, decision: dict) -> Dict[str, list]:
+        """The lines to play out, by the name the model sees."""
+        return lines_to_try(decision)
+
+    def line_name(self, decision: dict, picked: List[str], tries: Dict[str, list]) -> str:
+        """The name of Forge's AI's own pick among the lines (added as a line of its own when it isn't one)."""
+        return line_name(decision, picked, tries)
 
     # ---- deciding ----
 
@@ -513,15 +535,15 @@ class Decider:
         this_turn_facts = [f for f in records.timeline(records.load(reply["records"])) if f.get("turn") == turn(decision)]
         guidance = self.advise(state, decision, this_turn_facts) if self.advise else None
         digest = records.digest(this_turn_facts)
-        context = describe(self.guide, state, decision, self.opponents, digest[0] if digest else "", guidance)
-        tries = lines_to_try(decision) if self.hybrid != "plain" and ours(decision) else {}
+        context = self.context(state, decision, digest[0] if digest else "", guidance)
+        tries = self.lines(decision) if self.hybrid != "plain" and self.explores(decision) else {}
         lines, default = {}, None
         if len(tries) >= 2 and self.route > 0:
             # Fast mode: ask from the text first, play a confident pick as it is, and play the options out only
             # for an unsure one. Saves about a sixth of the forks for half as many calls again, and whether it
             # costs play quality couldn't be told from 20 games (docs/measurements.md), so it is off by default.
             plain = {name: option_text(decision, name) for name in tries}
-            answer = call(context, {"pick": {"type": "choice", "instructions": instructions(decision), "criteria": plain}},
+            answer = call(context, {"pick": {"type": "choice", "instructions": self.instructions(decision), "criteria": plain}},
                           self.usage, session)["pick"]
             if answer.get("confidence", 0.0) >= self.route and answer.get("choice") in tries:
                 with self.usage.lock:
@@ -552,7 +574,7 @@ class Decider:
             if not tries or len(tries) < 2:
                 return self.send(reply, {"defer": True})
             criteria = {name: option_text(decision, name) for name in tries}
-        answer = call(context, {"pick": {"type": "choice", "instructions": instructions(decision), "criteria": criteria}},
+        answer = call(context, {"pick": {"type": "choice", "instructions": self.instructions(decision), "criteria": criteria}},
                       self.usage, session)["pick"]
         try:
             picks = _numbers(decision, tries[answer["choice"]])

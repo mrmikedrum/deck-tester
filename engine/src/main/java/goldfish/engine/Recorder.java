@@ -127,7 +127,14 @@ final class Recorder {
             restoring = restored.start();
         } else if (restoring) {
             return;
-        } else if (event instanceof GameEventTurnBegan turn) {
+        }
+        // Another player acting is what a copy fork made earlier can't reproduce (in a fork they pass).
+        if (event instanceof GameEventLandPlayed land && !isPilot(land.player())
+                || event instanceof forge.game.event.GameEventSpellAbilityCast cast && cast.si() != null
+                        && cast.si().getActivatingPlayer() != null && !isPilot(cast.si().getActivatingPlayer())) {
+            session.othersActed();
+        }
+        if (event instanceof GameEventTurnBegan turn) {
             if (isPilot(turn.turnOwner()) && session.beginPilotTurn()) {
                 write("turn");
             }

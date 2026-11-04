@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from . import batch, decklist, engine, model
+from . import batch, decklist, engine, model, table_model, table_report
 
 PORT = 36743
 
@@ -19,7 +19,7 @@ class Seat:
     """One agent seat: a name, a decklist, a plan (text, or a file) and optionally a pilot or advisor file."""
 
     def __init__(self, name: str, deck: str, plan: Optional[str] = None, pilot: Optional[str] = None):
-        self.name, self.deck_path, self.pilot = name, deck, pilot
+        self.name, self.deck_path, self.pilot, self.plan_path = name, deck, pilot, plan
         self.plan = Path(plan).read_text() if plan and Path(plan).is_file() else plan
         self.deck = decklist.load(deck)
         self.handlers = batch.load_pilot(pilot) if pilot else {}
@@ -52,8 +52,8 @@ def address() -> str:
 
 def play(seat: Seat, session: str, players: int, usage: model.Usage, outcome: Dict[str, str]) -> None:
     """Answer one seat's decisions until the game is over."""
-    decider = model.Decider(seat.plan, players - 1, usage, "outcomes", workers=4,
-                            advise=seat.handlers.get("advise")) if seat.plan else None
+    decider = table_model.TableDecider(seat.plan, players - 1, usage, "outcomes", workers=4,
+                                       advise=seat.handlers.get("advise")) if seat.plan else None
     asked: Dict[int, int] = {}
     guarded: dict = {}
     reply = engine.request({"cmd": "decision", "session": session})
@@ -89,6 +89,8 @@ def host(seats: List[Seat], people: int, port: int = PORT) -> Dict[str, str]:
         thread.start()
         threads.append(thread)
     last = None
+    began = time.time()
+    state = {"state": "?", "slots": []}
     try:
         while any(thread.is_alive() for thread in threads):
             state = engine.request({"cmd": "table_state"})
@@ -102,5 +104,9 @@ def host(seats: List[Seat], people: int, port: int = PORT) -> Dict[str, str]:
         print("table ended")
     for thread in threads:
         thread.join(timeout=5)
-    print(f"model: {usage.calls} calls, ${usage.cost:.2f}" if usage.calls else "model: no calls")
+    result = engine.request({"cmd": "table_state"})["state"] if state["state"] != "stopped" else "stopped"
+    joined = [slot.split(" · ")[0] for slot in state["slots"] if " · remote" in slot]
+    path = table_report.save(table_report.manifest(reply, seats, joined, began, result, usage))
+    for line in table_report.build(table_report.load(path.stem)):
+        print(line)
     return outcome
