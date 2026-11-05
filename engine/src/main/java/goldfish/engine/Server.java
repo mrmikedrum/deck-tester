@@ -334,6 +334,7 @@ public final class Server {
             Session.Setup setup = setup(seatRequest, players - 1, true);
             String name = seatRequest.get("name").getAsString();
             Session seat = Session.atTable(nextId(), setup, home.resolve("runs"), name);
+            seat.watching = seatRequest.has("watch") && seatRequest.get("watch").getAsBoolean();
             sessions.put(seat.id, seat);
             agents.add(seat);
             decks.add(setup.deck());

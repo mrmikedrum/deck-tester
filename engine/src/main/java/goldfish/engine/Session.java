@@ -187,6 +187,9 @@ final class Session {
      * A seat at a table: a player in a game hosted elsewhere (see {@link Table}). The session has no game of its own;
      * it attaches when the table's game creates its player, and parks that player's decisions like a goldfish game.
      */
+    /** A person plays this seat through a client: priority stops on what the others put on the stack (see ManualController). */
+    volatile boolean watching;
+
     static Session atTable(String id, Setup setup, Path runsDir, String name) throws IOException {
         Session session = new Session(id, setup, runsDir, null, null);
         session.seatName = name;
