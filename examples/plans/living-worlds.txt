@@ -80,3 +80,14 @@ Do NOT confuse using exile permissions with profitable access: if Mission exiles
 and opponents have no nonland targets, let it expire. Never destroy your own Loading Zone merely to
 obtain a Lander. Count only useful converted cards when evaluating the draw package. Unsupported
 aggression or wasted adaptation is a pilot flaw, not evidence that a draw/ramp card should be cut.
+
+Final mana test: one Plains becomes War Room (five Plains remain; thirty-eight total lands).
+War Room is the unconditional-on-board fallback when a thin hand has no active engine: three mana,
+tap it, pay three life, draw one. It is not the main draw plan and should not displace a profitable
+Riker/Bankbuster activation or a real refill. Shamanic Revelation for one body is another five-mana
+cantrip trap: grow the ecosystem first unless a specific emergency makes the low payout necessary.
+
+Riker is selective help, not an always-on group-hug engine. If the hand is already stocked, cast
+useful cards instead of automatically giving an opponent two more. Especially do not draw simply
+to discard at cleanup. Repeated activation in a passive goldfish does not validate that political
+cost at a real table; the conditioned reference intentionally checks availability, not optimal play.

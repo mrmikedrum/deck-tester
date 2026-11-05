@@ -124,4 +124,23 @@ adv.when('There are NO opposing nonland permanents. Let expiring removal expire 
          test=lambda p: all(o.get('other', 0) == 0 for o in p.state.get('opponents', []))
          and any(n in p.castable for n in ['Emergency Eject', 'Chaos Warp', 'Sundering Growth', 'Swords to Plowshares']))
 
+adv.when('War Room is an emergency reserve: with this Naya commander its draw costs three '
+         'mana, tapping the land, and THREE life. With a thin hand and at least four total mana '
+         'available, consider drawing before simply passing. It needs no creatures or counters. '
+         'Prefer a useful two-card Riker activation or charged Bankbuster when those are cheaper; '
+         'do not let optional adapt/equip/crew consume this last access to new cards.',
+         board=['War Room'], test=lambda p: len(p.hand) <= 2 and p.mana >= 4)
+adv.when(lambda p: 'Shamanic Revelation currently counts only ' +
+         str(sum('pt' in c for c in p.state.get('battlefield', []))) +
+         ' creatures. Paying five to draw one or two is not a normal refill. Build the token '
+         'ecosystem first if you can; use an independent source while the board is small.',
+         castable=['Shamanic Revelation'],
+         test=lambda p: sum('pt' in c for c in p.state.get('battlefield', [])) < 3)
+
+adv.when(lambda p: 'Your hand already contains ' + str(len(p.hand)) +
+         ' cards. Riker also gives an opponent two cards: do not activate him automatically '
+         'while useful spells are waiting in hand or the extra cards will just be discarded. '
+         'Spend resources deploying your ecosystem before feeding an opponent unnecessarily.',
+         board=['Commander William Riker'], test=lambda p: len(p.hand) >= 6)
+
 advise = adv.advise
