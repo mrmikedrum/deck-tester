@@ -4,6 +4,10 @@ What has been measured, dated, with the conditions. The newest result in a secti
 older ones stay as the baseline they were compared against. [Architecture](architecture.md) describes the
 design these numbers shaped.
 
+The two Eternities III decks in `examples/decks` were updated to their ManaBox lists on 2026-11-04 (10 and 12
+cards, mostly Star Trek). Results recorded before then used the earlier lists, so compare new runs with each
+other, not with those.
+
 ## M0: the Forge spike (2026-10-23, Apple Silicon, 10 cores, JDK 21)
 
 Measured with the spike harness, on the Marath deck against three passive opponents. The harness was
