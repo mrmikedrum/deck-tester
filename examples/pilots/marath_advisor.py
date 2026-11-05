@@ -86,4 +86,42 @@ adv.when('Shamanic Revelation counts ALL your creatures, including small tokens 
          'or uncountered bodies. It is a refill, not a reason to wait for combat or deaths.',
          castable=['Shamanic Revelation'])
 
+adv.when(lambda p: 'PLAYABLE FROM EXILE NOW: ' + ', '.join(p.castable_from['exile']) +
+         '. These are real currently legal options, not just exiled card names. Use expiring access '
+         'before spending the same mana or land allowance on replaceable plays from hand. '
+         'An exiled land can save a land in hand for next turn. Do not pass the deadline '
+         'or activate optional mana sinks while useful exiled development is affordable.',
+         test=lambda p: bool(p.castable_from['exile']))
+adv.when('You already have a functional mana base. Before adding more ramp or spending on adapt, '
+         'prioritize drawing/casting useful spells, deploying varied life, and exploiting expiring exile '
+         'access. Mana production is not this deck\'s bottleneck once the hand is thinning.',
+         test=lambda p: p.mana >= 6 and len(p.hand) <= 3)
+adv.when('Return of the Wildspeaker draws only the greatest NON-HUMAN power right now. '
+         'Check that number before paying five: one or two cards is a poor normal refill. '
+         'Grow a creature or create a substantial Elemental first if feasible, and keep mana for the '
+         'refill. Human captains do not set this draw count.',
+         castable=['Return of the Wildspeaker'])
+adv.when('Evolution Witness already has counters: adapt can still be activated but adds none '
+         'and therefore returns NO card. Do not spend mana on that activation without a real '
+         'counter-removal plan. Fetchland recovery is useful only if another land play is useful.',
+         board=['Evolution Witness'], test=lambda p: p.counters('Evolution Witness') > 0)
+
+adv.when('Riker can attack with vigilance and THEN tap to draw two for one mana in main two. '
+         'Haste also permits immediate draw on the turn he enters. Activating gives the chosen opponent '
+         'two cards too: prefer a trailing player in a real game, not automatically the leader. '
+         'Do not station him first when the hand needs cards.',
+         board=['Commander William Riker'])
+adv.when('Bankbuster is a card reserve even without crew: pay two, tap and remove one charge '
+         'to draw. Proliferation can replenish its charges. Preserve enough untapped mana to use '
+         'the new card; crew is optional and competes with useful creatures, not a prerequisite to draw.',
+         board=['Reckoner Bankbuster'])
+
+adv.when('There are NO opposing nonland permanents. Let expiring removal expire rather than '
+         'destroying your own useful engine merely to use the card. In particular, Emergency Eject '
+         'on your own Loading Zone is not successful card advantage. Expiring access is a priority '
+         'only for USEFUL development; a dead reactive card is not an obligation to cast it.',
+         kinds=['play', 'targets'],
+         test=lambda p: all(o.get('other', 0) == 0 for o in p.state.get('opponents', []))
+         and any(n in p.castable for n in ['Emergency Eject', 'Chaos Warp', 'Sundering Growth', 'Swords to Plowshares']))
+
 advise = adv.advise

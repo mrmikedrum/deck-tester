@@ -28,6 +28,14 @@ Support Mission, Exploration Broodship and Valakut Exploration.
   (DigUntil/nonland exile), g/geistflame_reservoir.txt (this-turn permission),
   r/radha_heir_to_keld.txt (RR) | 3fdba8ee-6dfe-480d-b84a-43922229d9b4
 
+
+Commander William Riker: complete master 61e9442c433711a82258daca3236f936a1d6f70e and
+daily-snapshots a4281f7e58b50542decce8971d81bca4307fd8b4 trees checked including upcoming.
+Will Riker, Assuming Command is a distinct inspected Name:, not this card.
+Modelled on l/loran_of_the_third_path.txt and y/your_temple_is_under_attack.txt:
+TargetedAndYou is the installed native two-player draw effect.
+Oracle cef73cb5-88c2-43cd-8648-1baca085b8a4.
+
 ---
 diff --git a/forge-gui/res/cardsfolder/b/borg_scout_sphere.txt b/forge-gui/res/cardsfolder/b/borg_scout_sphere.txt
 new file mode 100644
@@ -208,3 +216,16 @@ new file mode 100644
 +SVar:DBMana:DB$ Mana | Produced$ R | Amount$ 2 | ConditionCheckSVar$ QuestCount | ConditionSVarCompare$ GE5
 +SVar:QuestCount:Count$CardCounters.QUEST
 +Oracle:Landfall — Whenever a land you control enters, put a quest counter on this enchantment. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If this enchantment has five or more quest counters on it, add {R}{R}.
+diff --git a/forge-gui/res/cardsfolder/c/commander_william_riker.txt b/forge-gui/res/cardsfolder/c/commander_william_riker.txt
+new file mode 100644
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/c/commander_william_riker.txt
+@@ -0,0 +1,8 @@
++Name:Commander William Riker
++ManaCost:1 R W
++Types:Legendary Creature Human Officer
++PT:3/3
++K:Vigilance
++K:Haste
++A:AB$ Draw | Cost$ 1 T | ValidTgts$ Opponent | Defined$ TargetedAndYou | NumCards$ 2 | SpellDescription$ You and target opponent each draw two cards.
++Oracle:Vigilance, haste\n{1}, {T}: You and target opponent each draw two cards.

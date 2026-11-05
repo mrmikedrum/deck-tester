@@ -57,3 +57,26 @@ three mana into an entering 3/3 Elemental and a draw, while retaining his last c
 Shamanic Revelation refills from the whole ecosystem, not just countered or power-four creatures.
 Do not chase arbitrary lethal damage in the passive goldfish: watch whether red access becomes
 usable spells and whether mana/crew choices leave those cards stranded past their deadlines.
+
+Evaluation correction: score card ACCESS by cards actually cast/played or retained in hand, not by
+access spells cast. Before every main-phase hand play, check playable exile options and their deadline.
+Use an exiled land in preference to an equivalent land in hand; keep useful hand cards for later.
+Spend mana on usable expiring spells before optional adapt, station or fresh ramp. Exceptions require a
+concrete better line, not habit. Once mana is plentiful, replenishment and varied life beat more ramp.
+Wildspeaker is a refill only with a substantial NON-HUMAN; aim for at least four cards, not a routine
+five-mana draw-two. Build the body first and retain enough mana to draw. Adapt with counters already on
+Evolution Witness does nothing. Against passive opponents keep real interaction instead of spending
+it pointlessly. A full hand or big board is an observation, not proof of multiplayer deck quality.
+
+Current test iteration replaces Scoutlander and Cornucopia with Riker and Bankbuster, not the
+successful refills. Riker is a red-white exploration officer: haste means three mana plus one yields
+two cards immediately; vigilance lets him attack and draw afterward. Do not station away his draw
+when the hand is short. Choose an opponent deliberately: they get two cards, too. Bankbuster draws
+without crew for two mana and a charge; use proliferation to preserve this card reserve. A spare
+three-power body may crew it, but protecting mana and useful engines comes first. Retain the burst
+refills rather than expecting these once-per-tap engines alone to replenish a late empty hand.
+
+Do NOT confuse using exile permissions with profitable access: if Mission exiles Emergency Eject
+and opponents have no nonland targets, let it expire. Never destroy your own Loading Zone merely to
+obtain a Lander. Count only useful converted cards when evaluating the draw package. Unsupported
+aggression or wasted adaptation is a pilot flaw, not evidence that a draw/ramp card should be cut.
