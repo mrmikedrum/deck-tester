@@ -1,0 +1,210 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Wed, 4 Nov 2026 19:07:21 -0700
+Subject: [PATCH] Add card scripts Forge lacks
+
+Star Trek cards our decks play that upstream had no script for at 7c34365c74, written in Forge's own
+scripting language from an existing card each. Drop a card from this commit once upstream defines it
+and it passes the same scenarios (mtg-goldfish's tests/test_trek_cards.py).
+
+Card | modelled on | Scryfall oracle id
+- Borg Scout Sphere | e/exploration_broodship.txt | 4cfb6f06-137c-4b41-97ef-6710e899473b
+- Conquest Mission | t/titan_forge.txt | 35906166-71d1-4089-bbe4-4055edb81fb0
+- Co-Option Adjutant | s/sharding_sphinx.txt | caafecc0-adfa-478c-8a9d-234d4069300b
+- Final Frontier | r/rampant_growth.txt | 26f7e903-2a00-4878-b8b7-d5abe35c9526
+- Genesis Device | s/scapeshift.txt | bb86849c-fdec-4ca5-a8c0-ed682d921759
+- Hit It! | s/satyr_wayfinder.txt | 62361438-3da4-4ce9-95b8-fc361b824f58
+- Locutus of Borg | s/sharding_sphinx.txt | d0cff43a-2a22-4e05-9f71-983cb297989f
+- Maturation Chamber | t/titan_forge.txt | 585511e1-4cca-4e70-963d-56f98ae49c29
+- Stable Wormhole | s/seasoned_dungeoneer.txt | dba55309-cb21-42db-8968-8da07227a1be
+- U.S.S. Discovery, at Black Alert | e/exploration_broodship.txt + q/quintorius_kand.txt | 13dbfe3f-1e04-4c4f-953c-7c949dba9d33
+- Warp Speed | s/spelunking.txt + s/sylvan_scrying.txt | 5a824931-2b65-42b1-8653-d4313a6693d2
+
+Exploratory Mission: checked complete upstream master 6e226b123a9da30d2dc2b8404ef29cb2464ee3aa
+and daily-snapshots a4281f7e58b50542decce8971d81bca4307fd8b4 trees on 2026-11-05 UTC,
+including upcoming; no Exploratory Mission script. Distinct Name: values inspected for
+Support Mission, Exploration Broodship and Valakut Exploration.
+- Exploratory Mission | s/support_mission.txt (post-counter threshold), w/wandas_vision.txt
+  (DigUntil/nonland exile), g/geistflame_reservoir.txt (this-turn permission),
+  r/radha_heir_to_keld.txt (RR) | 3fdba8ee-6dfe-480d-b84a-43922229d9b4
+
+---
+diff --git a/forge-gui/res/cardsfolder/b/borg_scout_sphere.txt b/forge-gui/res/cardsfolder/b/borg_scout_sphere.txt
+new file mode 100644
+index 0000000000..8df6b2c478
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/b/borg_scout_sphere.txt
+@@ -0,0 +1,10 @@
++Name:Borg Scout Sphere
++ManaCost:2 U
++Types:Artifact Spacecraft
++PT:5/5
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ TrigETB | TriggerDescription$ When CARDNAME enters, draw a card.
++SVar:TrigETB:DB$ Draw | NumCards$ 1
++K:Station:6
++S:Mode$ Continuous | AffectedDefined$ Self | Affected$ Card.counters_GE6_CHARGE | AddType$ Creature | AddStaticAbility$ FlyingStatic | Description$ STATION 6+ Artifact creatures you control have flying.
++SVar:FlyingStatic:Mode$ Continuous | Affected$ Creature.Artifact+YouCtrl | AddKeyword$ Flying | Description$ Artifact creatures you control have flying.
++Oracle:When this Spacecraft enters, draw a card.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Artifact creatures you control have flying.
+diff --git a/forge-gui/res/cardsfolder/c/conquest_mission.txt b/forge-gui/res/cardsfolder/c/conquest_mission.txt
+new file mode 100644
+index 0000000000..fc7c9c9f3d
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/c/conquest_mission.txt
+@@ -0,0 +1,10 @@
++Name:Conquest Mission
++ManaCost:2 W
++Types:Enchantment
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Artifact.YouCtrl+!token | TriggerZones$ Battlefield | Execute$ TrigCounter | TriggerDescription$ Whenever a nontoken artifact you control enters, put a quest counter on CARDNAME. Create a 1/1 colorless Borg artifact creature token. If CARDNAME has six or more quest counters on it, create two of those tokens instead.
++SVar:TrigCounter:DB$ PutCounter | Defined$ Self | CounterType$ QUEST | CounterNum$ 1 | SubAbility$ DBToken
++SVar:DBToken:DB$ Token | TokenScript$ c_1_1_a_borg | TokenAmount$ X
++SVar:Raw:Count$CardCounters.QUEST/Minus.4
++SVar:Floor:SVar$Raw/LimitMin.1
++SVar:X:SVar$Floor/LimitMax.2
++Oracle:Whenever a nontoken artifact you control enters, put a quest counter on this enchantment. Create a 1/1 colorless Borg artifact creature token. If this enchantment has six or more quest counters on it, create two of those tokens instead.
+diff --git a/forge-gui/res/cardsfolder/c/cooption_adjutant.txt b/forge-gui/res/cardsfolder/c/cooption_adjutant.txt
+new file mode 100644
+index 0000000000..2017263ba6
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/c/cooption_adjutant.txt
+@@ -0,0 +1,8 @@
++Name:Co-Option Adjutant
++ManaCost:3 U
++Types:Artifact Creature Borg
++PT:3/3
++S:Mode$ Continuous | Affected$ Creature.Artifact+YouCtrl | AddTrigger$ TrigCombat | Description$ Artifact creatures you control have "Whenever this creature deals combat damage to a player, draw a card."
++SVar:TrigCombat:Mode$ DamageDone | ValidSource$ Card.Self | ValidTarget$ Player | CombatDamage$ True | TriggerZones$ Battlefield | Execute$ CombatEffect | TriggerDescription$ Whenever CARDNAME deals combat damage to a player, draw a card.
++SVar:CombatEffect:DB$ Draw | NumCards$ 1
++Oracle:Artifact creatures you control have "Whenever this creature deals combat damage to a player, draw a card."
+diff --git a/forge-gui/res/cardsfolder/f/final_frontier.txt b/forge-gui/res/cardsfolder/f/final_frontier.txt
+new file mode 100644
+index 0000000000..31ebb35257
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/f/final_frontier.txt
+@@ -0,0 +1,6 @@
++Name:Final Frontier
++ManaCost:2 G
++Types:Sorcery
++K:Beam me up:1 G
++A:SP$ ChangeZone | Origin$ Library | Destination$ Battlefield | ChangeType$ Land.Basic,Planet | ChangeNum$ 1 | Tapped$ True | SpellDescription$ Search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.
++Oracle:Search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\nBeam me up {1}{G} (You may cast this card from your graveyard for {1}{G} if you also return a creature you control to its owner's hand. Then exile this spell.)
+diff --git a/forge-gui/res/cardsfolder/g/genesis_device.txt b/forge-gui/res/cardsfolder/g/genesis_device.txt
+new file mode 100644
+index 0000000000..b075613337
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/g/genesis_device.txt
+@@ -0,0 +1,11 @@
++Name:Genesis Device
++ManaCost:2 G
++Types:Legendary Artifact
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ TrigETB | TriggerDescription$ When CARDNAME enters, search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.
++SVar:TrigETB:DB$ ChangeZone | Origin$ Library | Destination$ Battlefield | ChangeType$ Land.Basic,Planet | ChangeNum$ 1 | Tapped$ True
++A:AB$ Sacrifice | Cost$ 3 G G T Sac<1/CARDNAME> | SorcerySpeed$ True | SacValid$ Land | Amount$ SacX | Optional$ True | Defined$ You | RememberSacrificed$ True | SubAbility$ DBSearch | SpellDescription$ Sacrifice any number of lands you control, then search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle. Activate only as a sorcery.
++SVar:DBSearch:DB$ ChangeZone | Origin$ Library | Destination$ Battlefield | ChangeType$ Land | ChangeNum$ X | Tapped$ True | SubAbility$ DBCleanup
++SVar:X:Remembered$Amount
++SVar:SacX:Count$Valid Land.YouCtrl
++SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True
++Oracle:When Genesis Device enters, search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\n{3}{G}{G}, {T}, Sacrifice Genesis Device: Sacrifice any number of lands you control, then search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle. Activate only as a sorcery.
+diff --git a/forge-gui/res/cardsfolder/h/hit_it.txt b/forge-gui/res/cardsfolder/h/hit_it.txt
+new file mode 100644
+index 0000000000..7e277a28dd
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/h/hit_it.txt
+@@ -0,0 +1,7 @@
++Name:Hit It!
++ManaCost:1 R G
++Types:Enchantment
++S:Mode$ Continuous | Affected$ Creature.YouCtrl | AddKeyword$ Haste | Description$ Creatures you control have haste.
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ TrigETB | TriggerDescription$ When CARDNAME enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard.
++SVar:TrigETB:DB$ Dig | DigNum$ 5 | Reveal$ True | ChangeNum$ 1 | ChangeValid$ Land | DestinationZone$ Battlefield | Tapped$ True | DestinationZone2$ Graveyard
++Oracle:Creatures you control have haste.\nWhen this enchantment enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard.
+diff --git a/forge-gui/res/cardsfolder/l/locutus_of_borg.txt b/forge-gui/res/cardsfolder/l/locutus_of_borg.txt
+new file mode 100644
+index 0000000000..1fb22f0b0f
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/l/locutus_of_borg.txt
+@@ -0,0 +1,9 @@
++Name:Locutus of Borg
++ManaCost:1 W U B
++Types:Legendary Artifact Creature Borg
++PT:3/3
++K:Lifelink
++S:Mode$ Continuous | Affected$ Creature.Artifact+YouCtrl | AddTrigger$ TrigCombat | Description$ Artifact creatures you control have "Whenever this creature deals combat damage to a player, create a 1/1 colorless Borg artifact creature token."
++SVar:TrigCombat:Mode$ DamageDone | ValidSource$ Card.Self | ValidTarget$ Player | CombatDamage$ True | TriggerZones$ Battlefield | Execute$ CombatEffect | TriggerDescription$ Whenever CARDNAME deals combat damage to a player, create a 1/1 colorless Borg artifact creature token.
++SVar:CombatEffect:DB$ Token | TokenScript$ c_1_1_a_borg | TokenAmount$ 1
++Oracle:Lifelink\nArtifact creatures you control have "Whenever this creature deals combat damage to a player, create a 1/1 colorless Borg artifact creature token."
+diff --git a/forge-gui/res/cardsfolder/m/maturation_chamber.txt b/forge-gui/res/cardsfolder/m/maturation_chamber.txt
+new file mode 100644
+index 0000000000..da69f2a314
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/m/maturation_chamber.txt
+@@ -0,0 +1,8 @@
++Name:Maturation Chamber
++ManaCost:1 W
++Types:Artifact
++T:Mode$ SpellCast | ValidCard$ Artifact | ValidActivatingPlayer$ You | TriggerZones$ Battlefield | Execute$ TrigCounter | TriggerDescription$ Whenever you cast an artifact spell, put a charge counter on CARDNAME.
++SVar:TrigCounter:DB$ PutCounter | Defined$ Self | CounterType$ CHARGE | CounterNum$ 1
++A:AB$ Token | Cost$ 4 T | SorcerySpeed$ True | TokenScript$ c_1_1_a_borg | TokenAmount$ X | SpellDescription$ Create a 1/1 colorless Borg artifact creature token for each charge counter on CARDNAME. Activate only as a sorcery.
++SVar:X:Count$CardCounters.CHARGE
++Oracle:Whenever you cast an artifact spell, put a charge counter on this artifact.\n{4}, {T}: Create a 1/1 colorless Borg artifact creature token for each charge counter on this artifact. Activate only as a sorcery.
+diff --git a/forge-gui/res/cardsfolder/s/stable_wormhole.txt b/forge-gui/res/cardsfolder/s/stable_wormhole.txt
+new file mode 100644
+index 0000000000..278b19b8bd
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/s/stable_wormhole.txt
+@@ -0,0 +1,6 @@
++Name:Stable Wormhole
++ManaCost:2 G
++Types:Enchantment
++T:Mode$ AttackersDeclared | AttackingPlayer$ You | TriggerZones$ Battlefield | Execute$ TrigPlanet | TriggerDescription$ Whenever you attack, create a tapped Planet land token named New Planet with "{T}: Add one mana of any color."
++SVar:TrigPlanet:DB$ Token | TokenScript$ new_planet | TokenAmount$ 1 | TokenTapped$ True
++Oracle:Whenever you attack, create a tapped Planet land token named New Planet with "{T}: Add one mana of any color."
+diff --git a/forge-gui/res/cardsfolder/u/uss_discovery_at_black_alert.txt b/forge-gui/res/cardsfolder/u/uss_discovery_at_black_alert.txt
+new file mode 100644
+index 0000000000..bcaa46f5b7
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/u/uss_discovery_at_black_alert.txt
+@@ -0,0 +1,10 @@
++Name:U.S.S. Discovery, at Black Alert
++ManaCost:3 G G
++Types:Legendary Artifact Spacecraft
++PT:5/5
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ TrigETB | TriggerDescription$ When CARDNAME enters, discover 5.
++T:Mode$ Attacks | ValidCard$ Card.Self | TriggerZones$ Battlefield | Execute$ TrigETB | TriggerDescription$ Whenever CARDNAME attacks, discover 5.
++SVar:TrigETB:DB$ Discover | Num$ 5
++K:Station:6
++S:Mode$ Continuous | AffectedDefined$ Self | Affected$ Card.counters_GE6_CHARGE | AddType$ Creature | AddKeyword$ Flying | Description$ STATION 6+ Flying
++Oracle:Whenever U.S.S. Discovery enters or attacks, discover 5. (Exile cards from the top of your library until you exile a nonland card with mana value 5 or less. Cast it without paying its mana cost or put it into your hand. Put the rest on the bottom in a random order.)\nStation\n6+ | Flying
+diff --git a/forge-gui/res/cardsfolder/w/warp_speed.txt b/forge-gui/res/cardsfolder/w/warp_speed.txt
+new file mode 100644
+index 0000000000..396e03b8f7
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/w/warp_speed.txt
+@@ -0,0 +1,11 @@
++Name:Warp Speed
++ManaCost:2 G
++Types:Enchantment
++R:Event$ Moved | ValidCard$ Land.YouCtrl | Destination$ Battlefield | ReplaceWith$ ETBUntapped | ReplacementResult$ Updated | ActiveZones$ Battlefield | Description$ Lands you control enter untapped.
++SVar:ETBUntapped:DB$ Untap | ETB$ True | Defined$ ReplacedCard
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ TrigETB | TriggerDescription$ When CARDNAME enters, search your library for a basic land card or Planet card, reveal it, put it into your hand, then shuffle.
++SVar:TrigETB:DB$ ChangeZone | Origin$ Library | Destination$ Hand | ChangeType$ Land.Basic,Planet | ChangeNum$ 1
++S:Mode$ ReduceCost | ValidCard$ Card.Self | Type$ Ability | Amount$ X | AffectedZone$ Battlefield | Description$ Strange new worlds — This ability costs {X} less to activate, where X is the number of differently named lands you control.
++SVar:X:Count$Valid Land.YouCtrl$DifferentCardNames
++A:AB$ Draw | Cost$ 7 U U Sac<1/CARDNAME> | NumCards$ 2 | SpellDescription$ Draw two cards.
++Oracle:Lands you control enter untapped.\nWhen this enchantment enters, search your library for a basic land card or Planet card, reveal it, put it into your hand, then shuffle.\nStrange new worlds — {7}{U}{U}, Sacrifice this enchantment: Draw two cards. This ability costs {X} less to activate, where X is the number of differently named lands you control.
+diff --git a/forge-gui/res/cardsfolder/e/exploratory_mission.txt b/forge-gui/res/cardsfolder/e/exploratory_mission.txt
+new file mode 100644
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/e/exploratory_mission.txt
+@@ -0,0 +1,12 @@
++Name:Exploratory Mission
++ManaCost:2 R R
++Types:Enchantment
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Land.YouCtrl | TriggerZones$ Battlefield | Execute$ TrigCounter | TriggerDescription$ Landfall — Whenever a land you control enters, put a quest counter on CARDNAME. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If CARDNAME has five or more quest counters on it, add {R}{R}.
++SVar:TrigCounter:DB$ PutCounter | Defined$ Self | CounterType$ QUEST | CounterNum$ 1 | SubAbility$ DBDig
++SVar:DBDig:DB$ DigUntil | Valid$ Card.nonLand | FoundDestination$ Exile | RevealedDestination$ Exile | RememberFound$ True | SubAbility$ DBEffect
++SVar:DBEffect:DB$ Effect | RememberObjects$ RememberedCard | StaticAbilities$ Play | ForgetOnMoved$ Exile | SubAbility$ DBCleanup
++SVar:Play:Mode$ Continuous | MayPlay$ True | Affected$ Card.IsRemembered | AffectedZone$ Exile | Description$ You may play this card this turn.
++SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True | SubAbility$ DBMana
++SVar:DBMana:DB$ Mana | Produced$ R | Amount$ 2 | ConditionCheckSVar$ QuestCount | ConditionSVarCompare$ GE5
++SVar:QuestCount:Count$CardCounters.QUEST
++Oracle:Landfall — Whenever a land you control enters, put a quest counter on this enchantment. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If this enchantment has five or more quest counters on it, add {R}{R}.
