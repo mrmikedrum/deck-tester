@@ -65,4 +65,25 @@ adv.when('Marath returned directly by Cosmic Rebirth has zero mana spent and nor
 adv.when(lambda p: 'Castable from the graveyard now: ' + ', '.join(p.castable_from['graveyard']) + '.',
          test=lambda p: bool(p.castable_from['graveyard']))
 
+adv.when('Exploratory Mission triggers for each land entry and exiles through a NONLAND card. '
+         'Play that card THIS turn; put Mission down before a land drop when affordable. '
+         'Proliferation can add quest counters, but the RR bonus is produced by a resolving landfall '
+         'trigger with at least five quest counters, not merely by reaching five counters.',
+         any_of={'board': ['Exploratory Mission'], 'castable': ['Exploratory Mission']})
+adv.when('Elemental Bond draws when a creature ENTERS with power at least three, including a '
+         'base-3+ Marath Elemental or a real large Song copy. Growing an already present creature '
+         'does not trigger Bond. Marath\'s initial three-counter cast can supply a draw.',
+         board=['Elemental Bond'])
+adv.when('Wrenn\'s Resolve and Escape to the Wilds provide playable cards until the END OF YOUR '
+         'NEXT TURN, not cards in hand. Budget mana and land allowances for the exiled options. '
+         'Escape grants its extra land play only this turn.',
+         any_of={'castable': ["Wrenn's Resolve", 'Escape to the Wilds']})
+adv.when('Commune with Lava costs X plus RR and grants access through your next turn. '
+         'Use an affordable X with mana left to use the cards; Unbound Flourishing copies the '
+         'spell, revealing another X cards, rather than making the payment free.',
+         castable=['Commune with Lava'])
+adv.when('Shamanic Revelation counts ALL your creatures, including small tokens and untapped '
+         'or uncountered bodies. It is a refill, not a reason to wait for combat or deaths.',
+         castable=['Shamanic Revelation'])
+
 advise = adv.advise

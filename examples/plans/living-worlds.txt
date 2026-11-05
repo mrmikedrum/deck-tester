@@ -11,7 +11,7 @@ Marath. Fetch typed fixing for the hand, not just any green source. Make your la
 mana unless landfall sequencing or an additional-land effect gives a concrete reason to wait.
 
 Early: cheap ramp/fixing, independent card flow, and a repeatable exploration/token/counter engine.
-Pike opens top-library lands; use permitted extra land drops from Janeway/Broodship. Seed counters on
+Pike opens top-library lands; use permitted extra land drops from Janeway. Seed counters on
 Incubation Druid before expecting three mana. Preserve creatures as mana/board where station would
 consume the turn's development. A spacecraft without enough crew is a future payoff, not current ramp.
 
@@ -41,5 +41,19 @@ land drop when mana already permits it, and aim for the SECOND landfall resoluti
 fetch/Wormhole/Frontier) for one card. A third landfall does not draw again. Wormhole's Planet tokens
 are lands, not creature tokens, so they do not charge Staff of the Storyteller. Inspiring Call is also
 card flow; use a developed countered board to replenish rather than holding it only as protection.
-If Marath dies into the graveyard and Cosmic Rebirth is used, choose hand, not battlefield: a free
-return enters with zero mana spent and no counters. Do not count that route as a new counter engine.
+
+Live-playtest revision: the bottleneck was abundant mana but too few cards, with redundant recovery.
+The list now cuts Cosmic Rebirth, Unnatural Restoration, Exploration Broodship, Eternity Elevator,
+Generous Patron and Marketback Walker. Evolution Witness remains the recovery slot. Two Forests
+become Mountains (eight Forests, three Mountains); fetch colors for actual costs, including RR.
+Prioritize new card supply over more mana when the hand is thin. Wrenn's Resolve is early two-card
+access; Escape to the Wilds offers five until next turn, with an extra land THIS turn. Commune with
+Lava is an XRR instant: budget X against the mana you will need to play what it reveals; it is best
+with next turn's mana still available, not automatically all-in at the start of a main phase.
+Exploratory Mission goes before land entries and reveals a nonland for THIS turn only. Proliferate
+its quest counters when useful; RR is added on a landfall resolution once it has five counters.
+Elemental Bond draws on power-three entries, not later growth. Marath can turn three counters and
+three mana into an entering 3/3 Elemental and a draw, while retaining his last counter if possible.
+Shamanic Revelation refills from the whole ecosystem, not just countered or power-four creatures.
+Do not chase arbitrary lethal damage in the passive goldfish: watch whether red access becomes
+usable spells and whether mana/crew choices leave those cards stranded past their deadlines.
