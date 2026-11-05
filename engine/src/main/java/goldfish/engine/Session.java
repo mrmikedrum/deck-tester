@@ -1155,6 +1155,24 @@ final class Session {
             }
             view.put("combat", Map.of("attackers", attackers, "blockers", blockers));
         }
+        // Forge's own game log, as its desktop app shows it: what happened, including what this seat couldn't see happen.
+        List<forge.game.GameLogEntry> entries = game.getGameLog().getAllEntries();
+        List<Map<String, Object>> log = new ArrayList<>();
+        for (int i = Math.max(0, entries.size() - 60); i < entries.size(); i++) {
+            forge.game.GameLogEntry entry = entries.get(i);
+            if (entry.type() == forge.game.GameLogEntryType.PHASE || entry.type() == forge.game.GameLogEntryType.MANA) {
+                continue;
+            }
+            Map<String, Object> e = new LinkedHashMap<>();
+            e.put("i", i);
+            e.put("type", entry.type().name());
+            e.put("text", entry.message());
+            if (entry.sourceCard() != null) {
+                e.put("card", entry.sourceCard().getId());
+            }
+            log.add(e);
+        }
+        view.put("log", log);
         if (game.isGameOver()) {
             view.put("over", true);
         }
