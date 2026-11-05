@@ -42,6 +42,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -194,9 +195,27 @@ public class ManualController extends PlayerControllerAi {
 
     private List<Integer> ask(String kind, String prompt, List<String> options, List<String> details, int min, int max,
                               boolean repeat, Supplier<List<Integer>> ai) {
+        return ask(kind, prompt, options, details, min, max, repeat, ai, null);
+    }
+
+    private List<Integer> ask(String kind, String prompt, List<String> options, List<String> details, int min, int max,
+                              boolean repeat, Supplier<List<Integer>> ai, List<Map<String, Object>> refs) {
         Decision decision = new Decision(kind, session.turnLabel(), prompt, options, details, min,
-                repeat ? max : Math.min(max, options.size()), repeat, session.myTurn());
+                repeat ? max : Math.min(max, options.size()), repeat, session.myTurn(), refs);
         return decide(decision, ai);
+    }
+
+    /** What an option points at, for a client that shows the game: a card by id, a player or a card name. */
+    static Map<String, Object> ref(Object item) {
+        Map<String, Object> ref = new LinkedHashMap<>();
+        if (item instanceof Card card) {
+            ref.put("card", card.getId());
+        } else if (item instanceof Player player) {
+            ref.put("player", player.getName());
+        } else if (item instanceof ICardFace face) {
+            ref.put("name", face.getName());
+        }
+        return ref;
     }
 
     private int askNumber(String prompt, int min, int max, Supplier<Integer> ai) {
@@ -229,8 +248,10 @@ public class ManualController extends PlayerControllerAi {
                 details.add(item instanceof Card card ? Labels.detail(card) : options.get(details.size()));
             }
         }
+        List<Map<String, Object>> refs = new ArrayList<>();
+        list.forEach(item -> refs.add(ref(item)));
         Decision decision = new Decision(kind, session.turnLabel(), prompt, options, details,
-                Math.min(min, list.size()), Math.min(max, list.size()), false, session.myTurn());
+                Math.min(min, list.size()), Math.min(max, list.size()), false, session.myTurn(), refs);
         List<Integer> picks = decide(decision, () -> indices(list, ai.get()), preset == null ? null : indices(list, preset));
         List<T> chosen = new ArrayList<>();
         for (int pick : picks) {
@@ -428,13 +449,18 @@ public class ManualController extends PlayerControllerAi {
             }
             List<String> options = new ArrayList<>();
             List<String> details = new ArrayList<>();
+            List<Map<String, Object>> refs = new ArrayList<>();
             options.add("pass");
             details.add("pass priority");
+            refs.add(Map.of());
             playable.forEach(sa -> {
                 options.add(Labels.ability(sa));
                 details.add(Labels.detail(sa));
+                Map<String, Object> ref = ref(sa.getHostCard());
+                ref.put("spell", sa.isSpell() || sa.isLandAbility());
+                refs.add(ref);
             });
-            Decision decision = new Decision("play", session.turnLabel(), "", options, details, 1, 1, false, session.myTurn());
+            Decision decision = new Decision("play", session.turnLabel(), "", options, details, 1, 1, false, session.myTurn(), refs);
             session.checkpoint(reasking);
             List<SpellAbility> aiPick = new ArrayList<>();
             List<Integer> answer;
@@ -553,7 +579,8 @@ public class ManualController extends PlayerControllerAi {
         Session.Entry open = null;
         if (options.size() > 1) {
             pay = new Decision("pay", session.turnLabel(), "mana to pay " + sa.getPayCosts().getTotalMana() + " for "
-                    + source.getName() + ", in order; none = automatic", options, null, 0, options.size(), true, session.myTurn());
+                    + source.getName() + ", in order; none = automatic", options, null, 0, options.size(), true, session.myTurn())
+                    .withRefs(manaAbilities.stream().map(ability -> ref(ability.getHostCard())).toList());
             List<Integer> chosen = null;
             Session.Entry scripted = session.scripted(pay);
             if (scripted != null) {
@@ -1102,6 +1129,12 @@ public class ManualController extends PlayerControllerAi {
             return;
         }
         boolean[] declared = {false};
+        List<Map<String, Object>> refs = new ArrayList<>();
+        for (int i = 0; i < creatures.size(); i++) {
+            Map<String, Object> ref = ref(creatures.get(i));
+            ref.put("to", defenders.get(i) instanceof Card walker ? walker.getId() : defenders.get(i).getName());
+            refs.add(ref);
+        }
         List<Integer> picks = ask("attack", "attackers, at most one defender each", options, null, 0, options.size(), false, () -> {
             super.declareAttackers(attacker, combat);
             declared[0] = true;
@@ -1115,7 +1148,7 @@ public class ManualController extends PlayerControllerAi {
                 }
             }
             return out;
-        });
+        }, refs);
         if (!declared[0]) {
             List<Card> chosen = new ArrayList<>();
             for (int pick : picks) {
@@ -1154,6 +1187,12 @@ public class ManualController extends PlayerControllerAi {
             return;
         }
         boolean[] declared = {false};
+        List<Map<String, Object>> refs = new ArrayList<>();
+        for (int i = 0; i < blockers.size(); i++) {
+            Map<String, Object> ref = ref(blockers.get(i));
+            ref.put("blocks", attackers.get(i).getId());
+            refs.add(ref);
+        }
         List<Integer> picks = ask("block", "blockers, each blocking one attacker", options, null, 0, options.size(), false, () -> {
             super.declareBlockers(defender, combat);
             declared[0] = true;
@@ -1164,7 +1203,7 @@ public class ManualController extends PlayerControllerAi {
                 }
             }
             return out;
-        });
+        }, refs);
         if (!declared[0]) {
             List<Card> chosen = new ArrayList<>();
             for (int pick : picks) {

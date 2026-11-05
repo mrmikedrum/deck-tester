@@ -196,6 +196,18 @@ public final class Server {
                 reply.put("state", session.state(request.has("text") && request.get("text").getAsBoolean()));
                 return reply;
             }
+            case "view": {
+                // no waiting: a client shows the game while Forge plays it
+                Map<String, Object> reply = ok();
+                Decision pending = session.channel.pending();
+                if (pending != null) {
+                    reply.put("decision", pending);
+                } else if (session.channel.isFinished()) {
+                    reply.put("over", session.over);
+                }
+                reply.put("view", session.view());
+                return reply;
+            }
             case "fork":
                 return fork(session, request.has("via") ? request.get("via").getAsString() : null,
                         request.has("horizon") ? request.get("horizon").getAsInt() : 0);

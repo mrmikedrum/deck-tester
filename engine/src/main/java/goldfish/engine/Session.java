@@ -21,6 +21,7 @@ import forge.game.card.Card;
 import forge.game.card.CounterEnumType;
 import forge.game.card.CounterType;
 import forge.game.combat.Combat;
+import forge.game.keyword.Keyword;
 import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.player.RegisteredPlayer;
@@ -966,6 +967,196 @@ final class Session {
                 }
             }
             view.put("text", texts);
+        }
+        return view;
+    }
+
+    // ---- client view ----
+
+    private static final Map<Keyword, String> SHOWN_KEYWORDS = new LinkedHashMap<>();
+    static {
+        SHOWN_KEYWORDS.put(Keyword.FLYING, "Flying");
+        SHOWN_KEYWORDS.put(Keyword.REACH, "Reach");
+        SHOWN_KEYWORDS.put(Keyword.TRAMPLE, "Trample");
+        SHOWN_KEYWORDS.put(Keyword.VIGILANCE, "Vigilance");
+        SHOWN_KEYWORDS.put(Keyword.DEATHTOUCH, "Deathtouch");
+        SHOWN_KEYWORDS.put(Keyword.LIFELINK, "Lifelink");
+        SHOWN_KEYWORDS.put(Keyword.HASTE, "Haste");
+        SHOWN_KEYWORDS.put(Keyword.FIRST_STRIKE, "First strike");
+        SHOWN_KEYWORDS.put(Keyword.DOUBLE_STRIKE, "Double strike");
+        SHOWN_KEYWORDS.put(Keyword.MENACE, "Menace");
+        SHOWN_KEYWORDS.put(Keyword.HEXPROOF, "Hexproof");
+        SHOWN_KEYWORDS.put(Keyword.INDESTRUCTIBLE, "Indestructible");
+        SHOWN_KEYWORDS.put(Keyword.DEFENDER, "Defender");
+        SHOWN_KEYWORDS.put(Keyword.FLASH, "Flash");
+        SHOWN_KEYWORDS.put(Keyword.WARD, "Ward");
+    }
+
+    /** A card as a client draws it: what it is now (a copy shows what it copies) and its state on the table. */
+    private Map<String, Object> shown(Card card) {
+        Map<String, Object> c = new LinkedHashMap<>();
+        c.put("id", card.getId());
+        c.put("name", card.isFaceDown() ? "" : card.getName());
+        c.put("owner", card.getOwner().getName());
+        c.put("controller", card.getController() == null ? card.getOwner().getName() : card.getController().getName());
+        if (card.isFaceDown()) {
+            c.put("faceDown", true);
+        }
+        c.put("type", card.getType().toString());
+        if (card.getManaCost() != null && !card.getManaCost().isNoCost()) {
+            c.put("cost", card.getManaCost().getShortString());
+        }
+        if (card.isCreature()) {
+            c.put("power", card.getNetPower());
+            c.put("toughness", card.getNetToughness());
+            if (card.isSick()) {
+                c.put("sick", true);
+            }
+        }
+        if (card.isPlaneswalker()) {
+            c.put("loyalty", card.getCurrentLoyalty());
+        }
+        if (card.isTapped()) {
+            c.put("tapped", true);
+        }
+        if (card.isToken()) {
+            c.put("token", true);
+        }
+        if (card.isCommander()) {
+            c.put("commander", true);
+        }
+        if (card.getCloneOrigin() != null || card.isCloned()) {
+            c.put("copy", true);
+        }
+        if (card.getAttachedTo() != null) {
+            c.put("attachedTo", card.getAttachedTo().getId());
+        }
+        if (!card.getCounters().isEmpty()) {
+            Map<String, Integer> counters = new TreeMap<>();
+            card.getCounters().entrySet().forEach(e -> counters.put(e.getElement().getName(), e.getCount()));
+            c.put("counters", counters);
+        }
+        List<String> keywords = new ArrayList<>();
+        SHOWN_KEYWORDS.forEach((keyword, name) -> {
+            if (card.hasKeyword(keyword)) {
+                keywords.add(name);
+            }
+        });
+        if (!keywords.isEmpty()) {
+            c.put("keywords", keywords);
+        }
+        String text = card.isInZone(ZoneType.Battlefield) ? card.getAbilityText() : card.getOracleText();
+        if (text != null && !text.isBlank() && !card.isFaceDown()) {
+            c.put("text", text.replace("\\n", "\n").trim());
+        }
+        return c;
+    }
+
+    private List<Map<String, Object>> shown(Iterable<Card> cards) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        cards.forEach(card -> {
+            if (!card.isImmutable()) {
+                out.add(shown(card));
+            }
+        });
+        return out;
+    }
+
+    /**
+     * Everything this seat's own client shows, by card id: each player's public zones (and this player's hand),
+     * the stack with what each item targets, and combat. Read while Forge plays on, so a caller retries a read
+     * that fails.
+     */
+    Map<String, Object> view() {
+        Map<String, Object> view = new LinkedHashMap<>();
+        if (game == null || pilot == null) {
+            return view;
+        }
+        var ph = game.getPhaseHandler();
+        view.put("turn", ph.getTurn());
+        view.put("label", turnLabel());
+        view.put("active", ph.getPlayerTurn() == null ? null : ph.getPlayerTurn().getName());
+        view.put("phase", ph.getPhase() == null ? "setup" : ph.getPhase().name());
+        view.put("priority", ph.getPriorityPlayer() == null ? null : ph.getPriorityPlayer().getName());
+        view.put("me", pilot.getName());
+        List<Map<String, Object>> players = new ArrayList<>();
+        List<Player> order = new ArrayList<>(game.getPlayers());
+        java.util.Collections.rotate(order, -Math.max(0, order.indexOf(pilot)));
+        for (Player player : order) {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("name", player.getName());
+            p.put("life", player.getLife());
+            if (player.getPoisonCounters() > 0) {
+                p.put("poison", player.getPoisonCounters());
+            }
+            if (player.isMonarch()) {
+                p.put("monarch", true);
+            }
+            if (player.hasLost()) {
+                p.put("lost", true);
+            }
+            if (player.equals(pilot)) {
+                p.put("hand", shown(player.getCardsIn(ZoneType.Hand)));
+            } else {
+                p.put("handCount", player.getCardsIn(ZoneType.Hand).size());
+            }
+            p.put("library", player.getCardsIn(ZoneType.Library).size());
+            p.put("battlefield", shown(player.getCardsIn(ZoneType.Battlefield)));
+            p.put("command", shown(player.getCardsIn(ZoneType.Command)));
+            p.put("graveyard", shown(player.getCardsIn(ZoneType.Graveyard)));
+            p.put("exile", shown(player.getCardsIn(ZoneType.Exile)));
+            Map<String, Integer> damage = new LinkedHashMap<>();
+            for (Map.Entry<Card, Integer> e : player.getCommanderDamage()) {
+                damage.put(String.valueOf(e.getKey().getId()), e.getValue());
+            }
+            if (!damage.isEmpty()) {
+                p.put("commanderDamage", damage);
+            }
+            players.add(p);
+        }
+        view.put("players", players);
+        List<Map<String, Object>> stack = new ArrayList<>();
+        game.getStack().forEach(item -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", item.getId());
+            entry.put("source", item.getSourceCard() == null ? null : shown(item.getSourceCard()));
+            entry.put("controller", item.getActivatingPlayer() == null ? null : item.getActivatingPlayer().getName());
+            entry.put("spell", item.isSpell());
+            entry.put("text", Labels.named(item.getStackDescription(), ""));
+            List<Object> targets = new ArrayList<>();
+            for (var sub = item; sub != null; sub = sub.getSubInstance()) {
+                var choices = sub.getTargetChoices();
+                if (choices != null) {
+                    choices.getTargetCards().forEach(card -> targets.add(card.getId()));
+                    choices.getTargetPlayers().forEach(player -> targets.add(player.getName()));
+                }
+            }
+            if (!targets.isEmpty()) {
+                entry.put("targets", targets);
+            }
+            stack.add(entry);
+        });
+        view.put("stack", stack);
+        Combat combat = game.getCombat();
+        if (combat != null && !combat.getAttackers().isEmpty()) {
+            List<Map<String, Object>> attackers = new ArrayList<>();
+            for (Card attacker : combat.getAttackers()) {
+                GameEntity defender = combat.getDefenderByAttacker(attacker);
+                Map<String, Object> a = new LinkedHashMap<>();
+                a.put("id", attacker.getId());
+                a.put("defender", defender instanceof Card walker ? (Object) walker.getId() : defender == null ? null : defender.getName());
+                attackers.add(a);
+            }
+            List<Map<String, Object>> blockers = new ArrayList<>();
+            for (Card blocker : combat.getAllBlockers()) {
+                for (Card blocked : combat.getAttackersBlockedBy(blocker)) {
+                    blockers.add(Map.of("id", blocker.getId(), "blocking", blocked.getId()));
+                }
+            }
+            view.put("combat", Map.of("attackers", attackers, "blockers", blockers));
+        }
+        if (game.isGameOver()) {
+            view.put("over", true);
         }
         return view;
     }
