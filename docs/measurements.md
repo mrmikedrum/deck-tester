@@ -282,5 +282,26 @@ resolved (the copy described the entry from the token as it is now), and a goade
 away (the copy dropped goad), both fixed since. Two plays it showed: an all-out attack that left Jev 1 open to
 a 30-point crack-back (now stated in the lines), and the same token transformed six times in a row.
 A second four-Jev table after those fixes, stopped in round 7: 994 forks, none failed or refused, Dack Fayden
-cast. One of Jev 3's turns took about 40 minutes for 17 decisions and 51 forks; what made those forks slow is
-not yet known.
+cast. One of Jev 3's turns took about 40 minutes for 17 decisions and 51 forks: its forks never ended, because a
+goaded creature's controller that declared no attack was asked again forever (Forge re-asks until the attack is
+legal). Fixed since, and a fork that neither asks nor ends within 15 s is now recorded as stalled.
+
+**Blocks left to Forge's AI, and token copies fixed** (2026-11-04, Forge `e7020aa1-da26829a`): fourteen
+situations, two runs each, 26 of 28 right, Forge's AI 26 of 28. Blocks, now Forge's AI's at table seats, 10 of 10
+(deathtouch included). A token copied without its paper card couldn't transform, so Jev's lines showed an
+Incubator's transform doing nothing and the second activation looked as good as passing; with the fix, Jev
+passes instead of activating it again (2 of 2). Jev still holds a flash creature at the end of the turn before its
+own (0 of 2); Forge's AI still doesn't attack the open player. Saying "ends the same as pass, with 2 less mana"
+on the line raised confidence in passing from 0.59 to 0.70 offline (5 contexts, 2 runs each); not adopted, as a
+small gain that would also change goldfish. Copy benches on that build: 210 of 210 table copies (median 15 ms) and
+48 of 48 goldfish copies landed in the same game.
+
+**A four-Jev table to the end** (Forge `e7020aa1-d34a479b`): the first try froze in round 9, when Jev 3 lost: Forge
+keeps a departed player's effects working from another player's command zone, the copier couldn't place them,
+and the crash stopped Forge's game thread while the table waited. Fixed in the copier; a failed copy now costs
+only that stop's lookahead, and a dead game thread ends the table. The rerun went to the end: Jev 2 (Assimilation)
+won in round 17, three players knocked out on the way, 24 minutes, 735 model calls, $0.24. 3,184 forks, 15
+failed: 14 when Dack Fayden's reveal put cards on the bottom in random order (the table's random sequence is
+shared by every seat, so a fork's order can differ; the fingerprint check caught each), and one Forge AI block
+search stalled. No refused attacks. One play it showed: Jev 1 chose Recon Craft Theta's crew nine times in a round
+when it couldn't be paid, each one failing.

@@ -28,6 +28,9 @@ Local card scripts work today ([architecture](architecture.md#local-card-scripts
 - More advisor roles as decks need them (`goldfish/advice.py`): sacrifice outlets, untap effects, cost
   reducers; and a scenario for each role that gets a line.
 - Confirm the after-line on 40 games against the baseline (it is measured on the bench only).
+- An ability Forge offers but that can't be paid (a crew with every creature tapped) fails, and Jev chooses it
+  again: nine times in one round at a four-Jev table (measurements, Tables). Saying an option just failed is
+  the likely fix; measure it on goldfish too.
 - Station: Jev stations past a Spacecraft's threshold (one Atraxa game tapped seven creatures a turn up
   to 44 charge counters); every line looks the same in development terms. A threshold fact in the deck's
   advisor is the likely fix.
@@ -37,10 +40,12 @@ Local card scripts work today ([architecture](architecture.md#local-card-scripts
 `goldfish table` hosts agents with people (architecture, Tables). Next:
 
 - A game with a person at the table: the desktop client against Jev seats, start to finish.
-- Pace: one Jev turn at a four-Jev table took 40 minutes (51 forks); find what made those forks slow.
-- Jev's table misses (`bench/table_scenarios.py`, measurements): blocking a deathtouch attacker with a big
-  creature, holding a flash creature at the end of the turn before its own. More situations: counterspells and
-  other responses to a spell, combat tricks after blocks, repeated activations that undo each other.
+- Copy forks that still fail now and then: a rebound spell (Ephemerate) not offered at the copy's upkeep, a token
+  missing from a copy's targets, and cards put on the bottom in random order (Dack Fayden), since the table's
+  random sequence is shared by every seat.
+- Jev's table misses (`bench/table_scenarios.py`, measurements): holding a flash creature at the end of the turn
+  before its own, a second activation of an ability already on the stack. More situations: counterspells and
+  other responses to a spell, combat tricks after blocks.
 - A fork is refused when another player acted after the seat's last stop (blocks after an attacker's combat
   trick, say), and that decision is asked from the text alone: copies taken at the other players' priority
   would let it be played out.

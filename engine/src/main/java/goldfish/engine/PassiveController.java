@@ -4,6 +4,7 @@ import forge.ai.PlayerControllerAi;
 import forge.game.Game;
 import forge.game.card.Card;
 import forge.game.combat.Combat;
+import forge.game.combat.CombatUtil;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
@@ -14,7 +15,7 @@ import java.util.List;
 /**
  * A goldfish opponent: keeps seven, plays a land on each of its turns, and never does anything else. As another
  * player in a table seat's fork it also blocks as Forge's AI would, so a line that attacks meets the blockers
- * that are there; it still casts nothing and never attacks (a fork assumes the others pass).
+ * that are there; it still casts nothing and attacks only as the rules force it to (a fork assumes the others pass).
  */
 public class PassiveController extends PlayerControllerAi {
     private final boolean blocks;
@@ -33,8 +34,17 @@ public class PassiveController extends PlayerControllerAi {
         return true;
     }
 
+    /**
+     * No attack, unless the rules force one (goaded creatures, ones that attack each combat if able): then the
+     * attack that breaks the fewest requirements. Forge asks again until an attack is legal, so declaring nothing
+     * would never end.
+     */
     @Override
-    public void declareAttackers(Player attacker, Combat combat) { }
+    public void declareAttackers(Player attacker, Combat combat) {
+        if (!CombatUtil.validateAttackers(combat)) {
+            combat.getAttackConstraints().getLegalAttackers().getLeft().forEach(combat::addAttacker);
+        }
+    }
 
     @Override
     public void declareBlockers(Player defender, Combat combat) {

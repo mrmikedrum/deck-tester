@@ -30,16 +30,17 @@ Goldfish-Upstream: offer
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- .../java/forge/ai/simulation/GameCopier.java  | 301 ++++++++++++++++--
+ .../java/forge/ai/simulation/GameCopier.java  | 309 ++++++++++++++++--
+ .../java/forge/game/card/token/TokenInfo.java |  13 +-
  .../main/java/forge/game/combat/Combat.java   |  20 +-
  .../java/forge/game/phase/PhaseHandler.java   |  20 ++
  .../SpellAbilityStackInstance.java            |   5 +
  .../main/java/forge/game/zone/MagicStack.java |   8 +
  .../src/main/java/forge/game/zone/Zone.java   |  19 ++
- 6 files changed, 342 insertions(+), 31 deletions(-)
+ 7 files changed, 358 insertions(+), 36 deletions(-)
 
 diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
-index bbca851bda2..640ee7cfed3 100644
+index bbca851bda2..37e370dbaa4 100644
 --- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
 +++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
 @@ -21,7 +21,14 @@ import forge.game.player.RegisteredPlayer;
@@ -403,7 +404,17 @@ index bbca851bda2..640ee7cfed3 100644
              otherCard.setState(card.getCurrentStateName(), false);
              if (card.isAttachedToEntity()) {
                  GameEntity ge = gameObjectMap.map(card.getEntityAttachedTo());
-@@ -418,6 +643,8 @@ public class GameCopier {
+@@ -396,7 +621,8 @@ public class GameCopier {
+     private static final boolean USE_FROM_PAPER_CARD = true;
+     private Card createCardCopy(Game newGame, Player newOwner, Card c, Player aiPlayer) {
+         if (c.isToken() && !c.isImmutable()) {
+-            Card result = new TokenInfo(c).makeOneToken(newOwner, c.getId());
++            // with the original's paper card: its rules are what let a transforming token (an Incubator) transform
++            Card result = new TokenInfo(c).makeOneToken(newOwner, c.getId(), c.getPaperCard());
+             new CardCopyService(c).copyCopiableCharacteristics(result, null, null);
+             // a token copy of a transforming (or otherwise multi-faced) permanent has its other faces too, and may be
+             // showing one of them: without them it cannot be put back in the state it is in
+@@ -418,6 +644,8 @@ public class GameCopier {
              } else {
                  newCard = CardFactory.getCard(c.getPaperCard(), newOwner, c.getId(), newGame);
              }
@@ -412,7 +423,7 @@ index bbca851bda2..640ee7cfed3 100644
              newCard.setCommander(c.isCommander());
              return newCard;
          }
-@@ -426,6 +653,13 @@ public class GameCopier {
+@@ -426,6 +654,13 @@ public class GameCopier {
          // The issue is that it requires parsing the original card from scratch from the paper card. We should
          // improve the copier to accurately copy the card from its actual state, so that the paper card shouldn't
          // be needed. Once the below code accurately copies the card, remove the USE_FROM_PAPER_CARD code path.
@@ -426,8 +437,13 @@ index bbca851bda2..640ee7cfed3 100644
          Card newCard;
          if (c instanceof DetachedCardEffect)
              newCard = new DetachedCardEffect((DetachedCardEffect) c, newGame, false);
-@@ -455,6 +689,9 @@ public class GameCopier {
-         final Player owner = playerMap.get(c.getOwner());
+@@ -452,13 +687,17 @@ public class GameCopier {
+     }
+ 
+     private void addCard(Game newGame, ZoneType zone, Card c, Player aiPlayer) {
+-        final Player owner = playerMap.get(c.getOwner());
++        // an effect owned by a player who left the game works on from another player's command zone
++        final Player owner = playerMap.containsKey(c.getOwner()) ? playerMap.get(c.getOwner()) : newGame.getPlayer(c.getOwner().getId());
          final Card newCard = createCardCopy(newGame, owner, c, aiPlayer);
          cardMap.put(c, newCard);
 +        if (c.getCurrentRoom() != null) {
@@ -436,7 +452,12 @@ index bbca851bda2..640ee7cfed3 100644
  
          // TODO ExiledWith
  
-@@ -509,6 +746,12 @@ public class GameCopier {
+-        Player zoneOwner = owner;
++        Player zoneOwner = c.getZone() != null && playerMap.containsKey(c.getZone().getPlayer()) ? playerMap.get(c.getZone().getPlayer()) : owner;
+         // everything the CreatureEvaluator checks must be set here
+         if (zone == ZoneType.Battlefield) {
+             // TODO: Controllers' list with timestamps should be copied.
+@@ -509,6 +748,12 @@ public class GameCopier {
              if (c.isSuspected()) {
                  newCard.setSuspected(true);
              }
@@ -449,6 +470,45 @@ index bbca851bda2..640ee7cfed3 100644
              if (c.isPlaneswalker()) {
                  for (SpellAbility sa : c.getAllSpellAbilities()) {
                      int active = sa.getActivationsThisTurn();
+diff --git a/forge-game/src/main/java/forge/game/card/token/TokenInfo.java b/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
+index 6b774f54c1f..6bbdb0fff02 100644
+--- a/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
++++ b/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
+@@ -18,6 +18,7 @@ import forge.game.card.CardFactoryUtil;
+ import forge.game.keyword.KeywordInterface;
+ import forge.game.player.Player;
+ import forge.game.spellability.SpellAbility;
++import forge.item.IPaperCard;
+ import forge.item.PaperToken;
+ import org.apache.commons.lang3.StringUtils;
+ 
+@@ -122,7 +123,11 @@ public class TokenInfo {
+     }
+ 
+     private Card toCard(Game game, int id) {
+-        final Card c = new Card(id, game);
++        return toCard(game, id, null);
++    }
++
++    private Card toCard(Game game, int id, IPaperCard paper) {
++        final Card c = new Card(id, paper, game);
+         c.setName(name);
+         c.setImageKey(ImageKeys.getTokenKey(imageName));
+ 
+@@ -156,8 +161,12 @@ public class TokenInfo {
+         return makeOneToken(controller, controller.getGame().nextCardId());
+     }
+     public Card makeOneToken(final Player controller, int id) {
++        return makeOneToken(controller, id, null);
++    }
++    /** A token with the paper card it is made from, whose rules give it its other faces (an Incubator transforms). */
++    public Card makeOneToken(final Player controller, int id, IPaperCard paper) {
+         final Game game = controller.getGame();
+-        final Card c = toCard(game, id);
++        final Card c = toCard(game, id, paper);
+ 
+         c.setOwner(controller);
+         c.setGamePieceType(GamePieceType.TOKEN);
 diff --git a/forge-game/src/main/java/forge/game/combat/Combat.java b/forge-game/src/main/java/forge/game/combat/Combat.java
 index 302c6deabc5..e7ca71c2c43 100644
 --- a/forge-game/src/main/java/forge/game/combat/Combat.java

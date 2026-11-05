@@ -1125,6 +1125,13 @@ public class ManualController extends PlayerControllerAi {
                     combat.addAttacker(creature, defenders.get(pick - 1));
                 }
             }
+            if (!CombatUtil.validateAttackers(combat)) {
+                // an attack the rules refuse (goaded creatures stay home): Forge would ask again for ever, so
+                // Forge's AI attacks instead, on the record
+                chosen.forEach(combat::removeFromCombat);
+                session.recorder.write("attack", "failed", "breaks an attack requirement", "by", "ai");
+                super.declareAttackers(attacker, combat);
+            }
         }
         trace("attackers picks=" + picks + " ai=" + declared[0] + " declared=" + combat.getAttackers());
     }

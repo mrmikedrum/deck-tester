@@ -35,15 +35,9 @@ class TableDeciderTest(unittest.TestCase):
         self.assertEqual(decider.line_name(decision, ["Bear 2/2 -> Bo"], lines), "attack Bo with everything that can")
         self.assertEqual(decider.line_name(decision, ["Elf 1/1 -> Ana"], lines), "the attack Forge's AI would make")
 
-    def test_blocks_offer_each_single_block(self):
-        decision = {"kind": "block", "options": ["Wurm 6/4 blocks Bear 2/2", "Elf 1/1 blocks Bear 2/2"]}
-        self.assertEqual(table_model.block_lines(decision), {"Wurm 6/4 blocks Bear 2/2": ["Wurm 6/4 blocks Bear 2/2"],
-                                                             "Elf 1/1 blocks Bear 2/2": ["Elf 1/1 blocks Bear 2/2"],
-                                                             "no blocks": []})
-        decider = table_model.TableDecider("", 2, model.Usage())
-        lines = decider.lines(decision)
-        self.assertEqual(decider.line_name(decision, [], lines), "no blocks")
-        self.assertEqual(decider.line_name(decision, decision["options"], lines), "the blocks Forge's AI would make")
+    def test_blocks_are_asked_for_the_record_and_left_to_forges_ai(self):
+        self.assertIn("block", table_model.ASKS)
+        self.assertNotIn("block", table_model.TableDecider("", 2, model.Usage()).kinds)
 
     def test_other_players_turns_are_looked_ahead_on(self):
         decider = table_model.TableDecider("", 2, model.Usage())
@@ -70,11 +64,13 @@ class TableDeciderTest(unittest.TestCase):
         self.assertTrue(text.endswith("; life: you 35, Ana 33, Bo 40"))
 
     def test_a_line_names_what_each_player_lost(self):
-        before = dict(STATE, battlefield=[{"name": "Forest"}, {"name": "Craw Wurm", "pt": "6/4"}],
-                      opponents=[{"name": "Ana", "life": 40, "battlefield": [{"name": "Typhoid Rats", "pt": "1/1"}]}])
-        after = dict(before, battlefield=[{"name": "Forest"}], opponents=[{"name": "Ana", "life": 40, "battlefield": []}])
+        before = dict(STATE, battlefield=[{"name": "Forest", "id": 1}, {"name": "Craw Wurm", "pt": "6/4", "id": 2},
+                                          {"name": "Incubator Token", "id": 3}],
+                      opponents=[{"name": "Ana", "life": 40, "battlefield": [{"name": "Typhoid Rats", "pt": "1/1", "id": 4}]}])
+        after = dict(before, battlefield=[{"name": "Forest", "id": 1}, {"name": "Phyrexian Token", "pt": "4/4", "id": 3}],
+                     opponents=[{"name": "Ana", "life": 40, "battlefield": []}])
         text = table_model.TableDecider("", 1, model.Usage()).result(before, model.Line([], [], after, None, 0), 3)
-        self.assertIn("; gone: your Craw Wurm, Ana's Typhoid Rats; life: you 38, Ana 40", text)
+        self.assertIn("; gone: your Craw Wurm, Ana's Typhoid Rats; life: you 38, Ana 40", text)  # the Incubator transformed
 
     def test_a_line_says_what_could_attack_back(self):
         eot = {"t": "eot", "turn": 3, "lands": 3, "mana": 3, "unspent": 0, "hand": 1, "creatures": 1, "power": 6,

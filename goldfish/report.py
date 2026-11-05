@@ -78,10 +78,10 @@ def summary(manifest: dict, summaries: List[dict]) -> List[str]:
                      + (f" · {used['failed']} calls failed (Forge's AI decided)" if used.get("failed") else "")
                      + f" · {used.get('played_out', 0)} lines played out"
                      + (f" ({used['fork_ms']} ms a fork)" if used.get("fork_ms") else "")
-                     + (f" · {used['drifted']} decisions without lookahead (a fork drifted)" if used.get("drifted") else ""))
+                     + (f" · {used['drifted']} decisions without lookahead (a fork failed)" if used.get("drifted") else ""))
         failed, made = sum(s["forks_failed"] for s in summaries), sum(s["forks"] for s in summaries)
         if failed:
-            lines.append(f"forks: {failed} of {made} drifted")
+            lines.append(f"forks: {failed} of {made} failed")
         blind = [f"{game['session']} from T{s['blind']}" for game, s in zip(games, summaries) if s["blind"]]
         if blind:
             lines.append("lookahead lost for the rest of the game (the game left its own replay): " + ", ".join(blind))
@@ -139,7 +139,7 @@ def per_game(manifest: dict, summaries: List[dict]) -> List[str]:
         if s["missed"]:
             parts.append("missed drop " + ",".join(f"T{t}" for t in s["missed"]))
         if s["forks_failed"]:
-            parts.append(f"forks {s['forks_failed']}/{s['forks']} drifted" + (f", none replayed from T{s['blind']}" if s["blind"] else ""))
+            parts.append(f"forks {s['forks_failed']}/{s['forks']} failed" + (f", none replayed from T{s['blind']}" if s["blind"] else ""))
         if game.get("loop_guard"):
             parts.append(f"loop guard T{game['loop_guard']}")
         if game.get("over") not in (None, "turn limit"):

@@ -53,6 +53,10 @@ class DigestTest(unittest.TestCase):
     def test_header_names_deck_revision_and_seed(self):
         self.assertEqual(records.header(FACTS), "marath@56fe6c23 seed 11")
 
+    def test_a_refused_attack_is_said(self):
+        line = records.happened([{"t": "attack", "turn": 3, "failed": "breaks an attack requirement", "by": "ai"}])
+        self.assertEqual(line, "attack refused (breaks an attack requirement), Forge's AI's instead")
+
     def test_happened_groups_runs(self):
         line = records.happened(FACTS[1:3] + FACTS[12:13] + FACTS[14:])
         self.assertEqual(line, "drew Forest, Sol Ring · couldn't cast Sol Ring X=2 · Opp 1 37 · over: turn limit")

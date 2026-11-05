@@ -79,11 +79,13 @@ final class Table {
             HostedMatch match = lobby.getHostedMatch();
             game = match == null ? null : match.getGame();
             state = "playing";
-            while (game != null && !game.isGameOver()) {
+            while (game != null && !game.isGameOver() && seats.values().stream().noneMatch(Session::gameThreadDied)) {
                 Thread.sleep(500);
             }
             GameOutcome outcome = game == null ? null : game.getOutcome();
-            if (stopped) {
+            if (game != null && !game.isGameOver()) {
+                state = "error: Forge's game thread stopped (its stack trace is in the log)";
+            } else if (stopped) {
                 state = "stopped";
             } else if (outcome == null || outcome.isDraw() || outcome.getWinningLobbyPlayer() == null) {
                 state = "over: a draw";

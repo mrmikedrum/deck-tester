@@ -123,6 +123,7 @@ final class Session {
     private int cursor;
     volatile int pilotTurn;
     volatile Game game;
+    private volatile Thread thread;
     volatile Player pilot;
     volatile String over;
     /** Milliseconds building the game (decks, cards) before the first action, for measuring forks. */
@@ -165,6 +166,9 @@ final class Session {
     /** A fork made the given way: from a copy (when there is one) or by replaying from the seed. */
     Session fork(String id, Path runsDir, boolean fromCopy) throws IOException {
         Checkpoint at = checkpoint;
+        if (fromCopy && at == null && copyFailed != null) {
+            throw new IllegalStateException("fork drifted: the game could not be copied here: " + copyFailed);
+        }
         if (fromCopy && at != null && othersActed && atTable) {
             // the decisions since the copy follow other players' actions, which a fork doesn't make
             throw new IllegalStateException("fork drifted: other players acted since the last copy of the game");
@@ -232,11 +236,31 @@ final class Session {
         if (random == null) {
             random = SeededRandom.current(); // a seat at a table: the table's game thread's sequence
         }
+        if (atTable) {
+            thread = Thread.currentThread(); // the table's game thread, for where() and Table's check that it is alive
+        }
         if (setup.copyForks() && parent == null) {
             othersActed = false;
-            checkpoint = new Checkpoint(new GameCopier(game).withStack(true).makeCopy(), log.size(), random.copy(), pilotTurn,
-                    memory(pilot), reasking);
+            try {
+                checkpoint = new Checkpoint(new GameCopier(game).withStack(true).makeCopy(), log.size(), random.copy(), pilotTurn,
+                        memory(pilot), reasking);
+                copyFailed = null;
+            } catch (RuntimeException error) {
+                // a copy that fails costs this stop its lookahead, never the game
+                checkpoint = null;
+                copyFailed = error.toString();
+                error.printStackTrace();
+            }
         }
+    }
+
+    /** Why the game couldn't be copied at the last checkpoint; null when it was. */
+    private volatile String copyFailed;
+
+    /** A table seat whose game thread has died: Forge's game stopped without ending. */
+    boolean gameThreadDied() {
+        Thread running = thread;
+        return atTable && running != null && !running.isAlive();
     }
 
     /** Whether this copy fork's first play decision is asked again, as its parent's was when the copy was made. */
@@ -332,7 +356,7 @@ final class Session {
 
     /** Builds and plays the game on its own thread, so every shuffle draws from this session's seed. */
     void start() {
-        Thread thread = new Thread(() -> {
+        thread = new Thread(() -> {
             random = SeededRandom.seed(setup.seed());
             long began = System.nanoTime();
             try {
@@ -400,6 +424,24 @@ final class Session {
         }, "game-" + id);
         thread.setDaemon(true);
         thread.start();
+    }
+
+    /** Where the game thread is now, innermost first, for a game that stopped making progress. */
+    String where() {
+        Thread running = thread;
+        if (running == null) {
+            return "not started";
+        }
+        List<String> frames = new ArrayList<>();
+        for (StackTraceElement frame : running.getStackTrace()) {
+            if (frame.getClassName().startsWith("forge.") || frame.getClassName().startsWith("goldfish.")) {
+                frames.add(frame.getClassName().replaceAll(".*\\.", "") + "." + frame.getMethodName() + ":" + frame.getLineNumber());
+            }
+            if (frames.size() == 8) {
+                break;
+            }
+        }
+        return running.getState() + " in " + String.join(" < ", frames);
     }
 
     private String outcome() {
@@ -828,6 +870,7 @@ final class Session {
     private Map<String, Object> permanent(Card card) {
         Map<String, Object> permanent = new LinkedHashMap<>();
         permanent.put("name", card.getName());
+        permanent.put("id", card.getId()); // the same card after it transforms or changes its name
         if (card.isTapped()) {
             permanent.put("tapped", true);
         }

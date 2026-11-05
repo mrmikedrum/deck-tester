@@ -10,6 +10,7 @@ run.
 """
 
 import argparse
+import json
 import sys
 import threading
 import time
@@ -103,13 +104,18 @@ SCENARIOS = {
                   ["create", "Grizzly Bears", "battlefield", "Ana"], ["create", "Avenger of Zendikar", "battlefield", "Bo"]],
         "first": ["Swords to Plowshares"], "at": {"kind": "targets"},
         "expected": [["Avenger of Zendikar"]]},
+    "no-second-transform": {
+        "note": "Jev's Incubator is transforming, the ability on the stack: activating it again does nothing once it has transformed (2 mana for nothing), so pass.",
+        "setup": [["create", "Plains", "battlefield"]] * 7 + [["create", "Phyrexian Awakening", "hand"]],
+        "first": ["Phyrexian Awakening", "Incubator Token"], "at": {"kind": "play", "mine": True},
+        "expected": [[]]},
 }
 
 
 def seat_request(name: str) -> dict:
     deck = decklist.load(ROOT / "examples" / "decks" / f"{DECKS[name]}.txt")
     return {"name": name, "commanders": deck.commanders, "main": deck.main, "deck": DECKS[name], "hash": deck.revision(),
-            "ask": sorted(table_model.KINDS), "mana": "auto"}
+            "ask": sorted(table_model.ASKS), "mana": "auto"}
 
 
 def request(session: str, **fields) -> dict:
@@ -230,9 +236,15 @@ class Run:
                 decider.step(reply)
                 numbers = sent.get("answer")
                 labels = [options[n - 1] for n in numbers] if numbers is not None and options else numbers
+                by = "model"
+                if numbers is None:  # left to Forge's AI (blocks, at a table): what it answered, from the record
+                    with open(reply["records"], encoding="utf-8") as handle:
+                        facts = [json.loads(line) for line in handle if line.strip()]
+                    labels = next((f["answer"] for f in reversed(facts) if f["t"] == "decision" and f["kind"] == decision["kind"]), None)
+                    ai["picked"], by = labels, "Forge's AI"
                 if decision["kind"] == "play" and labels == ["pass"]:
                     labels = []
-                self.verdict = (labels, self.right(labels), "model" if numbers is not None else "deferred to Forge's AI",
+                self.verdict = (labels, self.right(labels), by,
                                 self.right([] if ai.get("picked") == ["pass"] else ai.get("picked")))
                 return
             if decision["kind"] == "play":

@@ -41,7 +41,7 @@ class SummaryTest(unittest.TestCase):
                     "model": {"model": "m", "calls": 1, "cost": 0.0, "seconds_per_call": 0.1, "drifted": 2},
                     "games": [{"seed": 7, "session": "g1"}]}
         text = "\n".join(report.summary(manifest, [blind]))
-        self.assertIn("forks: 4 of 6 drifted", text)
+        self.assertIn("forks: 4 of 6 failed", text)
         self.assertIn("g1 from T2", text)
 
     def test_report_lines(self):

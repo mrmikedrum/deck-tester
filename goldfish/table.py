@@ -25,7 +25,7 @@ class Seat:
         self.handlers = batch.load_pilot(pilot) if pilot else {}
 
     def request(self) -> dict:
-        asks = (set(self.handlers) - {"advise"}) | (set(table_model.KINDS) if self.plan else set())
+        asks = (set(self.handlers) - {"advise"}) | (set(table_model.ASKS) if self.plan else set())
         return {"name": self.name, "commanders": self.deck.commanders, "main": self.deck.main,
                 "deck": Path(self.deck_path).stem, "hash": self.deck.revision(), "ask": sorted(asks), "mana": "auto"}
 

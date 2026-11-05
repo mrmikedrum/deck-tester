@@ -110,7 +110,7 @@ class Usage:
         self.failed = 0  # calls the API never answered, even after retries: Forge's AI decided those
         self.routed = 0  # fast mode: decisions answered from the text alone, confidently enough to skip the forks
         self.played_out = 0  # lines played out in forks to show the model their results
-        self.drifted = 0  # forks that didn't replay into the same game
+        self.drifted = 0  # decisions whose forks failed: didn't replay into the same game, or stalled in Forge
         self.fork_ms = 0  # replaying the game to the decision
         self.setup_ms = 0  # of which, building the game
         self.rollout_ms = 0  # playing the line out to the next turn
@@ -431,7 +431,7 @@ class Decider:
     def play_out(self, reply: dict, first: Optional[list]) -> Line:
         """Fork the game and play the line that starts with first (labels or a number; None for Forge's AI's
         pick) to the start of the next turn, with Forge's AI deciding the rest. Raises EngineError when the
-        fork didn't replay into the same game."""
+        fork didn't replay into the same game, or stalled."""
         decision = reply["decision"]
         now = turn(decision)
         with FORKS_AT_ONCE:
@@ -493,7 +493,7 @@ class Decider:
     def explore(self, reply: dict, tries: Dict[str, list]) -> Tuple[Dict[str, Line], Optional[str]]:
         """Play out Forge's AI's pick and every line to try, in parallel forks. Returns the lines by name and
         the name of the AI's pick (added as a line of its own when it isn't among those tried), or None for
-        the lines when a fork drifted."""
+        the lines when a fork failed."""
         names = [None] + list(tries)
         with ThreadPoolExecutor(max_workers=max(1, min(self.workers, len(names)))) as pool:
             played = list(pool.map(lambda name: self.play_out(reply, None if name is None else tries[name]), names))
@@ -573,7 +573,7 @@ class Decider:
             try:
                 lines, default = self.explore(reply, tries)
             except engine.EngineError as error:
-                if "drifted" not in str(error):
+                if "drifted" not in str(error) and "stalled" not in str(error):
                     raise
                 with self.usage.lock:
                     self.usage.drifted += 1

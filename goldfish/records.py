@@ -67,6 +67,8 @@ def happened(facts: Iterable[dict]) -> str:
             parts.append(f"{fact['player']} {fact['life']}")
         elif kind == "override":
             parts.append(f"override: {fact['result']}")
+        elif kind in ("attack", "block") and fact.get("failed"):
+            parts.append(f"{kind} refused ({fact['failed']}), Forge's AI's instead")
         elif kind == "restore":
             parts.append(f"restored {fact['name']}")
         elif kind == "end":

@@ -40,6 +40,9 @@ import java.util.stream.Stream;
 public final class Server {
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
     private static final long WAIT_MILLIS = 120_000;
+    /** How long a fork may play on without asking or ending: lines take a second or two, and one that hangs in
+     * Forge would otherwise hold up its seat's decision (and a table) for the full wait. */
+    private static final long FORK_WAIT_MILLIS = 15_000;
 
     private final Path home;
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
@@ -218,9 +221,13 @@ public final class Server {
             }
             case "end": {
                 session.end(request.has("over") ? request.get("over").getAsString() : "ended");
-                session.channel.await(WAIT_MILLIS);
+                session.channel.await(session.parent == null ? WAIT_MILLIS : FORK_WAIT_MILLIS);
                 sessions.remove(session.id);
-                return progress(session);
+                Map<String, Object> reply = ok();
+                reply.put("session", session.id);
+                reply.put("records", session.recordFile.toString());
+                reply.put("over", session.over);
+                return reply;
             }
             default:
                 throw new IllegalArgumentException("unknown command " + cmd);
@@ -407,9 +414,19 @@ public final class Server {
         return reply;
     }
 
-    /** Wait for the game to park on a decision or finish, then describe where it stands. */
-    private static Map<String, Object> progress(Session session) throws InterruptedException {
-        Decision decision = session.channel.await(WAIT_MILLIS);
+    /** Wait for the game to park on a decision or finish, then describe where it stands. A fork that does neither
+     * in time has stalled: that is recorded on its parent with where Forge was, and the request fails. */
+    private Map<String, Object> progress(Session session) throws InterruptedException {
+        Decision decision = session.channel.await(session.parent == null ? WAIT_MILLIS : FORK_WAIT_MILLIS);
+        if (decision == null && !session.channel.isFinished() && session.parent != null) {
+            String where = session.where();
+            Session parent = sessions.get(session.parent);
+            if (parent != null) {
+                parent.recorder.write("fork", "session", session.id, "failed", "stalled: " + where);
+            }
+            System.err.println("fork " + session.id + " stalled: " + where);
+            throw new IllegalStateException("fork stalled: " + where);
+        }
         Map<String, Object> reply = ok();
         reply.put("session", session.id);
         reply.put("records", session.recordFile.toString());
