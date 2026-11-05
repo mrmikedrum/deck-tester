@@ -381,7 +381,8 @@ summarises it from the seats' records: the result, each player's life by round, 
 decided, how its forks went, its commander and its development.
 
 People need the Forge desktop app at the engine's exact build: `scripts/build-forge-client.sh` builds it from a
-full Forge checkout holding the pin and the series. With no people seated, Forge's match host adds a
+full Forge checkout holding the pin and the series, and runs it from `vendor/forge/forge-gui`, whose card scripts
+include our local cards (a person's deck import needs them too). With no people seated, Forge's match host adds a
 spectator, which pauses on each event as if someone watched; agent-only tables run slowly for that reason.
 
 ## Snapshots and overrides
