@@ -18,6 +18,7 @@ import forge.game.ability.effects.CharmEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
+import forge.game.cost.Cost;
 import forge.game.cost.CostPayment;
 import forge.game.mana.Mana;
 import forge.game.GameActionUtil;
@@ -1012,6 +1013,25 @@ public class ManualController extends PlayerControllerAi {
     public boolean confirmAction(SpellAbility sa, PlayerActionConfirmMode mode, String message, List<String> options,
                                  Card cardToShow, Map<String, Object> params) {
         return askYesNo(clean(message) + source(sa), () -> super.confirmAction(sa, mode, message, options, cardToShow, params));
+    }
+
+    // "Pay this or else" (a shock land's 2 life, a tax to stop a counter) is a choice like any other. When Forge's AI
+    // decides, it pays as it goes; when I say yes, the cost is paid here, since the AI's payment applies its own veto.
+    @Override
+    public boolean payCostToPreventEffect(Cost cost, SpellAbility sa, boolean alreadyPaid, FCollectionView<Player> allPayers) {
+        if (!ComputerUtilCost.canPayCost(cost, sa, getPlayer(), true)) {
+            return false;
+        }
+        boolean[] byAi = {false};
+        String otherwise = clean(sa.getStackDescription());
+        boolean yes = askYesNo(clean(cost.toSimpleString()) + "?" + (otherwise.isEmpty() ? "" : " If not: " + otherwise) + source(sa), () -> {
+            byAi[0] = true;
+            return super.payCostToPreventEffect(cost, sa, alreadyPaid, allPayers);
+        });
+        if (byAi[0] || !yes) {
+            return yes;
+        }
+        return new CostPayment(cost, sa).payComputerCosts(new AiCostDecision(getPlayer(), sa, true));
     }
 
     @Override
