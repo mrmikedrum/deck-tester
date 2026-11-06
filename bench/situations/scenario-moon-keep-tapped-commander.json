@@ -1,0 +1,616 @@
+{
+ "id": "scenario-moon-keep-tapped-commander",
+ "plan": "Blue creatures and copies, built on Princess Yue. Make a land drop every turn and cast Sol Ring early; Springleaf Drum and the lands that tap a creature for mana want creatures first. The engine is Moons: when a creature of yours becomes a copy of Princess Yue, keep the commander at the legend rule, and the copy dies and returns as a land named Moon that keeps a creature's abilities (a clone chooses what to copy as it returns; a creature changed by Metamorphic Alteration or Blade of Shared Souls returns as itself). Moons tap for mana, can be untapped like lands and escape creature removal; tap payoffs such as Tui and La, Fallowsage and Pestered Wellguard make the best ones. So keep Princess Yue on the battlefield as a creature: cast her early, and when she dies put her in the command zone and recast her. A clone usually does more on Yue than as a copy of another creature, though a much stronger creature can be worth copying. Tap and untap tricks grow the board; attack with it. Hold counterspells and bounce for what matters, and draw cards with spare mana.\n",
+ "state": {
+  "turn": "T5 main1",
+  "life": 40,
+  "mana": 1,
+  "land_drop": false,
+  "library": 95,
+  "hand": [],
+  "battlefield": [
+   {
+    "name": "Island",
+    "id": 407,
+    "tapped": true
+   },
+   {
+    "name": "Island",
+    "id": 408,
+    "tapped": true
+   },
+   {
+    "name": "Island",
+    "id": 409,
+    "tapped": true
+   },
+   {
+    "name": "Island",
+    "id": 410,
+    "tapped": true
+   },
+   {
+    "name": "Fallowsage",
+    "id": 411,
+    "pt": "2/2",
+    "sick": true
+   },
+   {
+    "name": "Pestered Wellguard",
+    "id": 412,
+    "pt": "3/2",
+    "sick": true
+   },
+   {
+    "name": "Princess Yue",
+    "id": 100,
+    "commander": true,
+    "tapped": true,
+    "pt": "3/2",
+    "sick": true
+   },
+   {
+    "name": "Island",
+    "id": 406
+   },
+   {
+    "name": "Princess Yue",
+    "id": 405,
+    "pt": "3/2",
+    "sick": true
+   }
+  ],
+  "command": [],
+  "graveyard": [
+   "Deserted Temple",
+   "Vizier of Many Faces",
+   "Nykthos, Shrine to Nyx",
+   "Loyal Drake"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Fallowsage": "Fallowsage {3}{U} — Creature - Merfolk Wizard — Whenever Fallowsage becomes tapped, you may draw a card.",
+   "Pestered Wellguard": "Pestered Wellguard {3}{U} — Creature - Merfolk Soldier — Whenever this creature becomes tapped, create a 1/1 blue and black Faerie creature token with flying.",
+   "Princess Yue": "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2."
+  }
+ },
+ "decision": {
+  "kind": "choose",
+  "turn": "T5 main1",
+  "prompt": "You have multiple legendary permanents named \"Princess Yue\" in play. Choose the one to stay on battlefield (the rest will be moved to graveyard) ()",
+  "options": [
+   "Princess Yue 3/2",
+   "Princess Yue 3/2 (commander, tapped)"
+  ],
+  "details": [
+   "Princess Yue {2}{U} — Legendary Artifact Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2.",
+   "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 5
+  },
+  {
+   "t": "draw",
+   "turn": 5,
+   "card": "Island",
+   "id": 41
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Springleaf Drum",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Faerie Mastermind",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Sol Ring",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Glasspool Mimic",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Phyrexian Metamorph",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Fallowsage",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Pestered Wellguard",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Princess Yue",
+   "from": "command",
+   "to": "battlefield"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 3,
+   "answer": [
+    "Island (land)"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "land",
+   "turn": 5,
+   "card": "Island",
+   "id": 406
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "play",
+   "options": 3,
+   "answer": [
+    "Phyrexian Metamorph"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "pay",
+   "prompt": "mana to pay {3}{U/P} for Phyrexian Metamorph, in order; none = automatic",
+   "options": 5,
+   "answer": [
+    "Island (U)",
+    "Island (U)",
+    "Island (U)",
+    "Island (U)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 5,
+   "card": "Phyrexian Metamorph",
+   "sources": [
+    "Island",
+    "Island",
+    "Island",
+    "Island"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "cast",
+   "turn": 5,
+   "card": "Phyrexian Metamorph",
+   "id": 405,
+   "as": "Phyrexian Metamorph",
+   "by": "agent"
+  },
+  {
+   "t": "decision",
+   "turn": 5,
+   "kind": "choose",
+   "prompt": "Choose a card (Phyrexian Metamorph)",
+   "options": 3,
+   "answer": [
+    "Princess Yue 3/2 (commander, tapped)"
+   ],
+   "by": "agent"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g81731"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g81732"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g81733"
+  }
+ ],
+ "default": "Princess Yue 3/2",
+ "lines": {
+  "Princess Yue 3/2": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "You have multiple legendary permanents named \"Princess Yue\" in play. Choose the one to stay on battlefield (the rest will be moved to graveyard) ()",
+     "options": 2,
+     "answer": [
+      "Princess Yue 3/2"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Princess Yue",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Moon",
+     "from": "graveyard",
+     "to": "battlefield"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 6,
+     "unspent": 1,
+     "hand": 0,
+     "creatures": 3,
+     "power": 8,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 6,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island",
+      "id": 407
+     },
+     {
+      "name": "Island",
+      "id": 408
+     },
+     {
+      "name": "Island",
+      "id": 409
+     },
+     {
+      "name": "Island",
+      "id": 410
+     },
+     {
+      "name": "Fallowsage",
+      "id": 411,
+      "pt": "2/2"
+     },
+     {
+      "name": "Pestered Wellguard",
+      "id": 412,
+      "pt": "3/2"
+     },
+     {
+      "name": "Island",
+      "id": 406
+     },
+     {
+      "name": "Princess Yue",
+      "id": 405,
+      "pt": "3/2"
+     },
+     {
+      "name": "Moon",
+      "id": 100,
+      "commander": true
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Vizier of Many Faces",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Princess Yue 3/2 (commander, tapped)": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "You have multiple legendary permanents named \"Princess Yue\" in play. Choose the one to stay on battlefield (the rest will be moved to graveyard) ()",
+     "options": 2,
+     "answer": [
+      "Princess Yue 3/2 (commander, tapped)"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Princess Yue",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Moon)",
+     "options": 3,
+     "answer": [
+      "Pestered Wellguard 3/2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Moon",
+     "from": "graveyard",
+     "to": "battlefield"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 6,
+     "mana": 6,
+     "unspent": 1,
+     "hand": 0,
+     "creatures": 3,
+     "power": 8,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 6,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island",
+      "id": 407
+     },
+     {
+      "name": "Island",
+      "id": 408
+     },
+     {
+      "name": "Island",
+      "id": 409
+     },
+     {
+      "name": "Island",
+      "id": 410
+     },
+     {
+      "name": "Fallowsage",
+      "id": 411,
+      "pt": "2/2"
+     },
+     {
+      "name": "Pestered Wellguard",
+      "id": 412,
+      "pt": "3/2"
+     },
+     {
+      "name": "Princess Yue",
+      "id": 100,
+      "commander": true,
+      "pt": "3/2"
+     },
+     {
+      "name": "Island",
+      "id": 406
+     },
+     {
+      "name": "Moon",
+      "id": 405
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Vizier of Many Faces",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Princess Yue 3/2 (commander, tapped)"
+ ],
+ "note": "Blue Moon, as in a real game: Yue tapped (she scried) when the clone copies her. Keep her anyway; the untapped copy kept means Yue dies and returns as a Moon that only scries, and is no creature to copy."
+}

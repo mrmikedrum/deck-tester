@@ -1,6 +1,7 @@
-"""Advisor for the Blue Moon deck. Its engines are tap and untap loops around legendary permanents and the
-commander's second life as a land, so the lines say which loop pieces are on the board and what each tap or
-untap is worth right now. Facts only; the played-out options show what each line does."""
+"""Advisor for the Blue Moon deck. Its engine is Moons: a copy of Princess Yue dies to the legend rule and returns
+as a land keeping a creature's abilities, and tap and untap loops work on those lands. The lines say what makes a
+Moon now, what a choice turns it into, and which loop pieces are on the board. Facts only; the played-out options
+show what each line does."""
 
 from goldfish.advice import Advisor
 
@@ -14,34 +15,55 @@ adv.role("tap payoff", "Tui and La, Moon and Ocean", "Fallowsage", "Gran-Gran")
 adv.role("untap payoff", "Wake Thrasher", "Tui and La, Moon and Ocean")
 adv.role("scry payoff", "Matoya, Archon Elder")
 adv.role("draw payoff", "Alandra, Sky Dreamer", "Mischievous Mystic", "Emrakul's Messenger")
-adv.role("moon maker", "Imprisoned in the Moon")
 adv.role("land copier", "Copy Land", "Vesuva", "Thespian's Stage")
+# A clone that copies Yue returns as a Moon copying a creature chosen then; a Yue maker's creature returns as itself.
+# Machine God's Effigy is in neither: its copy isn't a creature, so it doesn't die and return.
 adv.role("clone", "Phantasmal Image", "Phyrexian Metamorph", "Vizier of Many Faces", "Clever Impersonator", "Mirror Image",
-         "Glasspool Mimic", "Sakashima's Student", "Omni-Changeling", "Metamorphic Alteration", "Machine God's Effigy")
+         "Glasspool Mimic", "Sakashima's Student", "Omni-Changeling", "Naga Fleshcrafter", "Visage Bandit", "Waxen Shapethief")
+adv.role("yue maker", "Metamorphic Alteration", "Blade of Shared Souls")
 adv.role("devotion payoff", "Nykthos, Shrine to Nyx", "Master of Waves")
+adv.role("moon payoff", "Tui and La, Moon and Ocean", "Fallowsage", "Gran-Gran", "Pestered Wellguard", "Nanoform Sentinel")
 
 
 def on_board(p, role):
     return [n for n in p.board if adv.matches(role, n, p)]
 
 
-# The commander as a land: Moon taps for mana or scries, and untaps as a legendary permanent.
-adv.when("Princess Yue is on the board as a creature; when she dies she returns as a land named Moon that taps for {C} or to scry 2.",
-         board=[YUE], test=lambda p: "Land" not in p.text(YUE).split(" — ")[1] if " — " in p.text(YUE) else True)
-adv.when(lambda p: "Moon (Princess Yue as a land) is on the board and Matoya is too: each scry 2 from Moon draws a card, and "
-                   + ", ".join(on_board(p, "untap legendary") + on_board(p, "untap land")) + " can untap it.",
-         board=["Moon", "scry payoff"], any_of={"board": ["untap legendary", "untap land"]})
-adv.when("Princess Yue's death trigger is on the stack: she returns as the land Moon, tapped.",
-         stack=[YUE], kinds=("play", "targets", "confirm"))
-# The line: a clone of Princess Yue dies to the legend rule and the clone card returns as Moon, entering as a
-# copy of whatever creature is chosen then: a land with that creature's abilities, which Deserted Temple and
-# Minamo can untap. The choice is asked as "Choose a card (Moon)".
-adv.when("This choice makes Moon a land with the chosen creature's abilities, and Deserted Temple and Minamo can untap a land: "
-         "Tui and La's tap and untap triggers on it draw a card and grow it each time; copying Princess Yue again only scries.",
+def yue_is_creature(p):
+    return "Creature" in p.text(YUE).split(" — ")[1] if " — " in p.text(YUE) else True
+
+
+def clones_now(p):
+    """The clones being cast now, or the one whose copy choice this is ("Choose a card (Phyrexian Metamorph)")."""
+    if p.kind == "choose":
+        return [n for n in adv.roles["clone"] if f"({n})" in p.decision.get("prompt", "")]
+    return [n for n in p.castable if adv.matches("clone", n, p)]
+
+
+# Making a Moon: a copy of Yue dies to the legend rule (the commander stays) and returns as a land.
+adv.when(lambda p: "Princess Yue is on the battlefield: a copy of her made by " + ", ".join(clones_now(p))
+                   + " dies to the legend rule while she stays, and returns as a Moon copying a creature chosen then"
+                   + ("; a Phantasmal Image Moon is sacrificed when targeted, so Deserted Temple and Minamo can't untap it"
+                      if "Phantasmal Image" in clones_now(p) else "") + ".",
+         board=[YUE], kinds=("play", "choose"), test=lambda p: yue_is_creature(p) and bool(clones_now(p)))
+adv.when(lambda p: ", ".join(n for n in p.castable if adv.matches("yue maker", n, p))
+                   + " can make one of your creatures a copy of Princess Yue: that card dies to the legend rule while she stays, "
+                   "and returns as a Moon with its own abilities (a token doesn't return).",
+         board=[YUE], castable=["yue maker"], test=yue_is_creature)
+adv.when(lambda p: "Princess Yue can be cast from the command zone, and " + ", ".join(n for n in p.hand if adv.matches("clone", n, p) or adv.matches("yue maker", n, p))
+                   + " in hand can copy her once she is on the battlefield.",
+         castable_from={"command": [YUE]}, any_of={"hand": ["clone", "yue maker"]})
+# The choice is asked as "Choose a card (Moon)": what the returning clone copies.
+adv.when(lambda p: "This choice decides what the Moon is: a land with the chosen creature's abilities that taps for mana and can be untapped like a land"
+                   + (f"; on it, the tap triggers of {', '.join(on_board(p, 'moon payoff'))} fire each time it taps" if on_board(p, "moon payoff") else "")
+                   + ". A Moon copying Princess Yue only scries.",
          kinds=("choose",), test=lambda p: "(Moon)" in p.decision.get("prompt", ""))
-adv.when("A clone that copies Princess Yue dies to the legend rule and returns as the land Moon copying another creature; "
-         "a Phantasmal Image copy is sacrificed when targeted, so it can't be untapped by Deserted Temple or Minamo, while a Phyrexian Metamorph or Vizier copy can.",
-         board=[YUE], test=lambda p: any(adv.matches("clone", n, p) for n in p.castable))
+adv.when("Yes puts Princess Yue in the command zone, to be recast as a creature that clones can copy; no leaves her in the graveyard, "
+         "and she returns as a land, a Moon that only scries.",
+         kinds=("confirm",), test=lambda p: "command zone" in p.decision.get("prompt", "") and p.decision.get("prompt", "").startswith(YUE))
+adv.when(lambda p: "A Moon that scries is on the board and Matoya is too: each scry draws a card, and "
+                   + ", ".join(on_board(p, "untap legendary") + on_board(p, "untap land")) + " can untap it.",
+         board=["Moon", "scry payoff"], any_of={"board": ["untap legendary", "untap land"]}, test=lambda p: "Scry" in p.text("Moon"))
 adv.when(lambda p: "Tap loop on the board: " + ", ".join(on_board(p, "tap outlet")) + " taps "
                    + ", ".join(on_board(p, "tap payoff")) + " for mana and a card each time, and "
                    + ", ".join(on_board(p, "untap legendary") + on_board(p, "untap any")) + " untaps it again.",
@@ -59,10 +81,6 @@ adv.when(lambda p: "Deserted Temple can untap " + ", ".join(n for n in on_board(
 adv.when(lambda p: "Wake Thrasher is on the board: every permanent of yours that untaps this turn gives it +1/+1; untap effects on the board: "
                    + ", ".join(on_board(p, "untap legendary") + on_board(p, "untap land") + on_board(p, "untap any")) + ".",
          board=["Wake Thrasher"], any_of={"board": ["untap legendary", "untap land", "untap any"]})
-adv.when(lambda p: "A clone is castable (" + ", ".join(n for n in p.castable if adv.matches("clone", n, p)) + "); the plan copies your best creature on the board.",
-         test=lambda p: any(adv.matches("clone", n, p) for n in p.castable) and len(p.board) > 0)
-adv.when(lambda p: "Imprisoned in the Moon is castable: on Princess Yue it makes her a land now without her dying.",
-         castable=["moon maker"], board=[YUE])
 adv.when(lambda p: "Nykthos is on the board: its second ability makes mana equal to your devotion to blue, which grows with every blue permanent.",
          board=["Nykthos, Shrine to Nyx"])
 adv.when(lambda p: "Castable from the graveyard or exile now: " + ", ".join(p.castable_from["graveyard"] + p.castable_from["exile"]) + ".",

@@ -34,6 +34,7 @@ import forge.game.spellability.AbilityManaPart;
 import forge.game.spellability.AbilitySub;
 import forge.game.spellability.OptionalCostValue;
 import forge.game.spellability.SpellAbility;
+import forge.game.spellability.TargetChoices;
 import forge.game.trigger.WrappedAbility;
 import forge.game.zone.ZoneType;
 import forge.util.collect.FCollection;
@@ -939,7 +940,39 @@ public class ManualController extends PlayerControllerAi {
                     ComputerUtil.playStack(sa, getPlayer(), getGame());
                 }
             } else {
+                if (sa.isCopied() && sa.isMayChooseNewTargets()) {
+                    chooseNewTargets(sa);
+                    sa.setMayChooseNewTargets(false); // chosen here; Forge's AI would choose again
+                }
                 super.orderAndPlaySimultaneousSa(List.of(sa));
+            }
+        }
+    }
+
+    /** A copy that may have new targets (Unbound Flourishing): keep the original's, or choose again. */
+    private void chooseNewTargets(SpellAbility copy) {
+        List<TargetChoices> old = new ArrayList<>();
+        List<String> now = new ArrayList<>();
+        for (SpellAbility part = copy; part != null; part = part.getSubAbility()) {
+            old.add(part.getTargets());
+            part.getTargets().getTargetEntities().forEach(e -> now.add(Labels.entity(e, getPlayer())));
+        }
+        if (now.isEmpty() || !askYesNo("choose new targets for the copy of " + Labels.ability(copy)
+                + " (now " + String.join(", ", now) + ")", () -> false)) {
+            return;
+        }
+        for (SpellAbility part = copy; part != null; part = part.getSubAbility()) {
+            part.setTargets(new TargetChoices());
+        }
+        chooseTargets(copy);
+        boolean valid = true;
+        for (SpellAbility part = copy; part != null; part = part.getSubAbility()) {
+            valid &= !part.usesTargeting() || part.isTargetNumberValid();
+        }
+        if (!valid) {
+            int i = 0;
+            for (SpellAbility part = copy; part != null; part = part.getSubAbility()) {
+                part.setTargets(old.get(i++));
             }
         }
     }

@@ -134,6 +134,7 @@ final class Session {
     private volatile Checkpoint checkpoint;
     /** Whether another player has cast or played something since the checkpoint (see othersActed). */
     private volatile boolean othersActed;
+    private volatile boolean overriding; // what an override sets off asks Forge's AI, recorded as its answer
     /** For a fork made from a copy: the parent's checkpoint it starts from; null for a game played from its seed. */
     private final Checkpoint from;
     /** The name of the seat this session plays: the pilot's in a goldfish game, a player's at a table. */
@@ -395,7 +396,9 @@ final class Session {
                     players.add(RegisteredPlayer.forCommander(passiveDeck())
                             .setPlayer(new Seat("Opp " + i, PassiveController::new)));
                 }
-                Match match = new Match(new GameRules(GameType.Commander), players, "goldfish");
+                GameRules rules = new GameRules(GameType.Commander);
+                rules.addAppliedVariant(GameType.Commander); // as a lobby does: Forge's commander rules (the command zone on death, CR 903.9a) check the variant
+                Match match = new Match(rules, players, "goldfish");
                 game = match.createGame();
                 game.setNoGUIUser();
                 game.AI_FLAT_MONTE_CARLO = setup.flatMc(); // Forge's Monte Carlo layer; its match host turns it on
@@ -403,7 +406,7 @@ final class Session {
                 game.subscribeToEvents(recorder);
                 setupMillis = (System.nanoTime() - began) / 1_000_000;
                 recorder.write("start", "forge", System.getProperty("goldfish.forge"), "local_cards", System.getProperty("goldfish.localCards"),
-                        "local_cards_hash", System.getProperty("goldfish.localCardsHash"), "seed", setup.seed(), "deck", setup.deckName(), "hash", setup.deckHash(),
+                        "seed", setup.seed(), "deck", setup.deckName(), "hash", setup.deckHash(),
                         "commander", setup.commanders(), "turns", setup.turnLimit() > 0 ? setup.turnLimit() : null,
                         "opponents", setup.opponents(), "ai", setup.flatMc() ? "flatmc" : setup.aiMode() == null ? null : setup.aiMode().name().toLowerCase(Locale.ROOT),
                         "fork", parent, "replays", script == null ? null : script.size());
@@ -457,7 +460,7 @@ final class Session {
     }
 
     boolean asks(String kind) {
-        return setup.asks() == null || setup.asks().contains(kind);
+        return !overriding && (setup.asks() == null || setup.asks().contains(kind));
     }
 
     // ---- the decision log and a fork's script ----
@@ -725,9 +728,11 @@ final class Session {
         boolean quiet = !op.equals("destroy");
         game.getTriggerHandler().setSuppressAllTriggers(quiet);
         String result;
+        overriding = true;
         try {
             result = apply(op, args);
         } finally {
+            overriding = false;
             if (quiet) {
                 game.getTriggerHandler().setSuppressAllTriggers(false);
             }
@@ -870,11 +875,14 @@ final class Session {
 
     // ---- state view ----
 
-    /** A permanent as the state view shows it: name, tapped, P/T and sickness for a creature, counters, token. */
+    /** A permanent as the state view shows it: name, commander, tapped, P/T and sickness for a creature, counters, token. */
     private Map<String, Object> permanent(Card card) {
         Map<String, Object> permanent = new LinkedHashMap<>();
         permanent.put("name", card.getName());
         permanent.put("id", card.getId()); // the same card after it transforms or changes its name
+        if (card.isCommander()) {
+            permanent.put("commander", true);
+        }
         if (card.isTapped()) {
             permanent.put("tapped", true);
         }

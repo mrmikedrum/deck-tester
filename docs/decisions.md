@@ -40,8 +40,10 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
   mana, board, cards in hand), not damage.
 - **Record what Forge's AI did, never reconstruct it.** A fork can only replay what the log holds, so
   choices the AI makes, its mana payments included, are captured as they happen.
-- **Cards Forge lacks or gets wrong are Forge card scripts, never engine code.** They live in `cards/` with
-  their provenance and rules scenarios. Upstream's version wins once it checks out, and ours is retired.
+- **Cards Forge lacks or gets wrong are Forge card scripts, never engine code.** They are one patch of the
+  series, in Forge's own card folder, so every Forge built from it has them, the desktop app people join
+  tables with included (an installer into the engine's copy alone left that app without them). Upstream's
+  version wins once it checks out, and ours is dropped.
 - **Forge is an upstream pin plus a small labelled patch series, not a maintained fork.** A handful of
   patches doesn't justify a second codebase; the series rebases with git's three-way merge, and every game
   record names its build, so results from different engines are never mixed. General fixes are offered

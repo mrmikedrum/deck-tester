@@ -141,6 +141,27 @@ and worth knowing. The state view shows the land as it is, with its current abil
 advice (a land that only scries) and Tui and La 5 times in 5 with the advisor's line about what the choice
 makes; Forge's AI's default was Wake Thrasher.
 
+**Blue Moon built on Yue (2026-11-04).** At a table Blue Moon never made a Moon: three clones copied other
+creatures (two of them legends it already had, so they died at once) and Yue, back in the command zone, was
+never recast. The plan said "clones are best copying your best creature" and the advisor said so too. The new
+plan and advisor say what a Moon is and how it's made; Yue stays a creature and goes to the command zone when
+she dies. Metamorphic Alteration and Blade of Shared Souls make Moons too, checked in Forge: the creature made
+a copy of Yue returns as itself (Fallowsage as a Moon that draws when tapped, not legendary), and the Blade
+does it again with each equip. Machine God's Effigy doesn't: its copy isn't a creature. Labels now mark a
+commander on the battlefield, since at the legend rule both read "Princess Yue 3/2". On five scenarios
+(`moon-*`, with outcomes, 5 repeats each, against 3 for the old ones), the old plan scored 9 of 12 without
+the advisor and 6 of 12 with it (its clone line pulled Vizier ahead of recasting Yue); the new plan 18 of 20
+alone, 20 of 20 with the advisor, and the tapped-commander case 5 of 5. Four 8-turn games each, seeds
+4001–4004: creature clones copied Yue 6 of 6 times against 3 of 12, with 6 Moons against 3, and the same
+development (lands 7.5 against 6.5 at turn 8, power 18.8 against 20.8).
+
+**Commanders in goldfish games never went back to the command zone** until 2026-11-04: the goldfish engine
+set the game type to Commander without applying the variant, and Forge's command-zone rule (CR 903.9a)
+checks the variant. A dead commander stayed in the graveyard, and Yue's trigger made her a Moon. Tables,
+set up through a lobby, were right all along. Goldfish results from before then never saw a commander
+recast after dying. With the fix, Princess Yue dying asks; Jev said no (she became a Moon) 4 times in 5
+until the advisor said what each answer does, then yes 5 in 5 (`moon-yue-to-command`).
+
 **Stability.** Asked three times, Jev gave the same answer on 45 of 47 labelled situations with outcomes
 and 42 of 47 from the text alone, and taking the plurality of three changed accuracy by one point at most
 (82% to 83% text-only; 96% either way with outcomes). Repeating a question is not worth its cost here.

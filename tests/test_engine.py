@@ -38,6 +38,50 @@ class ManualGameTest(unittest.TestCase):
         self.assertEqual(len(seen), 8)  # the opening seven and the turn-1 draw
         self.assertEqual(played, [])    # the land play was undone by the restore
 
+    def test_a_dead_commander_may_go_to_the_command_zone(self):
+        deck = decklist.load(DECK)
+        reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2})
+        session = reply["session"]
+        try:
+            engine.request({"cmd": "answer", "session": session, "answer": [1]})
+            engine.request({"cmd": "override", "session": session, "args": ["move", "Marath, Will of the Wild", "battlefield"]})
+            engine.request({"cmd": "override", "session": session, "args": ["destroy", "Marath, Will of the Wild"]})
+        finally:
+            reply = engine.request({"cmd": "end", "session": session})
+        # asked during an override, the choice goes to Forge's AI and is recorded as its answer
+        asked = [f for f in records.load(reply["records"]) if f["t"] == "decision" and "command zone" in f.get("prompt", "")]
+        self.assertEqual([f["by"] for f in asked], ["ai"])
+
+    def test_a_copy_may_have_new_targets(self):
+        deck = decklist.load(DECK)
+        reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2})
+        session = reply["session"]
+
+        def answer(label):
+            options = reply["decision"]["options"]
+            pick = next(i for i, o in enumerate(options) if o.startswith(label)) + 1
+            return engine.request({"cmd": "answer", "session": session, "answer": [pick]})
+        try:
+            engine.request({"cmd": "answer", "session": session, "answer": [1]})
+            for args in (["move", "Marath, Will of the Wild", "battlefield"], ["counter", "Marath, Will of the Wild", "+1/+1", "4"],
+                         ["create", "Unbound Flourishing"], ["create", "Grizzly Bears"], ["create", "Plains"]):
+                engine.request({"cmd": "override", "session": session, "args": args})
+            engine.request({"cmd": "snapshot", "session": session, "name": "set"})
+            reply = engine.request({"cmd": "restore", "session": session, "name": "set"})
+            reply = answer("Marath, Will of the Wild:")
+            while reply["decision"]["kind"] != "targets":  # X and the mode, in the order Forge asks them
+                reply = (engine.request({"cmd": "answer", "session": session, "answer": [1]})
+                         if reply["decision"]["kind"] == "number" else answer("Put X +1/+1 counters"))
+            reply = answer("Marath")
+            self.assertTrue(reply["decision"]["prompt"].startswith("choose new targets for the copy of Marath"))
+            reply = answer("yes")
+            self.assertEqual(reply["decision"]["kind"], "targets")
+            answer("Grizzly Bears")
+        finally:
+            reply = engine.request({"cmd": "end", "session": session})
+        targets = [f["answer"] for f in records.load(reply["records"]) if f["t"] == "decision" and f["kind"] == "targets"]
+        self.assertEqual(targets[-1], ["Grizzly Bears 2/2"])
+
 
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class AutomatedGameTest(unittest.TestCase):

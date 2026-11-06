@@ -9,8 +9,6 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import card_resources
-
 ROOT = Path(__file__).resolve().parent.parent
 HOME = ROOT / ".goldfish"
 SOCKET = HOME / "engine.sock"
@@ -38,6 +36,14 @@ def forge_build() -> tuple:
     if FORGE_BUILD.exists():
         installed = dict(line.split("=", 1) for line in FORGE_BUILD.read_text().split()).get("build")
     return installed, wanted
+
+
+def local_cards() -> list:
+    """The card scripts our patch series adds to Forge (cards it lacks), which records flag."""
+    names = []
+    for patch in sorted((ROOT / "scripts" / "forge-patches").glob("*.patch")):
+        names += re.findall(r"^\+Name:(.+)$", patch.read_text(), re.M)
+    return names
 
 
 class EngineError(Exception):
@@ -76,10 +82,6 @@ def _start() -> None:
     installed, wanted = forge_build()
     if installed != wanted:
         raise EngineError(f"Forge build {installed or 'none'} isn't this checkout's {wanted}; run scripts/bootstrap-forge.sh")
-    try:
-        local_cards = card_resources.prepare()
-    except ValueError as error:
-        raise EngineError(str(error)) from error
     if _stale():
         _build()
     classpath = f"{ENGINE / 'target' / 'classes'}:{CLASSPATH.read_text().strip()}"
@@ -91,7 +93,7 @@ def _start() -> None:
     java = str(Path(env["JAVA_HOME"]) / "bin" / "java") if "JAVA_HOME" in env else "java"
     # Detach through a shell so the engine outlives this command and isn't our child.
     subprocess.run(["/bin/sh", "-c", 'nohup "$@" >>"$0" 2>&1 </dev/null &', str(LOG),
-                    java, "-Dgoldfish.forge=" + wanted, "-Dgoldfish.localCardsHash=" + card_resources.fingerprint(), "-Dgoldfish.localCards=" + ", ".join(local_cards), f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME), *MODE], env=env, check=True)
+                    java, "-Dgoldfish.forge=" + wanted, "-Dgoldfish.localCards=" + ", ".join(local_cards()), f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME), *MODE], env=env, check=True)
     deadline = time.time() + 90
     while time.time() < deadline:
         try:
@@ -154,9 +156,7 @@ def stop() -> None:
 
 def refresh() -> None:
     """Restart an idle engine whose sources changed since it was built, so new games run current code."""
-    saved = HOME / "card-resources.json"
-    resources_changed = not saved.exists() or json.loads(saved.read_text()).get("fingerprint") != card_resources.fingerprint()
-    if not _stale() and not resources_changed:
+    if not _stale():
         return
     try:
         live = request({"cmd": "sessions"}, start=False)["sessions"]
