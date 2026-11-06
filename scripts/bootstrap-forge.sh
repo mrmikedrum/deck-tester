@@ -53,6 +53,17 @@ if ! git -C "$DEST" cat-file -e "$FORGE_COMMIT^{commit}" 2>/dev/null; then
   git -C "$DEST" fetch -q --depth 1 --filter=blob:none origin "$FORGE_COMMIT"
 fi
 git -C "$DEST" checkout -q -B goldfish "$FORGE_COMMIT"
+# Upstream wins: a card script the series adds that the pin now defines is compared, then dropped from the series.
+NAMES="$(sed -n 's/^+Name:/Name:/p' "$ROOT"/scripts/forge-patches/*.patch)"
+if [ -n "$NAMES" ]; then
+  FOUND=0
+  echo "$NAMES" | grep -r -n -x -F -f - "$DEST/forge-gui/res/cardsfolder" || FOUND=$?
+  if [ "$FOUND" -ne 1 ]; then
+    echo "$FORGE_COMMIT defines cards the series adds (above), or they couldn't be checked: check upstream's" >&2
+    echo "with the same scenarios, then drop ours from the series (skills/forge-cards)" >&2
+    exit 1
+  fi
+fi
 if ! git -C "$DEST" -c user.name=goldfish -c user.email=goldfish@localhost \
   am -q -3 --committer-date-is-author-date "$ROOT"/scripts/forge-patches/*.patch; then
   echo "a patch no longer applies to $FORGE_COMMIT: resolve it in vendor/forge (git am --continue)," >&2
@@ -62,7 +73,8 @@ fi
 mkdir -p "$ROOT/.goldfish"
 git -C "$DEST" rev-parse HEAD > "$APPLIED"
 
-VERSION="$(sed -n 's:.*<versionCode>\(.*\)</versionCode>.*:\1:p' "$DEST/pom.xml" | head -1)-goldfish-$BUILD"
+# SNAPSHOT, as in upstream's own builds, keeps it a development build: Forge loads cardsfolder/upcoming only for those.
+VERSION="$(sed -n 's:.*<versionCode>\(.*\)</versionCode>.*:\1:p' "$DEST/pom.xml" | head -1)-SNAPSHOT-goldfish-$BUILD"
 JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}"
 export JAVA_HOME
 (cd "$DEST" && mvn ${GOLDFISH_MAVEN_ARGS:-} -q -pl forge-core,forge-game,forge-ai,forge-gui -am -DskipTests \

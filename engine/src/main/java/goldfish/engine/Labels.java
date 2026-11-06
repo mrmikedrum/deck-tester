@@ -15,7 +15,7 @@ final class Labels {
 
     private Labels() { }
 
-    /** A card's name; on the battlefield also what tells copies apart: P/T, counters, tapped, token. */
+    /** A card's name; on the battlefield also what tells copies apart: P/T, counters, commander, tapped, token. */
     static String card(Card card, Player me) {
         StringBuilder label = new StringBuilder(card.getName());
         if (card.isInZone(ZoneType.Battlefield)) {
@@ -28,6 +28,9 @@ final class Labels {
                 label.append(" [").append(String.join(", ", counters)).append(']');
             }
             List<String> flags = new ArrayList<>();
+            if (card.isCommander()) { // a copy of a commander isn't one, so this tells them apart at the legend rule
+                flags.add("commander");
+            }
             if (card.isTapped()) {
                 flags.add("tapped");
             }

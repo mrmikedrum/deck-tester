@@ -115,7 +115,9 @@ bin/goldfish table examples/decks/eternities-living-worlds-iii.txt,examples/plan
   examples/decks/blue-moon-combat-revision.txt,examples/plans/blue-moon.txt,examples/pilots/blue_moon_advisor.py --people 1
 ```
 
-It prints the address to join (Online Multiplayer, Join) and plays until the game ends; Ctrl-C ends it. A seat
+It prints the address to join (Online Multiplayer, Join) and plays until the game ends; Ctrl-C ends it.
+On macOS the firewall must allow incoming connections for the engine's Java (`$(/usr/libexec/java_home -v 21)/bin/java`),
+or a join drops at once; on the hosting machine itself, joining at `127.0.0.1` works either way. A seat
 given only a deck is played by Forge's AI. When it ends it prints a report: life by round and, per agent seat,
 who decided, its lookahead and its development; `bin/goldfish table-report [tN]` shows it again.
 

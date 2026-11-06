@@ -28,8 +28,6 @@ export JAVA_HOME
 (cd "$FORGE" && mvn ${GOLDFISH_MAVEN_ARGS:-} -q -pl forge-gui-desktop -DskipTests -Dcheckstyle.skip \
   -Drevision="$VERSION" compile jar:jar assembly:single@make-assembly)
 JAR="$FORGE/forge-gui-desktop/target/forge-gui-desktop-$VERSION-jar-with-dependencies.jar"
-# The app reads card scripts from the folder it runs in: the engine's, where our local cards are installed.
-(cd "$ROOT" && python3 -m goldfish.card_resources)
 echo "built $JAR"
-echo "run it from the engine's Forge GUI folder, which holds the cards (our local ones included):"
-echo "  cd $ROOT/vendor/forge/forge-gui && java -jar $JAR"
+echo "run it from Forge's GUI folder, which holds its resources (the series' card scripts included):"
+echo "  cd $FORGE/forge-gui && java -jar $JAR"

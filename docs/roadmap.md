@@ -12,12 +12,12 @@ for pilots.
 
 Local card scripts work today ([architecture](architecture.md#local-card-scripts)). Still to build:
 
-- Import a card from a newer upstream snapshot into `cards/` when it works on our engine, with its upstream
-  commit and path as provenance, before writing one ourselves.
+- Import a card from a newer upstream snapshot into the series' card patch when it works on our engine,
+  with its upstream commit and path as provenance, before writing one ourselves.
 - Record verification per card: the scenarios it passed, on which Forge build, and a human sign-off where
   the rules are subtle.
-- Let our script override an upstream card that turns out broken; today the installer refuses any name
-  upstream defines.
+- Let our script override an upstream card that turns out broken; today bootstrap refuses any name upstream
+  defines.
 - Once the workflow is trusted, offer our scripts upstream as script-only PRs.
 
 ## Decision model, next
@@ -39,13 +39,14 @@ Local card scripts work today ([architecture](architecture.md#local-card-scripts
 
 `goldfish table` hosts agents with people (architecture, Tables). Next:
 
-- A game with a person at the table: the desktop client against Jev seats, start to finish.
 - Copy forks that still fail now and then: a rebound spell (Ephemerate) not offered at the copy's upkeep, a token
   missing from a copy's targets, and cards put on the bottom in random order (Dack Fayden), since the table's
   random sequence is shared by every seat.
 - Jev's table misses (`bench/table_scenarios.py`, measurements): holding a flash creature at the end of the turn
-  before its own, a second activation of an ability already on the stack. More situations: counterspells and
-  other responses to a spell, combat tricks after blocks.
+  before its own, a second activation of an ability already on the stack (Oboro bounced itself seven times in
+  one turn at a table), keeping the untapped copy of a tapped commander at the legend rule (once in a Blue Moon
+  batch; its scenario is right 5 in 5). More situations: counterspells and other responses to a spell, combat
+  tricks after blocks.
 - A fork is refused when another player acted after the seat's last stop (blocks after an attacker's combat
   trick, say), and that decision is asked from the text alone: copies taken at the other players' priority
   would let it be played out.

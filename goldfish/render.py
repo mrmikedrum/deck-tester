@@ -52,7 +52,7 @@ def _permanent(p: dict) -> str:
         text += f" {p['pt']}"
     if p.get("counters"):
         text += " [" + ", ".join(f"{k} {v}" for k, v in p["counters"].items()) + "]"
-    flags = [flag for flag in ("tapped", "sick", "token") if p.get(flag)]
+    flags = [flag for flag in ("commander", "tapped", "sick", "token") if p.get(flag)]
     if p.get("attacking"):
         flags.append(f"attacking {p['attacking']}")
     if p.get("blocking"):

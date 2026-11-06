@@ -30,10 +30,9 @@ only when the task needs it. For development or diagnosis, read [vision](docs/vi
 | `goldfish/` | Python package: CLI (`cli.py`), engine client (`engine.py`), record digests (`records.py`), text views (`render.py`), batches and pilots (`batch.py`), batch reports (`report.py`), tables (`table.py`, with the table seats' decider in `table_model.py` and reports in `table_report.py`) |
 | `bin/goldfish` | CLI entry point |
 | `engine/` | Forge host: `Server` (socket), `Session` (one game or one table seat), `ManualController` (decisions), `Recorder` (facts), `Table` (a networked table) |
-| `scripts/` | `bootstrap-forge.sh` (fetch, patch and install pinned Forge), `build-engine.sh` (compile; the CLI runs it when needed), `build-forge-client.sh` (the desktop app people join tables with), `forge-patches/` (our patch series) |
+| `scripts/` | `bootstrap-forge.sh` (fetch, patch and install pinned Forge), `build-engine.sh` (compile; the CLI runs it when needed), `build-forge-client.sh` (the desktop app people join tables with), `forge-patches/` (our patch series, local card scripts included) |
 | `vendor/forge` | Pinned Forge checkout with the patch series on its `goldfish` branch, gitignored; card scripts in `forge-gui/res/cardsfolder` |
-| `cards/` | Local Forge card scripts and their manifest; installed into `cardsfolder/goldfish-local` |
-| `skills/forge-cards/` | Procedure for adding, checking and retiring local cards |
+| `skills/forge-cards/` | Procedure for adding, checking and retiring the card scripts our series adds to Forge |
 | `bench/` | Fork fidelity (goldfish and tables), scenarios and decision-model experiments |
 | `examples/` | Real decklists used as fixtures, deck plans, pilots and advisors |
 | `tests/` | `unittest` suites; `test_engine.py` plays a real game and skips without Forge |

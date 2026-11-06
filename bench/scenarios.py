@@ -62,8 +62,45 @@ SCENARIOS = {
         "battlefield": ["Island", "Island", "Island", "Island", "Minamo, School at Water's Edge", "Deserted Temple", "Matoya, Archon Elder",
                         "Tui and La, Moon and Ocean", "Wake Thrasher"],
         "hand": ["Phyrexian Metamorph", "Island"], "setup": [["move", "Princess Yue", "battlefield"]],
-        "first": ["Island (land)", "Phyrexian Metamorph", "Princess Yue 3/2", "Princess Yue 3/2", "pass"],
+        "first": ["Island (land)", "Phyrexian Metamorph", "Princess Yue 3/2 (commander)", "Princess Yue 3/2 (commander)", "pass"],
         "expected": ["Tui and La, Moon and Ocean 3/3"]},
+    "moon-clone-yue": {
+        "note": "Blue Moon: a clone of Princess Yue dies to the legend rule and returns as a Moon copying Fallowsage or the Wellguard, a land "
+                "that keeps its tap trigger; a copy of either creature is only a second creature.",
+        "deck": "blue-moon-combat-revision", "plan": "blue-moon", "turn": 5,
+        "battlefield": ["Island", "Island", "Island", "Island", "Fallowsage", "Pestered Wellguard"],
+        "hand": ["Phyrexian Metamorph", "Island"], "setup": [["move", "Princess Yue", "battlefield"]],
+        "first": ["Island (land)", "Phyrexian Metamorph"],
+        "expected": ["Princess Yue 3/2 (commander)"]},
+    "moon-keep-commander": {
+        "note": "Blue Moon: at the legend rule keep the commander; the clone dies and returns as a Moon, while Yue dying goes to the command zone.",
+        "deck": "blue-moon-combat-revision", "plan": "blue-moon", "turn": 5,
+        "battlefield": ["Island", "Island", "Island", "Island", "Fallowsage", "Pestered Wellguard"],
+        "hand": ["Phyrexian Metamorph", "Island"], "setup": [["move", "Princess Yue", "battlefield"]],
+        "first": ["Island (land)", "Phyrexian Metamorph", "Princess Yue 3/2 (commander)"],
+        "expected": ["Princess Yue 3/2 (commander)"]},
+    "moon-keep-tapped-commander": {
+        "note": "Blue Moon, as in a real game: Yue tapped (she scried) when the clone copies her. Keep her anyway; the untapped copy "
+                "kept means Yue dies and returns as a Moon that only scries, and is no creature to copy.",
+        "deck": "blue-moon-combat-revision", "plan": "blue-moon", "turn": 5,
+        "battlefield": ["Island", "Island", "Island", "Island", "Fallowsage", "Pestered Wellguard"],
+        "hand": ["Phyrexian Metamorph", "Island"], "setup": [["move", "Princess Yue", "battlefield"], ["tap", "Princess Yue"]],
+        "first": ["Island (land)", "Phyrexian Metamorph", "Princess Yue 3/2 (commander, tapped)"],
+        "expected": ["Princess Yue 3/2 (commander, tapped)"]},
+    "moon-yue-to-command": {
+        "note": "Blue Moon: Princess Yue died to the legend rule (the copy was kept). The deck wants her as a creature to copy, so she "
+                "goes to the command zone to be recast rather than returning as a Moon that only scries.",
+        "deck": "blue-moon-combat-revision", "plan": "blue-moon", "turn": 5,
+        "battlefield": ["Island", "Island", "Island", "Island", "Fallowsage", "Pestered Wellguard"],
+        "hand": ["Phyrexian Metamorph", "Island"], "setup": [["move", "Princess Yue", "battlefield"]],
+        "first": ["Island (land)", "Phyrexian Metamorph", "Princess Yue 3/2 (commander)", "Princess Yue 3/2"],
+        "expected": ["yes"]},
+    "moon-recast-yue-first": {
+        "note": "Blue Moon with seven mana: Princess Yue first, then Vizier copying her makes a Moon; Vizier first only copies Fallowsage.",
+        "deck": "blue-moon-combat-revision", "plan": "blue-moon", "turn": 5,
+        "battlefield": ["Island", "Island", "Island", "Island", "Island", "Island", "Island", "Fallowsage"],
+        "hand": ["Vizier of Many Faces"],
+        "expected": ["Princess Yue (commander)"]},
     "mulligan-no-lands": {
         "note": "Seven spells and no land: mulligan.",
         "mulligan": True, "hand": ["Cultivate", "Beast Within", "Rampant Growth", "Llanowar Elves", "Mind Stone", "Sol Ring", "Eternal Witness"],
@@ -96,7 +133,7 @@ def set_up(reply: dict, scenario: dict) -> dict:
 
 def answer(reply: dict, label: str) -> dict:
     decision = reply["decision"]
-    full = next(o for o in decision["options"] if o == label or o.startswith(label))
+    full = label if label in decision["options"] else next(o for o in decision["options"] if o.startswith(label))
     return engine.request({"cmd": "answer", "session": reply["session"], "answer": model._numbers(decision, [full])})
 
 

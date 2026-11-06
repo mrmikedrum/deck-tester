@@ -55,6 +55,13 @@ class SummaryTest(unittest.TestCase):
         self.assertIn("commander cast in 1/1 · median T2 · T2-T2", lines)
 
 
+    def test_reports_label_games_with_local_scripts(self):
+        from goldfish import records
+        facts = [{'t': 'start', 'seed': 1, 'local_cards': 'Test Card'}]
+        self.assertIn('local card scripts: Test Card', records.header(facts))
+        self.assertEqual(report.game_summary(facts, [])['local_cards'], 'Test Card')
+
+
 class PilotTest(unittest.TestCase):
     def test_pilot_kinds_and_answers(self):
         with tempfile.TemporaryDirectory() as folder:

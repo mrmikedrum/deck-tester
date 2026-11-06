@@ -1,6 +1,6 @@
 {
  "id": "scenario-moon-copy",
- "plan": "Blue creatures and copies. Make a land drop every turn and cast Sol Ring early. Springleaf Drum only makes mana by tapping a creature, so cast creatures first. Princess Yue is cheap: cast her early; when she dies she returns as a land named Moon. Clones and copy effects (Phantasmal Image, Phyrexian Metamorph, Vizier of Many Faces and the like) are best copying your best creature. Tap and untap tricks and repeated enter-the-battlefield triggers grow a large board; attack with it. Counterspells and bounce have no targets here: hold them, and draw cards with spare mana.\n",
+ "plan": "Blue creatures and copies, built on Princess Yue. Make a land drop every turn and cast Sol Ring early; Springleaf Drum and the lands that tap a creature for mana want creatures first. The engine is Moons: when a creature of yours becomes a copy of Princess Yue, keep the commander at the legend rule, and the copy dies and returns as a land named Moon that keeps a creature's abilities (a clone chooses what to copy as it returns; a creature changed by Metamorphic Alteration or Blade of Shared Souls returns as itself). Moons tap for mana, can be untapped like lands and escape creature removal; tap payoffs such as Tui and La, Fallowsage and Pestered Wellguard make the best ones. So keep Princess Yue on the battlefield as a creature: cast her early, and when she dies put her in the command zone and recast her. A clone usually does more on Yue than as a copy of another creature, though a much stronger creature can be worth copying. Tap and untap tricks grow the board; attack with it. Hold counterspells and bounce for what matters, and draw cards with spare mana.\n",
  "state": {
   "turn": "T5 main1",
   "life": 40,
@@ -11,54 +11,66 @@
   "battlefield": [
    {
     "name": "Island",
+    "id": 407,
     "tapped": true
    },
    {
     "name": "Island",
+    "id": 408,
     "tapped": true
    },
    {
     "name": "Island",
+    "id": 409,
     "tapped": true
    },
    {
     "name": "Island",
+    "id": 410,
     "tapped": true
    },
    {
-    "name": "Minamo, School at Water's Edge"
+    "name": "Minamo, School at Water's Edge",
+    "id": 411
    },
    {
-    "name": "Deserted Temple"
+    "name": "Deserted Temple",
+    "id": 412
    },
    {
     "name": "Matoya, Archon Elder",
+    "id": 413,
     "pt": "1/4",
     "sick": true
    },
    {
     "name": "Tui and La, Moon and Ocean",
+    "id": 414,
     "pt": "3/3",
     "sick": true
    },
    {
     "name": "Wake Thrasher",
+    "id": 415,
     "pt": "1/1",
     "sick": true
    },
    {
     "name": "Princess Yue",
+    "id": 100,
+    "commander": true,
     "pt": "3/2",
     "sick": true
    },
    {
-    "name": "Island"
+    "name": "Island",
+    "id": 406
    }
   ],
   "command": [],
   "graveyard": [
    "Deserted Temple",
-   "Mirror Image",
+   "Vizier of Many Faces",
    "Nykthos, Shrine to Nyx",
    "Loyal Drake",
    "Moon"
@@ -102,7 +114,7 @@
   "prompt": "Choose a card (Moon)",
   "options": [
    "Matoya, Archon Elder 1/4",
-   "Princess Yue 3/2",
+   "Princess Yue 3/2 (commander)",
    "Tui and La, Moon and Ocean 3/3",
    "Wake Thrasher 1/1"
   ],
@@ -114,7 +126,8 @@
   ],
   "min": 1,
   "max": 1,
-  "repeat": false
+  "repeat": false,
+  "mine": true
  },
  "so_far": [
   {
@@ -158,7 +171,7 @@
   {
    "t": "move",
    "turn": 5,
-   "card": "Blade of Shared Souls",
+   "card": "Sol Ring",
    "from": "hand",
    "to": "library"
   },
@@ -260,7 +273,7 @@
    "t": "decision",
    "turn": 5,
    "kind": "play",
-   "options": 5,
+   "options": 6,
    "answer": [
     "Island (land)"
    ],
@@ -276,7 +289,7 @@
    "t": "decision",
    "turn": 5,
    "kind": "play",
-   "options": 4,
+   "options": 5,
    "answer": [
     "Phyrexian Metamorph"
    ],
@@ -333,7 +346,7 @@
    "prompt": "Choose a card (Phyrexian Metamorph)",
    "options": 4,
    "answer": [
-    "Princess Yue 3/2"
+    "Princess Yue 3/2 (commander)"
    ],
    "by": "agent"
   },
@@ -344,7 +357,7 @@
    "prompt": "You have multiple legendary permanents named \"Princess Yue\" in play. Choose the one to stay on battlefield (the rest will be moved to graveyard) ()",
    "options": 2,
    "answer": [
-    "Princess Yue 3/2"
+    "Princess Yue 3/2 (commander)"
    ],
    "by": "agent"
   },
@@ -368,27 +381,27 @@
   {
    "t": "fork",
    "turn": 5,
-   "session": "g39941"
+   "session": "g78904"
   },
   {
    "t": "fork",
    "turn": 5,
-   "session": "g39942"
+   "session": "g78905"
   },
   {
    "t": "fork",
    "turn": 5,
-   "session": "g39944"
+   "session": "g78903"
   },
   {
    "t": "fork",
    "turn": 5,
-   "session": "g39943"
+   "session": "g78906"
   },
   {
    "t": "fork",
    "turn": 5,
-   "session": "g39945"
+   "session": "g78907"
   }
  ],
  "default": "Wake Thrasher 1/1",
@@ -519,6 +532,11 @@
      "turn": 6,
      "card": "Island",
      "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
     }
    ],
    "state": {
@@ -532,50 +550,63 @@
     ],
     "battlefield": [
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 407
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 408
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 409
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 410
      },
      {
-      "name": "Minamo, School at Water's Edge"
+      "name": "Minamo, School at Water's Edge",
+      "id": 411
      },
      {
-      "name": "Deserted Temple"
+      "name": "Deserted Temple",
+      "id": 412
      },
      {
       "name": "Matoya, Archon Elder",
+      "id": 413,
       "pt": "1/4"
      },
      {
       "name": "Tui and La, Moon and Ocean",
+      "id": 414,
       "pt": "3/3"
      },
      {
       "name": "Wake Thrasher",
+      "id": 415,
       "pt": "6/6"
      },
      {
       "name": "Princess Yue",
+      "id": 100,
+      "commander": true,
       "pt": "3/2"
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 406
      },
      {
-      "name": "Moon"
+      "name": "Moon",
+      "id": 405
      }
     ],
     "command": [],
     "graveyard": [
      "Deserted Temple",
-     "Mirror Image",
+     "Vizier of Many Faces",
      "Nykthos, Shrine to Nyx",
      "Loyal Drake"
     ],
@@ -603,7 +634,7 @@
     ]
    }
   },
-  "Princess Yue 3/2": {
+  "Princess Yue 3/2 (commander)": {
    "facts": [
     {
      "t": "decision",
@@ -612,7 +643,7 @@
      "prompt": "Choose a card (Moon)",
      "options": 4,
      "answer": [
-      "Princess Yue 3/2"
+      "Princess Yue 3/2 (commander)"
      ],
      "by": "model"
     },
@@ -729,6 +760,11 @@
      "turn": 6,
      "card": "Island",
      "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
     }
    ],
    "state": {
@@ -742,50 +778,63 @@
     ],
     "battlefield": [
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 407
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 408
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 409
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 410
      },
      {
-      "name": "Minamo, School at Water's Edge"
+      "name": "Minamo, School at Water's Edge",
+      "id": 411
      },
      {
-      "name": "Deserted Temple"
+      "name": "Deserted Temple",
+      "id": 412
      },
      {
       "name": "Matoya, Archon Elder",
+      "id": 413,
       "pt": "1/4"
      },
      {
       "name": "Tui and La, Moon and Ocean",
+      "id": 414,
       "pt": "3/3"
      },
      {
       "name": "Wake Thrasher",
+      "id": 415,
       "pt": "6/6"
      },
      {
       "name": "Princess Yue",
+      "id": 100,
+      "commander": true,
       "pt": "3/2"
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 406
      },
      {
-      "name": "Moon"
+      "name": "Moon",
+      "id": 405
      }
     ],
     "command": [],
     "graveyard": [
      "Deserted Temple",
-     "Mirror Image",
+     "Vizier of Many Faces",
      "Nykthos, Shrine to Nyx",
      "Loyal Drake"
     ],
@@ -950,6 +999,11 @@
      "turn": 6,
      "card": "Island",
      "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
     }
    ],
    "state": {
@@ -963,44 +1017,57 @@
     ],
     "battlefield": [
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 407
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 408
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 409
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 410
      },
      {
-      "name": "Minamo, School at Water's Edge"
+      "name": "Minamo, School at Water's Edge",
+      "id": 411
      },
      {
-      "name": "Deserted Temple"
+      "name": "Deserted Temple",
+      "id": 412
      },
      {
       "name": "Matoya, Archon Elder",
+      "id": 413,
       "pt": "1/4"
      },
      {
       "name": "Tui and La, Moon and Ocean",
+      "id": 414,
       "pt": "3/3"
      },
      {
       "name": "Wake Thrasher",
+      "id": 415,
       "pt": "6/6"
      },
      {
       "name": "Princess Yue",
+      "id": 100,
+      "commander": true,
       "pt": "3/2"
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 406
      },
      {
       "name": "Moon",
+      "id": 405,
       "counters": {
        "+1/+1": 1
       }
@@ -1009,7 +1076,7 @@
     "command": [],
     "graveyard": [
      "Deserted Temple",
-     "Mirror Image",
+     "Vizier of Many Faces",
      "Nykthos, Shrine to Nyx",
      "Loyal Drake"
     ],
@@ -1218,6 +1285,11 @@
      "turn": 6,
      "card": "Island",
      "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
     }
    ],
    "state": {
@@ -1231,50 +1303,63 @@
     ],
     "battlefield": [
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 407
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 408
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 409
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 410
      },
      {
-      "name": "Minamo, School at Water's Edge"
+      "name": "Minamo, School at Water's Edge",
+      "id": 411
      },
      {
-      "name": "Deserted Temple"
+      "name": "Deserted Temple",
+      "id": 412
      },
      {
       "name": "Matoya, Archon Elder",
+      "id": 413,
       "pt": "1/4"
      },
      {
       "name": "Tui and La, Moon and Ocean",
+      "id": 414,
       "pt": "3/3"
      },
      {
       "name": "Wake Thrasher",
+      "id": 415,
       "pt": "6/6"
      },
      {
       "name": "Princess Yue",
+      "id": 100,
+      "commander": true,
       "pt": "3/2"
      },
      {
-      "name": "Island"
+      "name": "Island",
+      "id": 406
      },
      {
-      "name": "Moon"
+      "name": "Moon",
+      "id": 405
      }
     ],
     "command": [],
     "graveyard": [
      "Deserted Temple",
-     "Mirror Image",
+     "Vizier of Many Faces",
      "Nykthos, Shrine to Nyx",
      "Loyal Drake"
     ],

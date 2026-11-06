@@ -12,7 +12,6 @@ agent ──shell──▶ bin/goldfish (Python) ──JSON lines, Unix socket�
 | `engine/` | Java 17, Maven | Forge host: game setup, decision routing and logging, forks, snapshots, overrides, recording facts |
 | `goldfish/` | Python 3.9, stdlib only | CLI, engine client, digests, batch runner and pilot runtime, reports |
 | `vendor/forge/` | Java, Forge | Upstream Forge at the pin, with our patch series; its card data is the card pool |
-| `cards/` | Forge card scripts | Cards Forge lacks or gets wrong, with provenance (see Local card scripts) |
 | `scripts/` | sh | Fetching, patching and building Forge; building the engine |
 | `bench/` | Python | Fork fidelity, scenarios and model-reading experiments ([measurements](measurements.md)) |
 | deck, plan and pilot (outside) | text + Python | The decklist, and optionally a deck plan and a pilot file, passed by path |
@@ -26,8 +25,9 @@ the JVM.
 Forge asks each player's `PlayerController` everything: 112 abstract methods at the pinned commit. The
 agent's seat is `ManualController extends PlayerControllerAi`. Each method it overrides becomes a
 `Decision`: a kind, the turn, a short prompt, and numbered options labelled by card name. On the
-battlefield, a label also carries what tells copies apart: P/T, counters, tapped, token. Each option's full
-text (Oracle text or the whole ability) travels with it for `decision --full`. For a permanent on the
+battlefield, a label also carries what tells copies apart: P/T, counters, commander (a copy of one isn't),
+tapped, token. Each option's full text (Oracle text or the whole ability) travels with it for
+`decision --full`. For a permanent on the
 battlefield the text is its abilities as they are now, not as printed: a clone's, gained ones, a land that
 used to be a creature (Princess Yue returning as Moon with the abilities of whatever the returning card
 copies). The answer is option numbers
@@ -41,7 +41,8 @@ In manual mode, the agent decides:
   mana abilities, because payment is automatic.
 - `number`: X, and other announced numbers, capped at what can be paid;
 - `mode` (including modes that may repeat), `targets` (every targeting part of a spell or trigger),
-  `confirm` (optional "may" and optional triggers), and `order` (simultaneous triggers);
+  `confirm` (optional "may", optional triggers, and new targets for a copy, then asked as `targets`), and
+  `order` (simultaneous triggers);
 - `pay`: which mana abilities pay, in order, with a colour where the ability chooses one, when a creature
   could pay (`--mana always` asks for every cast, `--mana auto` never). Answering none leaves it to Forge's
   AI. Chosen abilities are activated, and the rest of the cost is paid from the pool with every source held
@@ -64,7 +65,7 @@ from the game's shuffles.
 
 Forge's AI still decides, recorded `unlogged` so a fork lets it choose again: card names matching a
 predicate (too many to list), discard, exile and return costs, and unusual tap or sacrifice cost variants.
-It also answers, unrecorded: new targets for copies, piles, votes, dice, and the rarer prompts no example deck has needed yet. Surface any of them when
+It also answers, unrecorded: new targets chosen by another effect (a redirect), piles, votes, dice, and the rarer prompts no example deck has needed yet. Surface any of them when
 a deck needs it, following the pattern in `ManualController`.
 
 Priority stops: the agent is asked about priority during its own main phases and whenever something is on
@@ -381,8 +382,7 @@ summarises it from the seats' records: the result, each player's life by round, 
 decided, how its forks went, its commander and its development.
 
 People need the Forge desktop app at the engine's exact build: `scripts/build-forge-client.sh` builds it from a
-full Forge checkout holding the pin and the series, and runs it from `vendor/forge/forge-gui`, whose card scripts
-include our local cards (a person's deck import needs them too). With no people seated, Forge's match host adds a
+full Forge checkout holding the pin and the series, card scripts included. With no people seated, Forge's match host adds a
 spectator, which pauses on each event as if someone watched; agent-only tables run slowly for that reason.
 
 ## Snapshots and overrides
@@ -409,8 +409,9 @@ remove counters of any type, tap, untap, destroy. Use `Name#2` for the second ca
 are suppressed during an override, because a correction states how the game should be; it shouldn't set
 off new effects. `destroy` is the exception, asked for so that what dies triggers, though Princess Yue's
 death trigger doesn't fire from it: the trigger looks back at what she was, which needs more than the
-last-known-state refresh the override does. A waiting `play` decision is asked again afterwards, so its
-options match the corrected board, and overrides are logged so a fork makes them too.
+last-known-state refresh the override does. A choice an override sets off (a destroyed commander to the
+command zone) goes to Forge's AI and is recorded as its answer. A waiting `play` decision is asked again
+afterwards, so its options match the corrected board, and overrides are logged so a fork makes them too.
 
 ## Forge dependency
 
@@ -425,7 +426,7 @@ is the card-data part of forge-gui's `FModel.initialize`, reading card scripts f
 `scripts/forge-patches/` is a `git format-patch` series, applied in order with `git am -3`. Each message
 says why the patch exists and, in a `Goldfish-Upstream:` trailer, whether it is offered upstream
 (`offer`), needs rework first, or is a hook only this host needs (`local`). Patches never implement a
-card. To change one, commit on `vendor/forge`'s `goldfish` branch (amend or rebase as usual), then export
+card in Java (see Local card scripts). To change one, commit on `vendor/forge`'s `goldfish` branch (amend or rebase as usual), then export
 the whole series again:
 
 ```bash
@@ -443,17 +444,15 @@ both), and every game record's `start` fact carries it as `forge`.
 ### Local card scripts
 
 A card Forge lacks or gets wrong is written as an ordinary Forge card script, using only mechanics the
-engine already has. Scripts live in `cards/`; `cards/manifest.json` gives each one's card name and
-provenance (the upstream script it was modelled on, where its rules text came from, the upstream commit
-checked). At engine start, `goldfish/card_resources.py` installs them into
-`cardsfolder/goldfish-local`, where Forge's normal reader finds them; there is no second card parser.
+engine already has, in one patch of the series ("Add card scripts Forge lacks") under `cardsfolder`, where
+Forge keeps its own. So every Forge built from the series has them: the engine, and the desktop app people
+join tables with. The patch's message gives each card's provenance (the upstream script it was modelled on,
+its Scryfall oracle id, the upstream commit checked).
 
-Upstream wins. If the pinned Forge defines a card with the same name, the installer stops and names both
-paths: compare the two, check upstream's with the same scenarios, then remove our entry. A script dropped
-from the manifest is moved to `.goldfish/retired-cards/`, never deleted, and the installer also stops on
-an installed file it didn't write or that was edited in place. Rules scenarios for the local cards are in
-`tests/test_trek_cards.py`. Game records carry the local scripts available (`local_cards`, with a hash),
-and record headers show them.
+Upstream wins. Bootstrap stops when the pin defines a card name the series adds: compare the two, check
+upstream's with the same scenarios, then drop ours from the patch. Rules scenarios for the local cards are in
+`tests/test_trek_cards.py`. Game records carry the cards the series adds (`local_cards`), and record headers and
+reports show them.
 
 [`skills/forge-cards/SKILL.md`](../skills/forge-cards/SKILL.md) owns the procedure for adding, checking
 and retiring cards.
