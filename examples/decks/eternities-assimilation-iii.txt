@@ -15,6 +15,7 @@
 1 Command Tower (CMM) 659
 1 Conquest Mission (TRK) 10
 1 Contagion Engine (SOM) 145
+1 Copper Myr (SOM) 146
 1 Crystalline Crawler (EOC) 133
 1 Death Is Irrelevant (TRK) 102
 1 Dyadrine, Synthesis Amalgam (EOE) 216
@@ -31,6 +32,7 @@
 1 Gift of Perfection (TRC) 44
 1 Glissa, Herald of Predation (MOM) 226
 1 Godless Shrine (EOE) 280
+1 Gold Myr (NEC) 153
 1 Hallowed Fountain (ECL) 265
 1 Hangarback Walker (SOC) 348
 1 Harmonize (ECC) 111
@@ -43,7 +45,6 @@
 1 Loading Zone (EOE) 196
 1 Locutus of Borg (TRC) 97
 1 Mana Confluence (EOS) 25
-1 Marketback Walker (DFT) 235
 1 Marsh Flats (MH2) 248
 1 Maturation Chamber (TRC) 24
 1 Misty Rainforest (MH2) 250
@@ -53,7 +54,6 @@
 1 Ouroboroid (EOE) 201
 1 Overgrown Tomb (ECL) 266
 1 Patrolling Peacemaker (EOC) 5
-1 Phyrexian Metamorph (EOC) 75
 5 Plains (EOE) 262
 1 Polluted Delta (MH3) 224
 1 Reckoner Bankbuster (NEO) 255
@@ -64,7 +64,7 @@
 1 Sandstorm Salvager (BIG) 19
 1 Scalding Tarn (MH2) 254
 1 Scavenger Grounds (EOS) 37
-1 Scheming Aspirant (ONE) 107
+1 Silver Myr (FDC) 284
 1 Sol Ring (FRC) 21
 1 Stable Wormhole (TRK) 215
 1 Staff of Compleation (TDC) 326

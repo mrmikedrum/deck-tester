@@ -11,11 +11,11 @@
 1 Chaos Warp (SOC) 239
 1 Command Tower (CMM) 659
 1 Commune with Lava (AFC) 118
+1 Copper Myr (SOM) 146
 1 Cosmic Rebirth (MAT) 28
 1 Cryptic Trilobite (C20) 21
 1 Crystalline Crawler (EOC) 133
 1 Dyadrine, Synthesis Amalgam (EOE) 216
-1 Elemental Bond (TDC) 254
 1 Emergency Eject (EOE) 14
 1 Escape to the Wilds (EOC) 115
 1 Evendo, Waking Haven (EOE) 279
@@ -29,20 +29,20 @@
 1 Flooded Strand (MH3) 220
 8 Forest (EOE) 266
 1 Genesis Device (TRK) 200
+1 Gold Myr (NEC) 153
 1 Grove of the Burnwillows (EOS) 17
 1 Hangarback Walker (SOC) 348
 1 Harmonize (ECC) 111
 1 Haywire Mite (SOC) 349
 1 Herd Baloth (MH2) 165
-1 Hit It! (TRK) 240
 1 Incubation Druid (MOC) 302
 1 Inspiring Call (FDN) 226
+1 Iron Myr (SOM) 168
 1 Kami of Whispered Hopes (SOC) 273
 1 Karn's Bastion (EOC) 163
 1 Kavaron, Memorial World (EOE) 281
 1 Loading Zone (EOE) 196
 1 Mana Confluence (EOS) 25
-1 Marketback Walker (DFT) 235
 1 Misty Rainforest (MH2) 250
 3 Mountain (EOE) 265
 1 Nature's Lore (FIC) 311
@@ -56,13 +56,12 @@
 1 Recon Craft Theta (PIP) 141
 1 Reflecting Pool (EOS) 36
 1 Return of the Wildspeaker (ECC) 115
-1 Rishkar, Peema Renegade (FDC) 225
 1 Robe of Stars (AFC) 11
-1 Rootborn Defenses (CLU) 71
 1 Sacred Foundry (EOE) 282
 1 Sandstorm Salvager (BIG) 19
 1 Scalding Tarn (MH2) 254
 1 Scavenger Grounds (EOS) 37
+1 Scholar of New Horizons (SLD) 7143 *F*
 1 Sol Ring (FRC) 21
 1 Song of the Worldsoul (C19) 6
 1 Stable Wormhole (TRK) 215
@@ -80,6 +79,7 @@
 1 Unbound Flourishing (SOC) 126
 1 Verdant Catacombs (MH2) 260
 1 Vigorbloom Charm (FRA) 160
+1 Walking Ballista (2XM) 306
 1 War Room (SOC) 422
 1 Winds of Abandon (MH1) 37
 1 Windswept Heath (MH3) 235
