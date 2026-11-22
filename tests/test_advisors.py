@@ -59,10 +59,41 @@ class AdvisorsTest(unittest.TestCase):
         self.assertIn('Chamber has 3 charge counters', text)
         self.assertIn('FOUR mana', text)
 
-    def test_tekuthal_doubles_proliferations_not_every_counter(self):
-        text = self.assimilation(position(dict(name='Tekuthal, Inquiry Dominus')), decision('pass'), [])
-        self.assertIn('TWO proliferations', text)
-        self.assertIn('does not double every counter', text)
+    def test_removed_cards_no_longer_trigger_current_list_guidance(self):
+        for card in ['Tekuthal, Inquiry Dominus', 'Ezuri, Stalker of Spheres']:
+            self.assertIsNone(self.assimilation(position(dict(name=card)), decision('pass'), []))
+        for card in ['Commander William Riker', 'Elemental Bond', 'Evolution Witness']:
+            self.assertIsNone(self.nature(position(dict(name=card)), decision('pass'), []))
+
+    def test_myr_fixing_does_not_multiply_with_counters(self):
+        for advisor, card, colour in [(self.nature, 'Iron Myr', 'red'), (self.assimilation, 'Silver Myr', 'blue')]:
+            text = advisor(position(dict(name=card, counters={'+1/+1': 4}, sick=True)), decision('pass'), [])
+            self.assertIn(colour, text)
+            self.assertIn('after summoning sickness', text)
+            self.assertIn('not their mana output', text)
+
+    def test_scholar_can_spend_any_counter_and_fetch_nonbasic_plains(self):
+        text = self.nature(position(dict(name='Scholar of New Horizons')), decision('pass'), [])
+        self.assertIn('ANY counter', text)
+        self.assertIn('Temple Garden or Sacred Foundry', text)
+        self.assertIn('only if an opponent controls more lands', text)
+
+    def test_ballista_and_trilobite_have_different_cost_restrictions(self):
+        text = self.nature(position(), decision('pass', 'Walking Ballista'), [])
+        self.assertIn('paying four gives X=2', text)
+        self.assertIn('X=0 normally dies', text)
+        text = self.nature(position(dict(name='Cryptic Trilobite')), decision('pass'), [])
+        self.assertIn('ONLY for activating', text)
+        self.assertIn('not casting spells', text)
+
+    def test_creature_counter_draw_is_not_charge_counter_draw(self):
+        state = position(dict(name='Terrasymbiosis'), dict(name='Maturation Chamber', counters={'Charge': 6}))
+        text = self.assimilation(state, decision('pass'), [])
+        self.assertIn('Charge/quest growth alone does not feed it', text)
+
+    def test_bankbuster_does_not_need_to_be_crewed_for_cards(self):
+        text = self.assimilation(position(dict(name='Reckoner Bankbuster')), decision('pass'), [])
+        self.assertIn('without needing crew', text)
 
     def test_sphere_evasion_requires_six_and_glissa_has_bulk_transform(self):
         state = position(dict(name='Borg Scout Sphere', counters={'Charge': 5}),
@@ -76,8 +107,8 @@ class AdvisorsTest(unittest.TestCase):
     def test_graveyard_and_triggered_choices_are_context_specific(self):
         text = self.nature(position(), decision('Final Frontier (beammeup) (from graveyard)'), [])
         self.assertIn('Castable from the graveyard now: Final Frontier', text)
-        text = self.nature(position(), decision('yes', 'no', kind='confirm', prompt='Search your hand? (Spelunking)'), [])
-        self.assertIn('NOT your normal land', text)
+        text = self.nature(position(), decision('yes', 'no', kind='confirm', prompt='Cosmic Rebirth returns Marath'), [])
+        self.assertIn('zero mana spent', text)
 
     def test_outcomes_step_sends_python_advice_and_played_out_criteria_to_model(self):
         state = position(dict(name='Marath, Will of the Wild', pt='3/3', counters={'+1/+1': 3}))

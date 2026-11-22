@@ -1,50 +1,55 @@
-Manufactured Cosmos — Atraxa / Assimilation pilot
+Manufactured Cosmos III — Atraxa / Assimilation
 
-Goal: develop an organized, increasingly uniform artifact fleet, with proliferation connecting worlds,
-Incubators, charge counters and crew. Keep Borg and Phyrexian expressions together. This goldfish tests
-assembly and resource competition, NOT win rate, opponents' agency or removal quality.
+Grow an organized artifact fleet, with Borg production, Incubators and charge infrastructure as linked
+but distinct engines. Proliferate advances counters already present; it cannot seed an empty Borg army.
+A working charge-powered factory is useful even if its tokens have no +1/+1 counters. Do not confuse
+that route with creature-counter payoffs, or make every card wait for both routes to be assembled.
 
-Keep a hand with usable early mana, a development action and a follow-up; 2–4 lands is only a first
-filter. Account for tapped worlds and the four W/U/B/G colors Atraxa needs. A hand missing a commander
-color is fine with real fixing and productive plays. First multiplayer mulligan is free. Fetch typed
-lands for actual missing colors, particularly blue/black, rather than reflexively getting a Forest.
+Keep colours, early development and a follow-up, not merely a land count. Two to four lands is only
+a first filter; account for tapped worlds and W/U/B/G fixing. The first Commander mulligan is free;
+judge the already-bottomed hand and bound further shrinking. Fetch typed duals for missing colours,
+not reflexive Forests. A productive start without every Atraxa colour is acceptable with real fixing.
 
-Early: fixing and cheap artifact infrastructure; put Maturation Chamber/Conquest Mission/Brimaz ahead of
-future artifact CASTS/ENTRIES when doing so doesn't skip needed mana. Maturation triggers on casts,
-Conquest on nontoken artifact entries: Incubator tokens and transformations do not seed those engines.
-Get independent card access rather than relying only on expensive, combat-dependent Borg draw.
+Copper Myr makes G, Gold Myr W and Silver Myr U after summoning sickness wears off. They are artifact
+casts/entries as well as fixing, but counters do not increase their mana output. Preserve a mana body
+when station would prevent a useful play. Ordinary noncreature Incubators cannot station as creatures.
 
-Middle: cast Atraxa once the four colors are functional and counters/crew make her useful. Her end-step
-proliferation requires existing counters: seed Cornucopia, Chamber, spacecraft, Incubators, countered
-creatures first. Spread upgrades across several useful components. Grow Incubators before paying two
-to transform them; do not transform every token immediately and starve development. Standardized Borg
-can attack with Locutus or Co-Option Adjutant for production/cards. Sphere's fleet-wide flying needs 6
-charge counters and matters only with a fleet to carry it.
+Set up Chamber before future artifact CASTS, and Conquest before future NONTOKEN artifact entries when
+that does not skip needed mana. Tokens and Incubator transformations do not trigger either input.
+Chamber's four-mana/tap activation creates Borg without removing its charges. Throne can recycle a
+spare body to proliferate infrastructure; do not sacrifice essential mana or the last working engine.
+Steel Overseer seeds artifact CREATURES, not untransformed Incubators. Filigree/Ouroboroid and other
+actual counter placement can support army-wide growth; The Borg Queen's static +2/+2 is not counters.
 
-Combat/station: attack with vigilant Atraxa, then use her to station afterward if mana development no
-longer needs her. Other attackers cannot also be tapped as station crew. Station Research Craft before
-subsequent artifact casts if that enables draw. Don't repeatedly spend station activations after a
-useful threshold without a reason. Use Steel Overseer/proliferation to organize the board, not a loop
-that consumes all future choices. Throne of Geth should recycle a disposable artifact when proliferation
-creates more value, not sacrifice essential mana or the last relevant engine.
+Harmonize provides three cards without an engine. Insight Engine can build its own charge reserve
+and draw from it; deploy it rather than repeatedly spending spare mana on small upgrades. Bankbuster
+needs charges and paid activations, not crew, to draw. Research Craft needs 3 station counters BEFORE
+future artifact casts draw and add charges. Co-Option Adjutant's card flow needs combat connections.
+Inspiring Call and Terrasymbiosis need actual creature +1/+1-counter support; a counterless Borg swarm
+or charge-only proliferation does not supply that. Note dormant payoffs without calling productive
+factory turns dead. Decline optional draws where a finite closing line makes more cards unnecessary.
 
-Resource choices: Chamber costs four mana per activation; prefer building an engine or casting an
-artifact over a tiny activation that delays the fleet. Borg combat draw is conditional, not guaranteed
-against real opponents. Warp Speed can fix a land to hand and override tapped entries; its later draw
-activation still needs UU after distinct-world discount. Genesis Device is a land swap, not ramp; use
-only when landfall, fixing/world selection or untapped-entry payoff justifies it. Discovery effects that
-cast X spells for free get X=0; take them to hand when appropriate.
+Cast Atraxa once fixing and useful counters/pressure justify her. Vigilance allows attacking, then
+stationing afterward; stationing first loses that attack. Summoning sickness does not prevent being
+station crew. Sword can seed counters, proliferate on connection and make Atraxa an independent
+commander-damage threat. Her end-step proliferation can also grow Chamber, draw batteries and worlds.
+Loading Zone doubles counters only on creatures, Spacecraft and Planets, not ordinary artifacts like
+Chamber or Insight. Grow Incubators before transforming; Glissa can transform the existing batch at
+combat without paying two for every token. New tokens still need to become creatures and lose sickness.
 
-Late: turn assembled infrastructure into a visible fleet finish with Cyberdrive or repeated production,
-not opponent-locking or poison dependence. Cyberdrive does not give haste: existing artifacts can attack,
-newly made ones may be summoning-sick. Keep removal/counters and protection for real threats; don't
-spend them pointlessly in this passive scenario. Creature-only Sunfall spares noncreature Incubators,
-but it still erases supporting creatures; a goldfish cannot establish recovery or interaction adequacy.
+Sphere grants the artifact fleet flying at 6 charges; Locutus and Adjutant reward DAMAGE connections,
+not simply declarations of attack. Pay for station thresholds that do something now, not endless crew.
+Warp Speed changes tapped-land entries; its draw discount affects generic mana, not UU. Genesis Device
+is a land swap with real fixing/entry payoffs, not an increase in land count. Free-cast X spells use
+X=0; take them to hand when the effect permits and paying a useful X later is better.
 
-Refined sequencing: Decode Transmissions supplies two cards for three mana without needing a fleet.
-Void is a bonus after a real nonland permanent departure (e.g. a useful artifact sacrifice), not a
-reason to sacrifice essential infrastructure. Do not cast Sunfall into only your own developed board
-in this passive test. Preserve reaction slots in the list; lack of goldfish targets is not evidence
-that interaction is dispensable. With active Ezuri, landfall and Atraxa, prioritize starting production
-then growing Incubators together before Glissa transforms them; avoid paying individually when her
-combat mode can transform the batch. Favor concrete ship thresholds over indefinite stationing.
+Finish with the fleet, Queen's pump, Biomass Mutation, repeated counters from Expansion Algorithm, or
+real evasive commander pressure as the board permits. Expansion's X proliferations need existing
+counters; they do not create the first counter. Literal assimilation from Gift, Assimilate the Wounded,
+Cube or Death Is Irrelevant is bounded by actual targets and costs. Keep recovery tied to real graveyard
+targets; opposing graveyard exile can strand it, and creature exile is not a death-draw opportunity.
+
+In multiplayer, save counters/removal and protection for meaningful opposing plays. Sunfall also
+exiles your own supporting creatures; Organic Extinction spares artifacts, not Atraxa or nonartifact
+support. In passive goldfishes, do not wipe only your own board just to spend mana. Evaluate actual
+turn-by-turn useful options and interruptions, not a goldfish win rate or only the final fleet size.

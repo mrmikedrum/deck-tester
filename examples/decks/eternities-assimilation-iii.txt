@@ -1,93 +1,92 @@
-~~Commanders~~
-1 Atraxa, Praetors' Voice
+// COMMANDER
+1 Atraxa, Praetors' Voice (2XM) 190
 
-~~Mainboard~~
-1 Adagia, Windswept Bastion
-1 Arcane Signet
-1 Astral Cornucopia
-1 Borg Cube
-1 Borg Scout Sphere
-1 Breeding Pool
-1 Brimaz, Blight of Oreskos
-1 Cankerbloom
-1 Chrome Host Seedshark
-1 Co-Option Adjutant
-1 Command Tower
-1 Conquest Mission
-1 Cosmic Rebirth
-1 Crystalline Crawler
-1 Cyberdrive Awakener
-1 Decode Transmissions
-1 Dyadrine, Synthesis Amalgam
-1 Emergency Eject
-1 Evendo, Waking Haven
-1 Evolution Sage
-1 Evolution Witness
-1 Exploration Broodship
-1 Ezuri, Stalker of Spheres
-1 Fabled Passage
-1 Farseek
-1 Filigree Vector
-1 Final Frontier
-1 Flooded Strand
-6 Forest
-1 Generous Patron
-1 Genesis Device
-1 Glissa, Herald of Predation
-1 Godless Shrine
-1 Grateful Apparition
-1 Hallowed Fountain
-1 Hangarback Walker
-1 Harmonize
-1 Haywire Mite
-1 Insight Engine
-1 Inspiring Call
-2 Island
-1 Kami of Whispered Hopes
-1 Karn's Bastion
-1 Larval Scoutlander
-1 Loading Zone
-1 Locutus of Borg
-1 Mana Confluence
-1 Marketback Walker
-1 Marsh Flats
-1 Maturation Chamber
-1 Metastatic Evangel
-1 Misty Rainforest
-1 Nature's Lore
-1 Ornithopter of Paradise
-1 Overgrown Tomb
-1 Patrolling Peacemaker
-1 Phyrexian Metamorph
-5 Plains
-1 Polluted Delta
-1 Recon Craft Theta
-1 Reflecting Pool
-1 Reject Imperfection
-1 Resourceful Defense
-1 Ripples of Potential
-1 Scalding Tarn
-1 Scavenger Grounds
-1 Scheming Aspirant
-1 Sol Ring
-1 Steel Overseer
-1 Sunfall
-1 Surge Conductor
-1 Susur Secundi, Void Altar
-1 Swamp
-1 Sword of Truth and Justice
-1 Swords to Plowshares
-1 Tekuthal, Inquiry Dominus
-1 Temple Garden
-1 Terrasymbiosis
-1 Throne of Geth
-1 U.S.S. Enterprise-D, Galaxy-Class
-1 Unnatural Restoration
-1 Uthros, Titanic Godcore
-1 Verdant Catacombs
-1 Vigorbloom Charm
-1 Warp Speed
-1 Watery Grave
-1 Winds of Abandon
-1 Windswept Heath
-1 Wooded Foothills
+1 Adagia, Windswept Bastion (EOE) 277
+1 Arcane Signet (EOC) 53
+1 Assimilate the Wounded (TRC) 55
+1 Astral Cornucopia (SOC) 342
+1 Biomass Mutation (SOC) 297
+1 Borg Cube (TRK) 227
+1 Borg Scout Sphere (TRC) 36
+1 Breeding Pool (EOE) 278
+1 Cankerbloom (ONE) 161
+1 Chrome Host Seedshark (EOC) 68
+1 Co-Option Adjutant (TRC) 39
+1 Command Tower (CMM) 659
+1 Conquest Mission (TRK) 10
+1 Contagion Engine (SOM) 145
+1 Copper Myr (SOM) 146
+1 Crystalline Crawler (EOC) 133
+1 Death Is Irrelevant (TRK) 102
+1 Dyadrine, Synthesis Amalgam (EOE) 216
+1 Emergency Eject (EOE) 14
+1 Evendo, Waking Haven (EOE) 279
+1 Expansion Algorithm (SOC) 19
+1 Fabled Passage (EOC) 60
+1 Farseek (EOC) 50
+1 Filigree Vector (MOC) 15
+1 Final Frontier (TRK) 198
+1 Flooded Strand (MH3) 220
+6 Forest (EOE) 266
+1 Genesis Device (TRK) 200
+1 Gift of Perfection (TRC) 44
+1 Glissa, Herald of Predation (MOM) 226
+1 Godless Shrine (EOE) 280
+1 Gold Myr (NEC) 153
+1 Hallowed Fountain (ECL) 265
+1 Hangarback Walker (SOC) 348
+1 Harmonize (ECC) 111
+1 Haywire Mite (SOC) 349
+1 Insight Engine (EOC) 6
+1 Inspiring Call (40K) 217
+2 Island (EOE) 263
+1 Karn's Bastion (EOC) 163
+1 Larval Scoutlander (EOE) 194
+1 Loading Zone (EOE) 196
+1 Locutus of Borg (TRC) 97
+1 Mana Confluence (EOS) 25
+1 Marsh Flats (MH2) 248
+1 Maturation Chamber (TRC) 24
+1 Misty Rainforest (MH2) 250
+1 Nature's Lore (FIC) 311
+1 Organic Extinction (EOC) 66
+1 Ornithopter of Paradise (DRC) 133
+1 Ouroboroid (EOE) 201
+1 Overgrown Tomb (ECL) 266
+1 Patrolling Peacemaker (EOC) 5
+5 Plains (EOE) 262
+1 Polluted Delta (MH3) 224
+1 Reckoner Bankbuster (NEO) 255
+1 Recon Craft Theta (PIP) 141
+1 Reflecting Pool (EOS) 36
+1 Reject Imperfection (ONE) 67
+1 Ripples of Potential (EOC) 77
+1 Sandstorm Salvager (BIG) 19
+1 Scalding Tarn (MH2) 254
+1 Scavenger Grounds (EOS) 37
+1 Silver Myr (FDC) 284
+1 Sol Ring (FRC) 21
+1 Stable Wormhole (TRK) 215
+1 Staff of Compleation (TDC) 326
+1 Steel Overseer (EOC) 144
+1 Sunfall (FRC) 36
+1 Surge Conductor (EOC) 19
+1 Susur Secundi, Void Altar (EOE) 284
+1 Swamp (EOE) 264
+1 Sword of Truth and Justice (MH1) 229
+1 Swords to Plowshares (PIP) 173
+1 Temple Garden (ECL) 268
+1 Terrasymbiosis (EOE) 210
+1 The Borg Queen (TRC) 1
+1 The Ozolith (IKO) 237
+1 Thought Monitor (EOC) 79
+1 Throne of Geth (2XM) 301
+1 Unnatural Restoration (ONE) 191
+1 Uthros Research Craft (EOC) 7
+1 Uthros, Titanic Godcore (EOE) 285
+1 Verdant Catacombs (MH2) 260
+1 Warp Speed (TRK) 223
+1 Watery Grave (EOE) 286
+1 Winds of Abandon (MH1) 37
+1 Windswept Heath (MH3) 235
+1 Wooded Foothills (MH3) 236

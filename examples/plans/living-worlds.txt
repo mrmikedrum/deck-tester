@@ -1,93 +1,55 @@
-Living Worlds — Marath / Nature exploration pilot
+Living Worlds III — Marath / Growing Cosmos
 
-Goal: develop a visibly varied living galaxy through land discovery, creatures, tokens and proliferation.
-This is a passive-opponent goldfish, not a damage race or a reason to spend reactive cards pointlessly.
-Keep Song of the Worldsoul as a supported late pleasure. Do not chase an infinite combo or a single
-scripted line; build the resources the actual draw offers.
+Build an expansive, varied living board through lands, +1/+1 counters, creature tokens and proliferation.
+Song of the Worldsoul is the nature branch's late populate pleasure, not a requirement to force every
+opening down the same line. Follow the actual draw. Growth comes first; naturally assembled Marath
+combos can finish a developed game, but do not make every start a race for a scripted loop.
 
-Keep 2–4 lands ONLY if their colors/tapped timing cast early development and a follow-up; a five-land
-hand needs real card access. First multiplayer mulligan is free. Prioritize functional G, then W/R for
-Marath. Fetch typed fixing for the hand, not just any green source. Make your land drop before spending
-mana unless landfall sequencing or an additional-land effect gives a concrete reason to wait.
+Opening: keep usable colours, early development and a follow-up. Two to four lands is a first filter,
+not a substitute for checking tapped timing and access to green, then Marath's red/white. The first
+Commander mulligan is free; judge the already-bottomed hand and do not mulligan indefinitely. Fetch
+Temple Garden/Stomping Ground/Sacred Foundry as the hand needs, not always a basic Forest.
 
-Early: cheap ramp/fixing, independent card flow, and a repeatable exploration/token/counter engine.
-Pike opens top-library lands; use permitted extra land drops from Janeway. Seed counters on
-Incubation Druid before expecting three mana. Preserve creatures as mana/board where station would
-consume the turn's development. A spacecraft without enough crew is a future payoff, not current ramp.
+Early development includes Copper Myr (G), Gold Myr (W), Iron Myr (R), Ornithopter, Signet and land
+search. Myr cannot tap for mana while summoning-sick, and +1/+1 counters do not multiply their mana.
+Scholar of New Horizons trades any permanent counter for a Plains card: typed duals qualify. It puts
+that land onto the battlefield tapped only while an opponent has more lands; otherwise it supplies
+hand/land-drop access. Preserve survival counters and useful spacecraft/engine thresholds.
 
-Middle: cast Marath when its counters can support life, card flow or station, rather than mandating T3.
-His activation's X is at least 1. Use counters to seed multiple resources, or make a useful real base-sized
-Elemental; don't burn all his counters for trivial damage against 40-life passive opponents. Proliferate
-then becomes shared growth. Attack safely to trigger Wormhole/Discovery/Apparition before tapping crew
-after combat; creatures without vigilance cannot both attack and station that turn. Prioritize evolution
-and branch-specific experiences over adding redundant counter consumers.
+Choose between new mana and new cards based on the actual bottleneck. Harmonize is independent draw;
+Staff starts with a Spirit and can spend its story counters for cards. Bankbuster draws without crew
+and proliferation can refill its charges. War Room costs three mana, tap and three life with Marath.
+Wildspeaker needs worthwhile non-Human power. Tribute and Terrasymbiosis are conditional engines:
+Terrasymbiosis wants a large +1/+1-counter placement on a creature, once per turn, not charge growth.
+A paid Marath recast may refill through it. Direct reanimation has zero mana spent and normally needs
+an extra-counter replacement to keep Marath alive. Evaluate actual graveyard targets for Cosmic Rebirth.
 
-Use landfall intentionally: hold a fetch until Evolution Sage/Felidar Retreat can benefit when the delay
-costs no land drop. Genesis Device's activation is a land swap, not net ramp; activate for a real payoff
-from multiple land entries or better worlds, and remember the new lands lose old counters. Cast Discovery
-with the crew to reach 6 over time. Discovering an X spell for free has X=0: put it into hand unless zero
-is genuinely useful. Commander casting is not an automatic priority over establishing a draw engine.
+Cast Mission before useful land entries. Its exile permission lasts THIS turn; reaching five quest
+counters through proliferation alone does not add RR, but a resolving landfall trigger at five does.
+Wrenn's Resolve, Escape and Commune access lasts through your next turn; Escape's extra land allowance
+lasts only this turn. Count cards actually played, not access spells cast. Spend on USEFUL expiring
+cards before optional sinks, but do not destroy your own engine merely to use expiring removal.
 
-Late: grow a diverse board and make a telegraphed burst. Song populates ORIGINAL token characteristics,
-not added counters: real base-sized Marath Elementals, Beasts or Golems are good; a 0/0 Fractal wearing
-counters is not. Preserve a creature spell for Song's first useful trigger when feasible. Unbound
-Flourishing doubles X sorceries/casts as appropriate, not every counter placed. Hold removal/protection
-in an empty goldfish; do not erase your board with Sunfall merely to spend mana. Report stalls or awkward
-choices instead of disguising them with arbitrary overrides.
+Broodship grants an extra land play at 3 charges; at 8 its once-per-your-turn permanent cast from the
+graveyard also sacrifices a land and pays normal costs. Genesis Device swaps lands, not net ramp.
+Use those world entries with Mission, Evolution Sage and Felidar Retreat; Wormhole's Planet is a land
+token, not a creature token for Staff. Attack when useful, then station with untapped bodies; ordinary
+attackers cannot also crew that turn. Avoid indefinite stationing beyond meaningful thresholds.
 
-Refined sequencing: an available fetchland is an early green source, not a reason to play Plains for
-several turns with green spells stranded. Tannuk is a three-mana exploration payoff: cast before the
-land drop when mana already permits it, and aim for the SECOND landfall resolution (normal land plus
-fetch/Wormhole/Frontier) for one card. A third landfall does not draw again. Wormhole's Planet tokens
-are lands, not creature tokens, so they do not charge Staff of the Storyteller. Inspiring Call is also
-card flow; use a developed countered board to replenish rather than holding it only as protection.
+Marath seeds useful creatures, makes base-sized Elementals, removes threats and can close the game.
+Keep enough counters to survive when needed. Druid needs a counter before making three mana. Scholar
+can spend a different permanent's counter instead of consuming a vital one. Walking Ballista is XX:
+paying four normally gives X=2. Unbound doubles X for permanent spells and copies X spells/abilities;
+it does not double Marath's fixed-cost entry counters. X=0 is normally empty/dead unless a concrete
+counter replacement or trigger makes it useful; free-cast effects also set X=0.
 
-Live-playtest revision: the bottleneck was abundant mana but too few cards, with redundant recovery.
-The list now cuts Cosmic Rebirth, Unnatural Restoration, Exploration Broodship, Eternity Elevator,
-Generous Patron and Marketback Walker. Evolution Witness remains the recovery slot. Two Forests
-become Mountains (eight Forests, three Mountains); fetch colors for actual costs, including RR.
-Prioritize new card supply over more mana when the hand is thin. Wrenn's Resolve is early two-card
-access; Escape to the Wilds offers five until next turn, with an extra land THIS turn. Commune with
-Lava is an XRR instant: budget X against the mana you will need to play what it reveals; it is best
-with next turn's mana still available, not automatically all-in at the start of a main phase.
-Exploratory Mission goes before land entries and reveals a nonland for THIS turn only. Proliferate
-its quest counters when useful; RR is added on a landfall resolution once it has five counters.
-Elemental Bond draws on power-three entries, not later growth. Marath can turn three counters and
-three mana into an entering 3/3 Elemental and a draw, while retaining his last counter if possible.
-Shamanic Revelation refills from the whole ecosystem, not just countered or power-four creatures.
-Do not chase arbitrary lethal damage in the passive goldfish: watch whether red access becomes
-usable spells and whether mana/crew choices leave those cards stranded past their deadlines.
+Cryptic Trilobite makes ability-only CC, not spell mana. With Marath and an extra-counter replacement,
+its repeatable counter economy can support a genuine closing loop; keep both 0/0 bodies alive and
+account for opposition. Ballista can turn accumulated counters into removal/burn without tapping.
+Song copies BASE token characteristics, not added counters: real Elementals, Beasts or Golems are
+useful; a counter-sized 0/0 Alien is not. A creature spell after Song can start that populate engine.
 
-Evaluation correction: score card ACCESS by cards actually cast/played or retained in hand, not by
-access spells cast. Before every main-phase hand play, check playable exile options and their deadline.
-Use an exiled land in preference to an equivalent land in hand; keep useful hand cards for later.
-Spend mana on usable expiring spells before optional adapt, station or fresh ramp. Exceptions require a
-concrete better line, not habit. Once mana is plentiful, replenishment and varied life beat more ramp.
-Wildspeaker is a refill only with a substantial NON-HUMAN; aim for at least four cards, not a routine
-five-mana draw-two. Build the body first and retain enough mana to draw. Adapt with counters already on
-Evolution Witness does nothing. Against passive opponents keep real interaction instead of spending
-it pointlessly. A full hand or big board is an observation, not proof of multiplayer deck quality.
-
-Current test iteration replaces Scoutlander and Cornucopia with Riker and Bankbuster, not the
-successful refills. Riker is a red-white exploration officer: haste means three mana plus one yields
-two cards immediately; vigilance lets him attack and draw afterward. Do not station away his draw
-when the hand is short. Choose an opponent deliberately: they get two cards, too. Bankbuster draws
-without crew for two mana and a charge; use proliferation to preserve this card reserve. A spare
-three-power body may crew it, but protecting mana and useful engines comes first. Retain the burst
-refills rather than expecting these once-per-tap engines alone to replenish a late empty hand.
-
-Do NOT confuse using exile permissions with profitable access: if Mission exiles Emergency Eject
-and opponents have no nonland targets, let it expire. Never destroy your own Loading Zone merely to
-obtain a Lander. Count only useful converted cards when evaluating the draw package. Unsupported
-aggression or wasted adaptation is a pilot flaw, not evidence that a draw/ramp card should be cut.
-
-Final mana test: one Plains becomes War Room (five Plains remain; thirty-eight total lands).
-War Room is the unconditional-on-board fallback when a thin hand has no active engine: three mana,
-tap it, pay three life, draw one. It is not the main draw plan and should not displace a profitable
-Riker/Bankbuster activation or a real refill. Shamanic Revelation for one body is another five-mana
-cantrip trap: grow the ecosystem first unless a specific emergency makes the low payout necessary.
-
-Riker is selective help, not an always-on group-hug engine. If the hand is already stocked, cast
-useful cards instead of automatically giving an opponent two more. Especially do not draw simply
-to discard at cleanup. Repeated activation in a passive goldfish does not validate that political
-cost at a real table; the conditioned reference intentionally checks availability, not optimal play.
+In multiplayer, use removal/protection against actual threats and note commander damage separately
+from life (21 combat damage from one commander is lethal). In passive goldfishes, hold interaction
+rather than wiping your own board without a real benefit. Track stranded dependencies, colour locks,
+missed good plays and productive activation-only turns separately; end-board size is not a flow verdict.
