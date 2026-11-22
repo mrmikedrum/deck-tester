@@ -1,6 +1,6 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mrmikedrum <mrmikedrum@gmail.com>
-Date: Wed, 4 Nov 2026 19:07:21 -0700
+Date: Sat, 21 Nov 2026 19:30:17 -0700
 Subject: [PATCH] Add card scripts Forge lacks
 
 Star Trek cards our decks play that upstream had no script for at 7c34365c74, written in Forge's own
@@ -28,7 +28,6 @@ Support Mission, Exploration Broodship and Valakut Exploration.
   (DigUntil/nonland exile), g/geistflame_reservoir.txt (this-turn permission),
   r/radha_heir_to_keld.txt (RR) | 3fdba8ee-6dfe-480d-b84a-43922229d9b4
 
-
 Commander William Riker: complete master 61e9442c433711a82258daca3236f936a1d6f70e and
 daily-snapshots a4281f7e58b50542decce8971d81bca4307fd8b4 trees checked including upcoming.
 Will Riker, Assuming Command is a distinct inspected Name:, not this card.
@@ -36,7 +35,65 @@ Modelled on l/loran_of_the_third_path.txt and y/your_temple_is_under_attack.txt:
 TargetedAndYou is the installed native two-player draw effect.
 Oracle cef73cb5-88c2-43cd-8648-1baca085b8a4.
 
+
+Unchanged upstream scripts imported for the edited assimilation playing list, 2026-11-21.
+master and daily-snapshots: 4bff784b7a977d80b59332c3b534d7a4bd547d58.
+Complete recursive a/d/g and upcoming subtrees inspected; exact Name: values matched.
+Installed AssimilateEffect, DigUntil/RememberRevealed, ChooseCard Library, RandomOrder
+ChangeZoneAll, ThisTurnEnteredFrom_Battlefield and TargetsForEachPlayer inspected.
+No Java, keyword, token or edition changes required.
+- Assimilate the Wounded | forge-gui/res/cardsfolder/a/assimilate_the_wounded.txt | 2147101f-d24a-45bb-a141-b69ef7841f53
+- Death Is Irrelevant | forge-gui/res/cardsfolder/d/death_is_irrelevant.txt | aeec05f1-43ea-4012-82d8-cded5494535d
+- Gift of Perfection | forge-gui/res/cardsfolder/g/gift_of_perfection.txt | b44026ae-eaf1-4daf-99c6-2663db674ff7
+
+Goldfish-Upstream: local (upstream imports; retire after compatible pin update)
 ---
+ .../res/cardsfolder/a/assimilate_the_wounded.txt     |  6 ++++++
+ forge-gui/res/cardsfolder/b/borg_scout_sphere.txt    | 10 ++++++++++
+ .../res/cardsfolder/c/commander_william_riker.txt    |  8 ++++++++
+ forge-gui/res/cardsfolder/c/conquest_mission.txt     | 10 ++++++++++
+ forge-gui/res/cardsfolder/c/cooption_adjutant.txt    |  8 ++++++++
+ forge-gui/res/cardsfolder/d/death_is_irrelevant.txt  |  8 ++++++++
+ forge-gui/res/cardsfolder/e/exploratory_mission.txt  | 12 ++++++++++++
+ forge-gui/res/cardsfolder/f/final_frontier.txt       |  6 ++++++
+ forge-gui/res/cardsfolder/g/genesis_device.txt       | 11 +++++++++++
+ forge-gui/res/cardsfolder/g/gift_of_perfection.txt   |  9 +++++++++
+ forge-gui/res/cardsfolder/h/hit_it.txt               |  7 +++++++
+ forge-gui/res/cardsfolder/l/locutus_of_borg.txt      |  9 +++++++++
+ forge-gui/res/cardsfolder/m/maturation_chamber.txt   |  8 ++++++++
+ forge-gui/res/cardsfolder/s/stable_wormhole.txt      |  6 ++++++
+ .../cardsfolder/u/uss_discovery_at_black_alert.txt   | 10 ++++++++++
+ forge-gui/res/cardsfolder/w/warp_speed.txt           | 11 +++++++++++
+ 16 files changed, 139 insertions(+)
+ create mode 100644 forge-gui/res/cardsfolder/a/assimilate_the_wounded.txt
+ create mode 100644 forge-gui/res/cardsfolder/b/borg_scout_sphere.txt
+ create mode 100644 forge-gui/res/cardsfolder/c/commander_william_riker.txt
+ create mode 100644 forge-gui/res/cardsfolder/c/conquest_mission.txt
+ create mode 100644 forge-gui/res/cardsfolder/c/cooption_adjutant.txt
+ create mode 100644 forge-gui/res/cardsfolder/d/death_is_irrelevant.txt
+ create mode 100644 forge-gui/res/cardsfolder/e/exploratory_mission.txt
+ create mode 100644 forge-gui/res/cardsfolder/f/final_frontier.txt
+ create mode 100644 forge-gui/res/cardsfolder/g/genesis_device.txt
+ create mode 100644 forge-gui/res/cardsfolder/g/gift_of_perfection.txt
+ create mode 100644 forge-gui/res/cardsfolder/h/hit_it.txt
+ create mode 100644 forge-gui/res/cardsfolder/l/locutus_of_borg.txt
+ create mode 100644 forge-gui/res/cardsfolder/m/maturation_chamber.txt
+ create mode 100644 forge-gui/res/cardsfolder/s/stable_wormhole.txt
+ create mode 100644 forge-gui/res/cardsfolder/u/uss_discovery_at_black_alert.txt
+ create mode 100644 forge-gui/res/cardsfolder/w/warp_speed.txt
+
+diff --git a/forge-gui/res/cardsfolder/a/assimilate_the_wounded.txt b/forge-gui/res/cardsfolder/a/assimilate_the_wounded.txt
+new file mode 100644
+index 0000000000..0c64d991ed
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/a/assimilate_the_wounded.txt
+@@ -0,0 +1,6 @@
++Name:Assimilate the Wounded
++ManaCost:2 B
++Types:Instant
++A:SP$ Assimilate | TgtZone$ Graveyard | ValidTgts$ Creature.OppOwn+ThisTurnEnteredFrom_Battlefield | TargetMin$ 0 | TargetMax$ OneEach | TargetsForEachPlayer$ True | ValidTgtsDesc$ creature card in an opponent's graveyard that was put there from the battlefield this turn | SpellDescription$ For each opponent, assimilate up to one target creature card from that player's graveyard that was put there from the battlefield this turn. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)
++SVar:OneEach:PlayerCountOpponents$Amount
++Oracle:For each opponent, assimilate up to one target creature card from that player's graveyard that was put there from the battlefield this turn. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)
 diff --git a/forge-gui/res/cardsfolder/b/borg_scout_sphere.txt b/forge-gui/res/cardsfolder/b/borg_scout_sphere.txt
 new file mode 100644
 index 0000000000..8df6b2c478
@@ -53,6 +110,20 @@ index 0000000000..8df6b2c478
 +S:Mode$ Continuous | AffectedDefined$ Self | Affected$ Card.counters_GE6_CHARGE | AddType$ Creature | AddStaticAbility$ FlyingStatic | Description$ STATION 6+ Artifact creatures you control have flying.
 +SVar:FlyingStatic:Mode$ Continuous | Affected$ Creature.Artifact+YouCtrl | AddKeyword$ Flying | Description$ Artifact creatures you control have flying.
 +Oracle:When this Spacecraft enters, draw a card.\nStation (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 6+.)\n6+ | Artifact creatures you control have flying.
+diff --git a/forge-gui/res/cardsfolder/c/commander_william_riker.txt b/forge-gui/res/cardsfolder/c/commander_william_riker.txt
+new file mode 100644
+index 0000000000..7233e35645
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/c/commander_william_riker.txt
+@@ -0,0 +1,8 @@
++Name:Commander William Riker
++ManaCost:1 R W
++Types:Legendary Creature Human Officer
++PT:3/3
++K:Vigilance
++K:Haste
++A:AB$ Draw | Cost$ 1 T | ValidTgts$ Opponent | Defined$ TargetedAndYou | NumCards$ 2 | SpellDescription$ You and target opponent each draw two cards.
++Oracle:Vigilance, haste\n{1}, {T}: You and target opponent each draw two cards.
 diff --git a/forge-gui/res/cardsfolder/c/conquest_mission.txt b/forge-gui/res/cardsfolder/c/conquest_mission.txt
 new file mode 100644
 index 0000000000..fc7c9c9f3d
@@ -83,6 +154,38 @@ index 0000000000..2017263ba6
 +SVar:TrigCombat:Mode$ DamageDone | ValidSource$ Card.Self | ValidTarget$ Player | CombatDamage$ True | TriggerZones$ Battlefield | Execute$ CombatEffect | TriggerDescription$ Whenever CARDNAME deals combat damage to a player, draw a card.
 +SVar:CombatEffect:DB$ Draw | NumCards$ 1
 +Oracle:Artifact creatures you control have "Whenever this creature deals combat damage to a player, draw a card."
+diff --git a/forge-gui/res/cardsfolder/d/death_is_irrelevant.txt b/forge-gui/res/cardsfolder/d/death_is_irrelevant.txt
+new file mode 100644
+index 0000000000..3b7a175f4c
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/d/death_is_irrelevant.txt
+@@ -0,0 +1,8 @@
++Name:Death Is Irrelevant
++ManaCost:6 B B
++Types:Enchantment
++S:Mode$ Continuous | Affected$ Creature.Artifact+YouCtrl | AddKeyword$ Indestructible | Description$ Artifact creatures you control have indestructible.
++T:Mode$ Phase | Phase$ End of Turn | ValidPlayer$ You | TriggerZones$ Battlefield | Execute$ TrigAssimilate | TriggerDescription$ At the beginning of your end step, assimilate target creature card from a graveyard. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)
++SVar:TrigAssimilate:DB$ Assimilate | TgtZone$ Graveyard | ValidTgts$ Creature | ValidTgtsDesc$ creature card in a graveyard
++SVar:PlayMain1:TRUE
++Oracle:Artifact creatures you control have indestructible.\nAt the beginning of your end step, assimilate target creature card from a graveyard. (Put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)
+diff --git a/forge-gui/res/cardsfolder/e/exploratory_mission.txt b/forge-gui/res/cardsfolder/e/exploratory_mission.txt
+new file mode 100644
+index 0000000000..8448e1c7d9
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/e/exploratory_mission.txt
+@@ -0,0 +1,12 @@
++Name:Exploratory Mission
++ManaCost:2 R R
++Types:Enchantment
++T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Land.YouCtrl | TriggerZones$ Battlefield | Execute$ TrigCounter | TriggerDescription$ Landfall — Whenever a land you control enters, put a quest counter on CARDNAME. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If CARDNAME has five or more quest counters on it, add {R}{R}.
++SVar:TrigCounter:DB$ PutCounter | Defined$ Self | CounterType$ QUEST | CounterNum$ 1 | SubAbility$ DBDig
++SVar:DBDig:DB$ DigUntil | Valid$ Card.nonLand | FoundDestination$ Exile | RevealedDestination$ Exile | RememberFound$ True | SubAbility$ DBEffect
++SVar:DBEffect:DB$ Effect | RememberObjects$ RememberedCard | StaticAbilities$ Play | ForgetOnMoved$ Exile | SubAbility$ DBCleanup
++SVar:Play:Mode$ Continuous | MayPlay$ True | Affected$ Card.IsRemembered | AffectedZone$ Exile | Description$ You may play this card this turn.
++SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True | SubAbility$ DBMana
++SVar:DBMana:DB$ Mana | Produced$ R | Amount$ 2 | ConditionCheckSVar$ QuestCount | ConditionSVarCompare$ GE5
++SVar:QuestCount:Count$CardCounters.QUEST
++Oracle:Landfall — Whenever a land you control enters, put a quest counter on this enchantment. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If this enchantment has five or more quest counters on it, add {R}{R}.
 diff --git a/forge-gui/res/cardsfolder/f/final_frontier.txt b/forge-gui/res/cardsfolder/f/final_frontier.txt
 new file mode 100644
 index 0000000000..31ebb35257
@@ -112,6 +215,21 @@ index 0000000000..b075613337
 +SVar:SacX:Count$Valid Land.YouCtrl
 +SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True
 +Oracle:When Genesis Device enters, search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\n{3}{G}{G}, {T}, Sacrifice Genesis Device: Sacrifice any number of lands you control, then search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle. Activate only as a sorcery.
+diff --git a/forge-gui/res/cardsfolder/g/gift_of_perfection.txt b/forge-gui/res/cardsfolder/g/gift_of_perfection.txt
+new file mode 100644
+index 0000000000..452086e2c3
+--- /dev/null
++++ b/forge-gui/res/cardsfolder/g/gift_of_perfection.txt
+@@ -0,0 +1,9 @@
++Name:Gift of Perfection
++ManaCost:4 U
++Types:Sorcery
++A:SP$ DigUntil | Defined$ Player.Opponent | Valid$ Creature | ValidDescription$ creature | RevealedDestination$ Library | RememberRevealed$ True | SubAbility$ DBChooseCard | SpellDescription$ Each opponent reveals cards from the top of their library until they reveal a creature card. Assimilate one of the creature cards revealed this way. Then each opponent puts the other cards they revealed this way on the bottom of their library in a random order. (To assimilate a card, put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)
++SVar:DBChooseCard:DB$ ChooseCard | Choices$ Creature.IsRemembered | ChoiceZone$ Library | Mandatory$ True | ForgetChosen$ True | SubAbility$ DBAssimilate
++SVar:DBAssimilate:DB$ Assimilate | Defined$ ChosenCard | SubAbility$ DBRestRandomOrder
++SVar:DBRestRandomOrder:DB$ ChangeZoneAll | ChangeType$ Card.IsRemembered | Origin$ Library | Destination$ Library | LibraryPosition$ -1 | RandomOrder$ True | SubAbility$ DBCleanup | StackDescription$ None
++SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True | ClearChosenCard$ True
++Oracle:Each opponent reveals cards from the top of their library until they reveal a creature card. Assimilate one of the creature cards revealed this way. Then each opponent puts the other cards they revealed this way on the bottom of their library in a random order. (To assimilate a card, put it onto the battlefield under your control with a +1/+1 counter. It's a Borg artifact creature and loses all other creature types.)
 diff --git a/forge-gui/res/cardsfolder/h/hit_it.txt b/forge-gui/res/cardsfolder/h/hit_it.txt
 new file mode 100644
 index 0000000000..7e277a28dd
@@ -199,33 +317,3 @@ index 0000000000..396e03b8f7
 +SVar:X:Count$Valid Land.YouCtrl$DifferentCardNames
 +A:AB$ Draw | Cost$ 7 U U Sac<1/CARDNAME> | NumCards$ 2 | SpellDescription$ Draw two cards.
 +Oracle:Lands you control enter untapped.\nWhen this enchantment enters, search your library for a basic land card or Planet card, reveal it, put it into your hand, then shuffle.\nStrange new worlds — {7}{U}{U}, Sacrifice this enchantment: Draw two cards. This ability costs {X} less to activate, where X is the number of differently named lands you control.
-diff --git a/forge-gui/res/cardsfolder/e/exploratory_mission.txt b/forge-gui/res/cardsfolder/e/exploratory_mission.txt
-new file mode 100644
---- /dev/null
-+++ b/forge-gui/res/cardsfolder/e/exploratory_mission.txt
-@@ -0,0 +1,12 @@
-+Name:Exploratory Mission
-+ManaCost:2 R R
-+Types:Enchantment
-+T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Land.YouCtrl | TriggerZones$ Battlefield | Execute$ TrigCounter | TriggerDescription$ Landfall — Whenever a land you control enters, put a quest counter on CARDNAME. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If CARDNAME has five or more quest counters on it, add {R}{R}.
-+SVar:TrigCounter:DB$ PutCounter | Defined$ Self | CounterType$ QUEST | CounterNum$ 1 | SubAbility$ DBDig
-+SVar:DBDig:DB$ DigUntil | Valid$ Card.nonLand | FoundDestination$ Exile | RevealedDestination$ Exile | RememberFound$ True | SubAbility$ DBEffect
-+SVar:DBEffect:DB$ Effect | RememberObjects$ RememberedCard | StaticAbilities$ Play | ForgetOnMoved$ Exile | SubAbility$ DBCleanup
-+SVar:Play:Mode$ Continuous | MayPlay$ True | Affected$ Card.IsRemembered | AffectedZone$ Exile | Description$ You may play this card this turn.
-+SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True | SubAbility$ DBMana
-+SVar:DBMana:DB$ Mana | Produced$ R | Amount$ 2 | ConditionCheckSVar$ QuestCount | ConditionSVarCompare$ GE5
-+SVar:QuestCount:Count$CardCounters.QUEST
-+Oracle:Landfall — Whenever a land you control enters, put a quest counter on this enchantment. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If this enchantment has five or more quest counters on it, add {R}{R}.
-diff --git a/forge-gui/res/cardsfolder/c/commander_william_riker.txt b/forge-gui/res/cardsfolder/c/commander_william_riker.txt
-new file mode 100644
---- /dev/null
-+++ b/forge-gui/res/cardsfolder/c/commander_william_riker.txt
-@@ -0,0 +1,8 @@
-+Name:Commander William Riker
-+ManaCost:1 R W
-+Types:Legendary Creature Human Officer
-+PT:3/3
-+K:Vigilance
-+K:Haste
-+A:AB$ Draw | Cost$ 1 T | ValidTgts$ Opponent | Defined$ TargetedAndYou | NumCards$ 2 | SpellDescription$ You and target opponent each draw two cards.
-+Oracle:Vigilance, haste\n{1}, {T}: You and target opponent each draw two cards.
