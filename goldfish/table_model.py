@@ -76,7 +76,7 @@ class TableDecider(model.Decider):
             if decision["turn"].endswith(" attackers"):
                 return ATTACKED
             return END_OF_TURN
-        return model.instructions(decision)
+        return model.instructions(decision, state)
 
     def result(self, before: dict, line: model.Line, now: int) -> str:
         """As in a goldfish game, with what each player lost and everyone's life: at a table, what a line costs or

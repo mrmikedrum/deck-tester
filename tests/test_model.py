@@ -74,7 +74,7 @@ class MulliganFactsTest(unittest.TestCase):
                           "Counterspell": "Counterspell {U}{U} — Instant — Counter target spell.",
                           "Llanowar Elves": "Llanowar Elves {G} — Creature - Elf Druid — {T}: Add {G}."}}
         self.assertEqual(model.mulligan_facts(state),
-                         "Lands in hand: 2 of 5, making W G. Cards needing a colour these lands don't make: Counterspell.")
+                         "Lands in hand: 2 of 5, making W G. Cards needing a colour not directly shown by these lands: Counterspell.")
 
     def test_a_played_out_line_hides_what_was_drawn(self):
         before = {"battlefield": [], "opponents": [{"life": 40}], "text": {}}
@@ -94,9 +94,6 @@ class ContextTest(unittest.TestCase):
         self.assertNotIn("exile", text)
         self.assertIn("This turn so far: T2 drew Forest", text)
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class AdviceTest(unittest.TestCase):
@@ -124,3 +121,144 @@ class AfterLineTest(unittest.TestCase):
         after = {"battlefield": [{"name": "Forest"}, {"name": "Plains"}, {"name": "Sol Ring"}], "mana": 4, "hand": ["Cultivate", "Elves"]}
         self.assertEqual(model.after_line(before, facts, after, 2),
                          "drew a card · cast Sol Ring; after: 2 lands, 4 mana next turn, 2 cards in hand; 0 mana unspent this turn; board: Sol Ring")
+
+
+class PilotingRegressionTest(unittest.TestCase):
+    def test_goldfish_goal_is_engine_development_not_incidental_damage(self):
+        self.assertNotIn("win fast", model.GAME)
+        self.assertIn("Follow the deck plan", model.GAME)
+
+    def test_number_samples_keep_small_positive_and_both_bounds(self):
+        for low, high in [(0, 40), (0, 19), (2, 40), (1, 99)]:
+            values = [a[0] for a in model.lines_to_try(decision("number", [], low, high)).values()]
+            self.assertLessEqual(len(values), model.MAX_LINES)
+            self.assertIn(low, values)
+            self.assertIn(high, values)
+            if low <= 1 <= high:
+                self.assertIn(1, values)
+        self.assertIn("zero", model.instructions(decision("number", [], 0, 40)))
+
+    def test_london_bottoms_are_model_choices_without_previewing_draws(self):
+        d = decision("choose", ["Forest", "Plains", "Sol Ring", "Sunfall"], 2, 2, prompt="put 2 on the bottom")
+        options = model.plain_options(d)
+        self.assertEqual(len(options), 6)
+        self.assertIn(["Sol Ring", "Sunfall"], options.values())
+        self.assertEqual(model._numbers(d, ["Sol Ring", "Sunfall"]), [3, 4])
+        self.assertEqual(model.lines_to_try(d), {})
+        self.assertIn("only source", model.instructions(d))
+        d["prompt"] = "choose cards to exile"
+        self.assertIsNone(model.plain_options(d))
+
+    def test_fetch_access_is_not_claimed_impossible(self):
+        state = {"hand": ["Misty Rainforest", "Sol Ring"], "text": {
+            "Misty Rainforest": "Misty Rainforest — Land — Search your library for a Forest or Island card.",
+            "Sol Ring": "Sol Ring {1} — Artifact — Add {C}{C}."}}
+        self.assertIn("only if suitable targets remain", model.mulligan_facts(state))
+
+    def test_fork_result_shows_counter_fuel_and_self_losses(self):
+        before = {"battlefield": [{"name": "Hangarback Walker", "id": 7}, {"name": "Forest", "id": 8}], "text": {}}
+        after = {"battlefield": [{"name": "Incubator Token", "id": 9, "counters": {"+1/+1": 3}, "token": True}],
+                 "mana": 1, "hand": []}
+        facts = [{"t": "activate", "turn": 7, "card": "Reckoner Bankbuster", "failed": True}]
+        text = model.after_line(before, facts, after, 7)
+        self.assertIn("[+1/+1 3]", text)
+        self.assertIn("you lose your own Hangarback Walker", text)
+        self.assertNotIn("you lose your own Forest", text)
+        self.assertIn("1 failed action", text)
+
+
+class OpeningPolicyTest(unittest.TestCase):
+    def test_extreme_seven_card_hands_redraw_but_london_has_a_floor(self):
+        self.assertEqual(model.mulligan_policy({"hand": ["Forest"] * 7}), "mulligan")
+        self.assertEqual(model.mulligan_policy({"hand": ["Forest"] + ["Sol Ring"] * 6}), "mulligan")
+        self.assertIsNone(model.mulligan_policy({"hand": ["Forest"] * 3 + ["Sol Ring"] * 4}))
+        for size in range(5):
+            self.assertEqual(model.mulligan_policy({"hand": ["Sol Ring"] * size}), "keep")
+
+    def test_keep_instructions_judge_already_bottomed_hand(self):
+        d = decision("mulligan", ["keep", "mulligan"], prompt="keep this hand (then bottom 2)")
+        text = model.instructions(d, {"hand": ["Forest"] * 2 + ["Sol Ring"] * 3})
+        self.assertIn("these 5 cards", text)
+        self.assertIn("already bottomed", text)
+        self.assertNotIn("two to four", text)
+
+    def test_three_card_bottom_does_not_fall_back_to_forge(self):
+        d = decision("choose", list("ABCDEFG"), 3, 3, prompt="put 3 on the bottom")
+        self.assertEqual(len(model.plain_options(d)), 35)
+
+    def test_extreme_hand_uses_logged_policy_not_a_model_call(self):
+        from unittest.mock import patch
+        d = decision("mulligan", ["keep", "mulligan"])
+        decider = model.Decider("Develop.", 3, model.Usage())
+        with patch.object(model.engine, "request", return_value={"state": {"hand": ["Forest"] * 7}}), \
+             patch.object(model, "call") as call, patch.object(decider, "send", return_value={}) as send:
+            decider.step({"decision": d, "session": "test"})
+        call.assert_not_called()
+        self.assertEqual(send.call_args[0][1], {"answer": [2], "by": "policy"})
+
+
+class FailureFeedbackTest(unittest.TestCase):
+    def test_actual_failure_is_not_retried_until_observed_state_changes(self):
+        decider = model.Decider("Develop.", 3, model.Usage())
+        state = {"mana": 3, "battlefield": []}
+        self.assertEqual(decider.rejected_plays("test", state, []), set())
+        facts = [{"t": "activate", "as": "Vehicle: Crew 3", "failed": True}]
+        self.assertEqual(decider.rejected_plays("test", state, facts), {"Vehicle: Crew 3"})
+        self.assertEqual(decider.rejected_plays("test", state, facts), {"Vehicle: Crew 3"})
+        self.assertEqual(decider.rejected_plays("test", dict(state, mana=4), facts), set())
+        self.assertEqual(decider.rejected_plays("other", state, facts), set())
+
+    def test_failed_crew_with_only_pass_remaining_is_a_logged_policy_pick(self):
+        from unittest.mock import patch
+        d = decision("play", ["pass", "Vehicle: Crew 3"])
+        state = {"turn": "T2 main1", "life": 40, "mana": 2, "library": 90, "hand": [], "battlefield": [],
+                 "command": [], "graveyard": [], "exile": [], "stack": [], "opponents": [], "text": {}}
+        decider = model.Decider("Develop.", 3, model.Usage(), hybrid="plain")
+        decider.rejected_plays("test", state, [])
+        facts = [{"t": "activate", "turn": 2, "as": "Vehicle: Crew 3", "card": "Vehicle", "failed": True}]
+        with patch.object(model.engine, "request", return_value={"state": state}), \
+             patch.object(model.records, "load", return_value=facts), patch.object(model, "call") as call, \
+             patch.object(decider, "send", return_value={}) as send:
+            decider.step({"decision": d, "session": "test", "records": "unused"})
+        call.assert_not_called()
+        self.assertEqual(send.call_args[0][1], {"answer": [1], "by": "policy"})
+
+
+class CounterLandContextTest(unittest.TestCase):
+    def test_lands_with_engine_counters_are_visible_in_outcomes(self):
+        before = {"battlefield": [], "text": {"World": "World — Land — Station 12."}}
+        after = {"battlefield": [{"name": "World", "counters": {"Charge": 11}}], "mana": 3, "hand": []}
+        self.assertIn("World [Charge 11]", model.after_line(before, [], after, 2))
+
+    def test_empty_opponent_warning_is_goldfish_only(self):
+        state = {"turn": "T2 main1", "life": 40, "mana": 2, "library": 90, "hand": [], "battlefield": [],
+                 "command": [], "graveyard": [], "exile": [], "stack": [], "opponents": [
+                     {"name": "Opp 1", "life": 40, "lands": 2, "other": 0}], "text": {}}
+        d = decision("play", ["pass"])
+        self.assertIn("wipe would remove only your own", model.describe("Develop.", state, d, 3))
+        self.assertNotIn("wipe would remove only your own", model.describe("Develop.", state, d, 3, table="Table {opponents}"))
+
+
+class ImpulseOutcomeTest(unittest.TestCase):
+    def test_impulse_stock_is_visible_without_claiming_it_is_playable(self):
+        before = {"battlefield": [], "text": {}}
+        after = {"battlefield": [], "mana": 6, "hand": [], "exile": ["Swords to Plowshares", "Incubation Druid"]}
+        text = model.after_line(before, [], after, 6)
+        self.assertIn("2 cards remain in exile", text)
+        self.assertIn("not hand cards", text)
+        self.assertIn("permissions/duration depend", text)
+        self.assertNotIn("Swords to Plowshares", text)
+
+
+class CapturedOpeningRegressionTest(unittest.TestCase):
+    def test_exact_b226_one_and_seven_land_hands_are_redrawn(self):
+        import json
+        from pathlib import Path
+        situations = Path(__file__).resolve().parent.parent / "bench" / "situations"
+        for source in ["g89171", "g89695"]:
+            case = json.loads((situations / f"eternities-audit-{source}-T0-mulligan.json").read_text())
+            self.assertEqual(model.mulligan_policy(case["state"]), "mulligan")
+
+
+if __name__ == "__main__":
+    unittest.main()

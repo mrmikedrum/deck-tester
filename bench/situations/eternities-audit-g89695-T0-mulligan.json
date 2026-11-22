@@ -1,0 +1,139 @@
+{
+ "id": "eternities-audit-g89695-T0-mulligan",
+ "plan": "These are the current 100-card III drafts after Mike’s own cuts, not an older fixture. Test their ordinary engine assembly and useful card flow over ten turns. Three passive opponents play lands only: do not waste removal or board wipes on yourself or use opponents’ lack of blockers as proof of multiplayer strength. Keep reaction cards unless a genuine useful line needs them. Mulligan by colors, early development and follow-up, not land count alone; the first mulligan is free. Use green early and fetch the typed duals required by the actual hand. Prioritize useful expiring exile cards before optional mana sinks, but let unusable removal expire rather than destroying your own engines. Explore meaningful attacks, scalable counters, card supply, and paid activation costs. Do not assume any card not in this actual list is available.\nNature / Marath: ramp and landfall feed +1/+1 counters and varied creature tokens; populate is a payoff for useful base-sized tokens. Marath creates his own counters and can seed Druid or another creature, make a base-sized Elemental, or use damage when productive. Do not spend his last counter gratuitously or burn opponents just because there is no interaction. Cankerbloom and Marketback Walker have replaced Evolution Witness, Grateful Apparition, Resourceful Defense and Tannuk. Preserve Marketback as a counter-growing resource: drawing requires death, not just entering. The Ozolith preserves counters, but dead creatures themselves do not return. No Riker, Pike, Janeway, Discovery or Shamanic Revelation is present. Both Cornucopia and Exploration Broodship ARE present. Station Broodship to the useful extra-land threshold when there is a land to use; do not tap important mana creatures without accounting for the opportunity cost. Build mana then prioritize card supply over more surplus ramp. Bond needs a power-three creature ENTRY, not later growth. Wildspeaker needs useful non-Human power; aim for four or more cards rather than a five-mana draw-two. Bankbuster draws without crew; War Room is a mana/life-intensive fallback. Mission permits its found nonland for this turn only; RR happens on a landfall trigger at five quest counters, not from proliferation alone. Wormhole produces land tokens, not creature tokens, and triggers once per attack declaration. Fetch/Device land swaps can multiply landfall only when a real landfall payoff exists; Device is not net ramp. Song copies base characteristics, not counters: a real 3/3 Golem, 4/4 Beast or Marath’s base-X Elemental is good; the zero-base Alien is not. Loading Zone is not a token doubler and does not cover ordinary noncreature mana rocks. Unbound copies X spells/Marath’s X abilities but not his fixed-cost entry counters.\n\nOpening-hand choices are supplied by an explicit pilot check. For subsequent play, do not activate Crew again when the Vehicle is already a creature: this adds no further benefit. For a single crew activation choose only enough creature power to pay, not all creatures. Do not repeatedly station a ship beyond a useful threshold or station a zero-power creature for zero counters. Keep useful attackers untapped.\n",
+ "state": {
+  "turn": "T0 setup",
+  "life": 40,
+  "mana": 0,
+  "land_drop": true,
+  "library": 92,
+  "hand": [
+   "Misty Rainforest",
+   "Fabled Passage",
+   "Forest",
+   "Sacred Foundry",
+   "Plains",
+   "Temple Garden",
+   "Arid Mesa"
+  ],
+  "battlefield": [],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 0,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Arid Mesa": "Arid Mesa — Land — {T}, Pay 1 life, Sacrifice Arid Mesa: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+   "Fabled Passage": "Fabled Passage — Land — {T}, Sacrifice Fabled Passage: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Misty Rainforest": "Misty Rainforest — Land — {T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+   "Sacred Foundry": "Sacred Foundry — Land - Mountain Plains — ({T}: Add {R} or {W}.) / As Sacred Foundry enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Temple Garden": "Temple Garden — Land - Forest Plains — ({T}: Add {G} or {W}.) / As Temple Garden enters, you may pay 2 life. If you don't, it enters tapped."
+  }
+ },
+ "decision": {
+  "kind": "mulligan",
+  "turn": "T0 setup",
+  "prompt": "keep this hand",
+  "options": [
+   "keep",
+   "mulligan"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true
+ },
+ "so_far": [
+  {
+   "t": "start",
+   "turn": 0,
+   "forge": "e7020aa1-9a174094",
+   "local_cards": "Borg Scout Sphere, Conquest Mission, Co-Option Adjutant, Final Frontier, Genesis Device, Hit It!, Locutus of Borg, Maturation Chamber, Stable Wormhole, U.S.S. Discovery, at Black Alert, Warp Speed, Exploratory Mission, Commander William Riker",
+   "seed": 21003,
+   "deck": "eternities-nature-current",
+   "hash": "4fa7041f",
+   "commander": "Marath, Will of the Wild",
+   "turns": 12,
+   "opponents": 3
+  },
+  {
+   "t": "draw",
+   "turn": 0,
+   "card": "Misty Rainforest",
+   "id": 16
+  },
+  {
+   "t": "draw",
+   "turn": 0,
+   "card": "Fabled Passage",
+   "id": 14
+  },
+  {
+   "t": "draw",
+   "turn": 0,
+   "card": "Forest",
+   "id": 27
+  },
+  {
+   "t": "draw",
+   "turn": 0,
+   "card": "Sacred Foundry",
+   "id": 64
+  },
+  {
+   "t": "draw",
+   "turn": 0,
+   "card": "Plains",
+   "id": 52
+  },
+  {
+   "t": "draw",
+   "turn": 0,
+   "card": "Temple Garden",
+   "id": 87
+  },
+  {
+   "t": "draw",
+   "turn": 0,
+   "card": "Arid Mesa",
+   "id": 62
+  }
+ ],
+ "default": null,
+ "lines": {
+  "keep": {
+   "facts": [],
+   "state": null
+  },
+  "mulligan": {
+   "facts": [],
+   "state": null
+  }
+ },
+ "expected": [
+  "mulligan"
+ ],
+ "note": "Reconstructed 2026-11-21 from g89695; matched 0 earlier parked decisions from original seed and exact current-list hash. Original answer: ['keep']. Historical model request/random sample was not retained. These expected labels reject documented blunders, not every alternative's long-run ranking."
+}

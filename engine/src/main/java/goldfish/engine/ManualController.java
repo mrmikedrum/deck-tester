@@ -447,7 +447,11 @@ public class ManualController extends PlayerControllerAi {
             // A person watching through a client sees what the other players put on the stack, even with no answer to it.
             boolean watched = session.watching && !getGame().getStack().isEmpty()
                     && !getPlayer().equals(getGame().getStack().peekAbility().getActivatingPlayer());
-            if (playable.isEmpty() && !reasking && !watched) {
+            // Optional mana controls are not a reason to stop an otherwise empty priority
+            // window. Keep them available in our main phase and during watched opponent actions.
+            boolean manaOnly = playable.stream().allMatch(SpellAbility::isManaAbility);
+            boolean emptyPriority = manaOnly && (!session.myTurn() || !getGame().getStack().isEmpty());
+            if ((playable.isEmpty() || emptyPriority) && !reasking && !watched) {
                 // a later decision with nothing played before it (an attack, blocks once attackers are declared) is
                 // looked ahead on from a copy made here
                 session.checkpoint(false);
@@ -464,6 +468,7 @@ public class ManualController extends PlayerControllerAi {
                 details.add(Labels.detail(sa));
                 Map<String, Object> ref = ref(sa.getHostCard());
                 ref.put("spell", sa.isSpell() || sa.isLandAbility());
+                if (sa.isManaAbility()) { ref.put("mana", true); }
                 refs.add(ref);
             });
             Decision decision = new Decision("play", session.turnLabel(), "", options, details, 1, 1, false, session.myTurn(), refs);

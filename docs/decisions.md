@@ -55,3 +55,11 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 ## Open
 
 - **Where pilots live.** Passed by path for now; Deckmaster decides whether they belong with a project.
+
+## Real-deck pilot mode
+
+Real decks are piloted manually (human or agent) or by Jev with the deck plan/advisor. Stock Forge AI
+is a mode only for passive goldfish opponents, not for a real-deck seat. This does not ban the existing
+recorded Forge fallbacks inside the Jev/manual pipeline. Missing plans must fail explicitly, never
+silently select stock-AI mode. Browser mana abilities are optional controls on permanents: they are
+not counted in play/response menus and do not by themselves hold otherwise empty priority windows.

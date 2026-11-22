@@ -90,6 +90,32 @@ class ManualManaTest(unittest.TestCase):
                 marath = next(c for c in me['battlefield'] if c['name'] == 'Marath, Will of the Wild')
                 self.assertEqual(bears['counters']['+1/+1'], 1)
                 self.assertEqual(marath['counters']['+1/+1'], 2)
+                # Mana-only options remain clickable during a watched opponent spell, but
+                # cannot hold the otherwise empty end-of-turn priority window afterwards.
+                engine.request({'cmd': 'override', 'session': sid,
+                                'args': ['move', 'Marath, Will of the Wild', 'command']})
+                engine.request({'cmd': 'override', 'session': sid,
+                                'args': ['create', 'Grizzly Bears', 'hand', 'Opponent']})
+                for _ in range(3):
+                    engine.request({'cmd': 'override', 'session': sid,
+                                    'args': ['create', 'Forest', 'battlefield', 'Opponent']})
+                r = engine.request({'cmd': 'override', 'session': sid,
+                                    'args': ['untap', 'Command Tower']})
+                for _ in range(8):
+                    v = engine.request({'cmd': 'view', 'session': sid})['view']
+                    if v['stack'] and v['stack'][0]['controller'] == 'Opponent':
+                        break
+                    picks = [] if r['decision']['kind'] == 'attack' else [1]
+                    r = engine.request({'cmd': 'answer', 'session': sid, 'answer': picks})
+                else:
+                    self.fail('fixture opponent never cast its Bear')
+                self.assertEqual(r['decision']['kind'], 'play')
+                self.assertTrue(all(ref.get('mana') for ref in r['decision']['refs'][1:]))
+                self.assertTrue(r['decision']['refs'][1:])
+                r = engine.request({'cmd': 'answer', 'session': sid, 'answer': [1]})
+                v = engine.request({'cmd': 'view', 'session': sid})['view']
+                self.assertEqual(v['active'], 'You')
+                self.assertEqual(v['phase'], 'MAIN1')
             finally:
                 stopped.set()
                 engine.stop()
