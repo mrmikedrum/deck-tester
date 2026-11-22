@@ -10,8 +10,10 @@ described in [architecture](architecture.md).
   `ComputerUtilCost.canPayCost`, with `targetable=true` and `payable=false`. Reproduced independently of
   the live table, before and after adding Cryptic Trilobite; replacing only Tower with a Forest offers
   Marath immediately. No opposing taxes or prior commander casts are required. Diagnose the existing
-  Forge mana-payment path rather than implementing a second rules engine. Preserve Mike's active game;
-  a Java rebuild/restart must wait until that game is finished.
+  Forge mana-payment path rather than implementing a second rules engine. Browser seats now offer real
+  mana abilities before casting, so floating Tower's green lets Forge pay Marath from that pool plus
+  Adagia's white and Stomping Ground's red. The native manual-mana regression verifies this workaround;
+  the automatic matcher false negative remains open.
 
 ## M2, the rest
 

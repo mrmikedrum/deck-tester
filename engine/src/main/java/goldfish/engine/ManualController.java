@@ -306,7 +306,7 @@ public class ManualController extends PlayerControllerAi {
 
     // ---- priority, casting, targets ----
 
-    /** Abilities the agent could use now and can pay for, mana abilities excluded (payment is automatic). */
+    /** Usable abilities: browser seats may float mana explicitly; automated seats keep automatic payment. */
     List<SpellAbility> playable() {
         Player me = getPlayer();
         List<SpellAbility> result = new ArrayList<>();
@@ -324,8 +324,9 @@ public class ManualController extends PlayerControllerAi {
                 }
                 // Mana abilities are paid automatically, except ones whose cost taps another permanent (Springleaf
                 // Drum): which creature to tap is a choice with consequences, so they are offered as plays, and the
-                // mana they make waits in the pool for the next cost.
-                if (sa.isManaAbility() && !tapsAnother(sa)) {
+                // mana they make waits in the pool for the next cost. Browser seats also expose ordinary mana
+                // abilities, so a human can explicitly float mana before asking to cast a spell.
+                if (sa.isManaAbility() && !tapsAnother(sa) && !session.watching) {
                     continue;
                 }
                 if (targetable(sa) && (sa.isLandAbility() || ComputerUtilCost.canPayCost(sa, me, false)) && payableX(sa)) {

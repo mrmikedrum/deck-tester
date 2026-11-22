@@ -1097,6 +1097,11 @@ final class Session {
             Map<String, Object> p = new LinkedHashMap<>();
             p.put("name", player.getName());
             p.put("life", player.getLife());
+            Map<String, Integer> floating = new LinkedHashMap<>();
+            for (forge.game.mana.Mana mana : player.getManaPool()) {
+                floating.merge(forge.card.MagicColor.toShortString(mana.getColor()), 1, Integer::sum);
+            }
+            p.put("manaPool", floating);
             if (player.getPoisonCounters() > 0) {
                 p.put("poison", player.getPoisonCounters());
             }
