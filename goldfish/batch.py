@@ -92,6 +92,9 @@ def run(deck, deck_name: str, games: int, seed: int, turns: int, opponents: int,
     """Play a batch and write its manifest; returns the manifest. A guide (the deck plan) brings in the model,
     working with Forge's AI as the hybrid names (see model.Decider)."""
     handlers = load_pilot(pilot) if pilot else {}
+    if not guide and "play" not in handlers:
+        raise ValueError("Real-deck runs require a Jev --guide or a manual --pilot with play decisions; "
+                         "stock Forge AI is only for passive goldfish opponents")
     usage = model.Usage()
     if guide:
         model.key()  # fail before the first game, not in every worker

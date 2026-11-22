@@ -83,9 +83,11 @@ commander never cast in 100 games
 mulligans: 0 in 84, 1 in 11, 2 in 4, 3 in 1
 ```
 
-Forge's AI plays every game unless `--pilot FILE` names a Python file whose functions (named after decision
-kinds: `mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `block`,
-`pay`) answer those kinds; returning `None` hands one back to the AI. See `examples/pilots/commander_first.py`.
+Real-deck runs require `--guide PLAN` for Jev or `--pilot FILE` with a manual `play` handler. Stock
+Forge-AI mode is reserved for passive goldfish opponents, not the deck being tested. Existing hybrid
+fallbacks within an agent/Jev pilot remain allowed and recorded. Pilot functions are named after decision
+kinds (`mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `block`,
+`pay`); returning `None` hands that one decision to the ordinary fallback.
 
 | Option | Does |
 |--------|------|
@@ -118,6 +120,7 @@ bin/goldfish table examples/decks/eternities-living-worlds-iii.txt,examples/plan
 It prints the address to join (Online Multiplayer, Join) and plays until the game ends; Ctrl-C ends it.
 On macOS the firewall must allow incoming connections for the engine's Java (`$(/usr/libexec/java_home -v 21)/bin/java`),
 or a join drops at once; on the hosting machine itself, joining at `127.0.0.1` works either way. A seat
-given only a deck is played by Forge's AI. When it ends it prints a report: life by round and, per agent seat,
+needs a Jev plan or manual play pilot; a bare deck is rejected rather than silently stock-piloted.
+When it ends it prints a report: life by round and, per agent seat,
 who decided, its lookahead and its development; `bin/goldfish table-report [tN]` shows it again.
 

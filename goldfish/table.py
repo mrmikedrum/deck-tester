@@ -73,6 +73,8 @@ def play(seat: Seat, session: str, players: int, usage: model.Usage, outcome: Di
 
 def host(seats: List[Seat], people: int, port: int = PORT) -> Dict[str, str]:
     """Open the table, print how to join, play every seat until the game ends; returns each seat's outcome."""
+    if any(not seat.plan and "play" not in seat.handlers for seat in seats):
+        raise ValueError("Real-deck table seats require a Jev plan or a manual play pilot; stock AI mode is disabled")
     engine.use_table()
     if any(seat.plan for seat in seats):
         model.key()
