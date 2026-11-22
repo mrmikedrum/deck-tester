@@ -3,6 +3,16 @@
 Each milestone ends with something an agent can use. Delete a milestone when it ships. What has shipped is
 described in [architecture](architecture.md).
 
+## Manual-play legality regression
+
+- Fix the affordability false negative for Marath with untapped Adagia, Windswept Bastion / Stomping Ground /
+  Command Tower. The three sources can pay W/R/G. `ManualController.playable()` rejects the commander through
+  `ComputerUtilCost.canPayCost`, with `targetable=true` and `payable=false`. Reproduced independently of
+  the live table, before and after adding Cryptic Trilobite; replacing only Tower with a Forest offers
+  Marath immediately. No opposing taxes or prior commander casts are required. Diagnose the existing
+  Forge mana-payment path rather than implementing a second rules engine. Preserve Mike's active game;
+  a Java rebuild/restart must wait until that game is finished.
+
 ## M2, the rest
 
 Deck-plan checkpoints, missing-colour and flood flags, resuming an automated game by hand, and a state view
