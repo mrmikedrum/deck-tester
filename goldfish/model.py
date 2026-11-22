@@ -113,6 +113,9 @@ class Usage:
         self.cost = 0.0
         self.seconds = 0.0
         self.failed = 0  # calls the API never answered, even after retries: Forge's AI decided those
+        self.api_retries = 0
+        self.api_timeouts = 0
+        self.api_wall_seconds = 0.0
         self.routed = 0  # fast mode: decisions answered from the text alone, confidently enough to skip the forks
         self.played_out = 0  # lines played out in forks to show the model their results
         self.drifted = 0  # decisions whose forks failed: didn't replay into the same game, or stalled in Forge
@@ -132,6 +135,8 @@ class Usage:
     def summary(self) -> dict:
         return {"model": provider().model, "calls": self.calls, "input_tokens": self.input_tokens, "cost": round(self.cost, 4),
                 "seconds_per_call": round(self.seconds / self.calls, 2) if self.calls else None,
+                "api_retries": self.api_retries, "api_timeouts": self.api_timeouts,
+                "api_wall_seconds": round(self.api_wall_seconds, 2),
                 "routed": self.routed, "failed": self.failed, "played_out": self.played_out, "drifted": self.drifted,
                 "fork_ms": round(self.fork_ms / self.played_out) if self.played_out else None,
                 "setup_ms": round(self.setup_ms / self.played_out) if self.played_out else None,
@@ -149,6 +154,7 @@ def call(state: str, questions: Dict[str, dict], usage: Optional[Usage] = None, 
         body["session_id"] = session
     request = urllib.request.Request(used.url, data=json.dumps(body).encode(), method="POST",
                                      headers={"Authorization": f"Bearer {key()}", "Content-Type": "application/json"})
+    wall_began = time.monotonic()
     for attempt in range(retries + 1):
         began = time.time()
         try:
@@ -157,16 +163,33 @@ def call(state: str, questions: Dict[str, dict], usage: Optional[Usage] = None, 
         except urllib.error.HTTPError as error:
             detail = error.read().decode(errors="replace")[:300]
             if error.code in (429, 500, 502, 503, 524, 529) and attempt < retries:
+                if usage:
+                    with usage.lock:
+                        usage.api_retries += 1
                 time.sleep(2 ** attempt)
                 continue
+            if usage:
+                with usage.lock:
+                    usage.api_wall_seconds += time.monotonic() - wall_began
             raise ModelError(f"decisions API {error.code}: {detail}") from None
         except OSError as error:  # URLError, and socket.timeout, which isn't TimeoutError before Python 3.10
+            if usage:
+                with usage.lock:
+                    if isinstance(error, TimeoutError) or "timed out" in str(error).lower():
+                        usage.api_timeouts += 1
+                    if attempt < retries:
+                        usage.api_retries += 1
             if attempt < retries:
                 time.sleep(2 ** attempt)
                 continue
+            if usage:
+                with usage.lock:
+                    usage.api_wall_seconds += time.monotonic() - wall_began
             raise ModelError(f"decisions API unreachable: {error}") from None
         if usage:
             usage.add(dict(reply.get("usage", {}), consumed=reply.get("consumed")), time.time() - began)
+            with usage.lock:
+                usage.api_wall_seconds += time.monotonic() - wall_began
         return reply["answers"]
     raise ModelError("decisions API: out of retries")
 
