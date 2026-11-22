@@ -330,3 +330,22 @@ failed: 14 when Dack Fayden's reveal put cards on the bottom in random order (th
 shared by every seat, so a fork's order can differ; the fingerprint check caught each), and one Forge AI block
 search stalled. No refused attacks. One play it showed: Jev 1 chose Recon Craft Theta's crew nine times in a round
 when it couldn't be paid, each one failing.
+
+## Current-list piloting audit (2026-11-21)
+
+Fresh ManaBox exports, not the older example fixtures: Living Worlds `4fa7041f`, Assimilation
+`5815cfea`, both 100 cards. Python advisors and current-list scratch guides were supplied with
+Jev 1.13 outcomes lookahead. Batch b226 kept a one-land and a seven-land nature opening despite
+the guide; it is exploratory evidence, not a representative development baseline. Batches b231
+and b233 used explicit opening-hand checks (decisions recorded as pilot). London bottom choices
+were still model-made and can discard needed commander colors.
+
+The records still show material strategy errors despite useful candidate rollouts: Marath spent
+counters on incidental player damage instead of building tokens, a Commune with Lava was cast
+with X=0, an ordinary noncreature Cornucopia entered with zero charges in a list with no independent
+charge seeder, fetches took redundant basics while Atraxa colors were missing, and b231 cast Sunfall
+on its own board against passive opponents. Repeated crew/activation attempts also recur. b233
+reported 26/1511 failed forks, six decisions without lookahead and one turn handed to the loop guard.
+These are piloting/protocol limits, not reasons to cut the cards or claim deck power from aggregate
+board totals. A good opening filter is not sufficient strategic validation; inspect actual decisions
+and record any manual intervention separately.
