@@ -3,6 +3,13 @@
 Each milestone ends with something an agent can use. Delete a milestone when it ships. What has shipped is
 described in [architecture](architecture.md).
 
+## Browser target handoff
+
+A verified controller fix clears AI-preset targets before a browser-owned cast/activation asks for targets.
+The native browser regression casts Marath, chooses his counter mode, explicitly selects Grizzly Bears,
+and checks that Bears receives the counter while Marath pays one. It must be loaded at the next engine
+restart; the currently running human game is deliberately left untouched until Mike authorizes ending it.
+
 ## Manual-play legality regression
 
 - Fix the affordability false negative for Marath with untapped Adagia, Windswept Bastion / Stomping Ground /

@@ -11,7 +11,7 @@ from goldfish import engine
 
 @unittest.skipUnless(engine.FORGE_BUILD.exists(), 'requires installed Forge')
 class ManualManaTest(unittest.TestCase):
-    def test_tower_green_and_two_lands_really_cast_marath(self):
+    def test_browser_mana_and_counter_targets_belong_to_player(self):
         saved = {k: getattr(engine, k) for k in ('HOME', 'FORGE_BUILD', 'SOCKET', 'LOG', 'MODE')}
         stopped = threading.Event()
         worker = None
@@ -74,6 +74,22 @@ class ManualManaTest(unittest.TestCase):
                 marath = next(c for c in me['battlefield'] if c['name'] == 'Marath, Will of the Wild')
                 self.assertEqual(marath['counters']['+1/+1'], 3)
                 self.assertEqual(me['manaPool'], {})
+                # A previous AI affordability check must not preselect Marath as the counter target.
+                engine.request({'cmd': 'override', 'session': sid, 'args': ['create', 'Grizzly Bears']})
+                r = engine.request({'cmd': 'override', 'session': sid, 'args': ['untap', 'Adagia, Windswept Bastion']})
+                r = answer(r, 'Marath, Will of the Wild:')
+                if r['decision']['kind'] == 'number':
+                    r = engine.request({'cmd': 'answer', 'session': sid, 'answer': [1]})
+                self.assertEqual(r['decision']['kind'], 'mode')
+                r = answer(r, 'Put X +1/+1 counters')
+                self.assertEqual(r['decision']['kind'], 'targets')
+                r = answer(r, 'Grizzly Bears')
+                me = next(p for p in engine.request({'cmd': 'view', 'session': sid})['view']['players']
+                          if p['name'] == 'You')
+                bears = next(c for c in me['battlefield'] if c['name'] == 'Grizzly Bears')
+                marath = next(c for c in me['battlefield'] if c['name'] == 'Marath, Will of the Wild')
+                self.assertEqual(bears['counters']['+1/+1'], 1)
+                self.assertEqual(marath['counters']['+1/+1'], 2)
             finally:
                 stopped.set()
                 engine.stop()

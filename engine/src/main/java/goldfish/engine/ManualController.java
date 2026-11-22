@@ -768,13 +768,19 @@ public class ManualController extends PlayerControllerAi {
             if (!part.usesTargeting()) {
                 continue;
             }
+            // Affordability/AI evaluation can leave a target behind. It is not a browser
+            // player's choice; clear it before enumerating candidates and ask the player.
+            boolean manual = session.watching && casting && !playedBy.equals("ai") && !playedBy.equals("forced");
+            if (manual) {
+                part.resetTargets();
+            }
             List<GameEntity> candidates = part.getTargetRestrictions().getAllCandidates(part);
             if (candidates.isEmpty()) {
                 continue;
             }
             SpellAbility targeting = part;
             String prompt = "target for " + Labels.text(part.toString(), part.getHostCard().getName());
-            Iterable<GameEntity> preset = part.isTargetNumberValid() && !part.getTargets().isEmpty()
+            Iterable<GameEntity> preset = !manual && part.isTargetNumberValid() && !part.getTargets().isEmpty()
                     ? part.getTargets().getTargetEntities() : null;
             List<GameEntity> chosen = choose("targets", prompt, candidates, e -> Labels.entity(e, getPlayer()),
                     part.getMinTargets(), part.getMaxTargets(), () -> {
