@@ -1,0 +1,1544 @@
+{
+ "id": "eternities-audit-g92576-T6-number",
+ "plan": "These are the current 100-card III drafts after Mike’s own cuts, not an older fixture. Test their ordinary engine assembly and useful card flow over ten turns. Three passive opponents play lands only: do not waste removal or board wipes on yourself or use opponents’ lack of blockers as proof of multiplayer strength. Keep reaction cards unless a genuine useful line needs them. Mulligan by colors, early development and follow-up, not land count alone; the first mulligan is free. Use green early and fetch the typed duals required by the actual hand. Prioritize useful expiring exile cards before optional mana sinks, but let unusable removal expire rather than destroying your own engines. Explore meaningful attacks, scalable counters, card supply, and paid activation costs. Do not assume any card not in this actual list is available.\nNature / Marath: ramp and landfall feed +1/+1 counters and varied creature tokens; populate is a payoff for useful base-sized tokens. Marath creates his own counters and can seed Druid or another creature, make a base-sized Elemental, or use damage when productive. Do not spend his last counter gratuitously or burn opponents just because there is no interaction. Cankerbloom and Marketback Walker have replaced Evolution Witness, Grateful Apparition, Resourceful Defense and Tannuk. Preserve Marketback as a counter-growing resource: drawing requires death, not just entering. The Ozolith preserves counters, but dead creatures themselves do not return. No Riker, Pike, Janeway, Discovery or Shamanic Revelation is present. Both Cornucopia and Exploration Broodship ARE present. Station Broodship to the useful extra-land threshold when there is a land to use; do not tap important mana creatures without accounting for the opportunity cost. Build mana then prioritize card supply over more surplus ramp. Bond needs a power-three creature ENTRY, not later growth. Wildspeaker needs useful non-Human power; aim for four or more cards rather than a five-mana draw-two. Bankbuster draws without crew; War Room is a mana/life-intensive fallback. Mission permits its found nonland for this turn only; RR happens on a landfall trigger at five quest counters, not from proliferation alone. Wormhole produces land tokens, not creature tokens, and triggers once per attack declaration. Fetch/Device land swaps can multiply landfall only when a real landfall payoff exists; Device is not net ramp. Song copies base characteristics, not counters: a real 3/3 Golem, 4/4 Beast or Marath’s base-X Elemental is good; the zero-base Alien is not. Loading Zone is not a token doubler and does not cover ordinary noncreature mana rocks. Unbound copies X spells/Marath’s X abilities but not his fixed-cost entry counters.\n\nOpening-hand choices are supplied by an explicit pilot check. For subsequent play, do not activate Crew again when the Vehicle is already a creature: this adds no further benefit. For a single crew activation choose only enough creature power to pay, not all creatures. Do not repeatedly station a ship beyond a useful threshold or station a zero-power creature for zero counters. Keep useful attackers untapped.\n",
+ "state": {
+  "turn": "T6 main1",
+  "life": 39,
+  "mana": 5,
+  "land_drop": false,
+  "library": 80,
+  "hand": [
+   "Return of the Wildspeaker",
+   "Commune with Lava",
+   "Sandstorm Salvager"
+  ],
+  "battlefield": [
+   {
+    "name": "Stomping Ground",
+    "id": 36
+   },
+   {
+    "name": "Plains",
+    "id": 51,
+    "tapped": true
+   },
+   {
+    "name": "Forest",
+    "id": 21
+   },
+   {
+    "name": "Scavenger Grounds",
+    "id": 70
+   },
+   {
+    "name": "Command Tower",
+    "id": 74
+   },
+   {
+    "name": "Exploratory Mission",
+    "id": 85
+   },
+   {
+    "name": "Hit It!",
+    "id": 38
+   },
+   {
+    "name": "Marketback Walker",
+    "id": 18,
+    "pt": "1/1",
+    "counters": {
+     "+1/+1": 1
+    }
+   },
+   {
+    "name": "Forest",
+    "id": 28
+   }
+  ],
+  "command": [
+   "Marath, Will of the Wild"
+  ],
+  "graveyard": [
+   "Wooded Foothills",
+   "Nature's Lore",
+   "Rootborn Defenses",
+   "Surge Conductor",
+   "Sol Ring",
+   "Chaos Warp",
+   "Arcane Signet"
+  ],
+  "exile": [],
+  "stack": [
+   "Marath, Will of the Wild (100) - Marath deals X d…",
+   "Landfall — Whenever a land you control enters, pu…"
+  ],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 35,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 6,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 6,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Command Tower": "Command Tower — Land — {T}: Add one mana of any color in your commander's color identity.",
+   "Commune with Lava": "Commune with Lava {X}{R}{R} — Instant — Exile the top X cards of your library. Until the end of your next turn, you may play those cards.",
+   "Exploratory Mission": "Exploratory Mission {2}{R}{R} — Enchantment — Landfall — Whenever a land you control enters, put a quest counter on Exploratory Mission. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If Exploratory Mission has five or more quest counters on it, add {R}{R}.",
+   "Hit It!": "Hit It! {1}{R}{G} — Enchantment — When Hit It! enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard. / Creatures you control have haste.",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove X +1/+1 counters from Marath: Choose one — / • Put X +1/+1 counters on target creature. X can't be 0. / • Marath deals X damage to any target. X can't be 0. / • Create an X/X green Elemental creature token. X can't be 0.",
+   "Marketback Walker": "Marketback Walker {X}{X} — Artifact Creature - Construct — Haste / Marketback Walker enters with X +1/+1 counters on it. / When this creature dies, draw a card for each +1/+1 counter on it. / {4}: Put a +1/+1 counter on this creature.",
+   "Return of the Wildspeaker": "Return of the Wildspeaker {4}{G} — Instant — Choose one — / • Draw cards equal to the greatest power among non-Human creatures you control. / • Non-Human creatures you control get +3/+3 until end of turn.",
+   "Sandstorm Salvager": "Sandstorm Salvager {2}{G} — Creature - Human Artificer — When Sandstorm Salvager enters, create a 3/3 colorless Golem artifact creature token. / {2}, {T}: Put a +1/+1 counter on each creature token you control. They gain trample until end of turn.",
+   "Scavenger Grounds": "Scavenger Grounds — Land - Desert — {T}: Add {C}. / {2}, {T}, Sacrifice a Desert: Exile all graveyards.",
+   "Stomping Ground": "Stomping Ground — Land - Mountain Forest — As Stomping Ground enters, you may pay 2 life. If you don't, it enters tapped."
+  }
+ },
+ "decision": {
+  "kind": "number",
+  "turn": "T6 main1",
+  "prompt": "X for Commune with Lava",
+  "options": [],
+  "min": 0,
+  "max": 3,
+  "repeat": false,
+  "mine": true
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 6
+  },
+  {
+   "t": "draw",
+   "turn": 6,
+   "card": "Forest",
+   "id": 28
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92948"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92947"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92949"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92950"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92951"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92953"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92954"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92955"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92956"
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "play",
+   "options": 8,
+   "answer": [
+    "Forest (land)"
+   ],
+   "by": "model",
+   "p": 0.5
+  },
+  {
+   "t": "land",
+   "turn": 6,
+   "card": "Forest",
+   "id": 28
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92967"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92970"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92969"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92968"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92977"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92978"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92979"
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "play",
+   "options": 6,
+   "answer": [
+    "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…"
+   ],
+   "by": "model",
+   "p": 0.27
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "number",
+   "prompt": "X for Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+   "options": 0,
+   "answer": [
+    "1"
+   ],
+   "by": "forced"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92985"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92984"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92986"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g92987"
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "mode",
+   "prompt": "modes for Marath, Will of the Wild",
+   "options": 3,
+   "answer": [
+    "this deals X damage to any target."
+   ],
+   "by": "model",
+   "p": 0.62
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93005"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93003"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93006"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93004"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93012"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93013"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93014"
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "targets",
+   "prompt": "target for Marath deals X damage to any target.",
+   "options": 6,
+   "answer": [
+    "Opp 3"
+   ],
+   "by": "model",
+   "p": 0.35
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "pay",
+   "prompt": "mana to pay {X} for Marath, Will of the Wild, in order; none = automatic",
+   "options": 9,
+   "answer": [
+    "Plains (W)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 6,
+   "card": "Marath, Will of the Wild",
+   "sources": [
+    "Plains"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "activate",
+   "turn": 6,
+   "card": "Marath, Will of the Wild",
+   "id": 100,
+   "as": "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+   "x": 1,
+   "by": "model"
+  },
+  {
+   "t": "move",
+   "turn": 6,
+   "card": "Marath, Will of the Wild",
+   "from": "battlefield",
+   "to": "graveyard"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93029"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93028"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93030"
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "confirm",
+   "prompt": "Marath, Will of the Wild: If a commander is in a graveyard or in exile and that card was put into that zone since the last time state-based actions were checked, its owner may put it into the command zone. (Marath, Will of the Wild)",
+   "options": 2,
+   "answer": [
+    "yes"
+   ],
+   "by": "model",
+   "p": 0.48
+  },
+  {
+   "t": "move",
+   "turn": 6,
+   "card": "Marath, Will of the Wild",
+   "from": "graveyard",
+   "to": "command"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93042"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93041"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93044"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93043"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93045"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93046"
+  },
+  {
+   "t": "decision",
+   "turn": 6,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "Commune with Lava"
+   ],
+   "by": "model",
+   "p": 0.1
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93060"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93059"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93062"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93061"
+  },
+  {
+   "t": "fork",
+   "turn": 6,
+   "session": "g93063"
+  }
+ ],
+ "default": "X = 3",
+ "lines": {
+  "X = 0": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "number",
+     "prompt": "X for Commune with Lava",
+     "options": 0,
+     "answer": [
+      "0"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "red"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{R}{R} for Commune with Lava, in order; none = automatic",
+     "options": 8,
+     "answer": [
+      "Stomping Ground (R)",
+      "Command Tower (R)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "sources": [
+      "Stomping Ground",
+      "Command Tower"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "id": 9,
+     "as": "Commune with Lava",
+     "x": 0,
+     "by": "agent"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Exploratory Mission (85)'s Effect",
+     "to": "command"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Incubation Druid (from exile)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "pay",
+     "prompt": "mana to pay {1}{G} for Incubation Druid, in order; none = automatic",
+     "options": 3,
+     "answer": [
+      "Forest (G)",
+      "Scavenger Grounds (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "sources": [
+      "Forest",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "id": 7,
+     "as": "Incubation Druid (from exile)",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 6,
+     "answer": [
+      "Marketback Walker 1/1 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 38
+    },
+    {
+     "t": "eot",
+     "turn": 6,
+     "lands": 6,
+     "mana": 7,
+     "unspent": 2,
+     "hand": 2,
+     "creatures": 2,
+     "power": 1,
+     "permanents": 4,
+     "opponents_life": 113
+    },
+    {
+     "t": "turn",
+     "turn": 7
+    },
+    {
+     "t": "draw",
+     "turn": 7,
+     "card": "Swords to Plowshares",
+     "id": 34
+    },
+    {
+     "t": "end",
+     "turn": 7,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T7 main1",
+    "life": 39,
+    "mana": 7,
+    "land_drop": true,
+    "library": 78,
+    "hand": [
+     "Return of the Wildspeaker",
+     "Sandstorm Salvager",
+     "Swords to Plowshares"
+    ],
+    "battlefield": [
+     {
+      "name": "Stomping Ground",
+      "id": 36
+     },
+     {
+      "name": "Plains",
+      "id": 51
+     },
+     {
+      "name": "Forest",
+      "id": 21
+     },
+     {
+      "name": "Scavenger Grounds",
+      "id": 70
+     },
+     {
+      "name": "Command Tower",
+      "id": 74
+     },
+     {
+      "name": "Exploratory Mission",
+      "id": 85,
+      "counters": {
+       "Quest": 1
+      }
+     },
+     {
+      "name": "Hit It!",
+      "id": 38
+     },
+     {
+      "name": "Marketback Walker",
+      "id": 18,
+      "pt": "1/1",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Forest",
+      "id": 28
+     },
+     {
+      "name": "Incubation Druid",
+      "id": 7,
+      "pt": "0/2"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Nature's Lore",
+     "Rootborn Defenses",
+     "Surge Conductor",
+     "Sol Ring",
+     "Chaos Warp",
+     "Arcane Signet",
+     "Commune with Lava"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 35,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 38,
+      "lands": 7,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 1": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "number",
+     "prompt": "X for Commune with Lava",
+     "options": 0,
+     "answer": [
+      "1"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "red"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{R}{R} for Commune with Lava, in order; none = automatic",
+     "options": 8,
+     "answer": [
+      "Stomping Ground (R)",
+      "Command Tower (R)",
+      "Forest (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "sources": [
+      "Stomping Ground",
+      "Command Tower",
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "id": 9,
+     "as": "Commune with Lava",
+     "x": 1,
+     "by": "agent"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Commune with Lava (9)'s Effect",
+     "to": "command"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Swords to Plowshares",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Exploratory Mission (85)'s Effect",
+     "to": "command"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Incubation Druid (from exile)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "pay",
+     "prompt": "mana to pay {1}{G} for Incubation Druid, in order; none = automatic",
+     "options": 2,
+     "answer": [
+      "Forest (G)",
+      "Scavenger Grounds (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "sources": [
+      "Forest",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "id": 7,
+     "as": "Incubation Druid (from exile)",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 6,
+     "answer": [
+      "Marketback Walker 1/1 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 38
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 6,
+     "lands": 6,
+     "mana": 7,
+     "unspent": 1,
+     "hand": 2,
+     "creatures": 2,
+     "power": 1,
+     "permanents": 4,
+     "opponents_life": 113
+    },
+    {
+     "t": "turn",
+     "turn": 7
+    },
+    {
+     "t": "draw",
+     "turn": 7,
+     "card": "Tempt with Discovery",
+     "id": 97
+    },
+    {
+     "t": "end",
+     "turn": 7,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T7 main1",
+    "life": 39,
+    "mana": 7,
+    "land_drop": true,
+    "library": 77,
+    "hand": [
+     "Return of the Wildspeaker",
+     "Sandstorm Salvager",
+     "Tempt with Discovery"
+    ],
+    "battlefield": [
+     {
+      "name": "Stomping Ground",
+      "id": 36
+     },
+     {
+      "name": "Plains",
+      "id": 51
+     },
+     {
+      "name": "Forest",
+      "id": 21
+     },
+     {
+      "name": "Scavenger Grounds",
+      "id": 70
+     },
+     {
+      "name": "Command Tower",
+      "id": 74
+     },
+     {
+      "name": "Exploratory Mission",
+      "id": 85,
+      "counters": {
+       "Quest": 1
+      }
+     },
+     {
+      "name": "Hit It!",
+      "id": 38
+     },
+     {
+      "name": "Marketback Walker",
+      "id": 18,
+      "pt": "1/1",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Forest",
+      "id": 28
+     },
+     {
+      "name": "Incubation Druid",
+      "id": 7,
+      "pt": "0/2"
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Nature's Lore",
+     "Rootborn Defenses",
+     "Surge Conductor",
+     "Sol Ring",
+     "Chaos Warp",
+     "Arcane Signet",
+     "Commune with Lava"
+    ],
+    "exile": [
+     "Swords to Plowshares"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 35,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 38,
+      "lands": 7,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 2": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "number",
+     "prompt": "X for Commune with Lava",
+     "options": 0,
+     "answer": [
+      "2"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "red"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{R}{R} for Commune with Lava, in order; none = automatic",
+     "options": 8,
+     "answer": [
+      "Stomping Ground (R)",
+      "Command Tower (R)",
+      "Forest (G)",
+      "Scavenger Grounds (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "sources": [
+      "Stomping Ground",
+      "Command Tower",
+      "Forest",
+      "Scavenger Grounds"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "id": 9,
+     "as": "Commune with Lava",
+     "x": 2,
+     "by": "agent"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Swords to Plowshares",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Commune with Lava (9)'s Effect",
+     "to": "command"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Tempt with Discovery",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Exploratory Mission (85)'s Effect",
+     "to": "command"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Marketback Walker 1/1 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 38
+    },
+    {
+     "t": "eot",
+     "turn": 6,
+     "lands": 6,
+     "mana": 6,
+     "unspent": 1,
+     "hand": 2,
+     "creatures": 1,
+     "power": 1,
+     "permanents": 3,
+     "opponents_life": 113
+    },
+    {
+     "t": "turn",
+     "turn": 7
+    },
+    {
+     "t": "draw",
+     "turn": 7,
+     "card": "Kami of Whispered Hopes",
+     "id": 30
+    },
+    {
+     "t": "end",
+     "turn": 7,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T7 main1",
+    "life": 39,
+    "mana": 6,
+    "land_drop": true,
+    "library": 76,
+    "hand": [
+     "Return of the Wildspeaker",
+     "Sandstorm Salvager",
+     "Kami of Whispered Hopes"
+    ],
+    "battlefield": [
+     {
+      "name": "Stomping Ground",
+      "id": 36
+     },
+     {
+      "name": "Plains",
+      "id": 51
+     },
+     {
+      "name": "Forest",
+      "id": 21
+     },
+     {
+      "name": "Scavenger Grounds",
+      "id": 70
+     },
+     {
+      "name": "Command Tower",
+      "id": 74
+     },
+     {
+      "name": "Exploratory Mission",
+      "id": 85,
+      "counters": {
+       "Quest": 1
+      }
+     },
+     {
+      "name": "Hit It!",
+      "id": 38
+     },
+     {
+      "name": "Marketback Walker",
+      "id": 18,
+      "pt": "1/1",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Forest",
+      "id": 28
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Nature's Lore",
+     "Rootborn Defenses",
+     "Surge Conductor",
+     "Sol Ring",
+     "Chaos Warp",
+     "Arcane Signet",
+     "Commune with Lava"
+    ],
+    "exile": [
+     "Swords to Plowshares",
+     "Incubation Druid",
+     "Tempt with Discovery"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 35,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 38,
+      "lands": 7,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "X = 3": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "number",
+     "prompt": "X for Commune with Lava",
+     "options": 0,
+     "answer": [
+      "3"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "choose",
+     "prompt": "Select Mana to Produce (Command Tower)",
+     "options": 1,
+     "answer": [
+      "red"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "pay",
+     "prompt": "mana to pay {X}{R}{R} for Commune with Lava, in order; none = automatic",
+     "options": 8,
+     "answer": [
+      "Stomping Ground (R)",
+      "Command Tower (R)",
+      "Forest (G)",
+      "Scavenger Grounds (C)",
+      "Forest (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "sources": [
+      "Stomping Ground",
+      "Command Tower",
+      "Forest",
+      "Scavenger Grounds",
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 6,
+     "card": "Commune with Lava",
+     "id": 9,
+     "as": "Commune with Lava",
+     "x": 3,
+     "by": "agent"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Tempt with Discovery",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Swords to Plowshares",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Incubation Druid",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Commune with Lava (9)'s Effect",
+     "to": "command"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 39
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Kami of Whispered Hopes",
+     "from": "library",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 6,
+     "card": "Exploratory Mission (85)'s Effect",
+     "to": "command"
+    },
+    {
+     "t": "decision",
+     "turn": 6,
+     "kind": "attack",
+     "prompt": "attackers, at most one defender each",
+     "options": 3,
+     "answer": [
+      "Marketback Walker 1/1 [+1/+1 1] -> Opp 3"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "life",
+     "turn": 6,
+     "player": "Opp 3",
+     "life": 38
+    },
+    {
+     "t": "eot",
+     "turn": 6,
+     "lands": 6,
+     "mana": 6,
+     "unspent": 0,
+     "hand": 2,
+     "creatures": 1,
+     "power": 1,
+     "permanents": 3,
+     "opponents_life": 113
+    },
+    {
+     "t": "turn",
+     "turn": 7
+    },
+    {
+     "t": "draw",
+     "turn": 7,
+     "card": "Staff of the Storyteller",
+     "id": 19
+    },
+    {
+     "t": "end",
+     "turn": 7,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T7 main1",
+    "life": 39,
+    "mana": 6,
+    "land_drop": true,
+    "library": 75,
+    "hand": [
+     "Return of the Wildspeaker",
+     "Sandstorm Salvager",
+     "Staff of the Storyteller"
+    ],
+    "battlefield": [
+     {
+      "name": "Stomping Ground",
+      "id": 36
+     },
+     {
+      "name": "Plains",
+      "id": 51
+     },
+     {
+      "name": "Forest",
+      "id": 21
+     },
+     {
+      "name": "Scavenger Grounds",
+      "id": 70
+     },
+     {
+      "name": "Command Tower",
+      "id": 74
+     },
+     {
+      "name": "Exploratory Mission",
+      "id": 85,
+      "counters": {
+       "Quest": 1
+      }
+     },
+     {
+      "name": "Hit It!",
+      "id": 38
+     },
+     {
+      "name": "Marketback Walker",
+      "id": 18,
+      "pt": "1/1",
+      "counters": {
+       "+1/+1": 1
+      }
+     },
+     {
+      "name": "Forest",
+      "id": 28
+     }
+    ],
+    "command": [
+     "Marath, Will of the Wild"
+    ],
+    "graveyard": [
+     "Wooded Foothills",
+     "Nature's Lore",
+     "Rootborn Defenses",
+     "Surge Conductor",
+     "Sol Ring",
+     "Chaos Warp",
+     "Arcane Signet",
+     "Commune with Lava"
+    ],
+    "exile": [
+     "Tempt with Discovery",
+     "Swords to Plowshares",
+     "Incubation Druid",
+     "Kami of Whispered Hopes"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 35,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 38,
+      "lands": 7,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "X = 1",
+  "X = 2",
+  "X = 3"
+ ],
+ "note": "Reconstructed 2026-11-21 from g92576; matched 33 earlier parked decisions from original seed and exact current-list hash. Original answer: ['0']. Historical model request/random sample was not retained. These expected labels reject documented blunders, not every alternative's long-run ranking."
+}

@@ -7,6 +7,7 @@ Forge's AI, and the record says so. What the model reads was chosen by measuring
 situations (bench/; docs/measurements.md).
 """
 
+import itertools
 import json
 import os
 import re
@@ -53,10 +54,14 @@ def provider() -> Provider:
 
 KINDS = ("mulligan", "play", "targets", "mode", "number", "confirm", "choose", "attack")
 MAX_NUMBERS = 21  # an X with more choices than this goes to Forge's AI
+MIN_KEEP = 4  # stop paying London cards at four; an opening-hand test must not start empty
 MAX_OPTIONS = 30  # a pick with more options than this (creature types, say) goes to Forge's AI
 
 GAME = ("Commander goldfish against {opponents} opponents at 40 life who only play lands and never block or "
-        "interact. Develop as the plan says, and attack whenever it deals damage: the aim is to win fast.")
+        "interact. Follow the deck plan's development and sequencing goals. This tests whether the engine "
+        "assembles and keeps offering useful plays, not the fastest damage race. Incidental damage, spending "
+        "all available mana, or a larger next-turn mana total does not by itself make a line better. Preserve "
+        "useful resources and interaction when spending them would not advance the plan.")
 
 INSTRUCTIONS = {
     "mulligan": ("Keep this opening hand, or shuffle it away for a new one? Keep a hand with two to four lands "
@@ -68,7 +73,7 @@ INSTRUCTIONS = {
     "mode": "Pick the mode.",
     "number": "Pick the number.",
     "confirm": "Answer yes or no.",
-    "choose": "Pick one.",
+    "choose": "Pick the requested cards or objects.",
     "attack": "Attack with this creature?",
 }
 
@@ -224,8 +229,10 @@ def mulligan_facts(state: dict) -> str:
     made = set().union(*(colours_made(n, state) for n in lands)) if lands else set()
     short = [n for n in hand if n not in lands and colours_needed(n, state) - made]
     line = f"Lands in hand: {len(lands)} of {len(hand)}" + (f", making {' '.join(c for c in COLOURS if c in made)}" if made else "")
+    if any("search your library" in state.get("text", {}).get(n, "").lower() for n in lands):
+        line += ". Fetch/search lands can provide additional colours only if suitable targets remain; check their text"
     if short:
-        line += f". Cards needing a colour these lands don't make: {', '.join(short)}"
+        line += f". Cards needing a colour not directly shown by these lands: {', '.join(short)}"
     return line + "."
 
 
@@ -242,7 +249,11 @@ def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: st
         if not line.startswith(("opponents:", "exile:")):
             lines.append(re.sub(r" · library \d+", "", line))
     lines += others or []  # a table's decider shows the other players here
-    if decision["kind"] == "mulligan":
+    if table is None and state.get("opponents") and all(o.get("other") == 0 for o in state["opponents"]):
+        lines.append("Opponents have no nonland permanents. A removal spell has no opposing nonland target; "
+                     "a creature wipe would remove only your own creatures. Keep those cards unless a concrete "
+                     "self-target or death-trigger benefit is worth the resources lost.")
+    if decision["kind"] == "mulligan" or bottoming(decision):
         lines.append(mulligan_facts(state))
     elif decision["kind"] == "play" and ours(decision) and "land_drop" in state and lands_in(state["hand"], state):
         lines.append("A land can still be played this turn." if state["land_drop"] else "The land drop is used this turn.")
@@ -255,7 +266,38 @@ def describe(guide: str, state: dict, decision: dict, opponents: int, so_far: st
     return "\n".join(lines)
 
 
-def instructions(decision: dict) -> str:
+def bottoming(decision: dict) -> bool:
+    """Forge's London mulligan hand-bottoming decision, not a library selection during play."""
+    return decision["kind"] == "choose" and bool(re.fullmatch(r"put \d+ on the bottom", decision.get("prompt", "")))
+
+
+def mulligan_policy(state: dict) -> Optional[str]:
+    """Bound the existing two-to-four-land opening policy; colour/sequence judgments stay with the model.
+
+    Forge has already bottomed the London cards when it asks keep, despite the prompt saying "then".
+    Never apply the seven-card rule forever to a shrinking hand.
+    """
+    hand = state["hand"]
+    if len(hand) <= MIN_KEEP:
+        return "keep"
+    if not 2 <= lands_in(hand, state) <= 4:
+        return "mulligan"
+    return None
+
+
+def instructions(decision: dict, state: Optional[dict] = None) -> str:
+    if decision["kind"] == "mulligan" and state is not None:
+        return (f"Keep these {len(state['hand'])} cards, or take another mulligan? Further mulligans can shrink the hand. Forge has already "
+                "bottomed any London cards: judge the hand shown, do not subtract the prompt's bottom count again. "
+                "Prefer functional colours and early development, but weigh the cost of shrinking the hand further.")
+    if bottoming(decision):
+        return ("Choose the cards to put on the bottom for the London mulligan. Preserve the lands/colours "
+                "and early development that make the kept hand functional; bottom redundant or late cards "
+                "before the only source of a needed colour. " + decision["prompt"] + ".")
+    if decision["kind"] == "number":
+        return ("Choose the number. An X of zero can legally cast a spell without producing its intended "
+                "resource; choose it only for a concrete useful trigger or other stated benefit, not merely "
+                "because it is affordable. Budget mana for the follow-up. " + decision.get("prompt", ""))
     return INSTRUCTIONS[decision["kind"]] + (f" ({decision['prompt']})" if decision.get("prompt") else "")
 
 
@@ -275,12 +317,19 @@ MAX_LINES = 10  # options played out per decision; a decision with more is asked
 def lines_to_try(decision: dict) -> Dict[str, list]:
     """The options to play out, by the name the model sees, as answers (labels, or a number)."""
     options = decision["options"]
-    if decision["kind"] == "mulligan":
-        return {}  # playing a mulligan out would show the model the next hand before it is dealt
+    if decision["kind"] == "mulligan" or bottoming(decision):
+        return {}  # do not expose the next hand/draw while deciding the opening hand
     if not options:
-        values = list(range(decision["min"], decision["max"] + 1))
-        step = max(1, -(-len(values) // MAX_LINES))
-        return {f"X = {n}": [n] for n in values[::step]}
+        low, high = decision["min"], decision["max"]
+        values = list(range(low, high + 1))
+        if len(values) > MAX_LINES:
+            # Always compare both endpoints and the smallest positive payment. Striding used to omit
+            # X=1 or the maximum, even though those are often the meaningful tempo choices.
+            anchors = {low, high} | ({1} if low <= 1 <= high else set())
+            spread = [low + round((high - low) * i / (MAX_LINES - 1)) for i in range(1, MAX_LINES - 1)]
+            middle = [n for n in spread if n not in anchors]
+            values = sorted(anchors | set(middle[:MAX_LINES - len(anchors)]))
+        return {f"X = {n}": [n] for n in values}
     if decision["max"] == 1:
         found: Dict[str, list] = {}
         for label in options:
@@ -361,19 +410,32 @@ def after_line(before: dict, facts: List[dict], after: Optional[dict], now: int)
         return "the game ends"
     shown = [dict(f, card="a card") if f["t"] == "draw" else f for f in facts if f.get("turn") == now]
     lands = [p for p in after["battlefield"] if is_land(p["name"], before)]
-    others = [p["name"] + (f" {p['pt']}" if p.get("pt") else "") for p in after["battlefield"] if p not in lands]
+    others = [render._permanent(p) for p in after["battlefield"]
+              if p not in lands or p.get("counters") or p.get("pt")]
     eot = next((f for f in shown if f["t"] == "eot"), None)
     parts = [records.happened(shown) or "nothing else this turn",
              f"after: {len(lands)} lands, {after['mana']} mana next turn, {len(after['hand'])} cards in hand"]
+    if after.get("exile"):
+        parts.append(f"{len(after['exile'])} cards remain in exile; these are not hand cards and their "
+                     "play permissions/duration depend on the source effect and may outlast this rollout horizon")
     if eot:
         parts.append(f"{eot['unspent']} mana unspent this turn")
     parts.append("board: " + (", ".join(others) if others else "no nonland permanents"))
+    # Attribute losses explicitly; a same-named replacement is not the original engine surviving.
+    remaining = {p["id"] for p in after["battlefield"] if "id" in p}
+    lost = [p["name"] for p in before["battlefield"] if "id" in p and p["id"] not in remaining
+            and not is_land(p["name"], before)]
+    if lost:
+        parts.append("you lose your own " + render.names(lost))
+    failed = [f.get("card", f["t"]) for f in shown if f.get("failed") and f["t"] in ("cast", "activate", "attack")]
+    if failed:
+        parts.append(f"{len(failed)} failed action(s): " + render.names(failed))
     return "; ".join(parts)
 
 
 def plain_options(decision: dict) -> Optional[Dict[str, list]]:
-    """Options asked without results (outside the agent's turn, or too many to play out): single picks
-    and numbers only; None hands the decision to Forge's AI."""
+    """Options asked without results (outside the agent's turn, or too many to play out): single picks,
+    numbers, and small London-bottom combinations; None hands the decision to Forge's AI."""
     if decision["kind"] not in KINDS or decision.get("repeat"):
         return None
     if not decision["options"]:
@@ -381,6 +443,13 @@ def plain_options(decision: dict) -> Optional[Dict[str, list]]:
             return None
         return {str(n): [n] for n in range(decision["min"], decision["max"] + 1)}
     if decision["max"] != 1:
+        if bottoming(decision) and decision["min"] == decision["max"]:
+            # Seven-card opening hands have at most 35 ways to bottom any number. Do not silently
+            # hand those strategic choices to Forge just because the UI asks for several cards.
+            count = decision["min"]
+            combinations = list(itertools.islice(itertools.combinations(decision["options"], count), 36))
+            if len(combinations) <= 35:
+                return {"bottom " + ", ".join(cards): list(cards) for cards in combinations}
         return None
     found: Dict[str, list] = {}
     for label in decision["options"]:
@@ -419,6 +488,7 @@ class Decider:
         self.guide, self.opponents, self.usage, self.hybrid, self.workers = guide, opponents, usage, hybrid, workers
         self.route = FAST if fast else 0.0  # the confidence at which a text-only pick skips the forks; 0 never skips
         self.advise = advise  # the pilot's advise(state, decision, this_turn), or None
+        self._failed_states = {}  # session -> observed state, timeline length, rejected play labels
         self.fork_via = None  # "replay" or "copy" to choose how forks are made; None: as the game was set up
 
     # ---- the engine ----
@@ -513,7 +583,7 @@ class Decider:
         return describe(self.guide, state, decision, self.opponents, so_far, guidance)
 
     def instructions(self, decision: dict, state: dict) -> str:
-        return instructions(decision)
+        return instructions(decision, state)
 
     def explores(self, decision: dict) -> bool:
         """Whether this decision's options are played out: the agent's own turn."""
@@ -530,6 +600,20 @@ class Decider:
     def result(self, before: dict, line: Line, now: int) -> str:
         """A played-out line as the model reads it."""
         return after_line(before, line.facts, line.state, now)
+
+    def rejected_plays(self, session: str, state: dict, facts: List[dict]) -> set:
+        """Do not retry an engine-rejected action in an identical observed position.
+
+        This uses actual failure feedback, not a second legality test. Any state change permits a retry.
+        """
+        previous, began, blocked = self._failed_states.get(session, (None, len(facts), set()))
+        if previous != state:
+            blocked, began = set(), len(facts)
+        else:
+            blocked.update(f["as"] for f in facts[began:] if f["t"] in ("cast", "activate")
+                           and f.get("failed") and f.get("as"))
+        self._failed_states[session] = (state, len(facts), blocked)
+        return blocked
 
     # ---- deciding ----
 
@@ -548,11 +632,25 @@ class Decider:
         if decision["kind"] not in self.kinds or decision.get("repeat"):
             return self.send(reply, {"defer": True})
         state = engine.request({"cmd": "state", "session": session, "text": True})["state"]
+        if decision["kind"] == "mulligan":
+            opening = mulligan_policy(state)
+            if opening is not None:
+                # This is an explicit pilot policy, not a model judgment or a forced rules decision.
+                return self.send(reply, {"answer": _numbers(decision, [opening]), "by": "policy"})
         this_turn_facts = [f for f in records.timeline(records.load(reply["records"])) if f.get("turn") == turn(decision)]
+        blocked = self.rejected_plays(session, state, this_turn_facts) if decision["kind"] == "play" else set()
         guidance = self.advise(state, decision, this_turn_facts) if self.advise else None
         digest = records.digest(this_turn_facts)
         context = self.context(state, decision, digest[0] if digest else "", guidance)
+        failures = [f for f in this_turn_facts if f.get("failed") and f["t"] in ("cast", "activate", "attack")]
+        if failures:
+            # The turn digest deliberately lists successful plays only. Without this feedback a rejected
+            # activation looks untried, so the model can spend its whole turn submitting it again.
+            context += ("\nFailed actions this turn: " + records.happened(failures) +
+                        ". Do not repeat an unchanged failed action; first change its unmet precondition, "
+                        "choose another useful play, or pass.")
         tries = self.lines(decision) if self.hybrid != "plain" and self.explores(decision) else {}
+        tries = {name: picks for name, picks in tries.items() if name not in blocked}
         lines, default = {}, None
         if len(tries) >= 2 and self.route > 0:
             # Fast mode: ask from the text first, play a confident pick as it is, and play the options out only
@@ -572,6 +670,7 @@ class Decider:
         if len(tries) >= 2:
             try:
                 lines, default = self.explore(reply, tries)
+                lines = {name: line for name, line in lines.items() if name not in blocked}
             except engine.EngineError as error:
                 if "drifted" not in str(error) and "stalled" not in str(error):
                     raise
@@ -587,6 +686,10 @@ class Decider:
                 criteria[name] = (text + " → " if text != name else "") + result + (DEFAULT if name == default else "")
         else:
             tries = plain_options(decision)
+            if tries is not None:
+                tries = {name: picks for name, picks in tries.items() if name not in blocked}
+            if tries and len(tries) == 1 and blocked:
+                return self.send(reply, {"answer": _numbers(decision, next(iter(tries.values()))), "by": "policy"})
             if not tries or len(tries) < 2:
                 return self.send(reply, {"defer": True})
             criteria = {name: option_text(decision, name) for name in tries}

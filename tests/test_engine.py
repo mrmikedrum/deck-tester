@@ -182,5 +182,37 @@ class ModelGameTest(unittest.TestCase):
         self.assertEqual(self.play("plain")["model"]["played_out"], 0)
 
 
+
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed")
+class OpeningPolicyGameTest(unittest.TestCase):
+    def test_london_bottoms_before_keep_and_policy_stops_at_four(self):
+        reply = engine.request({"cmd": "start", "commanders": ["Marath, Will of the Wild"],
+                                "main": [[99, "Wastes"]], "seed": 21003, "turns": 1, "ask": list(model.KINDS)})
+        decider = model.Decider("Develop.", 3, model.Usage(), hybrid="plain")
+        kept = []
+        try:
+            for _ in range(12):
+                d = reply["decision"]
+                if d["kind"] == "play":
+                    break
+                if d["kind"] == "mulligan":
+                    state = engine.request({"cmd": "state", "session": reply["session"]})["state"]
+                    kept.append(len(state["hand"]))
+                    reply = decider.step(reply)
+                else:
+                    self.assertTrue(model.bottoming(d))
+                    # All Wastes: identical bottoms; no remote model needed to verify native ordering.
+                    reply = engine.request({"cmd": "answer", "session": reply["session"],
+                                            "answer": list(range(1, d["min"] + 1)), "by": "test"})
+            self.assertEqual(kept, [7, 7, 6, 5, 4])
+            self.assertEqual(reply["decision"]["kind"], "play")
+            facts = records.load(reply["records"])
+            picks = [f for f in facts if f["t"] == "decision" and f["kind"] == "mulligan"]
+            self.assertEqual([f["by"] for f in picks], ["policy"] * 5)
+            self.assertEqual(picks[-1]["answer"], ["keep"])
+        finally:
+            engine.request({"cmd": "end", "session": reply["session"]})
+
+
 if __name__ == "__main__":
     unittest.main()
