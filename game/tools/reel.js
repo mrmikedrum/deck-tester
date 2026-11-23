@@ -3,7 +3,7 @@
 //   node tools/reel.js <outdir> [clip,clip] [--quick] [--jobs 2] [--fps 30] [--engine chromium|webkit]
 // --quick is for checking a change: 15 fps and no video, the same packet. Several clips record in parallel (--jobs).
 // Motion is recorded at 1×; audit stills come from a second, coarse pass at the iPad's 2× (--scale).
-// Serve client/ on :8797 first. Per clip, writes <outdir>/<clip>/: frames/NNN.jpg, clip.mp4, track.json (the screen
+// It serves client/ itself (tools/serve.js) unless BASE is set. Per clip, writes <outdir>/<clip>/: frames/NNN.jpg, clip.mp4, track.json (the screen
 // quad of every mat and the box of every piece, per frame) and beats.json (what happened when).
 const fs = require("fs"), path = require("path"), { execFileSync } = require("child_process");
 const pw = require(process.env.PW || "playwright");
@@ -21,6 +21,11 @@ const only = onlyArg ? new Set(onlyArg.split(",")) : null;
 // It runs in real time until __clock.freeze(), so boot, fetches and art loading work normally; after that nothing
 // advances except through __clock.step(ms).
 const CLOCK = () => {
+  // Math.random is seeded, and seeded again when the clock freezes (the real-time settling before it draws a varying
+  // number of times), so two recordings of the same client are the same frames.
+  let seed = 0; const reseed = () => (seed = 0x9e3779b9);
+  Math.random = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  reseed();
   const realNow = performance.now.bind(performance), realRaf = window.requestAnimationFrame.bind(window), realCancel = window.cancelAnimationFrame.bind(window);
   const realSet = window.setTimeout.bind(window), realClear = window.clearTimeout.bind(window), realSetI = window.setInterval.bind(window), realClearI = window.clearInterval.bind(window);
   let frozen = false, base = 0, now = 0, nextId = 1e6;
@@ -42,7 +47,7 @@ const CLOCK = () => {
   };
   window.__clock = {
     get frozen() { return frozen; }, get now() { return now; },
-    freeze() { if (frozen) return; now = realNow(); base = now; frozen = true; syncCss(); },
+    freeze() { if (frozen) return; now = realNow(); base = now; frozen = true; reseed(); syncCss(); },
     step(ms) {
       const end = now + ms;
       for (;;) {   // timers due inside the step, in order
