@@ -1,0 +1,106 @@
+/* Variation D, "Felt": a deep green card table in a dark room; mats are quiet, seat-tinted areas on the felt.
+   World units: a card is 100 wide; the camera's scale makes it ~90–100px on screen at home. */
+.proto-d {
+  --felt: #173b33; --felt-2: #10291f; --rim: #4a3020; --rim-2: #6b4a30;
+  background: radial-gradient(ellipse at 50% 45%, #18242c 0%, #090d11 80%);
+}
+.proto-d .vp { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
+.proto-d .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.proto-d .tabletop {
+  position: absolute; border-radius: 140px;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255,255,255,.05), transparent 60%),
+    repeating-radial-gradient(circle at 30% 30%, rgba(255,255,255,.012) 0 2px, transparent 2px 5px),
+    linear-gradient(160deg, var(--felt), var(--felt-2));
+  box-shadow: 0 0 0 26px var(--rim), 0 0 0 30px var(--rim-2), 0 0 0 31px rgba(0,0,0,.6), 0 60px 160px rgba(0,0,0,.8),
+    inset 0 0 160px rgba(0,0,0,.45);
+}
+
+/* Mats */
+.proto-d .mat {
+  position: absolute; display: flex; gap: 40px; padding: 30px 34px 38px; border-radius: 34px;
+  background: rgba(0, 0, 0, .14);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--seat) 32%, transparent), inset 0 0 60px rgba(0,0,0,.18);
+}
+.proto-d .mat.active { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--seat) 70%, transparent), 0 0 70px color-mix(in srgb, var(--seat) 22%, transparent), inset 0 0 60px rgba(0,0,0,.18); }
+.proto-d .mat.side { flex-direction: column; gap: 30px; }
+.proto-d .rows { display: flex; flex-direction: column; gap: 46px; }
+.proto-d .row { display: flex; gap: 26px; align-items: flex-start; min-height: 140px; }
+.proto-d .mat[data-pid="bo"] .row { align-items: flex-end; }
+.proto-d .zonesrow { display: flex; gap: 46px; align-items: center; }
+.proto-d .zone { display: grid; grid-auto-flow: column; gap: 34px 26px; align-items: start; justify-items: center; }
+.proto-d .zone.rtl { direction: rtl; }
+.proto-d .zone.rtl > * { direction: ltr; }
+.proto-d .row.mana, .proto-d .zone.mana { opacity: .96; }
+.proto-d .pile .ptitle { bottom: -24px; font-size: 11px; color: rgba(225,235,230,.55); }
+
+/* Rail: the player's plate and their zones, at the mat's outer edge */
+.proto-d .rail { --u: 1.5px; display: flex; flex-direction: column; gap: 22px; min-width: 210px; }
+.proto-d .mat.side .rail { flex-direction: row; align-items: center; gap: 30px; }
+.proto-d .mat[data-pid="bo"] .rail { align-items: flex-end; }
+.proto-d .rail .plate { padding: 12px 18px 12px 12px; border-radius: 999px; background: rgba(8, 12, 16, .55); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--seat) 45%, transparent); }
+.proto-d .rail .plate .life { margin-left: 8px; }
+.proto-d .zones { display: flex; gap: 14px; }
+.proto-d .zpile { position: relative; display: grid; justify-items: center; gap: 6px; }
+.proto-d .zslot { width: 60px; height: 84px; position: relative; }
+.proto-d .zslot.empty { border-radius: 6px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.12); }
+.proto-d .zslot .tc { position: absolute; inset: 0; box-shadow: 3px -3px 0 -1px #24302c, 6px -6px 0 -2px #1d2824; border-radius: 5px; }
+.proto-d .zback { position: absolute; inset: 0; border-radius: 5px; background: radial-gradient(circle at 50% 50%, #7a5a33 0 18%, transparent 19%), repeating-linear-gradient(45deg, #3a2a1c 0 5px, #2c2015 5px 10px);
+  box-shadow: inset 0 0 0 2px #7a5a33, 3px -3px 0 -1px #2c2015, 6px -6px 0 -2px #241a11; }
+.proto-d .zcount { position: absolute; top: 58px; right: -10px; min-width: 26px; padding: 1px 6px; border-radius: 999px; text-align: center;
+  font: 700 15px/1.2 var(--num); background: #f1ece2; color: #16120c; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.proto-d .zlabel { font: 600 11px/1 var(--ui); letter-spacing: .08em; text-transform: uppercase; color: rgba(225,235,230,.6); }
+.proto-d .ztax { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 1px 6px; border-radius: 999px; white-space: nowrap;
+  font: 700 11px/1.4 var(--ui); background: var(--gold); color: #1a1205; }
+
+/* The stack, in the middle of the felt */
+.proto-d .stackzone { position: absolute; padding: 18px 26px 26px; border-radius: 26px; background: rgba(4, 10, 8, .32);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.08); }
+.proto-d .szlabel { font: 700 13px/1 var(--ui); letter-spacing: .14em; text-transform: uppercase; color: rgba(230,240,235,.75); margin-bottom: 64px; text-align: center; }
+.proto-d .szlabel span { font-weight: 500; letter-spacing: .04em; text-transform: none; color: rgba(230,240,235,.45); }
+.proto-d .sline { display: flex; gap: 44px; align-items: flex-end; }
+.proto-d .sslot { display: grid; justify-items: center; gap: 8px; transition: opacity .35s, transform .45s cubic-bezier(.2,.8,.2,1); }
+.proto-d .sslot.pending { opacity: 0; transform: translateY(-30px) scale(.9); }
+.proto-d .sslot.top .tc-body { box-shadow: 0 0 0 3px var(--seat), 0 0 34px color-mix(in srgb, var(--seat) 55%, transparent), 0 6px 14px rgba(0,0,0,.55); }
+.proto-d .sslot.top { transform: translateY(-14px); }
+.proto-d .shead { display: flex; align-items: center; gap: 6px; font: 700 14px/1 var(--ui); color: var(--seat); }
+.proto-d .shead b { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--seat); color: #10161f; font: 700 13px/1 var(--num); }
+.proto-d .shead em { font-style: normal; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; background: rgba(255,255,255,.12); color: #fff; }
+.proto-d .stgt { font: 500 12px/1.2 var(--ui); color: rgba(230,240,235,.7); max-width: 130px; text-align: center; }
+.proto-d .wlayer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.proto-d .wlayer path { fill: none; stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 2px 3px rgba(0,0,0,.7)); }
+.proto-d .wlayer path.head { stroke: none; }
+.proto-d .ghost { position: absolute; z-index: 20; animation: dRise .55s cubic-bezier(.2,.8,.2,1); }
+.proto-d .ghost .tc-body { box-shadow: 0 0 0 3px var(--seat), 0 0 50px color-mix(in srgb, var(--seat) 70%, transparent), 0 20px 40px rgba(0,0,0,.6); }
+@keyframes dRise { from { transform: scale(.4) translateY(40px); opacity: 0; } }
+
+/* Screen-space controls */
+.proto-d .hud { position: absolute; z-index: 50; }
+.proto-d .nav { left: calc(env(safe-area-inset-left, 0px) + 12px); top: calc(env(safe-area-inset-top, 0px) + 12px); display: flex; gap: 4px; padding: 4px;
+  border-radius: 999px; background: rgba(0,0,0,.5); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.proto-d .hbtn { border: 0; background: transparent; color: var(--text); font-weight: 600; font-size: 13px; padding: 7px 12px; min-height: 34px; border-radius: 999px; }
+.proto-d .hbtn.seatbtn { color: var(--seat); }
+.proto-d .hbtn:active { background: rgba(255,255,255,.12); }
+.proto-d .rules { left: calc(env(safe-area-inset-left, 0px) + 12px); top: calc(env(safe-area-inset-top, 0px) + 62px); max-width: 360px; }
+.proto-d .rhead { background: rgba(0,0,0,.5); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: center; gap: 8px; }
+.proto-d .rdot { width: 8px; height: 8px; border-radius: 50%; background: var(--cy); box-shadow: 0 0 8px var(--cy); }
+.proto-d .rlist { display: none; margin-top: 6px; padding: 6px; border-radius: 16px; background: var(--panel); box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px var(--line); max-height: 60dvh; overflow: auto; }
+.proto-d .rules.open .rlist { display: grid; gap: 2px; }
+.proto-d .rule { border: 0; background: transparent; text-align: left; display: grid; grid-template-columns: 10px 1fr; column-gap: 10px; padding: 8px 10px; border-radius: 10px; min-height: 44px; }
+.proto-d .rule:active { background: rgba(255,255,255,.08); }
+.proto-d .rule i { width: 8px; height: 8px; border-radius: 50%; background: var(--seat); margin-top: 6px; grid-row: span 2; }
+.proto-d .rule span { font-size: 14px; font-weight: 600; }
+.proto-d .rule small { font-size: 12px; color: var(--muted); }
+.proto-d .me { left: calc(env(safe-area-inset-left, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 62px); }
+.proto-d .me .rail { --u: 1.05px; min-width: 0; flex-direction: row; align-items: center; gap: 12px; padding: 8px 12px 8px 8px; border-radius: 22px;
+  background: rgba(6,10,13,.72); box-shadow: inset 0 0 0 1px var(--line), 0 8px 24px rgba(0,0,0,.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.proto-d .me .rail .plate { padding: 0; background: none; box-shadow: none; }
+.proto-d .me .zones { gap: 10px; }
+.proto-d .me .zslot { width: 40px; height: 56px; }
+.proto-d .me .zslot .tc { --cw: 40px !important; }
+.proto-d .me .zcount { top: 34px; right: -8px; font-size: 13px; min-width: 22px; }
+.proto-d .me .zlabel { font-size: 9px; }
+.proto-d .prio { right: calc(env(safe-area-inset-right, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); }
+.proto-d .dtoast { left: 50%; bottom: 150px; transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; background: var(--panel); box-shadow: 0 8px 24px rgba(0,0,0,.5); font-weight: 600; }
+.proto-d .hand .hcard { width: 118px; left: -59px; bottom: -104px; }
+.proto-d .hand .hcard.up { bottom: 14px; }
