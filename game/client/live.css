@@ -7,6 +7,7 @@
 }
 /* The prompt asks you to act: the option ring, like everything you can act on. */
 .l-prompt.asking { box-shadow: var(--sheet-shadow), 0 0 0 2px rgba(255,138,42,.9), 0 0 34px rgba(255,138,42,.55); }
+.l-copy { display: contents; }
 .l-where { font: italic 400 calc(11.5 * var(--u)) var(--serif); color: var(--ink-2); letter-spacing: .06em; }
 .l-what { font: 400 calc(19 * var(--u))/1.15 var(--serif); letter-spacing: .005em; text-wrap: balance; }
 .l-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: calc(6 * var(--u)); margin-top: calc(3 * var(--u)); }
@@ -20,7 +21,7 @@
   box-shadow: var(--plaque-shadow); color: #140b03; font: 400 calc(16 * var(--u)) var(--serif); letter-spacing: .02em;
   text-shadow: 0 1px 0 rgba(255,238,200,.5);
 }
-.l-buttons button.act, .l-row .l-done { color: #fff4dc; text-shadow: 0 1px 1px rgba(20,6,0,.95), 0 0 8px rgba(40,12,0,.8);
+.l-prompt:not(.moving) .l-buttons button.act, .l-row .l-done { color: #fff4dc; text-shadow: 0 1px 1px rgba(20,6,0,.95), 0 0 8px rgba(40,12,0,.8);
   background: linear-gradient(180deg, rgba(255,150,60,.3), rgba(110,35,0,.4) 55%, rgba(20,6,0,.6)), var(--bronze) center / 300px, #4a2a10;
   box-shadow: var(--plaque-shadow), inset 0 0 16px rgba(255,120,30,.5), 0 0 16px rgba(255,140,40,.3); }
 /* Tertiary: a thin ink-ruled pill on the parchment, no bronze, so it reads as a control and still sits below the plaques. */
@@ -30,6 +31,10 @@
 .l-buttons button.ghost:hover, .l-row .l-ghost:hover { background: #ecdfbc; }
 .l-buttons button:disabled, .l-row button:disabled { opacity: .35; }
 .l-buttons button:active, .l-row button:active { transform: translateY(1px); }
+.l-buttons.response { display: grid; grid-template-columns: minmax(0, max-content) max-content; max-width: 100%; }
+.l-buttons.response button { min-width: 0; overflow-wrap: anywhere; }
+.l-buttons.response .ghost { grid-column: 1 / -1; justify-self: end; }
+.l-buttons.response .cost { margin-left: .3em; white-space: nowrap; }
 
 .l-sheet { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8,5,3,.6); padding: 16px; }
 .l-box {
@@ -97,17 +102,15 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
   /* Beside the Game button, along the screen's top edge: above every page's back band, so it never covers a plaque or
      the piles beside it. */
   position: fixed; z-index: 25; left: calc(102 * var(--u) + env(safe-area-inset-left, 0px)); top: calc(8 * var(--u) + env(safe-area-inset-top, 0px));
-  width: min(30vw, calc(290 * var(--u))); display: grid; gap: 1px; padding: calc(5 * var(--u)) calc(9 * var(--u));
-  border-radius: 3px 8px 3px 8px; cursor: pointer;
+  width: min(29vw, calc(322 * var(--u))); display: grid; grid-template-columns: max-content 1fr; gap: calc(10 * var(--u)); padding: calc(5 * var(--u)) calc(9 * var(--u));
+  border: 0; border-radius: 3px 8px 3px 8px; cursor: pointer; text-align: left;
   /* Aged parchment, a shade darker than the sheets so it sits back, in ink: the log is a note in the margin, lighter than
      the board, with no outline and only a slight shadow. */
   background: linear-gradient(rgba(120,82,38,.34), rgba(96,64,28,.42)), var(--parchment) center / 420px, #c2a676;
   box-shadow: inset 0 0 28px rgba(70,42,12,.35), 0 3px 8px rgba(0,0,0,.3);
   font: italic 400 calc(12.5 * var(--u))/1.28 var(--serif); color: #3a2c1c;
 }
-.l-feed div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The newest lines are the ones that matter: they wrap to a second line rather than lose who or what was targeted. */
-.l-feed div.new { color: var(--ink); font-style: normal; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: pretty; }
+.l-feed-event { color: var(--ink); font-style: normal; text-wrap: pretty; }
 .l-log { display: grid; gap: 4px; font: 500 calc(14 * var(--u))/1.35 var(--ui); }
 .l-log div { padding: 4px 0; border-bottom: 1px solid rgba(22,18,14,.1); }
 .l-log .t-turn { color: var(--ink); font: 700 calc(16 * var(--u)) var(--num); letter-spacing: .04em; text-transform: uppercase; padding-top: 10px; border-bottom: 2px solid var(--ink); }
@@ -147,9 +150,9 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
    whole list, where each went and why, a tap away */
 .l-recap { justify-self: stretch; display: flex; align-items: center; gap: 6px; min-width: 0; margin-bottom: 2px; padding: 0 0 0 10px; border-radius: calc(12 * var(--u));
   background: rgba(156,31,36,.12); border: 1px solid var(--sig-danger-ink); }
-.l-recap .l-lost { flex: 1; min-width: 0; min-height: 44px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.l-recap .l-lost { flex: 1; min-width: 0; min-height: 44px; padding: 4px 0; border: 0; background: none; cursor: pointer; text-align: left;
   color: var(--sig-danger-ink); font: italic 400 calc(15 * var(--u)) var(--serif); }
-.l-recap .l-lost b { font-style: normal; font-weight: 400; color: var(--ink); }
+.l-recap .l-lost small { display: block; color: var(--ink-2); font: 500 calc(12.5 * var(--u)) var(--ui); }
 .l-recap .g-close { position: static; flex: none; width: 44px; height: 44px; }
 .l-log small { display: block; color: var(--ink-2); font-size: calc(12.5 * var(--u)); }
 /* Something aimed at you: the prompt says so in red */
@@ -157,17 +160,21 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
 .l-prompt.threat .l-what { color: var(--sig-danger-ink); }
 .l-prompt.threat::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(ellipse at 50% 120%, rgba(156,31,36,.35), transparent 60%); transition: opacity .3s; }
 .l-what { transition: color .3s; }
-/* ...but not before the spell has landed: while it flies (h.js sets body.stack-landing) the prompt keeps its usual ring. */
-body.stack-landing .l-prompt.threat { box-shadow: var(--sheet-shadow), 0 0 0 2px rgba(255,138,42,.9), 0 0 34px rgba(255,138,42,.5); }
-body.stack-landing .l-prompt.threat .l-what { color: var(--ink); }
-body.stack-landing .l-prompt.threat::before { opacity: 0; }
-/* Sifting a pile, or a sheet, is the task at hand: the prompt steps back and can't be tapped until the cards go back.
-   Only while the sheet is really there: leaning in on a side is not a task, and the prompt stays whole and usable. */
+/* Below the sift, the turn and its controls flank the life plaque and the graveyard. */
 .l-prompt { transition: box-shadow .3s, opacity .25s; }
-body.sifting .l-prompt, body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; pointer-events: none; }
+body:is(.sifting, .sift-returning) .l-prompt, body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; pointer-events: none; }
+body:is(.sifting, .sift-returning) .l-prompt { display: flex; justify-content: space-between; align-items: end; width: auto; max-width: none;
+  left: calc(14 * var(--u) + env(safe-area-inset-left, 0px)); padding: 0; background: none; box-shadow: none; transition: opacity .25s; }
+body:is(.sifting, .sift-returning) .l-copy, body:is(.sifting, .sift-returning) .l-prompt .l-buttons:not(:empty) {
+  padding: calc(6 * var(--u)) calc(10 * var(--u)); border-radius: 6px; background: var(--sheet); box-shadow: var(--sheet-shadow); }
+body:is(.sifting, .sift-returning) .l-copy { display: block; max-width: min(38vw, calc(430 * var(--u))); text-align: left; }
+body.sifting .l-copy { animation: l-stackin .18s ease .5s backwards; }
+body:is(.sifting, .sift-returning) .l-prompt .l-buttons.response { display: flex; }
+body.sifting .l-back { opacity: .75; }
+.sifting .proto-h .g-sifttitle small { animation: l-stackin .18s ease .43s both; }
 /* Play goes on by itself: the button fills as the moment runs out */
 .l-buttons button.auto { position: relative; overflow: hidden; }
-.l-buttons button.auto::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--bone-3); transform-origin: left; animation: l-run 3.2s linear forwards; }
+.l-buttons button.auto::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--bone-3); transform-origin: left; animation: l-run 3.2s linear calc(-1 * var(--auto-elapsed, 0ms)) forwards; }
 @keyframes l-run { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 /* The log grows while the stack is up */
 .l-feed.big { box-shadow: var(--hide-shadow), 0 0 0 2px rgba(255,154,60,.35); }
@@ -180,13 +187,23 @@ body.sifting .l-prompt, body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; 
    it returns. Fading as it slid made it a see-through strip over the table. */
 .held { position: absolute; bottom: calc(8 * var(--u)); width: 0; height: 0; z-index: 40; transition: transform .5s cubic-bezier(.37,0,.63,1), opacity 0s; }
 .proto-h .g-hand.away { transform: none; opacity: 1; }
-.g-hand.away .held { transform: translateY(calc(var(--hh) * 1.4 + 40px)); opacity: 0; transition: transform .5s cubic-bezier(.37,0,.63,1), opacity 0s .5s; }
+.g-hand.away .held, body.sift-returning .held { transform: translateY(calc(var(--hh) * 1.4 + 40px)); opacity: 0; transition: transform .5s cubic-bezier(.37,0,.63,1), opacity 0s .5s; }
 .held .hcard {
   position: absolute; left: calc(var(--hw) / -2); bottom: 0; width: var(--hw); height: var(--hh); border-radius: calc(var(--hw) * .045);
   background: #111 center / 100% 100% no-repeat; box-shadow: -4px 2px 14px rgba(0,0,0,.55); transform-origin: 50% 100%; touch-action: none;
   -webkit-user-select: none; user-select: none; cursor: grab;
 }
 .held .hcard.dragging { cursor: grabbing; box-shadow: 0 18px 40px rgba(0,0,0,.7); }
+.l-response-tabs {
+  position: absolute; left: calc(34 * var(--u)); bottom: calc(215 * var(--u)); width: calc(435 * var(--u));
+  display: flex; gap: calc(8 * var(--u)); overflow-x: auto; padding: 4px; z-index: 40;
+}
+.g-hand.away .l-response-tabs, body.sift-returning .l-response-tabs { visibility: hidden; }
+.l-response-tabs button {
+  flex: none; display: flex; align-items: center; gap: calc(8 * var(--u)); min-height: 44px; padding: 0 calc(10 * var(--u));
+  background: var(--sheet); color: var(--ink); border: 1px solid #c67b37; border-radius: 6px;
+  font: 400 calc(15 * var(--u))/1.1 var(--serif); cursor: pointer;
+}
 /* A card I cast, on its way out of the hand to the stack (castFrom). */
 .l-cast { position: fixed; z-index: 41; pointer-events: none; background: #111 center / 100% 100% no-repeat; box-shadow: 0 14px 34px rgba(0,0,0,.6); }
 
@@ -197,24 +214,20 @@ body.sifting .l-prompt, body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; 
   position: fixed; z-index: 22; left: 50%; top: 30%; width: min(28vw, calc(260 * var(--u))); display: grid; gap: calc(6 * var(--u));
   pointer-events: none; font: 400 calc(14 * var(--u))/1.3 var(--serif); color: var(--text);
 }
-/* It fades in as the card lands: live.js sets the delay from the board's flight. */
-.l-stackinfo:not([hidden]) { animation: l-stackin .3s ease-in-out var(--land, 0ms) both; }
 /* Leaving, it goes as the spell leaves the stack: fast at first, so it never reads as still pending (live.js hides it after). */
 .l-stackinfo.out { animation: l-stackout .3s ease-out both; }
 @keyframes l-stackout { to { opacity: 0; } }
-.l-stackinfo .more { pointer-events: auto; margin-top: 2px; padding: 0 10px; min-height: 28px; border-radius: 999px; border: 0; cursor: pointer; background: rgba(255,248,228,.3);
+.l-stackinfo .more { pointer-events: auto; margin-top: 2px; padding: 0 10px; min-height: 44px; border-radius: 999px; border: 0; cursor: pointer; background: rgba(255,248,228,.3);
   box-shadow: inset 0 0 0 1px rgba(40,25,8,.5); color: var(--ink); font: italic 400 calc(13 * var(--u)) var(--serif); }
 @keyframes l-stackin { from { opacity: 0; } }
-/* Brief, where a full board leaves no room for it whole: a strip, what resolves next → at what on one line, "…more" for
-   its text, and a line for each under it. */
-.l-stackinfo:not(.brief) .more.short, .l-stackinfo.brief p, .l-stackinfo.brief .by, .l-stackinfo.brief footer { display: none; }
-.l-stackinfo.brief { width: min(44vw, calc(400 * var(--u))); }
-.l-stackinfo.brief article.top { display: flex; align-items: center; gap: 8px; padding-top: calc(6 * var(--u)); padding-bottom: calc(6 * var(--u)); white-space: nowrap; }
-.l-stackinfo.brief article.top header { flex: 0 0 auto; max-width: 55%; min-width: 0; }   /* the name first: it never gives way to the text */
-.l-stackinfo.brief article.top header b { overflow: hidden; text-overflow: ellipsis; }
-.l-stackinfo.brief article.top .tg { order: 1; flex: 1 1 0; min-width: 35%; margin: 0; overflow: hidden; text-overflow: ellipsis; }
-.l-stackinfo.brief article.top .more { order: 2; flex: none; margin: 0; }
-.l-stackinfo.brief article.top:not(:has(.tg)) p { display: block; order: 1; flex: 1 1 0; min-width: 35%; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* nothing aimed at: what it does */
+/* Brief, where the full text won't fit beside the stack: a complete effect or aim, with rules one tap away. */
+.l-stackinfo:not(.brief) .effect, .l-stackinfo.brief p, .l-stackinfo.brief .by, .l-stackinfo.brief footer { display: none; }
+.l-stackinfo.brief { width: min(39vw, calc(340 * var(--u))); }
+.l-stackinfo.brief article.top { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 8px; padding-top: calc(6 * var(--u)); padding-bottom: calc(6 * var(--u)); }
+.l-stackinfo.brief article.top header { justify-content: flex-start; }
+.l-stackinfo.brief article.top header span { white-space: nowrap; }
+.l-stackinfo.brief article.top .more { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+.l-stackinfo.brief article.top :is(.tg, .effect) { grid-column: 1; margin: 0; }
 /* Built like the sheets: bronze mounts at its corners (a size smaller, for a smaller leaf) and a ruled border inside. */
 .l-stackinfo .panel { --m: calc(22 * var(--u)); border-radius: 3px; color: var(--ink); overflow: hidden; box-shadow: var(--sheet-shadow);
   background: var(--mount-tl) left top / var(--m) no-repeat, var(--mount-tr) right top / var(--m) no-repeat, var(--mount-bl) left bottom / var(--m) no-repeat, var(--mount-br) right bottom / var(--m) no-repeat, var(--sheet-quiet);
@@ -225,16 +238,17 @@ body.sifting .l-prompt, body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; 
 .l-stackinfo header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font: 400 calc(18 * var(--u))/1.15 var(--serif); }
 .l-stackinfo .by { font: italic 400 calc(13 * var(--u)) var(--serif); color: var(--ink-2); letter-spacing: .03em; }
 .l-stackinfo p { margin: calc(6 * var(--u)) 0 0; text-wrap: pretty; white-space: pre-line; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }   /* the whole text is a tap away */
-.l-stackinfo .tg { margin-top: calc(6 * var(--u)); font-weight: 700; color: #7a4a10; }
+.l-stackinfo .tg { display: block; margin-top: calc(6 * var(--u)); font-weight: 700; color: #7a4a10; }
 .l-stackinfo article.aimed .tg { color: var(--sig-danger-ink); }
 /* Under it: a line each, ruled off, in the order they'll resolve. */
 .l-stackinfo .rest { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(60,40,15,.45); background: rgba(90,60,20,.08); }
-.l-stackinfo .rest li { display: flex; align-items: baseline; gap: 6px; padding: calc(5 * var(--u)) calc(16 * var(--u)); white-space: nowrap; overflow: hidden; }
+.l-stackinfo .rest li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; padding: calc(5 * var(--u)) calc(16 * var(--u)); }
 .l-stackinfo .rest li + li { border-top: 1px solid rgba(60,40,15,.2); }
 .l-stackinfo .rest b { font: 400 calc(15 * var(--u)) var(--serif); flex: none; }
 .l-stackinfo .rest i { font: italic 400 calc(12.5 * var(--u)) var(--serif); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-.l-stackinfo .rest span { flex: none; }
+.l-stackinfo .rest .tg { margin: 0; }
 .l-stackinfo .rest li.aimed b, .l-stackinfo .rest li.aimed i { color: var(--sig-danger-ink); }
+.l-rules { white-space: pre-line; font: 400 calc(17 * var(--u))/1.4 var(--serif); }
 /* The hint is the panel's foot: a ruled strip of the same parchment, a shade deeper. */
 .l-stackinfo footer { padding: calc(4 * var(--u)) calc(22 * var(--u)) calc(8 * var(--u)); border-top: 1px solid rgba(60,40,15,.45); background: rgba(110,75,30,.12);
   font: italic 400 calc(13 * var(--u)) var(--serif); color: var(--ink-2); text-align: center; }
