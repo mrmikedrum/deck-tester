@@ -81,7 +81,7 @@ async function transition(page, name, fire, ms = 1400, every = 100) {
 
   // ---- Offline: focus and scenario changes --------------------------------------------------------------------------
   const page = await ctx.newPage(); watch(page);
-  await page.goto(BASE + "index.html?nodirector#h");
+  await page.goto(BASE + "offline.html");
   await page.waitForFunction(() => window.__h, null, { timeout: 60000 });
   await page.evaluate(FRAME_HOOK); await page.evaluate('__h.loadScenario("late")'); await page.waitForTimeout(1500);
   const base = await page.evaluate(COUNTS);

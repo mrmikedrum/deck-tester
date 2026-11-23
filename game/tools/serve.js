@@ -1,12 +1,14 @@
 // A static server for client/, for the tools: concurrent and with a deep accept queue, so several browsers can load
-// the client at once. serve() resolves to its base URL; `node tools/serve.js [port]` runs it on its own.
+// the client at once. Card images (cache/) come from the game server's cache, .deckmaster/cache/cards/; a fresh checkout
+// fills it with `bin/deckmaster game --fill-cache`. serve() resolves to its base URL; `node tools/serve.js [port]` runs it.
 const http = require("http"), fs = require("fs"), path = require("path");
-const ROOT = path.join(__dirname, "../client");
+const ROOT = path.join(__dirname, "../client"), CACHE = path.join(__dirname, "../../.deckmaster/cache/cards");
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 function serve(port = 0) {
   const server = http.createServer((req, res) => {
-    const rel = decodeURIComponent(new URL(req.url, "http://x").pathname), file = path.join(ROOT, rel.endsWith("/") ? rel + "index.html" : rel);
-    if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
+    const rel = decodeURIComponent(new URL(req.url, "http://x").pathname), cached = rel.startsWith("/cache/"), root = cached ? CACHE : ROOT;
+    const file = cached ? path.join(CACHE, rel.slice("/cache/".length)) : path.join(ROOT, rel.endsWith("/") ? rel + "live.html" : rel);
+    if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
     fs.readFile(file, (err, buf) => {
       if (err) { res.writeHead(404); return res.end(); }
       res.writeHead(200, { "Content-Type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store" });

@@ -96,7 +96,7 @@ const STATES = {
     s.decision.options.push("Dack");
     s.after = [{ type: "card", id: opts[1].id }];
   }),
-  // Motion: Snap cast from my hand onto the stack, then resolving. record.js plays the steps.
+  // Motion: Snap cast from my hand onto the stack, then resolving. reel.js plays the steps.
   cast: snapshot((s, b) => {
     const snap = b.find("You", "Snap"), target = b.find("Marath", "Herd Baloth");
     s.decision = { kind: "play", prompt: "", options: ["Pass", "Snap"], refs: [{}, { card: snap.id }], min: 1, max: 1 };
@@ -124,7 +124,7 @@ if (require.main === module) (async () => {
 
   // Offline scenarios
   const page = await ctx.newPage(); watch(page);
-  await page.goto(BASE + "index.html?nodirector#h");
+  await page.goto(BASE + "offline.html");
   await page.waitForFunction(() => window.__h, null, { timeout: 30000 });
   const snap = async (name, fn, wait = 1300) => { if (!want(name)) return; if (fn) await page.evaluate(fn); await page.waitForTimeout(wait); await page.screenshot({ path: `${outDir}/${name}.png` }); };
   for (const k of ["early", "mid", "attack", "defend", "late"]) await snap("h-" + k, `__h.loadScenario("${k}")`, 1000);

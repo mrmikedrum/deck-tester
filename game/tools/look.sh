@@ -18,7 +18,7 @@ case "$LANE" in
      SCOPE="the 3D board: cards, standees, piles, pages, plaques, labels and effects drawn on the table, how they are laid out and how they move (client/h.js, fx.js, world.js)"
      WITNESSES="claude:polish codex:board-still codex:board-motion" ;;
   b) HERE="$MAIN/lanes/codex"; OTHER=main; OTHER_DIR="$MAIN"; FIXER_CLI=codex
-     OWN="client/live.js client/live.css client/live.html client/live-boot.js client/common.css client/common.js client/g.css client/g.js client/h.css client/table-kit.css client/table-kit.js client/index.html"
+     OWN="client/live.js client/live.css client/live.html client/live-boot.js client/common.css client/common.js client/g.css client/h.css client/table-kit.css client/table-kit.js client/offline.html"
      SCOPE="the HTML around the board: the prompt and its buttons, the stack panel, sheets of cards, the log, toasts, the loss strip and the hand fan, their text, look, placement and timing (client/live.js and the CSS and HTML files)"
      WITNESSES="codex:chrome-still codex:chrome-motion codex:chrome-board" ;;
   *) echo "LANE must be a or b"; exit 2 ;;

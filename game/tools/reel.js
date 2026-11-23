@@ -200,7 +200,7 @@ async function open(ctx, clip) {
   const errors = [];
   let p;
   if (clip.live) p = await livePage(ctx, typeof clip.live === "string" ? STATES[clip.live] : clip.live);
-  else { p = await ctx.newPage(); await p.goto(BASE + "index.html?nodirector#h"); await p.waitForFunction(() => window.__h, null, { timeout: 60000 }); }
+  else { p = await ctx.newPage(); await p.goto(BASE + "offline.html"); await p.waitForFunction(() => window.__h, null, { timeout: 60000 }); }
   p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
   for (const js of clip.setup || []) { await p.evaluate(js); await p.waitForTimeout(700); }
   await p.waitForTimeout(2500);                                      // art, textures and the first layout settle in real time

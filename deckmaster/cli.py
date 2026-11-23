@@ -279,6 +279,14 @@ def engine_cmd(args) -> int:
     return 0
 
 
+def game_cmd(args) -> int:
+    from . import game
+    if args.fill_cache:
+        return game.fill_cache()
+    game.serve(args)
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="deckmaster", description="Deckmaster: Commander on Forge, for agents and players.")
     parser.add_argument("--session", help="session id (default: the last one started)")
@@ -335,6 +343,18 @@ def main(argv=None) -> int:
     hosting.add_argument("--people", type=int, default=1, help="open seats for people joining from Forge")
     hosting.add_argument("--port", type=int, default=table.PORT)
     hosting.set_defaults(run=host_table)
+
+    playing = commands.add_parser("game", help="serve the game client: you play one seat in a browser, Jev pilots the others")
+    playing.add_argument("--port", type=int, default=8765, help="the web port (open /live.html on it)")
+    playing.add_argument("--table-port", type=int, default=36799, help="the first of the ports Forge's table lobby uses")
+    playing.add_argument("--deck", default="blue-moon-combat-revision.txt", help="your deck, in examples/decks")
+    playing.add_argument("--opponents", default="eternities-living-worlds-iii.txt,eternities-assimilation-iii.txt,dack-cedh.txt",
+                         help="the other seats' decks, comma-separated")
+    playing.add_argument("--start", action="store_true", help="open a table at once")
+    playing.add_argument("--seed", type=int)
+    playing.add_argument("--fill-cache", action="store_true",
+                         help="fetch the client's fixture card images from Scryfall into the cache, then exit")
+    playing.set_defaults(run=game_cmd)
 
     tables = commands.add_parser("table-report", help="report on a table game again (default: the last one)")
     tables.add_argument("table", nargs="?")

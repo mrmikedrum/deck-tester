@@ -105,14 +105,14 @@ These files keep every selector and layout property; only colour, surface, radiu
 - **`table-kit.css`**: `.hand .hcard.playable` (cyan), `.unplayable`, and a new `.hand .hcard.up, .dragging` rule
   (yellow).
 
-`live.js`, `index.html` and `live.html` are untouched. No markup class changed, and the fonts are still Barlow and
+`live.js` and `live.html` are untouched. No markup class changed, and the fonts are still Barlow and
 Barlow Condensed.
 
 ## Screenshots
 
 These are in WebKit at 1180×820, the iPad size, at 2× scale. `shots/after/*.png` are the new look and
 `shots/after/before/*.png` are the same scenes in the old look.
-- `h-*`: offline scenarios, `index.html?nodirector#h`.
+- `h-*`: offline scenarios, `offline.html`.
 - `live-*`: `live.html` against a mocked bridge (`tools/shoot.js`), covering main, plays, attack, block, threat,
   target, sheet, their turn, focus, inspector, profile and sift.
 
@@ -163,4 +163,4 @@ Stills and wall-clock strips missed what was wrong with motion, so review now wo
 - `tools/look.sh [rounds]` runs the loop: two blind witnesses (Claude and Codex) narrate, then judge, against how
   real objects would move; a merge step verifies and ranks them, along with the last judge's regressions; a fixer
   works the list and re-records; a Codex judge compares before and after without knowing which is which. Rounds
-  land in `look/round-N/`, reels in `reels/`. Prompts are in `tools/look/`. It supersedes `tools/loop.sh`.
+  land in `look/round-N/`, reels in `reels/`. Prompts are in `tools/look/`.
