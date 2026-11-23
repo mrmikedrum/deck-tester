@@ -101,11 +101,16 @@ const TRACK = () => {
 // ---- A layout audit, at chosen frames: what the hit test gives each piece, what is hidden --------------------------
 const AUDIT = step => {
   const h = window.__h, cv = h.renderer().domElement, byObj = new Map(), cells = {};
-  // The stack, while it is up, is the focus and may stand in front of the board (one tap sets it aside): the board is
-  // measured as it is with the stack set aside, except that the stack may not cover what it points at.
-  const stackGs = new Set(); h.scene.traverse(o => { if (o.userData.pick && o.userData.pick.stack && o.parent) stackGs.add(o.parent); });
-  const stackUp = [...stackGs].some(g => { for (let q = g; q; q = q.parent) if (!q.visible) return false; return true; });
+  // A focus (the stack while it is up, or anything marked as one) may stand in front of the board, since one tap sets it
+  // aside: the board is measured as it is with the focus set aside, except that the focus may not cover what it involves.
+  // Any other focus (a combat, a leaned seat) marks its objects userData.focus and what it involves userData.involves.
+  const stackGs = new Set(), shownNow = g => { for (let q = g; q; q = q.parent) if (!q.visible) return false; return true; };
+  const stackOpen = !!(window.SeatHooks || {}).stackLayer && !h.focus;   // set aside, the stack is not a focus
+  h.scene.traverse(o => { if (stackOpen && o.userData.pick && o.userData.pick.stack && o.parent) stackGs.add(o.parent); if (o.userData.focus) stackGs.add(o); });
+  const stackUp = [...stackGs].some(shownNow);
   const aimed = new Set(stackUp ? (window.Proto.G.stack || []).flatMap(st => (st.targets || []).filter(t => typeof t === "number")) : []);
+  stackGs.forEach(g => shownNow(g) && (g.userData.involves || []).forEach(id => aimed.add(id)));
+  const panels = [...document.querySelectorAll("[data-focus]")].map(e => [e, e.style.visibility]);
   for (const [k, pc] of Object.entries(h.pieces())) byObj.set(pc.obj, k);
   const keyOf = o => { for (let q = o; q; q = q.parent) if (byObj.has(q)) return byObj.get(q); return null; };
   const W = innerWidth, H = innerHeight, cols = Math.ceil(W / step), rows = Math.ceil(H / step), owner = new Array(cols * rows).fill(null);
@@ -131,7 +136,7 @@ const AUDIT = step => {
       const m = hit.object; if (!m.isMesh || !m.material) continue;
       let vis = true; for (let q = m; q; q = q.parent) if (!q.visible) { vis = false; break; }
       const mat = [].concat(m.material)[0]; if (!vis || (mat.transparent && mat.opacity < 0.1)) continue;
-      let q = m; while (q && !pieceOf.has(q)) { if (stackGs.has(q)) return "stack"; q = q.parent; }
+      let q = m; while (q && !pieceOf.has(q)) { if (stackGs.has(q)) return q.userData.focus ? "focus" : "stack"; q = q.parent; }
       return q ? pieceOf.get(q) : null;                              // the table, the page, or nothing of a piece
     }
     return null;
@@ -165,7 +170,7 @@ const AUDIT = step => {
   const poses = h.poses(), pieces = {}, aimCover = {};
   for (const [k, pc] of Object.entries(h.pieces()))                  // what the stack points at, with the stack up
     if (!["floor", "zone"].includes(pc.role) && pc.ids.some(id => aimed.has(id)) && !(poses[k] || {}).hide) aimCover[k] = coverOf(k, pc.obj);
-  const shown = [...stackGs].map(g => [g, g.visible]); shown.forEach(([g]) => (g.visible = false));
+  const shown = [...stackGs].map(g => [g, g.visible]); shown.forEach(([g]) => (g.visible = false)); panels.forEach(([e]) => (e.style.visibility = "hidden"));
   try { grid(); for (const [k, pc] of Object.entries(h.pieces())) {
     if (["floor", "zone"].includes(pc.role)) continue;
     const c = cells[k], t = poses[k] || {};
@@ -174,7 +179,7 @@ const AUDIT = step => {
       cover: t.hide ? null : coverOf(k, pc.obj) };
     const a = aimCover[k], b = pieces[k].cover;                    // the worse of the two, for what the stack points at
     if (a && b) pieces[k].cover = { face: Math.max(a.face, b.face), name: Math.max(a.name, b.name), foot: Math.max(a.foot, b.foot), by: [...new Set([...a.by, ...b.by])] };
-  } } finally { shown.forEach(([g, v]) => (g.visible = v)); }
+  } } finally { shown.forEach(([g, v]) => (g.visible = v)); panels.forEach(([e, v]) => (e.style.visibility = v)); }
   return { pieces, stackUp };
 };
 
