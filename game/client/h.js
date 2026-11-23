@@ -584,7 +584,7 @@
         // numbers (a folded pile, its title on a tab above it). The copies behind it show only as a sliver of edge, never as
         // fragments of their own faces.
         // Where some of its cards are tapped and some not, the tab or chip says how many are tapped, whichever lies on top.
-        const tapped = ids.filter(id => (P.card(id) || {}).tapped).length, some = tapped && tapped < copies ? `${tapped} tapped` : undefined;
+        const some = tabSub(ids, title);
         if (title) card.add(titleTab(title, !!c.tapped, some));
         else if (copies > 1) { const ch = chip("×" + copies, THEME.ink, some); ch.rotation.x = Math.PI / 2; ch.scale.setScalar(1.1); ch.position.set(CW / 2 - 0.03, CH / 2 - 0.07, TH / 2 + 0.04); card.add(ch); }
       }
@@ -676,12 +676,18 @@
     g.scale.setScalar(s); g.position.set(0, top + h * s / 2 - 0.035, TH / 2 + 0.03); g.userData.title = title; g.userData.turned = turned; g.userData.sub = sub;
     return g;
   }
+  // A pile's second line: how many kinds a pile of unlike cards holds ("8 kinds"), so it reads as more than its front, and
+  // where some of its cards are tapped and some not, how many are tapped.
+  function tabSub(ids, title) {
+    const cs = ids.map(id => P.card(id) || {}), tapped = cs.filter(c => c.tapped).length, kinds = title ? new Set(cs.map(c => c.card)).size : 1;
+    return [kinds > 1 && `${kinds} kinds`, tapped && tapped < ids.length && `${tapped} tapped`].filter(Boolean).join(" · ") || undefined;
+  }
   // A folded pile's count as cards arrive at it: its tab counts the cards that have landed (`ids`), and how many of them
   // are tapped, until the next one lands.
   function retitle(obj, ids) {
     let tab = null; obj.traverse(o => { if (o.userData.title) tab = o; });
     if (!tab || !tab.parent) return;
-    const tapped = ids.filter(id => (P.card(id) || {}).tapped).length, sub = tapped && tapped < ids.length ? `${tapped} tapped` : undefined;
+    const sub = tabSub(ids, tab.userData.title);
     const title = tab.userData.title.replace(/\d+$/, ids.length);
     if (title === tab.userData.title && sub === tab.userData.sub) return;
     const g = titleTab(title, tab.userData.turned, sub), host = tab.parent; host.remove(tab); dispose(tab); host.add(g);
@@ -976,8 +982,11 @@
     if (hold && plans[pid]) [C, S] = [C, S].map((us0, i) => (plans[pid][i ? "S" : "C"].units || []).filter(p => p.title && !p.mixed).reduce((us, p) => {
       const mine = us.filter(u => !u.fight && u.ids.every(id => p.ids.includes(id)));
       if (mine.length < 2) return us;
-      const ids = mine.flatMap(u => u.ids), rest = us.filter(u => !mine.includes(u));
-      rest.splice(us.indexOf(mine[0]), 0, { key: mine[0].key, ids, rep: mine[0].rep, role: mine[0].role, title: p.title.replace(/\d+$/, ids.length) });
+      // (It shows the face it showed while that card is still in it, else the one a fresh fold would; first in its ids, so
+      // a tap on it acts on the card it shows.)
+      const all = mine.flatMap(u => u.ids), rest = us.filter(u => !mine.includes(u));
+      const rep = all.includes(p.rep.id) ? P.card(p.rep.id) : kindsOf(all)[0] || mine[0].rep, ids = i ? all : [rep.id, ...all.filter(id => id !== rep.id)];
+      rest.splice(us.indexOf(mine[0]), 0, { key: mine[0].key, ids, rep, role: mine[0].role, title: p.title.replace(/\d+$/, ids.length) });
       return rest;
     }, us0));
     // Their lands are one well lying flat at the outer end of their first support row (away from the plaque's piles). There
@@ -1063,7 +1072,9 @@
       const ids = rep && stands ? [rep.id, ...all.filter(id => id !== rep.id)] : all;
       return { key: u[0].key, ids, rep, role: u[0].role, title: k };
     };
-    const likeC = [u => P.name(u.rep), u => (u.rep.token ? "Tokens" : null)];
+    // (Unlike tokens share "Tokens" only where that alone makes the row fit: where a mixed pile comes anyway, the tokens
+    // keep their kinds, "Beast 9" and "Elemental 8", and the mixed pile takes what is fewest.)
+    const likeC = [u => P.name(u.rep), Object.assign(u => (u.rep.token ? "Tokens" : null), { whole: true })];
     const likeS = [u => P.name(u.rep), u => (u.rep.token ? "Tokens" : null), u => P.typeLine(u.rep).split("—")[0].replace(/Legendary|Snow|Basic|Token/g, "").trim().split(" ").pop() + "s"];
     // Their creatures would share a pile while their support row has room to give: the noncreatures fold first and the
     // creatures take the places that frees, if the page still fits its slot that way.
@@ -1148,8 +1159,9 @@
       // A pile that opens leaves the card that showed on top in its place, and the others come out from under it: never
       // another face swapped onto the same spot.
       if (had) B0.units.forEach(u => {
+        // (A fighter stepping out of it isn't the pile opening: it fights in the middle, and the pile keeps its place.)
         const top = u.ids.length > 1 && had.has(u.key) && B.units.find(v => v.ids.includes(u.top != null ? u.top : u.rep.id));
-        if (!top || top.key === u.key) return;
+        if (!top || top.key === u.key || top.fight) return;
         const i = had.get(u.key); had.delete(u.key); had.set(top.key, i);
       });
       seatPlaces(B.units, B.perRow, B.cap, had);
@@ -1222,6 +1234,11 @@
     }
     units = units.slice();
     for (const like of likes) {
+      if (like.whole && units.length > cap && mixed) {   // (all or nothing: see likeC)
+        const all = fold(units, cap, [like], keep, named, null);
+        if (all.length <= cap) units = all;
+        continue;
+      }
       while (units.length > cap) {
         const by = new Map();
         units.forEach(u => { const k = !keep(u) && like(u); if (k) by.set(k, (by.get(k) || []).concat([u])); });
@@ -1234,8 +1251,11 @@
       }
     }
     if (units.length > cap && mixed) {                // (none: like cards only)
-      const room = Math.max(0, cap - 1), kept = units.filter(keep).slice(0, room);
-      const shown = []; units.forEach(u => { if (shown.length < room && (kept.includes(u) || shown.length + kept.filter(x => !shown.includes(x) && units.indexOf(x) > units.indexOf(u)).length < room)) shown.push(u); });
+      // What stays out of it says the most: the kept cards, then the largest piles of like creatures ("Beast 9" names nine),
+      // then the rest in the order they came. The mixed pile takes what is left, so it hides as few creatures as it can.
+      const weight = u => (u.role === "creature" ? u.ids.length : 1);
+      const room = Math.max(0, cap - 1), rank = units.filter(keep).concat(units.filter(u => !keep(u)).sort((x, y) => weight(y) - weight(x)));
+      const chosen = new Set(rank.slice(0, room)), shown = units.filter(u => chosen.has(u));
       const rest = units.filter(u => !shown.includes(u));
       units = shown.concat([{ ...named(rest, `${mixed} ${rest.reduce((t, u) => t + u.ids.length, 0)}`), mixed: true }]);
     }
@@ -1352,6 +1372,17 @@
         mana.slice().sort((a, b) => P.isLand(b) - P.isLand(a)).forEach(c => byName.set(c.card, (byName.get(c.card) || []).concat([c])));
         byName.forEach(cs => { cs.sort((a, b) => !!a.tapped - !!b.tapped); L.push(unit("m", { ids: cs.map(c => c.id), rep: cs[0] }, "mana")); });   // untapped first: a tap reaches one that can act
       } else if (mana.length) L.push({ key: "m" + p.id, ids: mana.map(c => c.id), rep: mana.find(P.isLand) || mana[0], role: "mana", lands: true });   // theirs: one well, at the end of their support row
+      // A pile whose first card has gone is still the same pile: it keeps the key it had (a unit's key is its first card's),
+      // so it keeps its place and its piece, and its other cards never turn up as a new pile beside the old one.
+      if (plans[p.id]) {
+        const old = new Map(), used = new Set([C, S, L].flat().map(u => u.key));
+        ["C", "S", "L"].forEach(k => (plans[p.id][k].units || []).forEach(u => u.ids.forEach(id => old.set(id, u.key))));
+        [C, S, L].flat().forEach(u => {
+          if (u.fight || old.get(u.ids[0]) === u.key) return;
+          const was = u.ids.map(id => old.get(id)).find(k => k && k[0] === u.key[0] && !used.has(k) && !bf.some(c => c.id === +k.slice(1)));
+          if (was) { used.add(was); u.key = was; }
+        });
+      }
       // What doesn't fit its page at the floor sizes folds (fitSeat, fold); then each unit is built.
       // A page holds its shape while cards leave it (fitSeat). Where holding would cost room (a deeper page, or folding more
       // than it did when a fresh fit wouldn't) it fits afresh, but never while cards are still leaving: then the page holds,
@@ -1541,16 +1572,21 @@
     const goal = joins.length || into.length ? targets().out : null;
     if (joins.length) {
       const camPos = new T.Vector3(CAM.pos.x, CAM.pos.y, CAM.pos.z), middle = new T.Vector3(CAM.at.x, 0, CAM.at.z);
-      joins.forEach(([k, pc]) => {
+      // One queue across all the piles they join, so no two set off together: the pile gaining fewest first (the one
+      // Elemental, then the four Beasts), each card far enough after the last that its face is seen on its own.
+      const newIn = pc => pc.ids.filter(id => !was[id]).length, total = joins.reduce((t, [, pc]) => t + newIn(pc), 0), each = Math.min(240, 900 / total);
+      let queued = 0;
+      joins.slice().sort((a, b) => newIn(a[1]) - newIn(b[1])).forEach(([k, pc]) => {
         const t = goal[k]; if (!t) return;
         const src = maker && maker.m.userData.owner === pc.pid ? maker : null;
-        const fresh = pc.ids.filter(id => !was[id]), s = t.s || 1, to = t.pos.clone().add(new T.Vector3(0, CH * s / 2, 0)), each = Math.min(240, 900 / fresh.length);   // far enough apart that each face is seen on its own
+        const fresh = pc.ids.filter(id => !was[id]), s = t.s || 1, to = t.pos.clone().add(new T.Vector3(0, CH * s / 2, 0)), n0 = queued;
+        queued += fresh.length;
         const via = to.clone().add(middle.clone().sub(t.pos).setY(0).normalize().multiplyScalar(2.2 * s)).setY(to.y + 0.6);   // in front of the pile, toward the table's middle
         const landed = pc.ids.filter(id => was[id]);
         retitle(pc.obj, landed);
         fresh.forEach((id, n) => {
           // (From an ability, once it has mostly drawn in, so its tag and its source's face never lie over the first one.)
-          const from = src ? src.m.position.clone() : (pc.pid === P.ME && handSlot(id)) || plateAt(pc.pid), m = cardMesh(P.card(id)), wait = (src && src.m.userData.ability ? 250 : 0) + n * each;
+          const from = src ? src.m.position.clone() : (pc.pid === P.ME && handSlot(id)) || plateAt(pc.pid), m = cardMesh(P.card(id)), wait = (src && src.m.userData.ability ? 250 : 0) + (n0 + n) * each;
           m.scale.setScalar(0.001); scene.add(m);
           tween(wait + 520, (e, kk) => {
             const q = Math.max(0, (kk * (wait + 520) - wait) / 520), qe = ease(q), a = 1 - qe;
