@@ -16,6 +16,7 @@
   const MOVE = 520, DRAW = 650, AUTO_PASS = 3200;
   let motion = "", motionFrame, motionUntil = 0;
   const flights = new Set(), draws = new Set(), drawAnimations = new Map(), incomingStack = new Set();
+  let recentDraws = [], positionLoad = "", loadTimer;
 
   // ---- The engine's view, as GAME ---------------------------------------------------------------------------------
   const COUNTER = { "+1/+1": "P1P1", "-1/-1": "M1M1", "Loyalty": "LOYALTY", "LOYAL": "LOYALTY" };
@@ -120,12 +121,13 @@
     }
   }
   async function take(s) {
+    const generationChanged = !!snap?.view?.players?.length && snap.gen !== s.gen;
     const was = snap?.gen === s.gen && snap?.view?.players?.length ? snap.view : null;
     snap = s;
     if (!was || !s.view?.players?.length) {
       clearHistory();
       lastView = ""; known = {}; shutKey = null;
-      heldIds = ""; focusId = null;
+      resetHeld();
       d = dkey = null; busy = false; sel = []; holding = attackTo = null;
       resetAutoPass();
       closeSheet();
@@ -141,8 +143,6 @@
     // Mana abilities may resolve immediately and return the same menu. A changed game
     // position with another pending decision is a fresh stop, even if its labels match.
     const changedView = viewKey !== lastView, changedDecision = !was || jump || nk !== dkey || (busy && changedView && !!nd);
-    const phaseChanged = was && (was.active !== s.view.active || was.turn !== s.view.turn || was.phase !== s.view.phase);
-    if (changedDecision || phaseChanged) recapLosses = [];
     let moving = "", sceneBefore;
     if (changedView) {
       await cardsFor(names(s.view));
@@ -152,11 +152,15 @@
       if (jump) {
         clearHistory();
         shutKey = null;
-        heldIds = "";
+        resetHeld();
+        closeSheet();
       }
       const fresh = log.filter(e => !logged.has(logKey(e)));
-      const rewound = jump && s.view.turn <= was.turn && (s.view.turn < was.turn || (log.at(-1)?.i ?? -1) < tail.i);
-      let outcome = rewound ? "Earlier game position loaded." : jump ? "Game position loaded." : "";
+      const rewound = jump && s.view.turn <= was.turn && (s.view.turn < was.turn || (log.at(-1)?.i ?? -1) < (tail?.i ?? -1));
+      clearTimeout(loadTimer);
+      positionLoad = rewound ? "Earlier position restored" : jump || generationChanged ? "Game position loaded" : "";
+      let outcome = positionLoad ? `${positionLoad}. Turn ${G.turn} · ${whoName(G.active)} ${PHASE_SHORT(G.phase)}.` : "";
+      if (positionLoad) loadTimer = setTimeout(() => { positionLoad = ""; status(); }, 1600);
       if (was && !jump) {
         const departed = was.stack.filter(st => st.source && !s.view.stack.some(n => n.id === st.id));
         const lost = noteLosses(before, fresh);
@@ -164,15 +168,21 @@
         const attacks = attackersAtMe();
         const oldHand = new Set((was.players[0].hand || []).map(c => c.id));
         const newDraws = P.player(P.ME).hand.filter(id => !oldHand.has(id));
+        if (newDraws.length) recentDraws = newDraws;
+        const drawLine = newDraws.length > 3 ? `${newDraws.length} cards are moving into your hand` :
+          newDraws.length ? `Into your hand · ${listNames(newDraws.map(id => P.name(G.cards[id])))}` : "";
         newDraws.forEach(id => draws.add(id));
         const added = G.stack.filter(st => !was.stack.some(o => o.id === st.id));
         added.forEach(st => incomingStack.add(st.id));
         if (added.length) moving = stackHeadline(added[0]);
         else if (["Attackers", "Blockers"].includes(G.phase) && attacks.some(a => !was.combat?.attackers.some(o => o.id === a.id))) moving = `${s.view.active}'s attackers are moving in`;
         else if (departed.length || lost || s.view.phase === "COMBAT_DAMAGE" && s.view.phase !== was.phase) {
-          moving = newDraws.length ? "Cards are moving into your hand" : departed.length === 1 && departed[0].spell ? `${departed[0].source.name} is leaving the stack` : "Cards are moving";
+          const sweep = /^Sunfall exiled every creature\./i.test(outcome) || /^Sunfall resolved\./i.test(outcome) &&
+            was.players.some(p => p.battlefield?.some(c => G.cards[c.id]?.zone === "exile"));
+          moving = sweep ? "Sunfall resolves · creatures are going to exile" : drawLine ||
+            (departed.length === 1 && departed[0].spell ? `${departed[0].source.name} is leaving the stack` : "Cards are moving");
         } else if (newDraws.length) {
-          moving = "Cards are moving into your hand";
+          moving = drawLine;
         }
         if (moving) sceneBefore = new Set(seat.scene.children);
       }
@@ -208,10 +218,7 @@
 
   // Keep the visual cue on the play until the board and hand finish. Decisions run independently.
   function settleMotion(now) {
-    if (incomingStack.size && !document.body.classList.contains("stack-landing")) {
-      incomingStack.clear();
-      queueStackInfo();
-    }
+    if (incomingStack.size && !document.body.classList.contains("stack-landing")) incomingStack.clear();
     for (const o of flights) if (o.parent !== seat.scene) flights.delete(o);
     const hand = P.player(P.ME).hand;
     for (const id of draws) {
@@ -332,12 +339,8 @@
     if (pk && pk.stack && !stackOpen()) { shutKey = null; layerChanged(); return true; }     // tap the stack to bring it back
     if (stackOpen()) { shutKey = stackKey(); layerChanged(); return true; }                   // tap past it to see the table
     if (pk?.type === "pile" && hit?.obj) {
-      const pc = Object.values(seat.pieces()).find(p => p.obj === hit.obj);
-      if (pc) {
-        const title = (pk.title || "pile").replace(new RegExp(" " + pk.ids.length + "$"), "");
-        seat.sift(pk.ids, hit.obj.getWorldPosition(new seat.T.Vector3()), `${whoName(pc.pid)} ${title}`, hit.obj);
-        return true;
-      }
+      seat.sift(pk.ids, hit.obj.getWorldPosition(new seat.T.Vector3()), null, hit.obj);
+      return true;
     }
     return false;
   };
@@ -474,6 +477,11 @@
   // card up onto the table to play it; tap the open card to read it.
   const HELD = { w: 150, span: 1.9, open: 0.94 };
   let heldEl = null, heldIds = "", focusId = null, fNow = 0, fVel = 0, fTo = 0, heldAnim = 0, lastTick = 0, lastWheel = 0, hg = null;
+  function resetHeld() {
+    cancelAnimationFrame(heldAnim);
+    heldEl?.replaceChildren();
+    heldIds = ""; focusId = hg = null;
+  }
   const unit = () => Math.min(innerWidth / 1180, innerHeight / 820);
   const handIds = () => P.player("you").hand.slice();
   function heldSize() { const W = HELD.w * unit(); return { W, H: W * 680 / 488 }; }
@@ -536,63 +544,91 @@
     heldEl.style.setProperty("--hw", W + "px"); heldEl.style.setProperty("--hh", H + "px");
     heldEl.style.left = 34 * u + W * (HELD.span + 1) / 2 + "px";   // the fan leans past its cards
   }
-  function responseTabs() {
-    if (!heldEl) return;
-    const tabs = heldEl.parentElement.querySelector(".l-response-tabs");
-    const top = G.stack[0], hand = handIds();
-    const byCard = new Map();
-    if (d?.kind === "play" && !busy && (top && top.controller !== "you" || attackersAtMe().length && G.phase === "Attackers")) {
-      playOptions().forEach(o => {
-        const id = refs()[o - 1].card;
-        if (G.cards[id]?.zone === "hand") byCard.set(id, (byCard.get(id) || []).concat(o));
+  function handSheet() {
+    sheet("Your hand", box => {
+      const pass = el("div", "l-hand-pass l-buttons", `<span>Auto-pass</span><button class="auto">Hold</button>`);
+      pass.querySelector("button").addEventListener("click", hold);
+      box.appendChild(pass);
+      handIds().forEach(id => {
+        const c = G.cards[id], opts = d?.kind === "play" && !busy ? optsFor(id) : [];
+        const detail = [recentDraws.includes(id) ? "Last added" : "", opts.length ? "Available play" : ""].filter(Boolean).join(" · ");
+        const b = el("button", "l-opt" + (opts.length ? "" : " l-read"), `<b>${handLabel(c)}</b>${detail ? `<small>${esc(detail)}</small>` : ""}`);
+        b.addEventListener("click", () => {
+          closeSheet();
+          if (!handIds().includes(id)) return;
+          const current = d?.kind === "play" && !busy ? optsFor(id) : [];
+          if (current.length) inspectWith(id, current); else seat.inspect(id);
+        });
+        box.appendChild(b);
       });
-    }
-    if (!byCard.size) { tabs?.remove(); return; }
-    const bar = tabs || el("div", "l-response-tabs");
-    bar.replaceChildren(...hand.filter(id => byCard.has(id)).map(id => {
-      const opts = byCard.get(id), name = P.name(G.cards[id]);
-      const label = opts.length === 1 ? pips(d.options[opts[0] - 1]) + costOf(opts[0]) : `${esc(name)} <small>${opts.length} plays</small>`;
-      const b = el("button", "", label);
-      b.addEventListener("click", () => opts.length === 1 ? inspectWith(id, opts) : offer(opts, name, false));
-      return b;
-    }));
-    if (!tabs) heldEl.parentElement.appendChild(bar);
+    });
+    syncHandPass();
+  }
+  function handLabel(c) {
+    const cost = P.printed(c).cost || P.face(c)?.cost;
+    return esc(P.name(c)) + (cost ? `<span class="cost">${pips(cost)}</span>` : "");
+  }
+  function syncHandPass() {
+    const pass = sheetEl?.querySelector(".l-hand-pass");
+    if (!pass) return;
+    pass.hidden = autoTimer === null || busy;
+    if (!pass.hidden) pass.querySelector("button").style.setProperty("--auto-elapsed", autoElapsed());
   }
   function renderHeld(container) {
     const ids = handIds(), key = ids.join(",");
-    if (heldEl && key === heldIds && heldEl.parentNode === container) {
-      heldEl.querySelectorAll(".hcard").forEach(x => x.classList.remove("playable", "unplayable"));
-      placeHeld(); drawHeld();
-      return heldEl;                                // same hand: keep it, so a swipe in progress carries on
+    if (!heldEl || heldEl.parentNode !== container) {
+      container.innerHTML = "";
+      heldEl = el("div", "held");
+      container.appendChild(heldEl);
+      const view = el("button", "l-hand-view", "View hand");
+      view.addEventListener("click", handSheet);
+      container.appendChild(view);
+      heldEl.addEventListener("wheel", e => {       // a sideways scroll turns one card per burst
+        if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+        e.preventDefault();
+        const now = performance.now(), fresh = now - lastWheel > 280; lastWheel = now;
+        if (fresh && Math.abs(e.deltaX) > 4) turnTo(Math.round(fTo) + (e.deltaX > 0 ? 1 : -1));
+      }, { passive: false });
     }
-    const before = heldIds ? new Set(heldIds.split(",").map(Number)) : null;   // null: the first hand, which just appears
-    if (heldEl) heldEl.querySelectorAll(".hcard").forEach(x => { const id = +x.dataset.id; if (!ids.includes(id) && G.stack.some(st => st.card === id)) castFrom(id, x); });
-    container.innerHTML = "";
-    heldEl = el("div", "held"); heldIds = key;
     placeHeld();
-    ids.forEach(id => {
-      const hc = el("div", "hcard");
-      hc.dataset.id = id;
-      hc.style.backgroundImage = `url("${P.printed(G.cards[id]).img}")`;
-      hc.addEventListener("pointerdown", heldDown);
-      hc.addEventListener("pointermove", heldMove);
-      hc.addEventListener("pointerup", heldUp);
-      hc.addEventListener("pointercancel", heldUp);
-      heldEl.appendChild(hc);
+    container.querySelector(".l-hand-view").hidden = !ids.length;
+    heldEl.querySelectorAll(".hcard").forEach(x => x.classList.remove("playable", "unplayable"));
+    if (key === heldIds) { drawHeld(); return heldEl; }          // keep a swipe in progress
+    const before = new Map([...heldEl.children].map(hc => [+hc.dataset.id, hc]));
+    const changedByDraw = ids.some(id => draws.has(id) && !before.has(id));
+    const starts = new Map();
+    before.forEach((hc, id) => {
+      if (!ids.includes(id)) {
+        if (heldIds && G.stack.some(st => st.card === id)) castFrom(id, hc);
+        if (hg?.id === id) hg = null;
+        hc.remove();
+      } else if (changedByDraw) starts.set(id, getComputedStyle(hc).transform);
     });
+    ids.forEach((id, i) => {
+      let hc = before.get(id);
+      if (!hc) {
+        hc = el("div", "hcard");
+        hc.dataset.id = id;
+        hc.style.backgroundImage = `url("${P.printed(G.cards[id]).img}")`;
+        hc.appendChild(el("div", "l-hand-label", handLabel(G.cards[id])));
+        hc.addEventListener("pointerdown", heldDown);
+        hc.addEventListener("pointermove", heldMove);
+        hc.addEventListener("pointerup", heldUp);
+        hc.addEventListener("pointercancel", heldUp);
+      }
+      if (heldEl.children[i] !== hc) heldEl.insertBefore(hc, heldEl.children[i] || null);
+    });
+    heldIds = key;
     let i = ids.indexOf(focusId);
     if (i < 0) i = focusId == null ? ids.length - 1 : Math.min(ids.length - 1, Math.round(fTo));
     focusId = ids[i]; fNow = fTo = i; fVel = 0;
-    heldEl.addEventListener("wheel", e => {         // a sideways scroll turns one card per burst
-      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-      e.preventDefault();
-      const now = performance.now(), fresh = now - lastWheel > 280; lastWheel = now;
-      if (fresh && Math.abs(e.deltaX) > 4) turnTo(Math.round(fTo) + (e.deltaX > 0 ? 1 : -1));
-    }, { passive: false });
-    container.appendChild(heldEl);
     drawHeld();
-    if (before) ids.filter(id => !before.has(id)).forEach(drawn);
-    responseTabs();
+    starts.forEach((from, id) => {
+      const hc = before.get(id);
+      hc.getAnimations().find(a => a.id === "hand-settle")?.cancel();
+      hc.animate([{ transform: from }, { transform: hc.style.transform }], { id: "hand-settle", duration: MOVE, easing: "ease-out" });
+    });
+    ids.filter(id => draws.has(id) && !before.has(id)).forEach(drawn);
     return heldEl;
   }
   // A card I cast leaves the hand as itself: it lifts out of its slot and rides with the table's card as it flies to the
@@ -626,6 +662,7 @@
   }
   function heldDown(e) {
     const hc = e.currentTarget;
+    hc.getAnimations().find(a => a.id === "hand-settle")?.cancel();
     hg = { id: +hc.dataset.id, hc, x: e.clientX, y: e.clientY, f0: Math.round(fTo), mode: null, turned: false, lastX: e.clientX, v: 0 };
     hc.setPointerCapture(e.pointerId);
   }
@@ -843,7 +880,7 @@
     const text = (P.face(P.card(st.card)) || {}).text || "";
     const targets = aimedAtMe(st);
     if (targets.length === 1 && /^Exile target creature\. Its controller gains life equal to its power\./i.test(text)) {
-      return `If it resolves, ${targetName(targets[0], true)} goes to exile and you gain life equal to its power.`;
+      return `If everyone passes, ${targetName(targets[0], true)} goes to exile and you gain life equal to its power.`;
     }
     return "If everyone passes, the top item resolves.";
   }
@@ -896,21 +933,23 @@
     const attacking = incoming.length > 0;
     const blockers = G.phase === "Blockers" && [...new Set((snap.view.combat?.blockers || []).map(b => G.cards[b.id]?.controller).filter(Boolean))];
     const where = blockers ? `Turn ${G.turn} · ${whoName(G.active)} turn · Declare blockers` : `Turn ${G.turn} · ${whoName(G.active)} ${PHASE_SHORT(G.phase)}`;
-    let what = "", hint = "", buttons = [], response = false;
+    let what = "", hint = "", buttons = [], response = [];
     if (G.over || s.state === "over") { what = "Game over" + (s.over ? ": " + s.over.replace(/^over: /, "") : ""); buttons.push(["New game", menu, "act"]); }
     else if (!d) what = busy ? "…" : top ? `${P.player(top.controller).name}: ${P.name(P.card(top.card))}` : G.active === "you" ? "Moving on…" : "Waiting for " + P.player(G.active).name + "…";
     else if (busy) what = "…";
     else {
       const k = d.kind, R = refs(), opts = k === "play" ? playOptions() : [];
+      const canFloat = k === "play" && R.some(r => r?.mana);
+      const passOnly = canFloat ? "You can float mana from a marked source before passing." : "Forge offers only Pass at this priority stop.";
       if (k === "mulligan") what = "Opening hand";
       else if (k === "play" && top && top.controller !== "you") {
         const who = P.player(top.controller).name, nm = P.name(P.card(top.card));
         const aimed = aimedAtMe(top).map(t => targetName(t)).filter(Boolean);
         what = aimed.length ? `${who}'s ${nm} targets ${listNames(aimed)}` : stackHeadline(top);
-        if (aimed.length) hint = (opts.length ? "" : "No response available. ") + passEffect(top);
-        response = opts.length > 0;
-        buttons = [[response ? "Let it resolve" : aimed.length ? "Pass priority" : "Resolve", () => answer([1]), response ? "" : "act"]];
-        if (response) buttons.unshift(responseButton(opts));
+        hint = [opts.length ? "You can respond now." : passOnly, passEffect(top)].join(" ");
+        response = opts;
+        buttons = [["Pass priority", () => answer([1]), opts.length ? "" : "act"]];
+        if (opts.length) buttons.unshift(responseButton(opts));
       } else if (k === "play") {
         const whose = top && (top.controller === "you" ? "Your" : P.player(top.controller).name + "'s");
         const stackTop = !top ? null : top.spell ? `${whose} ${P.name(P.card(top.card))} is on the stack`
@@ -923,14 +962,19 @@
           attacks.set(target, (attacks.get(target) || []).concat(name));
         });
         const defense = [...attacks].map(([target, names]) => `${P.player(G.active).name} attacks ${targetName(target, true)} with ${listNames(names)}`).join(". ");
-        what = stackTop || defense || blocking ||
-          (G.active === "you" ? (G.phase === "Main phase" ? "Your main phase: play cards, then go to combat" : G.phase === "Second main" ? "Your second main phase" : "You have priority") :
-          G.phase === "End step" ? `End of ${P.player(G.active).name}'s turn: instants now` : "You have priority");
-        if (attacking) hint = `${opts.length ? "" : "No response available. "}Passing advances toward your chance to block.`;
-        const passLabel = top ? "Resolve" : attacking ? "Pass toward blocks" : G.active === "you" && G.phase === "Main phase" ? "To combat" : G.active === "you" && G.phase === "Second main" ? "End turn" : "Pass";
-        buttons = [[passLabel, () => answer([1]), "act"]];
+        const main = !top && G.active === "you" && ["Main phase", "Second main"].includes(G.phase);
+        const handPlays = opts.some(o => G.cards[R[o - 1].card]?.zone === "hand");
+        what = stackTop || defense || blocking || (main ?
+          (handPlays ? "Browse the highlighted cards in your hand" : opts.length ? "Choose a play or tap a marked permanent" : canFloat ? "Tap a marked mana source to float mana" : "Forge offers no card plays at this stop") :
+          "You have priority");
+        if (attacking) {
+          hint = `${opts.length ? "" : passOnly + " "}Passing advances toward your chance to block.`;
+          response = opts;
+        }
+        const passLabel = top ? "Pass priority" : attacking ? "Pass toward blocks" : G.active === "you" && G.phase === "Main phase" ? "To combat" : G.active === "you" && G.phase === "Second main" ? "End turn" : "Pass";
+        buttons = [[passLabel, () => answer([1]), opts.length ? "" : "act"]];
         if (opts.length) buttons.unshift(attacking ? responseButton(opts) :
-          [`All plays (${opts.length})`, () => offer(opts, "Everything you can play", false)]);
+          [`Choose a play (${opts.length})`, () => offer(opts, "Everything you can play", false), "act"]);
       } else if (k === "attack") {
         const n = sel.length, to = typeof attackTo === "number" ? P.name(G.cards[attackTo]) : attackTo;
         what = n ? `Attacking with ${n}. Tap more, or drag one to another player` : `Tap creatures to attack ${to || ""}, or drag them to a player`;
@@ -963,20 +1007,26 @@
       }
       if (k !== "mulligan" && !(k === "play" && top && opts.length === 0)) {
         const delegate = ["Let Forge decide", auto, "ghost"];
-        if (response) buttons.push(delegate); else buttons.unshift(delegate);
+        buttons.push(delegate);
       }
     }
     const floating = Object.entries(P.player(P.ME).manaPool || {}).filter(([, n]) => n > 0)
       .map(([color, n]) => `${n} {${color}}`).join(" ");
-    if (motion && !G.over && s.state !== "over") what = motion;
+    const presentingMotion = !!motion && !G.over && s.state !== "over";
+    if (presentingMotion) { what = motion; hint = ""; }
+    if (positionLoad) {
+      hint = [what, hint].filter(Boolean).join(" · ");
+      what = positionLoad;
+    }
     const ctx = [hint, d && !busy && !motion && !stackOpen() ? context() : "", floating ? `Floating mana: ${floating}` : ""].filter(Boolean).join(" · ");
-    promptEl.innerHTML = `<div class="l-copy">${recapHTML()}<div class="l-where">${esc(where)}</div><div class="l-what">${pips(what)}</div>${ctx ? `<div class="l-ctx">${pips(ctx)}</div>` : ""}</div><div class="l-buttons${response ? " response" : ""}"></div>`;
+    const choices = response.length > 1 ? `<ul class="l-responses" aria-label="Available responses">${response.map(o => `<li>${pips(d.options[o - 1])}${costOf(o)}</li>`).join("")}</ul>` : "";
+    promptEl.innerHTML = `${recapHTML()}<div class="l-where">${esc(where)}</div><div class="l-what">${pips(what)}</div>${ctx ? `<div class="l-ctx">${pips(ctx)}</div>` : ""}${choices}<div class="l-buttons${response.length ? " response" : ""}"></div>`;
     promptEl.querySelector(".l-lost")?.addEventListener("click", lostSheet);
     promptEl.querySelector(".l-recap .g-close")?.addEventListener("click", () => { recapLosses = []; status(); });
     const row = promptEl.querySelector(".l-buttons");
     buttons.forEach(([t, fn, cls, html]) => {
       const b = el("button", cls || "", html || esc(t));
-      if (b.classList.contains("auto")) b.style.setProperty("--auto-elapsed", Math.max(0, AUTO_PASS + performance.now() - autoUntil) + "ms");
+      if (b.classList.contains("auto")) b.style.setProperty("--auto-elapsed", autoElapsed());
       if (/off/.test(cls || "")) b.disabled = true;
       b.addEventListener("click", fn); row.appendChild(b);
     });
@@ -984,9 +1034,9 @@
     promptEl.classList.toggle("asking", !!d && !busy && !motion);
     promptEl.classList.toggle("threat", !!d && !busy && !motion && threat());
     promptEl.hidden = !!d && d.kind === "mulligan" && !busy;
-    responseTabs();
+    syncHandPass();
     if (feedEl) feedEl.classList.toggle("big", G.stack.length > 0);
-    queueStackInfo();
+    stackInfo();
   }
   const PHASE_SHORT = ph => (ph || "").toLowerCase();
   const shortCard = n => n.split(", ")[0].replace(/^(\S{3,}) (?:of )?the .+$/, "$1");
@@ -994,21 +1044,29 @@
     const x = (t || "").replace(name + " - ", "").replace(/^[^-]+ - /, "").trim();
     return x.length > 90 && !full ? x.slice(0, 88) + "…" : x;
   }
-  function effectPreview(text) {
+  function effectPreview(text, rules) {
     const enters = text.match(/When (?:this creature|[^.]+) enters, draw [^.]+\./i);
     if (enters) return enters[0].replace(/^When .+ enters, (d)/i, "On entry, $1");
-    if (/^create an X\/X (?:green )?Elemental\b/i.test(text)) return "Create an X/X Elemental.";
-    if (/^Exile all creatures\. Incubate X\b/i.test(text)) return "Exile all creatures. Incubate for each.";
-    return text.split(/(?<=\.)\s|\n/)[0];
+    const effect = effectWithCost(text, rules);
+    return effect === text ? text.split(/(?<=\.)\s|\n/)[0] : effect;
+  }
+  function effectWithCost(text, rules) {
+    if (/^create an? (X|\d+)\/\1 (?:green )?Elemental\b/i.test(text)) {
+      const cost = rules?.match(/^\{X\}, Remove X \+1\/\+1 counters[^:]*:/m)?.[0];
+      if (cost) return `${cost} ${text[0].toUpperCase() + text.slice(1).replace(/\.?$/, ".")}`;
+    }
+    if (/^Exile all creatures\. Incubate X\b/i.test(text)) return "Exile all creatures. Create one Incubator with a +1/+1 counter per creature exiled.";
+    return text;
   }
 
-  let feedEl, menuBtn, turnHeading = "", latest = "", shownLatest = "";
+  let feedEl, menuBtn, turnHeading = "", latest = [], shownLatest = [];
   const history = [], logged = new Set();
   const logKey = e => e.i + "|" + e.text;
   const logText = t => (t || "").replace(/ \[(Card|Zone Changer|Activator):[^\]]*\]/g, "").replace(/ \(\d+\)/g, "").replace(/\s+/g, " ").trim();
   function clearHistory() {
     history.length = 0; logged.clear(); losses = []; recapLosses = [];
-    turnHeading = latest = shownLatest = "";
+    turnHeading = ""; latest = shownLatest = []; recentDraws = []; positionLoad = "";
+    clearTimeout(loadTimer);
     cancelAnimationFrame(motionFrame);
     motionFrame = 0; motion = ""; motionUntil = 0;
     flights.clear(); draws.clear(); drawAnimations.clear(); incomingStack.clear();
@@ -1026,7 +1084,7 @@
         if (e.card != null && e.card !== st.source.id) return false;
         if (e.card != null && /^STACK_RESOLVE$/i.test(e.type)) return true;
         if (st.spell) return text === st.source.name + " was countered" || st.source.name === "Sunfall" && text === "Sunfall exiled every creature";
-        return text.startsWith(st.controller + " created ") && /\bcreates?\b/i.test(st.text || "");
+        return false;
       });
       if (items.length === 1) evidence.set(items[0], text);
     });
@@ -1044,6 +1102,9 @@
       if (st.spell && destination(card) !== "away") return [`${name} went ${destination(card)}.`];
       return [`${st.spell ? name : shortCard(name) + "'s ability"} left the stack.`];
     });
+    // A combined creation log can describe more than what the departing ability created.
+    const created = fresh.map(e => logText(e.text)).find(t => /\bcreated\b/i.test(t));
+    if (created && !results.some(t => t.includes(created))) results.push(created.replace(/\.?$/, "."));
     if (entered && draw) results.push(draw.replace(/\.?$/, "."));
     const targets = [...new Set(departed.flatMap(st => st.targets || []))].filter(t => before.has(t));
     const changes = targets.map(id => {
@@ -1065,17 +1126,21 @@
       const at = entries.findLastIndex(isTurn);
       if (at >= 0 && logText(entries[at].text) === `Turn ${G.turn} (${player})`) entries[at] = active;
       else entries.splice(at + 1, 0, active);
-      turnHeading = heading; latest = shownLatest = "";
+      turnHeading = heading; latest = shownLatest = [];
     }
     history.push(...entries);
-    const event = entries.findLast(e => !isTurn(e));
+    const turnStart = entries.findLastIndex(isTurn);
+    const recent = entries.slice(turnStart + 1).filter(e => !isTurn(e)).reverse().map(e => logText(e.text));
     if (outcome) history.push({ type: "result", text: outcome });
-    if (outcome || event) latest = outcome || logText(event.text);
+    if (outcome) latest = [outcome];
+    else if (recent.length) latest = [...recent, ...latest].slice(0, 3);
   }
   function feed() {
     if (!feedEl) return;
     if (!motion) shownLatest = latest;
-    feedEl.innerHTML = `<span class="l-feed-turn">${esc(turnHeading)}</span>${shownLatest ? `<span class="l-feed-event">${pips(shownLatest)}</span>` : ""}`;
+    // An opponent's page can rise into this margin during their turn. Keep its zone labels clear.
+    const events = G.active !== "you" || G.stack.length || G.combat ? shownLatest.slice(0, 1) : shownLatest;
+    feedEl.innerHTML = `<span class="l-feed-turn">${esc(turnHeading)}</span>${events.length ? `<span class="l-feed-events${events.length > 1 ? " recent" : ""}">${events.map(event => `<span class="l-feed-event">${pips(event)}</span>`).join("")}</span>` : ""}`;
     feedEl.hidden = !turnHeading;
   }
   function fullLog() {
@@ -1149,6 +1214,7 @@
     if (!stackChipEl.hidden) stackChipEl.textContent = `Stack: ${G.stack.length}`;
   }
   // On an opponent's spell you can't answer, play goes on by itself after a moment, unless you hold it.
+  const autoElapsed = () => Math.max(0, AUTO_PASS + performance.now() - autoUntil) + "ms";
   function resetAutoPass() { clearTimeout(autoTimer); autoTimer = null; }
   function autoContinue() {
     resetAutoPass();
@@ -1167,31 +1233,35 @@
     const top = G.stack[0];
     return !!top && top.controller !== "you" && aimedAtMe(top).length > 0;
   }
-  const myBoard = () => new Map(Object.values(G.cards).filter(c => c.zone === "battlefield" && c.controller === "you").map(c => [c.id, c.card]));
+  const myBoard = () => new Map(Object.values(G.cards).filter(c => c.zone === "battlefield" && c.controller === "you").map(c => [c.id, c]));
   const destination = c => ({ graveyard: "to the graveyard", exile: "to exile", hand: "to hand", command: "to the command zone", library: "to the library" })[c?.zone] || "away";
   // Keep the current losses beside the decision and keep earlier ones in the log.
   function noteLosses(before, log) {
     if (!before.size || G.active === "you") return;
     const gone = [...before].filter(([id]) => G.cards[id]?.zone !== "battlefield" && !G.stack.some(st => st.card === id));
-    gone.forEach(([id, name]) => {
+    if (gone.length) recapLosses = [];
+    gone.forEach(([id, card]) => {
+      const name = card.card;
       const where = destination(G.cards[id]), why = log.slice().reverse().find(e => e.card === id || logText(e.text).includes(name));
-      const loss = { name, where, why: why ? logText(why.text) : "" };
+      const loss = { name, where, token: !!card.token, why: why ? logText(why.text) : "" };
       losses.push(loss); recapLosses.push(loss);
     });
     return gone.length;
   }
   function lossSummary(list) {
     const counts = {};
-    list.forEach(l => (counts[l.where] = (counts[l.where] || 0) + 1));
-    const groups = Object.entries(counts).map(([where, n]) => where === "away" ? `${n} other departures` : `${n} ${where}`);
-    if (groups.length > 1) groups.unshift(`${list.length} lost`);
-    return groups.join(" · ");
+    list.forEach(l => {
+      const where = l.where !== "away" ? l.where : l.token ? "token" : "unknown";
+      counts[where] = (counts[where] || 0) + 1;
+    });
+    return Object.entries(counts).map(([where, n]) =>
+      where === "token" ? `${n} token${n === 1 ? "" : "s"} left play` : where === "unknown" ? `${n} with unknown destination` : `${n} ${where}`).join(" · ");
   }
-  const recapHTML = () => !recapLosses.length || motion ? "" : `<div class="l-recap"><button class="l-lost">${esc(lossSummary(recapLosses))}<small>View losses</small></button><button class="g-close" aria-label="Dismiss loss notice">✕</button></div>`;
+  const recapHTML = () => !recapLosses.length || motion ? "" : `<div class="l-recap"><button class="l-lost"><b>View your losses (${recapLosses.length})</b><small>${esc(lossSummary(recapLosses))}</small></button><button class="g-close" aria-label="Dismiss loss notice">✕</button></div>`;
   function lostSheet() {
     sheet("What you lost", box => {
       const list = el("div", "l-log");
-      list.innerHTML = losses.slice().reverse().map(l => `<div><b>${esc(l.name)}</b> ${l.where === "away" ? "left play" : "went " + esc(l.where)}${l.why ? `<small>${pips(l.why)}</small>` : ""}</div>`).join("");
+      list.innerHTML = losses.slice().reverse().map(l => `<div><b>${esc(l.name)}</b> ${l.where === "away" ? l.token ? "(token) left play" : "left play · destination unknown" : "went " + esc(l.where)}${l.why ? `<small>${pips(l.why)}</small>` : ""}</div>`).join("");
       box.appendChild(list);
     }, { wide: true });
   }
@@ -1210,7 +1280,7 @@
   function stackInfo() {
     if (!infoEl) return;
     stackChip();
-    const items = G.stack.filter(st => !incomingStack.has(st.id));
+    const items = G.stack;
     // Closing, it fades out as the spells leave the stack on the board.
     if (!stackOpen() || !items.length) {
       if (!infoEl.hidden && !infoEl.classList.contains("out")) { infoEl.classList.add("out"); clearTimeout(stackInfo.t); stackInfo.t = setTimeout(() => { infoEl.hidden = true; infoEl.classList.remove("out"); }, 320); }
@@ -1231,8 +1301,8 @@
       const title = st.spell ? nm : shortCard(nm) + "'s ability", aim = tg.length ? `<span class="tg">→ ${esc(listNames(tg))}</span>` : "";
       if (i) return `<li class="${aimed ? "aimed" : ""}"><b>${esc(title)}</b>${aim || `<i>${esc(who)} · ${kind}</i>`}</li>`;
       return `<article class="top${aimed ? " aimed" : ""}"><header><b>${esc(title)}</b>${st.spell && f.cost ? `<span>${pips(f.cost)}</span>` : ""}</header>` +
-        `<div class="by">${esc(who)} · ${kind} · ${choosing ? "choosing targets" : incomingStack.size ? "pending" : "resolves next"}</div>` +
-        `<p>${pips(what)}</p>${aim || `<span class="effect">${pips(effectPreview(what))}</span>`}` +
+        `<div class="by">${esc(who)} · ${kind} · ${choosing ? "choosing targets" : incomingStack.has(st.id) ? "arriving" : "resolves next"}</div>` +
+        `<p>${pips(effectWithCost(what, f.text))}</p>${aim || `<span class="effect">${pips(effectPreview(what, f.text))}</span>`}` +
         `<button class="more" data-stack="${st.id}" aria-label="Read rules for ${esc(nm)}">Rules</button></article>`;
     };
     const under = items.slice(1);
@@ -1250,9 +1320,13 @@
     if (!r || infoEl.hidden) return;
     const boxes = panelObstacles();
     infoEl.classList.remove("brief");
+    if (placeAt(r, boxes, { dock: true })) return;
+    infoEl.classList.add("brief");
+    if (placeAt(r, boxes, { dock: true })) return;
+    infoEl.classList.remove("brief");
     if (placeAt(r, boxes)) return;
     infoEl.classList.add("brief");
-    if (!placeAt(r, boxes)) placeAt(r, boxes, true);
+    if (!placeAt(r, boxes)) placeAt(r, boxes, { fallback: true });
   }
   function panelObstacles() {
     const T = seat.T;
@@ -1264,8 +1338,9 @@
       const o = pc.obj;
       o.updateWorldMatrix(true, true);
       const local = o.matrixWorld.clone().invert(), target = new T.Matrix4().compose(t.pos, o.quaternion, new T.Vector3().setScalar(t.s || 1));
+      const danger = pc.ids.some(id => H.marks?.cards[id] === "danger");
       o.traverse(m => {
-        if (!m.isMesh || !m.visible || !(m === o.userData.plate || m.userData.w || m.material?.userData?.dim)) return;
+        if (!m.isMesh || !m.visible || !(m === o.userData.plate || m.userData.w || m.material?.userData?.dim || danger && m.parent.userData.fxRoot)) return;
         if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
         const { min, max } = m.geometry.boundingBox, transform = target.clone().multiply(local).multiply(m.matrixWorld);
         const points = [min.x, max.x].flatMap(x => [min.y, max.y].flatMap(y => [min.z, max.z].map(z => seat.project(new T.Vector3(x, y, z).applyMatrix4(transform)))));
@@ -1273,18 +1348,20 @@
           top: Math.min(...points.map(p => p.y)) - 6, bottom: Math.max(...points.map(p => p.y)) + 6 });
       });
     });
-    [feedEl, menuBtn, promptEl, backEl, ...document.querySelectorAll(".g-hand:not(.away) :is(.hcard, .l-response-tabs button)")].forEach(e => {
+    [feedEl, menuBtn, promptEl, backEl, ...document.querySelectorAll(".g-hand:not(.away) :is(.hcard, .l-hand-view)")].forEach(e => {
       if (e && !e.hidden) boxes.push(e.getBoundingClientRect());
     });
     return boxes;
   }
-  function placeAt(r, boxes, fallback = false) {
+  function placeAt(r, boxes, { fallback = false, dock = false } = {}) {
     const w = infoEl.offsetWidth, h = infoEl.offsetHeight;
     const feedR = feedEl.getBoundingClientRect();
     const top = Math.max(70, r.top), foot = r.bottom - h;
     const mid = [(r.left + r.right) / 2, (r.top + r.bottom) / 2];
-    const spots = [[r.right + 18, top], [r.left - 18 - w, top], [r.right + 18, foot], [r.left - 18 - w, foot], [feedR.right + 14, 12], [innerWidth - w - 14, 12]];
-    if (incomingStack.size && infoEl.style.left) spots.unshift([infoEl.offsetLeft, infoEl.offsetTop]);
+    // Keep the header and the entries beneath it on the right edge as items join the stack.
+    const right = innerWidth - w - 14;
+    const spots = dock ? [[right, 12], [right, innerHeight * 0.76 - h]] :
+      [[r.right + 18, top], [r.left - 18 - w, top], [r.right + 18, foot], [r.left - 18 - w, foot], [feedR.right + 14, 12], [right, 12]];
     const aims = seat.aims ? seat.aims() : [], obstacles = [r, ...boxes];
     let best;
     const test = (x, y) => {
@@ -1344,14 +1421,37 @@
   H.ready = api => {
     seat = api;
     const body = document.body;
+    const sift = seat.sift;
+    seat.sift = (ids, from, title, src) => {
+      if (!title || /^pile$/i.test(title)) {
+        const piece = Object.values(seat.pieces()).find(pc => src ? pc.obj === src :
+          pc.ids.length === ids.length && pc.ids.every((id, i) => id === ids[i]));
+        if (piece) {
+          src = piece.obj;
+          const name = src.userData.pick?.title || P.name(G.cards[ids[0]]);
+          title = `${whoName(piece.pid)} ${name.replace(new RegExp(` (?:×)?${ids.length}$`), "")}`;
+        }
+      }
+      return sift(ids, from, title && !/^pile$/i.test(title) ? title : "Cards", src);
+    };
     let siftFrame;
-    const siftInScene = () => seat.scene.children.some(o => o.children.some(c => c.userData.pick?.sift));
+    const siftInScene = () => seat.scene.children.findLast(o => o.children.some(c => c.userData.pick?.sift));
     const finishSift = () => {
-      if (siftInScene()) siftFrame = requestAnimationFrame(finishSift);
+      if (siftInScene() || heldEl?.getAnimations().some(a => a.transitionProperty === "transform")) siftFrame = requestAnimationFrame(finishSift);
       else body.classList.remove("sift-returning");
     };
     new MutationObserver(() => {
       if (body.classList.contains("sifting")) {
+        const title = document.querySelector(".proto-h .g-sifttitle");
+        const hint = title?.querySelector("small"), close = title?.querySelector(".g-close");
+        if (hint) hint.textContent = "Tap a card to inspect it · tap outside to put the pile back";
+        if (close) { close.textContent = "Put back"; close.setAttribute("aria-label", "Put back"); }
+        const shade = siftInScene()?.children.find(c => c.material?.isMeshBasicMaterial && c.material.transparent && !c.userData.pick);
+        if (shade && !shade.userData.liveBacking) {
+          // A second pass of the same backing follows the spread's existing fade in and out.
+          shade.parent.add(shade.clone());
+          shade.userData.liveBacking = true;
+        }
         if (body.classList.contains("sift-returning")) {
           cancelAnimationFrame(siftFrame);
           body.classList.remove("sift-returning");
