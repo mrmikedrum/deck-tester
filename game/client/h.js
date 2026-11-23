@@ -549,14 +549,16 @@
         // A pile of copies is one card, its count on a large chip pinned over its top right corner, clear of its name and
         // numbers (a folded pile, its title on a tab above it). The copies behind it show only as a sliver of edge, never as
         // fragments of their own faces.
-        if (title) card.add(titleTab(title, !!c.tapped));
-        else if (copies > 1) { const ch = chip("×" + copies); ch.rotation.x = Math.PI / 2; ch.scale.setScalar(1.1); ch.position.set(CW / 2 - 0.03, CH / 2 - 0.07, TH / 2 + 0.04); card.add(ch); }
+        // Where some of its cards are tapped and some not, the tab or chip says how many are tapped, whichever lies on top.
+        const tapped = ids.filter(id => (P.card(id) || {}).tapped).length, some = tapped && tapped < copies ? `${tapped} tapped` : undefined;
+        if (title) card.add(titleTab(title, !!c.tapped, some));
+        else if (copies > 1) { const ch = chip("×" + copies, THEME.ink, some); ch.rotation.x = Math.PI / 2; ch.scale.setScalar(1.1); ch.position.set(CW / 2 - 0.03, CH / 2 - 0.07, TH / 2 + 0.04); card.add(ch); }
       }
       one.add(base, stripe, pivot);
       one.position.set(i * (fan ? 0.09 : 0.04), 0, -i * 0.04);
       grp.add(one);
     }
-    grp.userData.kind = "standee";
+    grp.userData.kind = "standee"; grp.userData.top = c.id;
     return pickable(grp, copies > 1 ? { type: "pile", ids, title: title || shortName(c) } : { type: "card", id: c.id });
   }
   function flatPiece(build, pick) {
@@ -590,8 +592,11 @@
     const allTapped = ids.every(id => P.card(id).tapped), w = SeatFX.well(piece.userData.tilt, wellColors(ids), { w: CW, h: CH, tapped: allTapped, seed: ids[0] });
     w.position.set(0, CH / 2, 0.028);
     if (sign) {   // just in front of the well, inside the page, propped up to be read (theirs: across the card's art, about as wide, its name clear above)
-      const g = tagSign(sign, col, sub); g.rotation.x = -Math.PI / 2 + 0.95; g.position.set(0, 0.12, onCard ? -CH * 0.45 : signAt);
+      const g = tagSign(sign, col, sub); g.rotation.x = -Math.PI / 2 + 0.95; g.position.set(0, 0.12, onCard ? -CH * 0.32 : signAt);   // (theirs: over the art, under the name's second line)
       if (onCard) g.userData.fit = Math.min(1, CW * 1.15 / g.userData.w);
+      // (A second line hangs below: the top edge stays where a one-line sign's is, clear of the card's name, and the sign
+      // stands that much further out from the card, so the line it adds isn't sunk in it.)
+      if (onCard && sub) { const dh = (signTex(sign, col, sub).image.height - signTex(sign, col).image.height) * SIGN_U; g.geometry.translate(0, -dh / 2, dh * 1.5); }
       piece.add(g); piece.userData.sign = g;
     }
     piece.userData.well = true;
@@ -601,6 +606,11 @@
   // wide as its words, a slip of vellum edged in ink, with the seat's seal when it speaks for a seat.
   const SIGN_U = 0.00375;                           // world units per canvas pixel
   function tagSign(text, col, sub) {
+    const im = signTex(text, col, sub).image, m = new T.Mesh(new T.PlaneGeometry(im.width * SIGN_U, im.height * SIGN_U), new T.MeshBasicMaterial({ map: signTex(text, col, sub), transparent: true, depthWrite: false }));
+    m.renderOrder = 5; m.userData.w = im.width * SIGN_U; m.userData.noPick = true;
+    return m;
+  }
+  function signTex(text, col, sub) {
     const k = "sign|" + text + col + sub;
     if (!TEX[k]) {
       const cv = document.createElement("canvas"), x = cv.getContext("2d");
@@ -618,45 +628,50 @@
       if (sub) { x.font = `600 46px ${NUM}`; x.fillStyle = "#3a2c1a"; x.fillText(sub, 8 + (w + notch) / 2, 102, w - 28 - notch); }
       TEX[k] = texFrom(cv);
     }
-    const im = TEX[k].image, m = new T.Mesh(new T.PlaneGeometry(im.width * SIGN_U, im.height * SIGN_U), new T.MeshBasicMaterial({ map: TEX[k], transparent: true, depthWrite: false }));
-    m.renderOrder = 5; m.userData.w = im.width * SIGN_U; m.userData.noPick = true;
-    return m;
+    return TEX[k];
   }
   // A folded pile's title ("Tokens 23", "+4") on a tab standing up from its top card's top edge, so the top card's own
   // name still shows under it.
   const TAB_H = 0.24;                               // a title tab's greatest height above its card
-  // (On a card lying turned, tapped, the tab stands on its long edge, now its top.)
-  function titleTab(title, turned = false) {
+  // (On a card lying turned, tapped, the tab stands on its long edge, now its top. `sub`: a second line, "7 tapped".)
+  function titleTab(title, turned = false, sub) {
     const top = turned ? CW / 2 : CH / 2, wide = turned ? CH : CW;
-    const g = tagSign(title), h = g.geometry.parameters.height, s = Math.min(1.1, wide * 1.04 / g.userData.w, TAB_H / h);
-    g.scale.setScalar(s); g.position.set(0, top + h * s / 2 - 0.035, TH / 2 + 0.03); g.userData.title = title; g.userData.turned = turned;
+    const fit = (t, sb) => { const im = signTex(t, undefined, sb).image; return Math.min(1.1, wide * 1.04 / (im.width * SIGN_U), TAB_H / (im.height * SIGN_U)); };
+    const one = sub && fit(`${title} · ${sub}`) > fit(title, sub);   // on one line where that reads larger
+    const g = one ? tagSign(`${title} · ${sub}`) : tagSign(title, undefined, sub), h = g.geometry.parameters.height, s = one ? fit(`${title} · ${sub}`) : fit(title, sub);
+    g.scale.setScalar(s); g.position.set(0, top + h * s / 2 - 0.035, TH / 2 + 0.03); g.userData.title = title; g.userData.turned = turned; g.userData.sub = sub;
     return g;
   }
-  // A folded pile's count as cards arrive at it: its tab says `n` until the next one lands.
-  function retitle(obj, n) {
+  // A folded pile's count as cards arrive at it: its tab counts the cards that have landed (`ids`), and how many of them
+  // are tapped, until the next one lands.
+  function retitle(obj, ids) {
     let tab = null; obj.traverse(o => { if (o.userData.title) tab = o; });
     if (!tab || !tab.parent) return;
-    const title = tab.userData.title.replace(/\d+$/, n);
-    if (title === tab.userData.title) return;
-    const g = titleTab(title, tab.userData.turned), host = tab.parent; host.remove(tab); dispose(tab); host.add(g);
+    const tapped = ids.filter(id => (P.card(id) || {}).tapped).length, sub = tapped && tapped < ids.length ? `${tapped} tapped` : undefined;
+    const title = tab.userData.title.replace(/\d+$/, ids.length);
+    if (title === tab.userData.title && sub === tab.userData.sub) return;
+    const g = titleTab(title, tab.userData.turned, sub), host = tab.parent; host.remove(tab); dispose(tab); host.add(g);
     g.renderOrder = tab.renderOrder; obj.userData.faces = facesOf(obj);
   }
   // Identical cards in a neat pile, or different ones fanned so each name shows; a count chip on piles. Theirs, standing far
   // off, carry a pile's title on a tab above the top card instead (`tag`), like a folded pile of creatures.
   function pileOf(ids, title, { fan = false, count = true, sign = null, col = null, tag = null } = {}) {
+    // A fan reaches back no further than two cards' does (my support row's depth, clear of the creatures' feet): a third
+    // card brings the top one forward instead.
+    const n = ids.length, show = ids.slice(0, Math.min(n, fan ? 3 : 8)), f = show.length, drop = fan ? Math.max(0, f - 2) * 0.16 : 0;
     const piece = flatPiece(t => {
-      const n = ids.length, show = ids.slice(0, Math.min(n, fan ? 4 : 8)), f = show.length;
       show.forEach((id, i) => {
         const m = cardMesh(P.card(id));
-        m.position.set(0, CH / 2 + (fan ? (f - 1 - i) * 0.16 : 0), (TH + 0.002) * (i + 0.5));
+        m.position.set(0, CH / 2 + (fan ? (f - 1 - i) * 0.16 - drop : 0), (TH + 0.002) * (i + 0.5));
         t.add(m);
       });
       const top = t.userData.haloParent = t.children[t.children.length - 1];
       if (tag) top.add(titleTab(tag));
       else if (count && n > 1 && !sign) chipsOn(top, {}, "×" + n);
     }, { type: "pile", ids, title });
+    piece.userData.top = show[f - 1];
     // Its sign lies on its top card's foot, as a well's does, never out over the row in front.
-    if (sign) { const g = tagSign(sign, col); g.rotation.x = -Math.PI / 2 + 0.5; g.position.set(0, 0.1, -CH * 0.12); g.scale.setScalar(Math.min(1, CW * 1.1 / g.userData.w)); g.renderOrder = 6; piece.add(g); }
+    if (sign) { const g = tagSign(sign, col); g.rotation.x = -Math.PI / 2 + 0.5; g.position.set(0, 0.1, -CH * 0.12 + drop); g.scale.setScalar(Math.min(1, CW * 1.1 / g.userData.w)); g.renderOrder = 6; piece.add(g); }
     return piece;
   }
 
@@ -859,6 +874,15 @@
   // A seat's fit: for each band its scale, places per row and rows, and its units folded to fit; and the page's size.
   // Rows and scales come first, from the floors at the rows' places on screen; then each band folds into what it holds.
   function fitSeat(pid, { C, S, L, rock, nz, cmd }, hold = true) {
+    // A pile of like cards stays one while its page holds: opened as soon as a place comes free, it would send an idle
+    // copy the length of its row. (Only like cards: a mixed pile opens as soon as it can.)
+    if (hold && plans[pid]) [C, S] = [C, S].map((us0, i) => (plans[pid][i ? "S" : "C"].units || []).filter(p => p.title && !p.mixed).reduce((us, p) => {
+      const mine = us.filter(u => !u.fight && u.ids.every(id => p.ids.includes(id)));
+      if (mine.length < 2) return us;
+      const ids = mine.flatMap(u => u.ids), rest = us.filter(u => !mine.includes(u));
+      rest.splice(us.indexOf(mine[0]), 0, { key: mine[0].key, ids, rep: mine[0].rep, role: mine[0].role, title: p.title.replace(/\d+$/, ids.length) });
+      return rest;
+    }, us0));
     // Their lands are one well lying flat at the outer end of their first support row (away from the plaque's piles). There
     // it is near enough to meet the floors lying down, and on screen it stays within the support row's height, so it costs
     // the page width, not depth.
@@ -870,7 +894,8 @@
     const prev = plans[pid], held = {};
     order.forEach(k => (held[k] = hold && prev && prev[k] ? prev[k].rows : 0));
     // Their creatures that outgrow the creature band stand in the support row (`host`) before any of them share a pile:
-    // there its places are as wide as a creature's, and its cards as large as a creature's floor asks.
+    // there its places are as wide as a creature's, and its cards as large as a creature's floor asks. (Mine can't: a
+    // second row of my creatures at their floor is deeper than my page can be.)
     let host = false;
     const band = k => (host && k === "S" ? { ...BAND.S(me), px: FLOOR.theirs, per: BAND.C(me).per } : BAND[k](me));
     const lay = rows => {                               // depths from the fixed edge, with rows per band
@@ -979,6 +1004,18 @@
       if (alone.some(u => u.mixed)) b.S.units = fold(b.S.units, 1, likeS.slice(1), keep, named, null);
     }
     b.L.units = fold(L, b.L.cap, likeL, keep, named, "Mana");
+    // Creatures sharing a pile is the last resort: by then no noncreature lies alone on the page, legendary or not. Lone
+    // ones fold into their likes ("Lands" takes a legendary land), and only then into one mixed pile.
+    if (b.C.units.some(u => u.mixed)) {
+      const cmdr = u => u.lands || u.rep.commander, lone = us => us.some(u => u.ids.length === 1 && !cmdr(u));
+      const tighten = (us, likes, mixed) => {
+        while (us.length > 1 && lone(us)) { const n = us.length; us = fold(us, n - 1, likes, cmdr, named, mixed); if (us.length === n) break; }
+        return us;
+      };
+      const non = b.S.units.filter(u => u.role === "support");
+      b.S.units = tighten(non, likeS.slice(1), "Others").concat(b.S.units.filter(u => u.role !== "support"));
+      b.L.units = tighten(b.L.units, likeL, "Mana");
+    }
     // In combat, what doesn't fight stays as it was: each pile keeps its key, its place and the rest of its cards while
     // its fighters step out to the middle (targets), and the page folds afresh only when something arrives or the fight
     // is over.
@@ -991,8 +1028,8 @@
         bands.forEach(k => {
           b[k].units = (prev[k].units || []).map(u => {
             const ids = u.ids.filter(id => now.has(id) && !out.has(id));
-            if (ids.length === u.ids.length || !ids.length) return ids.length && u;
-            return { ...u, ids, rep: ids.includes(u.rep.id) ? u.rep : P.card(ids[0]), title: ids.length > 1 && u.title ? u.title.replace(/\d+$/, ids.length) : undefined };
+            if (ids.length === u.ids.length || !ids.length) return ids.length && { ...u };   // (a copy: seating it mustn't move the last fit's)
+            return holding(u, ids);
           }).filter(u => u && !u.fight);
         });
         // A fighter that keyed the pile it left (its first card) steps out under its own key: the pile keeps its own.
@@ -1005,6 +1042,13 @@
     order.forEach(k => {
       const B = b[k], B0 = prev && prev[k], had = B0 && B0.units && B0.perRow ? new Map() : null;
       if (had) B0.units.forEach(u => { const j = u.at % B0.perRow; if (j < B.perRow) had.set(u.key, Math.floor(u.at / B0.perRow) * B.perRow + j); });
+      // A pile that opens leaves the card that showed on top in its place, and the others come out from under it: never
+      // another face swapped onto the same spot.
+      if (had) B0.units.forEach(u => {
+        const top = u.ids.length > 1 && had.has(u.key) && B.units.find(v => v.ids.includes(u.top != null ? u.top : u.rep.id));
+        if (!top || top.key === u.key) return;
+        const i = had.get(u.key); had.delete(u.key); had.set(top.key, i);
+      });
       seatPlaces(B.units, B.perRow, B.cap, had);
     });
     D = Math.max(me ? 6 : 5.6, D);
@@ -1021,6 +1065,42 @@
     // its slot (and, while it holds its rows, never narrower than it was).
     const need = Math.max(...order.map(k => b[k].n ? 2 * (Math.max(reach(b[k], 1), reach(b[k], -1)) + SIDE) : 0), !me && b.L.n ? 2 * (Math.abs(b.L.u) + b.L.s * CW / 2 + SIDE) : 0, me ? 12 : backW, fresh ? 0 : prev.W);
     return { ...b, host, W: Math.min(r.w, need), D: Math.min(r.d, D), deep: needD, over, fed: C.length + S.length + L.length, back, back0, place, plateA: me ? 0 : Math.min(b.plateA, D - PLATE_IN, r.d - PLATE_IN) };
+  }
+  // A unit of the last fit holding only `ids` now, its top card kept while it is still there, and its title said again
+  // from what it holds: the one name they share, "Tokens", the one kind ("Planeswalkers 2"), or else its own word.
+  function holding(u, ids) {
+    const cs = ids.map(id => P.card(id)), rep = ids.includes(u.rep.id) ? u.rep : cs[0];
+    u = { ...u, top: ids.includes(u.top) ? u.top : undefined };
+    if (!u.title || ids.length < 2) return { ...u, ids, rep, title: undefined, mixed: false };
+    const kind = c => P.typeLine(c).split("—")[0].replace(/Legendary|Snow|Basic|Token/g, "").trim().split(" ").pop() + "s";
+    const one = f => (new Set(cs.map(f)).size === 1 ? f(cs[0]) : null), name = one(c => P.name(c));
+    const word = name || (cs.every(c => c.token) && "Tokens") || one(kind) || u.title.replace(/\s*\d+$/, "");
+    return { ...u, ids, rep, title: `${word} ${ids.length}`, mixed: !name };
+  }
+  // The last fit held while cards leave its page: each unit keeps its key and place, holding only its cards still on the
+  // board (`now`). A card new to the board joins the unit a copy of it stands in, or else stands in a free place
+  // (seatGuest). Null unless every card on the page (`cur`) is held exactly once and each fighter stands on its own.
+  function holdFit(prev, plan, cur, now, me) {
+    const kept = { ...prev, place: plan.place, back0: plan.back0, held: true }, at = new Map();
+    ["C", "S", "L"].forEach(k => (kept[k] = { ...prev[k], units: (prev[k].units || []).map(u => {
+      const ids = u.ids.filter(id => now.has(id));
+      const v = !ids.length ? null : ids.length === u.ids.length ? { ...u, rep: P.card(u.rep.id) } : holding(u, ids);
+      if (v) ids.forEach(id => at.set(id, v));
+      return v;
+    }).filter(Boolean) }));
+    for (const u of cur) {
+      const out = u.ids.filter(id => !at.has(id)), host = u.ids.map(id => at.get(id)).find(Boolean);
+      if (!out.length) continue;
+      if (host) { Object.assign(host, holding(host, host.ids.concat(out))); out.forEach(id => at.set(id, host)); }
+      else if (seatGuest(kept, { ...u, ids: out }, me)) out.forEach(id => at.set(id, u));
+      else return null;
+    }
+    const all = ["C", "S", "L"].flatMap(k => kept[k].units.flatMap(u => u.ids));
+    if (all.length !== new Set(all).size || all.length !== now.size) return null;
+    if (cur.some(u => u.fight && !kept.C.units.some(v => v.ids.length === u.ids.length && u.ids.every(id => v.ids.includes(id))))) return null;
+    const count = q => ["C", "S", "L"].reduce((t, k) => t + (q[k].units || []).length, 0);
+    kept.fed = prev.fed - count(prev) + count(kept);   // (what was folded away stays folded)
+    return kept;
   }
   // Which side of the plaque a seat's piles and commander go: toward the table's middle for the side seats, so they never
   // leave the screen; the left for across; the right for me.
@@ -1076,25 +1156,43 @@
   const STATS = { builds: 0, built: 0, reused: 0 };
   function buildBoard(ms = 0) {
     STATS.builds++; const built0 = STATS.built;
-    const oldPieces = pieces, oldStack = stackG ? stackG.children.filter(m => m.userData.pick).map(m => ({ m, id: m.userData.pick.id })) : [];
+    const oldPieces = pieces, oldStack = stackG ? stackG.children.filter(m => m.userData.pick).map(m => ({ m, id: m.userData.pick.id, key: m.userData.stackKey })) : [];
     const was = {};                                 // card id → the pose its piece had, so a rebuild animates
-    Object.values(pieces).forEach(pc => pc.ids.forEach(id => (was[id] = { pos: pc.obj.position.clone(), s: pc.obj.scale.x, fade: pc.obj.userData.fade || 0, role: pc.role, n: pc.ids.length })));
+    Object.values(pieces).forEach(pc => pc.ids.forEach(id => (was[id] = { pos: pc.obj.position.clone(), s: pc.obj.scale.x, fade: pc.obj.userData.fade || 0, role: pc.role, n: pc.ids.length, under: pc.ids.length > 1 && pc.obj.userData.top != null && pc.obj.userData.top !== id })));
     Object.entries(pieces).forEach(([k, pc]) => { if (pc.role === "plate" || pc.role === "floor" || pc.role === "zone") was[k] = { pos: pc.obj.position.clone(), s: pc.obj.scale.x }; });
     // A spell that resolves onto the table is the same card coming down: its permanent starts as large as it stood on the
     // stack, its face where the stack card's face was (a standee's face rises from its foot).
     oldStack.forEach(o => { if (!was[o.id]) was[o.id] = { pos: o.m.position.clone().add(new T.Vector3(0, -Math.cos(PITCH), Math.sin(PITCH)).multiplyScalar(CH * o.m.scale.x / 2)), s: o.m.scale.x, fade: 0, fromStack: true }; });
     // What leaves the battlefield or the stack (dies, is exiled, bounced, resolves into a graveyard) flies to where it now rests.
-    const onBoard = id => G.cards[id] && G.cards[id].zone === "battlefield", onStack = id => G.stack.some(st => st.card === id);
+    const onBoard = id => G.cards[id] && G.cards[id].zone === "battlefield", onStack = id => G.stack.some(st => st.card === id), stays = o => G.stack.some(st => stackKey(st) === o.key);
     const leaving = [];
     if (ms) {
       Object.values(oldPieces).forEach(pc => { if (pc.role !== "zone" && pc.ids.length && pc.ids.every(id => !onBoard(id) && !onStack(id))) leaving.push({ obj: pc.obj, id: pc.ids[0], pid: pc.pid }); });   // zone piles hold cards that are never on the board
-      oldStack.forEach(o => { if (!onStack(o.id) && !onBoard(o.id)) leaving.push({ obj: o.m, id: o.id, pid: o.m.userData.owner }); });
+      // (An ability's card is its source, still on the table: the ability itself resolves where it stands.)
+      oldStack.forEach(o => { if (!stays(o) && (!onBoard(o.id) || o.m.userData.ability)) leaving.push({ obj: o.m, id: o.id, pid: o.m.userData.owner, ability: o.m.userData.ability }); });
       leaving.forEach(l => { l.obj.parent.remove(l.obj); scene.add(l.obj); });
+      // A pile that only loses some of its cards stays; each card it lost leaves it as itself, from the pile, as it lay.
+      Object.values(oldPieces).forEach(pc => {
+        if (pc.role === "zone" || pc.ids.every(id => !onBoard(id) && !onStack(id))) return;
+        pc.ids.filter(id => !onBoard(id) && !onStack(id) && P.card(id)).forEach(id => {
+          const c = P.card(id), stand = pc.obj.userData.kind === "standee", o = stand ? standee(c, [id]) : flat(c);
+          o.position.copy(pc.obj.position); o.scale.copy(pc.obj.scale);
+          if (stand) o.userData.pivots.forEach(pv => (pv.rotation.x = pc.obj.userData.pivots[0].rotation.x));
+          else if (pc.obj.userData.tilt) o.userData.tilt.rotation.x = pc.obj.userData.tilt.rotation.x;
+          scene.add(o); leaving.push({ obj: o, id, pid: pc.pid });
+        });
+      });
     }
     const leavingObjs = new Set(leaving.map(l => l.obj));
-    if (leaving.length) settleAt = performance.now() + 80 + Math.max(450, ms);   // when the last of them lands (below)
+    // Permanents bound for the same pile set off one after another, so each can be followed into it (a wipe is many trips,
+    // not one clump); each clears its page at once and waits just above it for its turn.
+    const trips = {};
+    leaving.forEach(l => { if (!l.ability && !oldStack.some(x => x.m === l.obj)) { const c = P.card(l.id), k = c ? c.owner + c.zone : l.pid; (trips[k] = trips[k] || []).push(l); } });
+    Object.values(trips).forEach(ls => ls.forEach((l, n) => (l.wait = n * Math.min(140, 700 / ls.length))));
+    const lastOff = Math.max(0, ...leaving.map(l => l.wait || 0));
+    if (leaving.length) settleAt = performance.now() + 80 + lastOff + Math.max(450, ms);   // when the last of them lands (below)
     // A spell resolved: the hand waits for it to land (syncOverlay), as long as its flight takes and no longer; a cut waits for nothing.
-    handAt = !ms ? 0 : oldStack.some(o => !onStack(o.id)) ? performance.now() + Math.max(450, ms) : handAt;
+    handAt = !ms ? 0 : oldStack.some(o => !stays(o)) ? performance.now() + Math.max(450, ms) : handAt;
     const settling = performance.now() < settleAt;
     let refit = false;
     clearTimeout(refitT);
@@ -1148,7 +1246,15 @@
       const args = { C, S, L, rock, nz: ["graveyard", "exile"].filter(z => (p[z] || []).length).length, cmd: (P.card(p.commander[0]) || {}).zone === "command" };
       const units = q => q.C.units.length + q.S.units.length + q.L.units.length, folded = q => q.fed - units(q), prev = plans[p.id];
       let plan = fitSeat(p.id, args);
-      if (prev && (plan.over || folded(plan) > folded(prev))) {
+      // While cards of this page are leaving it, everything that stays keeps its place and its pile, as it was (a pile
+      // only loses the cards that went); a newcomer stands in a free place meanwhile, and the page re-fits once they
+      // have landed. Its back band makes room for a new pile at once, so what leaves flies to where it will lie.
+      const now = new Set([...C, ...S, ...L].flatMap(u => u.ids));
+      // (A rebuild while they are still on their way, held already, holds on.)
+      const lost = settling && prev && (prev.held || ["C", "S", "L"].some(k => (prev[k].units || []).some(u => u.ids.some(id => !now.has(id)))));
+      const kept = lost && holdFit(prev, plan, [...C, ...S, ...L], now, p.id === P.ME);
+      if (kept) { plan = kept; refit = true; }
+      if (plan !== kept && prev && (plan.over || folded(plan) > folded(prev))) {
         const loose = fitSeat(p.id, args, false);
         if (plan.over || units(loose) > units(plan)) {
           const had = new Set(["C", "S", "L"].flatMap(k => (prev[k].units || []).flatMap(u => u.ids))), stayed = u => u.ids.some(id => had.has(id));
@@ -1167,13 +1273,17 @@
           : u.ids.length > 1 ? pileOf(u.ids, shortName(u.rep), mine ? { sign: `${shortName(u.rep)} ×${u.ids.length}` } : {}) : flat(u.rep)), u.role, u.ids, sig);
         // Every well says what it is; a pile says how many, and how many of them are tapped under the name.
         if (u.lands) {                              // theirs: its count on it, large enough to read across the table; which sources they are is a tap away
-          const lands = u.ids.filter(id => P.isLand(P.card(id))).length, rocks = u.ids.length - lands;
-          return add(u.key, () => well(u.ids, u.rep, { sign: `Lands ${lands}` + (rocks ? ` +${rocks}` : ""), col: COLORS[p.id], title: "Lands", onCard: true }), "mana", u.ids);
+          // (What else makes their mana, by what it is: rocks, and Treasures, which are spent once.)
+          const lands = u.ids.filter(id => P.isLand(P.card(id))).length, tr = u.ids.filter(id => /Treasure/.test(P.card(id).card)).length, rocks = u.ids.length - lands - tr;
+          const more = [rocks && `${rocks}${tr ? "" : " mana"} rock${rocks > 1 ? "s" : ""}`, tr && `${tr} Treasure${tr > 1 ? "s" : ""}`].filter(Boolean);
+          return add(u.key, () => well(u.ids, u.rep, { sign: `Lands ${lands}`, sub: more.length ? `+ ${more.join(" · ")}` : null, col: COLORS[p.id], title: "Lands", onCard: true }), "mana", u.ids);
         }
         const tapped = u.ids.filter(id => P.card(id).tapped).length, n = u.ids.length;
         const sign = u.title || shortName(u.rep) + (n > 1 ? ` ×${n}` : ""), sub = tapped ? (n > 1 ? `${tapped} tapped` : "tapped") : null;
         add(u.key, () => well(u.ids, u.rep, { sign, sub, signAt: 0.4, title: u.title }), "mana", u.ids, sig);
       });
+      // (Which card shows on top of each, so a pile that opens can leave that one in its place: fitSeat.)
+      [...plan.C.units, ...plan.S.units, ...plan.L.units].forEach(u => { if (pieces[u.key]) u.top = pieces[u.key].obj.userData.top; });
       add("plate" + p.id, () => banner(p), "plate", [], plateSig(p));
       // Graveyard and exile lie beside the plate, so what can be cast or activated from them is a tap away.
       ["graveyard", "exile"].forEach(z => {
@@ -1224,7 +1334,7 @@
       const h = handBox && (handBox.querySelector(`.hcard[data-id="${id}"]`) || handBox), b = h && h.getBoundingClientRect(), u = uPx();   // or, already drawn out of it, from the hand
       return b && b.width ? tableAt((b.left + b.right) / 2 / u, (b.top + b.bottom) / 2 / u, 2) : null;
     };
-    buildStack(G.stack.length, s => (oldStack.some(o => o.id === s.card) ? null
+    buildStack(G.stack.length, s => (oldStack.some(o => o.key === stackKey(s)) ? null
       : was[s.card] && !was[s.card].fromStack ? was[s.card].pos.clone().add(new T.Vector3(0, 0.8, 0))
       : s.controller === P.ME ? handSlot(s.card) || new T.Vector3(0, 2, 8.5) : plateAt(s.controller)), ms);
     // Where a card that left comes to rest: lying on top of its pile (graveyard or exile, as the view now says) at the
@@ -1253,6 +1363,11 @@
     };
     leaving.forEach(l => {
       const c = P.card(l.id), o = l.obj, from = o.position.clone(), s0 = o.scale.x, spell = oldStack.some(x => x.m === o);
+      if (l.ability) {
+        // An ability goes nowhere: it flares and draws in where it stood, its crackle going out, so its end is seen.
+        SeatFX.burst(o, colorsOf(c), { ms: 400, n: 120, spread: 1.2 });
+        return tween(Math.max(450, ms), (e, k) => { o.scale.setScalar(s0 * (1 - Math.pow(k, 2))); }).then(() => { scene.remove(o); dispose(o); });
+      }
       // It flies to where it rests and lands there flat, turning as it goes, its fire going out as it starts. A spell sheds
       // its crackle; a permanent its ash and embers. Its card face stays, so you can follow it.
       const rest = restOf(c, l.pid), up = from.clone().add(new T.Vector3(0, spell ? 0 : 0.15, 0)), q0 = o.quaternion.clone(), q1 = new T.Quaternion();
@@ -1268,13 +1383,13 @@
       // page, 80 ms) and is on its way, its fire going out as it starts, so the table never shows a card the log has
       // already sent away. A standing one arcs over its neighbours' tops rather than rising in place, where it would read as
       // drifting onto the pages behind. A resolving spell leaves fast out of the stack.
-      const lift = spell ? 0 : 80, out = 200, total = lift + (spell ? 450 : Math.max(450, ms)), arc = kind === "standee" ? CH * s0 * 0.7 : 0.6;
+      const lift = spell ? 0 : 80, out = 200, wait = l.wait || 0, total = lift + wait + (spell ? 450 : Math.max(450, ms)), arc = kind === "standee" ? CH * s0 * 0.7 : 0.6;
       tween(total, (e, k) => {
         const t = k * total;
         if (t < out) { const q = t / out; fx.forEach(f => { if (f.isPoints) f.material.uniforms.uHdr.value *= 0.8; else { f.material.transparent = true; f.material.opacity = Math.min(f.material.opacity, 1 - q); } }); }
         else fx.forEach(f => (f.visible = false));
-        if (t < lift) { o.position.lerpVectors(from, up, t / lift); return; }
-        const r = (t - lift) / (total - lift), q = spell ? 1 - Math.pow(1 - r, 3) : 1 - Math.pow(1 - r, 2.2);
+        if (t < lift + wait) { o.position.lerpVectors(from, up, Math.min(1, t / Math.max(1, lift))); return; }
+        const r = (t - lift - wait) / (total - lift - wait), q = spell ? 1 - Math.pow(1 - r, 3) : 1 - Math.pow(1 - r, 2.2);
         o.position.lerpVectors(up, to, q); o.position.y += Math.sin(q * Math.PI) * arc;
         o.scale.setScalar(lerp(s0, rest.s, smooth(0.25, 1, q))); o.quaternion.slerpQuaternions(q0, q1, q);   // it lands at its pile's size, which reads (never under the floors)
       }).then(() => { scene.remove(o); dispose(o); });
@@ -1285,13 +1400,13 @@
     const joins = ms ? Object.entries(pieces).filter(([k, pc]) => !reused[k] && pc.role !== "zone" && pc.ids.some(id => was[id]) && pc.ids.some(id => !was[id])) : [];
     const goal = joins.length || into.length ? targets().out : null;
     if (joins.length) {
-      const src = oldStack.find(o => !onStack(o.id)), camPos = new T.Vector3(CAM.pos.x, CAM.pos.y, CAM.pos.z), middle = new T.Vector3(CAM.at.x, 0, CAM.at.z);
+      const src = oldStack.find(o => !stays(o)), camPos = new T.Vector3(CAM.pos.x, CAM.pos.y, CAM.pos.z), middle = new T.Vector3(CAM.at.x, 0, CAM.at.z);
       joins.forEach(([k, pc]) => {
         const t = goal[k]; if (!t) return;
-        const fresh = pc.ids.filter(id => !was[id]), s = t.s || 1, to = t.pos.clone().add(new T.Vector3(0, CH * s / 2, 0)), each = Math.min(110, 700 / fresh.length);
+        const fresh = pc.ids.filter(id => !was[id]), s = t.s || 1, to = t.pos.clone().add(new T.Vector3(0, CH * s / 2, 0)), each = Math.min(240, 900 / fresh.length);   // far enough apart that each face is seen on its own
         const via = to.clone().add(middle.clone().sub(t.pos).setY(0).normalize().multiplyScalar(2.2 * s)).setY(to.y + 0.6);   // in front of the pile, toward the table's middle
-        let n0 = pc.ids.length - fresh.length;
-        retitle(pc.obj, n0);
+        const landed = pc.ids.filter(id => was[id]);
+        retitle(pc.obj, landed);
         fresh.forEach((id, n) => {
           const from = src ? src.m.position.clone() : (pc.pid === P.ME && handSlot(id)) || plateAt(pc.pid), m = cardMesh(P.card(id)), wait = n * each;
           m.scale.setScalar(0.001); scene.add(m);
@@ -1299,7 +1414,7 @@
             const q = Math.max(0, (kk * (wait + 520) - wait) / 520), qe = ease(q), a = 1 - qe;
             m.position.set(0, 0, 0).addScaledVector(from, a * a).addScaledVector(via, 2 * a * qe).addScaledVector(to, qe * qe);
             m.scale.setScalar(q > 0 ? lerp(s * 0.8, s, qe) : 0.001); m.lookAt(camPos);
-          }).then(() => { scene.remove(m); dispose(m); retitle(pc.obj, ++n0); });
+          }).then(() => { scene.remove(m); dispose(m); landed.push(id); retitle(pc.obj, landed); });
         });
       });
     }
@@ -1307,10 +1422,13 @@
     into.forEach(([o, nk, n]) => {
       const t = goal[nk], from = o.position.clone(), s0 = o.scale.x, host = pieces[nk];
       if (!t) { scene.remove(o); dispose(o); return; }
-      const held = n.length && host.ids.length > n.length ? host.ids.length - n.length : 0;
+      const held = n.length && host.ids.length > n.length ? host.ids.filter(id => !n.includes(id)) : null;
       if (held) retitle(host.obj, held);
-      tween(Math.max(300, ms), (e, k) => { o.position.lerpVectors(from, t.pos, ease(k)); o.scale.setScalar(lerp(s0, t.s || s0, ease(k))); })
-        .then(() => { scene.remove(o); dispose(o); if (held && host.obj.parent) retitle(host.obj, host.ids.length); });
+      // (Past a neighbour it rises to stand on the row's tops as they lean back, travels along above them and comes down
+      // into its pile: so it is never lost behind the cards it passes, and never crosses their faces either.)
+      const hop = from.distanceTo(t.pos) > CW * s0 * 1.5 ? CH * s0 * 1.08 : 0, U = new T.Vector3(0, Math.cos(PITCH), -Math.sin(PITCH));
+      tween(Math.max(300, ms), (e, k) => { o.position.lerpVectors(from, t.pos, ease(k)).addScaledVector(U, Math.min(1, 2.2 * Math.sin(Math.PI * k)) * hop); o.scale.setScalar(lerp(s0, t.s || s0, ease(k))); })
+        .then(() => { scene.remove(o); dispose(o); if (held && host.obj.parent) retitle(host.obj, host.ids); });
     });
     const marks = H.marks || {};
     Object.entries(pieces).forEach(([k, pc]) => {
@@ -1318,7 +1436,10 @@
       // (A pile starts where most of its cards were: one a fighter rejoins stays on its page while he flies home to it.)
       const old = (pc.role === "zone" ? null : pc.ids.map(id => was[id]).filter(Boolean).reduce((a, b) => (!a || b.n > a.n ? b : a), null)) || was[k];
       if (old) {
-        pc.obj.position.copy(old.pos); pc.obj.scale.setScalar(old.s); pc.obj.userData.fade = old.fade || 0;      } else if (ms && pc.role !== "plate" && pc.role !== "floor" && pc.role !== "zone") {   // new to the table: from my hand, or its controller's plate (a new pile grows where it lies, under what flies to it)
+        pc.obj.position.copy(old.pos); pc.obj.scale.setScalar(old.s); pc.obj.userData.fade = old.fade || 0;
+        // (Cards that lay under a pile's top card come out from behind it: the face that showed stays in front.)
+        if (pc.ids.every(id => !was[id] || was[id].under)) pc.obj.position.z -= 0.2 * old.s;
+      } else if (ms && pc.role !== "plate" && pc.role !== "floor" && pc.role !== "zone") {   // new to the table: from my hand, or its controller's plate (a new pile grows where it lies, under what flies to it)
         pc.obj.position.copy(pc.pid === P.ME ? new T.Vector3(0, 0, 9) : plateAt(pc.pid)); pc.obj.scale.setScalar(0.5);
       } else if (ms) { pc.obj.scale.setScalar(0.001); pc.fresh = true; }
       const kind = pc.ids.map(id => marks.cards && marks.cards[id]).find(Boolean);
@@ -1434,7 +1555,10 @@
         g.as.push(a);
         combat.blockers.filter(b => b.blocking === a.id).forEach(b => { const kb = keyOf(b.id); if (kb && out[kb] && !g.bs.includes(kb)) g.bs.push(kb); });
       });
-      groups.sort((x, y) => seenX(x.k) - seenX(y.k));
+      // In the order they stood; once blocked, an attacker takes its place in the row by where its blockers come from, so
+      // no two blockers cross on their way, each stepping straight out to the one it blocks.
+      const placeX = g => (g.bs.length ? g.bs.reduce((t, kb) => t + seenX(kb), 0) / g.bs.length : seenX(g.k));
+      groups.sort((x, y) => placeX(x) - placeX(y));
       // Each as large as its side's creatures prefer, or the floors ask where it stands.
       const u = uPx(), mid = tableAt((M.l + M.r) / 2, M.b), sz = {}, fighting = new Set(groups.flatMap(g => [g.k, ...g.bs]));
       fighting.forEach(k => { const me = pieces[k].pid === P.ME; sz[k] = Math.max(BAND.C(me).pref, floorScale(mid, me ? FLOOR.mine : FLOOR.theirs, false)); });
@@ -1517,23 +1641,30 @@
       const from = { pos: o.position.clone(), s: o.scale.x, fade: o.userData.fade || 0, lift: o.userData.lift || 0, yaw: o.rotation.y, tone: fl ? fl.material.color.r : 1, glow: fl ? fl.userData.glow.material.opacity : 0,
         w: fl ? fl.userData.w || t.floor.w : 0, d: fl ? fl.userData.d || t.floor.d : 0 };
       const fade = t.fade || 0;
-      // Stepping into the fight or back from it, a card hops over what it passes, so it never slides behind a bystander.
-      const steps = !fl && !!t.fight !== !!o.userData.fight && from.pos.distanceTo(t.pos) > 0.3;
+      // Stepping into the fight or back from it, or along the fight's row to face its blockers, a card hops over what it
+      // passes, so it never slides behind a bystander or through another fighter.
+      const along = !fl && t.fight && o.userData.fight && Math.abs(from.pos.x - t.pos.x) > CW;
+      const steps = !fl && (!!t.fight !== !!o.userData.fight || along) && from.pos.distanceTo(t.pos) > 0.3;
       o.userData.fight = !!t.fight;
       const far = steps ? from.pos.distanceTo(t.pos) : 0;
-      return { o, pc, t, from, fade, far, hop: Math.min(0.9, far * 0.12), wait: 0 };
+      // (Two changing places along the fight's row pass each other as cards on a table would: the one going right in front,
+      // the one going left behind, never up over the page behind them.)
+      return { o, pc, t, from, fade, far, hop: along ? Math.sign(t.pos.x - from.pos.x) * 0.25 * (t.s || 1) : Math.min(0.9, far * 0.12), over: along, wait: 0, end: 1 };
     });
     // Fighters from one seat set off one after another, the longest trip first, so two leaving one pile never travel as
-    // one, and a blocker crossing the table passes the others' places before they land there.
-    const movers = jobs.filter(j => j.hop);
-    [...new Set(movers.map(j => j.pc.pid))].forEach(pid => movers.filter(j => j.pc.pid === pid).sort((a, b) => b.far - a.far)
-      .forEach((j, n, all) => (j.wait = all.length > 1 ? Math.min(0.45, 0.45 / (all.length - 1)) * n : 0)));
+    // one, and a blocker crossing the table passes the others' places before they land there. Where the attackers make
+    // way for their blockers, they do it first, and the blockers step out once they stand where they will meet them.
+    const movers = jobs.filter(j => j.hop), first = movers.some(j => j.over);
+    movers.forEach(j => { if (first) [j.wait, j.end] = j.over ? [0, 0.5] : [0.45, 1]; });
+    [...new Set(movers.map(j => j.pc.pid + j.over))].forEach(g => movers.filter(j => j.pc.pid + j.over === g).sort((a, b) => b.far - a.far)
+      .forEach((j, n, all) => (j.wait += all.length > 1 ? Math.min(0.45, 0.45 / (all.length - 1)) * n * (j.end - j.wait) : 0)));
     const apply = (k0, raw = k0) => {
       if (id !== layoutId) return;
-      jobs.forEach(({ o, pc, t, from, fade, hop, wait }) => {
-        const k = wait ? 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, (raw - wait) / (1 - wait)))) : k0;
+      jobs.forEach(({ o, pc, t, from, fade, hop, over, wait, end }) => {
+        const k = wait || end < 1 ? 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, (raw - wait) / (end - wait)))) : k0;
         o.position.lerpVectors(from.pos, t.pos, k);
-        if (hop) o.position.y += Math.sin(k * Math.PI) * hop;
+        if (over) o.position.z += Math.min(1, 2.2 * Math.sin(k * Math.PI)) * hop;
+        else if (hop) o.position.y += Math.sin(k * Math.PI) * hop;
         const s = lerp(from.s, t.hide ? 0.001 : t.s, k);
         o.visible = s > 0.01;
         if (t.floor) {
@@ -1557,7 +1688,9 @@
           if (o.userData.sign) {
             const sg = o.userData.sign; sg.scale.setScalar(t.sign || sg.userData.fit || 1);
             if (sg.userData.z0 == null) sg.userData.z0 = sg.position.z;
-            sg.position.z = t.signZ != null ? t.signZ : sg.userData.z0; sg.position.y = t.signZ < 0 ? 0.2 : 0.12;   // on its card: clear of the card's face
+            // On its card: its lower edge, propped up, clear of the card's face, so the card never cuts its letters.
+            const clear = sg.geometry.parameters.height * sg.scale.x / 2 * Math.sin(0.95) + 0.05;
+            sg.position.z = t.signZ != null ? t.signZ : sg.userData.z0; sg.position.y = Math.max(t.signZ < 0 ? 0.2 : 0.12, clear);
           }
           // Opponents' noncreatures stand nearly upright too: far away, a card lying down is too small to read. My wells lie
           // flat on the page: their signs name them, so they needn't be propped up to be read.
@@ -1587,12 +1720,28 @@
     //   U runs up a leaning card as I see it; N is its face's normal, toward me.
     const marks = H.marks || {}, U = new T.Vector3(0, Math.cos(PITCH), -Math.sin(PITCH)), N = new T.Vector3(0, Math.sin(PITCH), Math.cos(PITCH));
     const seen = v => project(v);
+    // The other spells on the stack stand in front of the table and of each other: an arc passing behind one seems to
+    // run into it, so they count as in the way whatever their depth.
+    const camUp = new T.Vector3(0, 1, 0).applyQuaternion(cam.quaternion), camRight = new T.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+    const stackRect = (s, g) => { const ps = [-1, 1].flatMap(a => [-1, 1].map(b => seen(s._pos.clone().addScaledVector(camRight, a * (CW / 2 * s._scale + g)).addScaledVector(camUp, b * (CH / 2 * s._scale + g))))); return { l: Math.min(...ps.map(p => p.x)), r: Math.max(...ps.map(p => p.x)), t: Math.min(...ps.map(p => p.y)), b: Math.max(...ps.map(p => p.y)) }; };
     const aimAt = (st, i, tg, j) => {
+      const toMe = camPos.clone().sub(st._pos).normalize();
+      // A spell aimed at another spell: a short arch up out of its own top and over, dropping onto the other's top edge
+      // and behind it, so the stack itself says what answers what.
+      // (A card target is the spell only while that card is on the stack; an ability's card is its source, on the table.)
+      const onStack = typeof tg === "number" && (P.card(tg) || {}).zone === "stack" && G.stack.find(x => x !== st && x.spell !== false && x.card === tg && x._pos);
+      if (onStack) {
+        const top = (s, u) => s._pos.clone().addScaledVector(camUp, CH / 2 * s._scale * u);
+        const from = top(st, 0.4).addScaledVector(toMe, -0.05), land = top(onStack, 0.75).addScaledVector(toMe, -0.05), rise = 0.55 * st._scale;
+        const curve = SeatFX.bezier(from, top(st, 1).addScaledVector(camUp, rise), top(onStack, 1).addScaledVector(camUp, rise), land);
+        lanes["stack" + i + "_" + j] = { from, to: curve(1), curve, blocked: i > 0, plate: false, colors: colorsOf(P.card(st.card)), aim: true };
+        return;
+      }
       const k = typeof tg === "number" ? Object.keys(pieces).find(kk => pieces[kk].ids.includes(tg)) : "plate" + tg;
       const t = k && out[k];
       if (!t || t.hide) return;
       const s = t.s || 1, pc = pieces[k], plate = pc.role === "plate", base = t.pos.clone();
-      const toMe = camPos.clone().sub(st._pos).normalize(), from = st._pos.clone().addScaledVector(toMe, -0.25);   // from just behind its own card, which hides the start
+      const from = st._pos.clone().addScaledVector(toMe, -0.25);   // from just behind its own card, which hides the start
       const top = plate ? 0.82 * s : (CH + (t.lift || 0)) * s;                       // how high its top edge stands, along U
       const at = (u, n, b = base) => b.clone().addScaledVector(U, u).addScaledVector(N, n);
       let curve;
@@ -1626,6 +1775,7 @@
           const rect = g => { const ps = [-1, 1].flatMap(sx => [0, tall * os + g].map(du => seen(o.pos.clone().add(new T.Vector3(sx * (wide * os + g), 0, 0)).addScaledVector(U, du)))); return { l: Math.min(...ps.map(p => p.x)), r: Math.max(...ps.map(p => p.x)), t: Math.min(...ps.map(p => p.y)), b: Math.max(...ps.map(p => p.y)) }; };
           return { near: rect(0.15), card: rect(0), z: depth(o.pos), plate: q.role === "plate", flat: q.role === "mana" };
         });
+        G.stack.forEach(x => { if (x !== st && x._pos) boxes.push({ near: stackRect(x, 0.15), card: stackRect(x, 0), z: Infinity, spell: true }); });
         const inR = (p, r) => p.x > r.l && p.x < r.r && p.y > r.t && p.y < r.b;
         // Ways in: straight; high on the stack's side, or the far side, or from above; in behind the row at half height,
         // where the neighbours hide it; up a wide gap. Each meets a crest just over the target, or barely over it where
@@ -1647,6 +1797,10 @@
         // it passes.
         if (best.hits) {
           const x0 = seen(at(0, 0)).x, col = boxes.filter(b => !b.plate && !b.flat && b.card.r > x0 - 4 && b.card.l < x0 + 4 && b.card.b <= seen(at(top, 0)).y + 6);
+          // A spell standing between its own card and the target on screen is passed over too, never through; and with
+          // other spells beside it, the arc rises clear over its own card's top, so it plainly leaves this card.
+          const x1 = seen(st._pos).x, others = boxes.filter(b => b.spell && b.card.r > Math.min(x0, x1) - 4 && b.card.l < Math.max(x0, x1) + 4);
+          if (others.length) col.push(...others, { card: { t: stackRect(st, 0).t - 12 } });
           const clear = col.length ? Math.min(...col.map(b => b.card.t)) - 6 : Infinity;
           let h = Math.max(2.2, top + 0.6);
           for (let it = 0; it < 16 && seen(at(h, -0.05 * s)).y > clear; it++) h += 0.15;
@@ -2039,16 +2193,18 @@
     const l = left ? box(left.id, xs => Math.max(...xs)) : 60, r = right ? box(right.id, xs => Math.min(...xs)) : 1120;
     return { l, r, t: (t || 60) + 10, b: b - 10 };
   }
+  // A stack entry is itself, not its card: two activations of one source are two entries (the view's own id for each).
+  function stackKey(s) { return s.id != null ? "s" + s.id : "c" + s.card; }
   function buildStack(n = G.stack.length, origin = null, ms = 0) {
     const items = G.stack.slice(G.stack.length - n);
-    const sig = items.map(s => s.card + ":" + s.controller + ":" + (s.spell === false)).join(",") + "|" + layer();
+    const sig = items.map(s => stackKey(s) + ":" + s.card + ":" + s.controller + ":" + (s.spell === false)).join(",") + "|" + layer();
     if (stackG && stackG.userData.sig === sig) {   // the same spells: keep them, and remember where they are
-      stackG.children.filter(m => m.userData.pick).forEach(m => { const s = items.find(x => x.card === m.userData.pick.id); if (s) { s._pos = m.position.clone(); s._scale = m.scale.x; s._q = m.quaternion.clone(); } picks.push(...m.children.filter(o => o.isMesh), m); });
+      stackG.children.filter(m => m.userData.pick).forEach(m => { const s = items.find(x => stackKey(x) === m.userData.stackKey); if (s) { s._pos = m.position.clone(); s._scale = m.scale.x; s._q = m.quaternion.clone(); } picks.push(...m.children.filter(o => o.isMesh), m); });
       return;
     }
     const had = {};                                 // where the cards already on the stack stood, to move on from there
     if (stackG) {
-      stackG.children.forEach(m => m.userData.pick && (had[m.userData.pick.id] = { pos: m.position.clone(), s: m.scale.x }));
+      stackG.children.forEach(m => m.userData.pick && (had[m.userData.stackKey] = { pos: m.position.clone(), s: m.scale.x }));
       if (stackG.parent) stackG.parent.remove(stackG); stackG.traverse(o => { const i = picks.indexOf(o); if (i >= 0) picks.splice(i, 1); }); dispose(stackG);
     }
     stackG = new T.Group(); stackG.userData.sig = sig; root.add(stackG);
@@ -2077,13 +2233,14 @@
       tag.position.set(0, -CH / 2 - 0.02, 0.02); m.add(tag);
       if (big) m.renderOrder = 10;
       m.userData.owner = s.controller;                // where it goes when it resolves, if the view no longer says
+      m.userData.ability = s.spell === false; m.userData.stackKey = stackKey(s);
       stackG.add(pickable(m, { type: "card", id: s.card, stack: true }));
       s._pos = m.position.clone(); s._scale = sc; s._q = m.quaternion.clone();
       m.userData.rest = { pos: s._pos, s: sc, q: s._q };   // where it comes to rest, however it gets there (cardBoxes)
       // The whole stack's box, for its panel to stand beside, not over the cards under the top one.
       const b = faceBox(m);
       stackBox = j === 0 ? b : { left: Math.min(stackBox.left, b.left), right: Math.max(stackBox.right, b.right), top: Math.min(stackBox.top, b.top), bottom: Math.max(stackBox.bottom, b.bottom) };
-      const from = origin && ms ? origin(s) : null, was = had[s.card];
+      const from = origin && ms ? origin(s) : null, was = had[stackKey(s)];
       if (!from && was && ms) {                     // already on the stack: it moves over for what came on top, never jumps
         const to = m.position.clone();
         m.position.copy(was.pos); m.scale.setScalar(was.s);
