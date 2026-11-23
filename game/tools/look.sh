@@ -10,6 +10,7 @@
 # `touch look/STOP` ends a lane after its current round.
 set -e
 TOOLS="$(cd "$(dirname "$0")" && pwd)"; MAIN="$(dirname "$TOOLS")"; LANE="${LANE:-a}"
+SELF="$(shasum "$TOOLS/look.sh" | cut -c1-12)"; ARGS="$*"
 ROUNDS="${1:-1}"
 case "$LANE" in
   a) HERE="$MAIN"; OTHER=lane-codex; OTHER_DIR="$MAIN/lanes/codex"; FIXER_CLI=claude
@@ -61,10 +62,10 @@ codex_fix() { codex exec --skip-git-repo-check -s workspace-write -m "$CODEX_FIX
 FIXTOOLS="Read,Edit,Write,Glob,Grep,Bash(node tools/*),Bash(ls *),Bash(diff *),Bash(rm reels/*),Bash(rm tools/_*),Bash(git diff*),Bash(git status*)"
 # Claude fixes in one session per round (a retry after a limit, and the revision, resume it). Codex fixes sandboxed,
 # where a browser can't start: it asks this loop to record (recorder below) and reads the packets.
-fixer() {   # fixer <log> <prompt>
+fixer() {   # fixer <log> <prompt> [session file]
   if [ "$FIXER_CLI" = codex ]; then ai "$1" codex_fix "$2"; return; fi
-  sid="$(cat "$R/fixer.sid" 2>/dev/null || true)"
-  if [ -z "$sid" ]; then sid=$(uuidgen | tr A-Z a-z); echo "$sid" >"$R/fixer.sid"; claude -p --model "$FIXER" --session-id "$sid" --allowedTools "$FIXTOOLS" --max-turns 250 "$2" >"$1" 2>&1 || true
+  sf="${3:-$R/fixer.sid}"; sid="$(cat "$sf" 2>/dev/null || true)"
+  if [ -z "$sid" ]; then sid=$(uuidgen | tr A-Z a-z); echo "$sid" >"$sf"; claude -p --model "$FIXER" --session-id "$sid" --allowedTools "$FIXTOOLS" --max-turns 250 "$2" >"$1" 2>&1 || true
   else claude -p --model "$FIXER" --resume "$sid" --allowedTools "$FIXTOOLS" --max-turns 250 "$2" >"$1" 2>&1 || true; fi
   while limited "$1"; do wait_reset "$1"; claude -p --model "$FIXER" --resume "$sid" --allowedTools "$FIXTOOLS" --max-turns 250 "Continue where you left off." >"$1" 2>&1 || true; done
 }
@@ -82,9 +83,9 @@ recorder() {   # records what a sandboxed fixer asks for, until the fixer is don
     sleep 5
   done
 }
-run_fixer() {   # run_fixer <log> <prompt>: with the recorder alongside for a sandboxed fixer
+run_fixer() {   # run_fixer <log> <prompt> [session file]: with the recorder alongside for a sandboxed fixer
   [ "$FIXER_CLI" = codex ] && { recorder & RECORDER=$!; }
-  fixer "$1" "$2"
+  fixer "$1" "$2" "$3"
   [ -n "$RECORDER" ] && { kill "$RECORDER" 2>/dev/null; RECORDER=""; }
   return 0
 }
@@ -153,6 +154,12 @@ while [ "$ROUNDS" -eq 0 ] || [ "$i" -lt "$ROUNDS" ]; do
     echo "== round $n: fix ($FIXER_CLI)"
     run_fixer "$R/fix.log" "$(p fix __FINDINGS__ "$R/findings.md" __PACKETS__ "$B" __OUT__ "$R/fix.md" __REVISE__ "" __OWN__ "$OWN" __RECORD__ "$(record_how)")"
     [ -f "$R/fix.md" ] || { echo "fixer wrote no $R/fix.md:"; tail -3 "$R/fix.log"; exit 1; }
+    # A fixer that stops with findings unattempted is followed by a fresh one (a clean context) for the rest, twice at most.
+    for k in 2 3; do
+      grep -qiE "not attempted|not reached|didn.t get to|did not get to|ran out of|left for (a|the) next|remaining findings" "$R/fix.md" || break
+      echo "== round $n: fix, continued ($k)"
+      run_fixer "$R/fix-cont$k.log" "$(p fix __FINDINGS__ "$R/findings.md" __PACKETS__ "$B" __OUT__ "$R/fix.md" __OWN__ "$OWN" __RECORD__ "$(record_how)" __REVISE__ "An earlier fixer this round worked some of these findings and wrote $R/fix.md; its changes are in the client now (diff -ru $R/client-before client). Continue with the findings it did not attempt, from the top. Rewrite $R/fix.md to cover the whole round: its results and yours.")" "$R/fixer-$k.sid"
+    done
     keep_scope >>"$R/fix.md"
   fi
   # Re-record after the fix (and again after a revision): its own step, so a restart picks it up.
@@ -191,4 +198,9 @@ Then write $R/fix-2.md."
   archive "$B" $(ls -d reels/r*-after 2>/dev/null | grep -v "^$A\$")
   echo "== round $n done: $(tail -1 look/STATUS.md)"
   n=$((n + 1))
+  # A changed loop script takes over from the next round.
+  if [ "$(shasum "$TOOLS/look.sh" | cut -c1-12)" != "$SELF" ] && { [ "$ROUNDS" -eq 0 ] || [ "$i" -lt "$ROUNDS" ]; }; then
+    echo "== the loop script changed: reloading"; kill $SERVER 2>/dev/null; trap - EXIT
+    [ "$ROUNDS" -eq 0 ] && exec "$TOOLS/look.sh" $ARGS || exec "$TOOLS/look.sh" $((ROUNDS - i)) $(echo $ARGS | cut -s -d' ' -f2-)
+  fi
 done
