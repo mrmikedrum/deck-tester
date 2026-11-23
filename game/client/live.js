@@ -15,6 +15,7 @@
   let promptEl, sheetEl, toastEl, dragLine;
   const MOVE = 520, DRAW = 650, AUTO_PASS = 3200;
   let motion = "", motionFrame, motionUntil = 0;
+  let boardBuild = 0, sweepLayout;
   const flights = new Set(), pendingHand = new Map(), incomingStack = new Set(), exilePaths = new Map(), castingFaces = new Set();
   const handBatches = new Set(), boardBatches = new Set();
   let restoreNotice = "", positionNotice = "", playChoice = null, replayView = false, sweeping = false;
@@ -124,7 +125,7 @@
   }
   async function take(s, replay = false) {
     const was = snap?.gen === s.gen && snap?.view?.players?.length ? snap.view : null;
-    const cueChanged = (replayView && snap?.replay?.nextCast) !== (replay && s.replay?.nextCast);
+    const cueChanged = replayView !== replay || (replay && snap?.replay?.nextCast !== s.replay?.nextCast);
     snap = s;
     replayView = replay;
     if (!was || !s.view?.players?.length) {
@@ -147,6 +148,10 @@
     // Mana abilities may resolve immediately and return the same menu. A changed game
     // position with another pending decision is a fresh stop, even if its labels match.
     const changedView = viewKey !== lastView, changedDecision = !was || jump || nk !== dkey || (busy && changedView && !!nd);
+    if (changedView || changedDecision) {
+      cancelHeldGesture();
+      handUpdating = true;
+    }
     if (changedDecision) closeMulligan();
     let moving = "", sweep = false, sceneBefore, resultsInFlight, lossesInFlight, previousPiles, departing;
     if (changedView) {
@@ -158,16 +163,17 @@
       if (jump) {
         clearHistory();
         shutKey = null;
-        resetHeld();
         closeSheet();
       }
-      if (!was || jump) G.stack.forEach(st => { st.actor = replay && st.controller === P.ME ? "Recorded" : null; });
+      if (!was || jump) G.stack.forEach(st => { st.actor = null; });
       const fresh = log.filter(e => !logged.has(logKey(e))).map(e => ({ ...e }));
       const rewound = jump && s.view.turn <= was.turn && (s.view.turn < was.turn || (log.at(-1)?.i ?? -1) < (tail?.i ?? -1));
-      restoreNotice = rewound ? "Earlier position restored" : "";
+      restoreNotice = rewound ? `Back to ${G.active === P.ME ? "your" : whoName(G.active)} earlier ${G.phase.toLowerCase()}` : "";
+      const setAside = rewound ? was.stack.filter(st => st.source && !s.view.stack.some(next => next.id === st.id && next.source?.id === st.source.id))
+        .map(st => st.spell ? st.source.name : st.source.name + "’s ability") : [];
       positionNotice = "";
       if (was?.phase !== s.view.phase) recapLosses = [];
-      let outcome = "", tokenArrival, waiting, firstHandReport;
+      let outcome, tokenArrival, waiting, firstHandReport;
       if (was && !jump) {
         const departed = was.stack.filter(st => st.source && !s.view.stack.some(n => n.id === st.id));
         departing = new Map(was.players.flatMap(p => (p.battlefield || []).filter(c => G.cards[c.id]?.zone !== "battlefield").map(c => [c.id, c])));
@@ -178,7 +184,9 @@
         const damage = /^COMBAT_(FIRST_STRIKE_)?DAMAGE$/.test(s.view.phase);
         const events = fresh.map(e => logText(e.text));
         tokenArrival = tokenResult(departed, was, fresh);
-        outcome = outcomes(departed, was, fresh, tokenArrival);
+        const sunfall = sunfallResult(departed, fresh, departing);
+        sweep = !!sunfall;
+        outcome = outcomes(departed, was, fresh, tokenArrival, sunfall);
         const attacks = attackersAtMe();
         const arrivals = trackHandArrivals(was, s.view, fresh);
         if (arrivals.length) {
@@ -201,13 +209,12 @@
         const where = one && destination(G.cards[one.id]);
         const loss = one ? `${one.card} ${where === "away" ? "left the battlefield" : "went " + where}` :
           lost ? `${lost} of your cards left the battlefield` : "";
-        if (!outcome && !events.some(Boolean)) outcome = loss;
+        if (!outcome && !events.some(Boolean) && loss) outcome = { text: loss };
         const added = G.stack.filter(st => !was.stack.some(o => o.id === st.id));
         departed.forEach(st => incomingStack.delete(st.id));
         added.forEach(st => {
           incomingStack.add(st.id);
-          if (replay) st.actor = st.controller === P.ME ? "Recorded" : null;
-          else if (st.controller === "you" && playChoice?.refs.some(r => r.card === st.card && (r.spell == null || r.spell === st.spell))) {
+          if (!replay && st.controller === "you" && playChoice?.refs.some(r => r.card === st.card && (r.spell == null || r.spell === st.spell))) {
             st.actor = playChoice.label;
             playChoice = null;
           }
@@ -216,10 +223,9 @@
           moving = stackHeadline(added[0]);
         } else if (["Attackers", "Blockers"].includes(G.phase) && attacks.some(a => !was.combat?.attackers.some(o => o.id === a.id))) moving = `${s.view.active}'s attackers are moving in`;
         else if (G.phase === "Blockers" && G.combat?.blockers.some(b => !was.combat?.blockers.some(o => o.id === b.id && o.blocking === b.blocking))) moving = "Blockers are moving into position";
+        else if (was.combat?.attackers.length && !s.view.combat) moving = "Combatants are returning to their pages";
         else if (departed.length || lost || damage && s.view.phase !== was.phase) {
-          sweep = /^Sunfall exiled every creature\./i.test(outcome) || /^Sunfall resolved\./i.test(outcome) &&
-            was.players.some(p => p.battlefield?.some(c => G.cards[c.id]?.zone === "exile"));
-          moving = sweep ? "Sunfall is exiling the creatures" :
+          moving = sweep ? "Sunfall is exiling creatures" :
             entered.length ? `${listNames(entered.map(st => st.source.name))} ${entered.length === 1 ? "is" : "are"} entering` :
             tokenArrival?.moving || (damage ? "Combat damage · combatants are moving" :
               countered ? "The counter resolves · spells are leaving the stack" :
@@ -231,7 +237,10 @@
               logText(e.text).startsWith(`${P.player(st.controller).name} ${verb} ${stackName(st)}`))));
         if (moving) sceneBefore = new Set(seat.scene.children);
       }
-      const result = recordLog(fresh, outcome, restoreNotice, tokenArrival?.log, firstHandReport);
+      const restored = restoreNotice && { type: "result",
+        text: [restoreNotice + ".", setAside.length && `Set aside ${listNames(setAside)}.`].filter(Boolean).join(" "),
+        headline: setAside.length ? `Set aside ${setAside.length} pending ${setAside.length === 1 ? "play" : "plays"}` : "Position restored" };
+      const result = recordLog(fresh, outcome, restored, tokenArrival?.log, firstHandReport);
       if (waiting) {
         if (result) waiting.push(result);
         waiting.forEach(e => { e.inFlight = true; });
@@ -252,7 +261,11 @@
     const elsewhere = !!lean && !!was && changedView && (!same("stack") || !same("combat") ||
       s.view.players.some(p => { const pid = pidOf[p.name]; return pid !== lean.seat && pid !== P.ME && table(was.players.find(q => q.name === p.name)) !== table(p); }));
     const stackChanged = !!was && changedView && !same("stack");
-    if ((stackChanged || jump || !was) && document.body.classList.contains("sifting")) {
+    const body = document.body;
+    const sifting = body.classList.contains("sifting");
+    const interrupted = stackChanged || changedDecision && !!d || jump || elsewhere || !!lean && lean.turn !== G.turn;
+    if (interrupted && (sifting || body.classList.contains("sift-returning"))) {
+      body.classList.add("sift-interrupted");
       shutKey = null;
       seat.closeModals();
       seat.unsift();
@@ -262,9 +275,16 @@
     H.stackLayer = stackOpen();
     H.handAway = !!d && d.kind === "mulligan";
     if (changedView || changedDecision) {
-      if (moving) { motion = moving; sweeping = sweep; }
+      if (moving) {
+        motion = moving; sweeping = sweep;
+        sweepLayout = sweep ? { first: boardBuild + 1 } : null;
+      }
+      holdHand = jump;
       redraw(!was || jump ? 0 : changedView ? MOVE : 300);
-      if (previousPiles) positionNotice = positionChanges(was, s.view, previousPiles);
+      if (previousPiles) {
+        positionNotice = positionChanges(was, s.view, previousPiles);
+        if (positionNotice) history.push({ type: "result", text: positionNotice.split("\n").join(". ") });
+      }
       if (sceneBefore) {
         motionUntil = performance.now() + MOVE;
         // The board adds departing cards and staggered pile arrivals to the scene until each flight finishes.
@@ -272,11 +292,11 @@
         added.forEach(o => {
           flights.add(o);
           const pick = o.userData.pick;
-          const ids = pick?.ids || (pick?.id != null ? [pick.id] : []);
-          o.userData.departing = ids.filter(id => departing?.has(id));
-          const id = o.userData.departing[0], old = departing?.get(id), card = G.cards[id];
+          const id = pick?.type === "card" ? pick.id : undefined;
+          const old = departing?.get(id), card = G.cards[id];
+          if (old) o.userData.departure = id;
           if (card?.zone === "exile" || sweep && old?.token && !card) {
-            const face = o.userData.haloParent?.userData.front || o.userData.tilt?.userData.haloParent?.userData.front;
+            const face = o.userData.front || o.userData.haloParent?.userData.front || o.userData.tilt?.userData.haloParent?.userData.front;
             if (face) exilePaths.set(o, { face });
           }
         });
@@ -285,14 +305,28 @@
         }
       }
       if (!motionFrame && (sceneBefore || pendingHand.size || handBatches.size)) motionFrame = requestAnimationFrame(settleMotion);
-      if (!was || jump) {
-        const shownDecision = d;
-        requestAnimationFrame(() => { if (d === shownDecision) { status(); mulligan(); } });
-      }
-      else { status(); mulligan(); refreshHistorySheet(); }
+      if (!holdHand) { status(); mulligan(); refreshHistorySheet(); }
     } else if (cueChanged) status();
   }
   const keyOf = x => [x.kind, x.turn, x.prompt, (x.options || []).length].concat((x.options || []).slice(0, 6)).join("|");
+
+  function survivorsMoving(now) {
+    const sweep = sweepLayout;
+    if (!sweep) return false;
+    if (sweep.build !== boardBuild) {
+      sweep.build = boardBuild;
+      sweep.targets = seat.poses();
+    }
+    const moving = Object.entries(seat.pieces()).some(([key, { obj }]) => {
+      const target = sweep.targets[key];
+      return target && !target.hide && (obj.position.distanceToSquared(target.pos) > 1e-8 ||
+        Math.abs(obj.scale.x - target.s) > 0.0001);
+    });
+    if (moving) return true;
+    // A held layout can stop briefly after the last token vanishes, before the refit rebuild starts.
+    sweep.quietSince ??= now;
+    return boardBuild === sweep.first && now - sweep.quietSince < 120;
+  }
 
   // Keep the visual cue on the play until the board and hand finish. Decisions run independently.
   function settleMotion(now) {
@@ -316,7 +350,7 @@
       if (now < batch.until) continue;
       const active = batch.flights.filter(o => o.parent === seat.scene);
       for (const loss of batch.losses) {
-        if (!loss.inFlight || active.some(o => o.userData.departing?.includes(loss.id))) continue;
+        if (!loss.inFlight || active.some(o => o.userData.departure === loss.id)) continue;
         delete loss.inFlight;
         updated = true;
       }
@@ -325,8 +359,14 @@
       boardBatches.delete(batch);
       updated = true;
     }
-    const boardMoving = incomingStack.size || flights.size || now < motionUntil;
-    if (!boardMoving && motion) { motion = ""; sweeping = false; updated = true; }
+    const piecesMoving = incomingStack.size || flights.size || now < motionUntil;
+    const refitting = !piecesMoving && sweeping && survivorsMoving(now);
+    const boardMoving = piecesMoving || refitting;
+    if (!piecesMoving && refitting && motion !== "Survivors are settling") {
+      motion = "Survivors are settling";
+      updated = true;
+    }
+    if (!boardMoving && motion) { motion = ""; sweeping = false; sweepLayout = null; updated = true; }
     if (updated) { status(); refreshHistorySheet(); }
     if (boardMoving || pendingHand.size) {
       motionFrame = requestAnimationFrame(settleMotion);
@@ -592,6 +632,7 @@
   let heldEl = null, heldIds = "", focusId = null, fNow = 0, fVel = 0, fTo = 0, heldAnim = 0, lastTick = 0, lastWheel = 0, hg = null;
   let lastHandArrivals = [], thumbing = false;
   let handLiftUntil = 0;
+  let holdHand = false, handUpdating = false, handHost;
   const fanCards = () => [...heldEl.children].filter(card => !card.classList.contains("casting"));
   H.handBounds = () => {
     if (!heldEl || heldEl.closest(".g-hand.away")) return;
@@ -602,12 +643,21 @@
     };
   };
   function resetHeld() {
+    cancelHeldGesture();
     cancelAnimationFrame(heldAnim);
     heldEl?.replaceChildren();
     heldIds = ""; focusId = hg = null;
     lastHandArrivals = [];
     thumbing = false;
     handLiftUntil = 0;
+  }
+  function cancelHeldGesture() {
+    const gesture = hg;
+    hg = null;
+    if (!gesture) return;
+    gesture.hc.classList.remove("dragging");
+    if (gesture.hc.hasPointerCapture(gesture.pointer)) gesture.hc.releasePointerCapture(gesture.pointer);
+    drawHeld();
   }
   const unit = () => Math.min(innerWidth / 1180, innerHeight / 820);
   const handIds = () => P.player("you").hand.slice();
@@ -626,7 +676,13 @@
     const needed = shoulders.reduce((a, b) => a + b, 0);
     const rest = shoulders.map(w => Math.min(wide, needed > span ? w * span / needed : w + (span - needed) / shoulders.length));
     const reserved = Math.min(wide, span * 0.46) * opened;
-    const step = rest.map((w, i) => Math.min(wide, w * (span - reserved) / span + (opened ? reserved * weights[i] / opened : 0)));
+    const response = responseFan && !thumbing ? ids.slice(0, -1).map(id => G.playable.includes(id)) : [];
+    const room = rest.reduce((n, w, i) => n + (response[i] ? 0 : Math.max(0, w - shoulders[i])), 0);
+    const openedResponses = response.filter(Boolean).length;
+    const step = rest.map((w, i) => {
+      if (openedResponses) return response[i] ? Math.min(wide, w + (room + 14 * unit()) / openedResponses) : Math.min(w, shoulders[i]);
+      return Math.min(wide, w * (span - reserved) / span + (opened ? reserved * weights[i] / opened : 0));
+    });
     const xs = [0];
     step.forEach(w => xs.push(xs.at(-1) + w));
     const mid = xs.at(-1) / 2, half = Math.max(1, mid);
@@ -643,12 +699,15 @@
   function drawHeld() {
     if (!heldEl) return;
     const cards = fanCards(), qs = poses(cards.map(hc => +hc.dataset.id), fNow);
+    const { W } = heldSize();
     cards.forEach((hc, i) => {
       if (hc.classList.contains("dragging")) return;
       const q = qs[i];
       hc.style.transform = `translate(${q.x}px, ${q.y}px) rotate(${q.rot}deg)`;
       hc.style.zIndex = q.z;
       hc.style.setProperty("--label-w", q.label + "px");
+      hc.classList.toggle("reading", cards.length <= 3 && q.label >= W * 0.8 && !!hc.querySelector(".l-hand-rules"));
+      hc.classList.toggle("response", responseFan && q.label < W * 0.85 && G.playable.includes(+hc.dataset.id));
     });
   }
   // A damped spring from where the hand is to where it's going, so a turn overshoots a touch and settles.
@@ -680,6 +739,8 @@
     heldEl.style.left = 18 * u + W * (HELD.span + 1) / 2 + "px";
   }
   function handSheet() {
+    if (handUpdating) return;
+    const decision = d;
     sheet("Your hand", box => {
       const pass = el("div", "l-hand-pass l-buttons", `<span>Auto-pass</span><button class="auto">Hold</button>`);
       pass.querySelector("button").addEventListener("click", hold);
@@ -689,6 +750,7 @@
         const detail = [lastHandArrivals.includes(id) ? "Last added" : "", opts.length ? "Available play" : ""].filter(Boolean).join(" · ");
         const b = el("button", "l-opt" + (opts.length ? "" : " l-read"), `<b>${handLabel(c)}</b>${detail ? `<small>${esc(detail)}</small>` : ""}`);
         b.addEventListener("click", () => {
+          if (handUpdating || d !== decision) return;
           closeSheet();
           if (!handIds().includes(id)) return;
           const current = d?.kind === "play" && !busy ? optsFor(id) : [];
@@ -703,6 +765,10 @@
     const cost = P.printed(c).cost || P.face(c)?.cost;
     return esc(P.name(c)) + (cost ? ` <span class="cost">${pips(cost)}</span>` : "");
   }
+  function handRules(c) {
+    const text = P.face(c)?.text || "";
+    return denialPreview(text) || text;
+  }
   function syncHandPass() {
     const pass = sheetEl?.querySelector(".l-hand-pass");
     if (!pass) return;
@@ -710,6 +776,7 @@
     if (!pass.hidden) pass.querySelector("button").style.setProperty("--auto-elapsed", autoElapsed());
   }
   function renderHeld(container) {
+    handUpdating = false;
     const ids = handIds(), key = ids.join(",");
     if (!heldEl || heldEl.parentNode !== container) {
       container.innerHTML = "";
@@ -754,10 +821,13 @@
         if (src) art.style.backgroundImage = `url("${src}")`;
         hc.appendChild(art);
         hc.appendChild(el("div", "l-hand-label", handLabel(G.cards[id])));
+        const rules = /\b(?:Instant|Sorcery)\b/.test(G.cards[id]._type) && handRules(G.cards[id]);
+        if (rules) hc.appendChild(el("div", "l-hand-rules", pips(rules)));
         hc.addEventListener("pointerdown", heldDown);
         hc.addEventListener("pointermove", heldMove);
         hc.addEventListener("pointerup", heldUp);
         hc.addEventListener("pointercancel", heldUp);
+        hc.addEventListener("lostpointercapture", heldUp);
       }
       const at = fanCards()[i];
       if (at !== hc) heldEl.insertBefore(hc, at || null);
@@ -779,13 +849,19 @@
     });
     if (newCards.length) {
       const stagger = Math.min(100, 240 / Math.max(1, newCards.length - 1));
-      newCards.forEach((id, i) => animateHandArrival(id, i * stagger, i, newCards.length));
+      const occupied = [...before.values()].filter(card => card.isConnected).map(card => card.getBoundingClientRect());
+      const deals = newCards.some(id => pendingHand.get(id).zone === "library") && {
+        occupied, staged: [], labels: seat.cardBoxes().flatMap(({ name, foot }) => [name, foot])
+          .map(({ l, r, t, b }) => ({ left: l, right: r, top: t, bottom: b }))
+          .concat([plaqueBounds(), container.querySelector(".l-hand-view")?.getBoundingClientRect()].filter(Boolean)),
+      };
+      newCards.forEach((id, i) => animateHandArrival(id, i * stagger, i, newCards.length, deals));
       status();
     }
     return heldEl;
   }
   // Lift in the fan's original layer so the next card still owns its title strip.
-  function liftCast(id, ms) {
+  function liftCast(id, front, tag, sleeveColor, ms) {
     if (!heldEl || heldEl.closest(".g-hand.away")) return;
     const cards = fanCards(), hc = cards.find(card => +card.dataset.id === id);
     if (!hc) return;
@@ -798,6 +874,21 @@
     const delay = lift ? Math.min(200, ms * 0.4) : 0;
     const height = hc.offsetHeight * Math.hypot(mat.a, mat.b);
     const angle = Math.atan2(mat.b, mat.a);
+    const copyFace = (source, cls) => {
+      const canvas = el("canvas", cls);
+      canvas.width = source.width; canvas.height = source.height;
+      canvas.getContext("2d").drawImage(source, 0, 0);
+      return canvas;
+    };
+    // The DOM lift and the mesh flight use the same face and owner strip.
+    const face = copyFace(front.material.map.image, "l-cast-face");
+    const owner = copyFace(tag.material.map.image, "l-cast-owner");
+    if (!front.geometry.boundingBox) front.geometry.computeBoundingBox();
+    const faceSize = front.geometry.boundingBox;
+    owner.style.width = 100 * tag.geometry.parameters.width / (faceSize.max.x - faceSize.min.x) + "%";
+    owner.style.height = 100 * tag.geometry.parameters.height / (faceSize.max.y - faceSize.min.y) + "%";
+    hc.style.setProperty("--sleeve", sleeveColor);
+    hc.replaceChildren(face, owner);
     hc.getAnimations().forEach(a => a.cancel());
     hc.classList.add("casting");
     hc.style.transform = from;
@@ -813,22 +904,30 @@
     seat.scene.traverse(o => { if (o.userData.pick?.stack && o.userData.pick.id === id) mesh = o; });
     const body = mesh?.userData.cardBody, ms = seat.stackLanding();
     if (!body || !ms) return;
-    const cast = liftCast(id, ms);
+    const tag = mesh.children.findLast(o => o.isMesh && o.material?.map);
+    const front = mesh.userData.front, sleeveColor = P.seatColor(P.ME);
+    if (!tag) return;
+    const cast = liftCast(id, front, tag, sleeveColor, ms);
     if (!cast) return;
     const { T, cam } = seat, fromTime = performance.now(), rest = body.quaternion.clone();
-    const geom = mesh.userData.front.geometry;
+    const geom = front.geometry;
     if (!geom.boundingBox) geom.computeBoundingBox();
     const faceHeight = geom.boundingBox.max.y - geom.boundingBox.min.y;
-    const extras = mesh.children.filter(child => child !== body && child.visible);
+    const sleeve = new T.Mesh(geom, new T.MeshBasicMaterial({ color: sleeveColor, toneMapped: false }));
+    sleeve.position.z = -front.position.z;
+    sleeve.scale.set(1.04, 1.03, 1);
+    body.add(sleeve);
+    const trim = mesh.children.filter(o => o !== body).map(o => ({
+      o, pos: o.position.clone(), q: o.quaternion.clone(), scale: o.scale.clone(),
+    }));
     mesh.visible = false;
-    extras.forEach(child => { child.visible = false; });
     const finish = () => {
       cast.finish();
       mesh.visible = true;
       body.position.set(0, 0, 0);
       body.quaternion.copy(rest);
       body.scale.setScalar(1);
-      extras.forEach(child => { child.visible = true; });
+      trim.forEach(({ o, pos, q, scale }) => { o.position.copy(pos); o.quaternion.copy(q); o.scale.copy(scale); });
     };
     castingFaces.add(now => {
       const elapsed = now - fromTime;
@@ -845,34 +944,94 @@
       body.position.copy(from).multiplyScalar(1 - q);
       body.quaternion.slerpQuaternions(facing, rest, q);
       body.scale.setScalar(1 + (2 * upper.distanceTo(from) / faceHeight - 1) * (1 - q));
-      if (q > 0.75) extras.forEach(child => { child.visible = true; });
+      body.updateMatrix();
+      trim.forEach(({ o, pos, q, scale }) => {
+        o.position.copy(pos).applyMatrix4(body.matrix);
+        o.quaternion.copy(body.quaternion).multiply(q);
+        o.scale.copy(scale).multiplyScalar(body.scale.x);
+      });
       cast.card.style.visibility = "hidden";
       mesh.updateMatrixWorld(true);
       return true;
     });
   }
   H.afterBuild = () => {
+    boardBuild++;
     if (!heldIds || !seat?.stackLanding()) return;
     const ids = handIds();
     for (const st of G.stack) {
       if (st.controller === P.ME && st.spell !== false && !ids.includes(st.card)) castFromHand(st.card);
     }
   };
+  function drawRoute(r, { occupied, labels, staged }) {
+    const w = r.width, h = r.height, gap = 5 * unit();
+    const target = { x: r.left + w / 2, y: r.top + h / 2, scale: 1 };
+    const fanTop = Math.min(r.top, ...occupied.map(b => b.top));
+    const boxAt = ({ x, y, scale }) => ({
+      left: x - w * scale / 2 - gap, right: x + w * scale / 2 + gap,
+      top: y - h * scale / 2 - gap, bottom: y + h * scale / 2 + gap,
+    });
+    const overlaps = (box, blocks) => blocks.reduce((area, b) => area +
+      Math.max(0, Math.min(box.right, b.right) - Math.max(box.left, b.left)) *
+      Math.max(0, Math.min(box.bottom, b.bottom) - Math.max(box.top, b.top)), 0);
+    const interference = (from, to, blocks) => {
+      let area = 0;
+      // Each edge moves linearly as the card travels and scales, so check the span between samples too.
+      let previous = boxAt(from);
+      for (let i = 1; i <= 8; i++) {
+        const k = i / 8, lerp = (a, b) => a + k * (b - a);
+        const next = boxAt({ x: lerp(from.x, to.x), y: lerp(from.y, to.y), scale: lerp(from.scale, to.scale) });
+        area += overlaps(enclosingBounds([previous, next]), blocks);
+        previous = next;
+      }
+      return area;
+    };
+    let best;
+    for (const scale of [0.34, 0.27, 0.21]) {
+      const lane = fanTop - gap - h * scale / 2;
+      for (const rise of [0, 0.4, 0.8]) {
+        const y = lane - h * scale * rise;
+        const entry = { x: target.x, y, scale };
+        const landing = interference(entry, target, labels);
+        for (const side of [0, -1, 1, -2, 2, -3, 3, -4, 4]) {
+          const start = { x: target.x + side * (w * scale + gap), y, scale };
+          const box = boxAt(start);
+          if (box.left < 0 || box.right > innerWidth || box.top < 0) continue;
+          const score = landing + interference(start, entry, labels.concat(occupied)) + overlaps(box, staged) * 8;
+          if (!best || score < best.score) best = { start, entry, score };
+          if (!score) break;
+        }
+        if (best?.score === 0) break;
+      }
+      if (best?.score === 0) break;
+    }
+    if (!best) return [target];
+    staged.push(boxAt(best.start));
+    return [best.start, best.entry, target];
+  }
   // Stage each arrival where it can be seen while it waits its turn, then slide it into the fan.
-  function animateHandArrival(id, delay, index, count) {
+  function animateHandArrival(id, delay, index, count, deals) {
     const arrival = pendingHand.get(id), hc = heldEl.querySelector(`.hcard[data-id="${id}"]`);
     if (!hc?.animate) { pendingHand.delete(id); return; }
     const r = hc.getBoundingClientRect();
     const centreX = r.left + r.width / 2, centreY = r.top + r.height / 2;
-    const stage = arrival.from || { x: centreX, y: r.top - r.height * 0.15 };
-    const spacing = Math.min(r.width * 0.55, r.width * 2 / count);
-    const offset = (index - (count - 1) / 2) * spacing;
-    const plaque = arrival.zone === "library" && plaqueBounds();
-    const start = plaque ? Math.min(stage.x, plaque.left - 6 * unit() - r.width / 4 - spacing * (count - 1) / 2) : stage.x;
-    const x = Math.max(r.width * 0.28, Math.min(innerWidth - r.width * 0.28, start + offset));
-    const y = Math.max(r.height * 0.28, Math.min(innerHeight - r.height * 0.28, stage.y));
-    const dx = x - centreX, dy = y - centreY - r.height / 4;
-    const animation = hc.animate([{ translate: `${dx}px ${dy}px`, scale: "0.5" }, { translate: "0px 0px", scale: "1" }],
+    let keyframes;
+    if (arrival.zone === "library") {
+      const origin = heldEl.getBoundingClientRect();
+      keyframes = drawRoute(r, deals).map(({ x, y, scale }, i, route) => {
+        const dx = x - centreX + (1 - scale) * (centreX - origin.left);
+        const dy = y - centreY + (1 - scale) * (centreY - origin.bottom);
+        return { translate: `${dx}px ${dy}px`, scale: String(scale), offset: i === route.length - 1 ? 1 : i * 0.42 };
+      });
+    } else {
+      const stage = arrival.from || { x: centreX, y: r.top - r.height * 0.15 };
+      const spacing = Math.min(r.width * 0.55, r.width * 2 / count);
+      const offset = (index - (count - 1) / 2) * spacing;
+      const x = Math.max(r.width * 0.28, Math.min(innerWidth - r.width * 0.28, stage.x + offset));
+      const y = Math.max(r.height * 0.28, Math.min(innerHeight - r.height * 0.28, stage.y));
+      keyframes = [{ translate: `${x - centreX}px ${y - centreY - r.height / 4}px`, scale: "0.5" }, { translate: "0px 0px", scale: "1" }];
+    }
+    const animation = hc.animate(keyframes,
       { delay, duration: DRAW, fill: "backwards", easing: "cubic-bezier(.2,.7,.2,1)" });
     arrival.animation = animation;
     hc.classList.add("arriving");
@@ -894,6 +1053,12 @@
     const plaque = seat.pieces().plateyou?.obj.userData.plate;
     return plaque && projectedBounds(plaque);
   }
+  function enclosingBounds(boxes) {
+    return {
+      left: Math.min(...boxes.map(b => b.left)), right: Math.max(...boxes.map(b => b.right)),
+      top: Math.min(...boxes.map(b => b.top)), bottom: Math.max(...boxes.map(b => b.bottom)),
+    };
+  }
   // Reserve screen space for the faces on their staggered trips, including the wide edges of tapped cards.
   function routeExiles() {
     if (!exilePaths.size) return;
@@ -901,15 +1066,22 @@
     const panels = [H.handBounds(), plaqueBounds(), promptEl?.getBoundingClientRect(), feedEl?.getBoundingClientRect()].filter(Boolean);
     const occupied = panels.map(p => ({ left: p.left, right: p.right, top: p.top, bottom: p.bottom ?? innerHeight }));
     for (const [obj, path] of exilePaths) {
-      if (obj.parent !== scene) continue;
-      const box = projectedBounds(path.face), w = box.right - box.left, h = box.bottom - box.top;
+      if (obj.parent !== scene || !obj.visible) continue;
+      const bounds = [projectedBounds(path.face)];
+      obj.traverse(mesh => {
+        if (mesh.isMesh && mesh.visible && mesh.userData.w != null) bounds.push(projectedBounds(mesh));
+      });
+      const box = enclosingBounds(bounds), w = box.right - box.left, h = box.bottom - box.top;
       const nearby = occupied.filter(p => p.right + w * 1.5 > box.left && p.left - w * 1.5 < box.right &&
         p.bottom + h * 1.5 > box.top && p.top - h * 1.5 < box.bottom);
       const nearest = distance => Math.sign(distance) * Math.max(0, Math.abs(distance) - 16 * unit());
       const x0 = nearest(path.dx || 0), y0 = nearest(path.dy || 0);
-      const xs = [x0, 0, ...nearby.flatMap(p => [p.left - box.right - gap, p.right - box.left + gap])];
-      const ys = [y0, 0, ...nearby.flatMap(p => [p.top - box.bottom - gap, p.bottom - box.top + gap])];
-      let closest = Infinity, dx = x0, dy = y0;
+      const clamp = (x, lo, hi) => Math.max(lo, Math.min(x, hi));
+      const safeX = clamp(x0, gap - box.left, innerWidth - gap - box.right);
+      const safeY = clamp(y0, gap - box.top, innerHeight - gap - box.bottom);
+      const xs = [safeX, 0, ...nearby.flatMap(p => [p.left - box.right - gap, p.right - box.left + gap])];
+      const ys = [safeY, 0, ...nearby.flatMap(p => [p.top - box.bottom - gap, p.bottom - box.top + gap])];
+      let closest = Infinity, dx = safeX, dy = safeY;
       for (const x of xs) for (const y of ys) {
         const cost = (x - x0) ** 2 + 1.3 * (y - y0) ** 2;
         if (cost >= closest || box.left + x < 0 || box.right + x > innerWidth || box.top + y < 0 || box.bottom + y > innerHeight) continue;
@@ -932,16 +1104,19 @@
     return adjusted;
   }
   function heldDown(e) {
+    if (handUpdating || hg || !handIds().includes(+e.currentTarget.dataset.id)) return;
     const hc = e.currentTarget;
     hc.getAnimations().find(a => a.id === "hand-settle")?.cancel();
-    hg = { id: +hc.dataset.id, hc, x: e.clientX, y: e.clientY, f0: Math.round(fTo), mode: null, turned: false, lastX: e.clientX, v: 0 };
+    hg = { id: +hc.dataset.id, hc, decision: d, pointer: e.pointerId, x: e.clientX, y: e.clientY, f0: Math.round(fTo), mode: null, turned: false, lastX: e.clientX, v: 0 };
     hc.setPointerCapture(e.pointerId);
   }
   function heldMove(e) {
+    if (handUpdating) return;
     if (!hg) {                                      // a mouse over the hand opens the card under it
       if (e.pointerType === "mouse" && !e.buttons) { const i = handIds().indexOf(+e.currentTarget.dataset.id); if (i >= 0 && i !== Math.round(fTo)) turnTo(i); }
       return;
     }
+    if (e.pointerId !== hg.pointer) return;
     const dx = e.clientX - hg.x, dy = e.clientY - hg.y;
     if (!hg.mode && Math.hypot(dx, dy) > 10) hg.mode = dy < 0 && -dy > Math.abs(dx) * 1.1 ? "play" : "page";
     if (hg.mode === "page" && !hg.turned) {
@@ -960,23 +1135,31 @@
     }
   }
   function heldUp(e) {
-    const g = hg; hg = null;
-    if (!g) return;
+    const g = hg;
+    if (!g || e.pointerId !== g.pointer) return;
+    if (e.type !== "pointerup" || handUpdating || g.decision !== d || !handIds().includes(g.id)) {
+      cancelHeldGesture();
+      return;
+    }
+    hg = null;
     const dy = e.clientY - g.y;
     if (g.mode === "page") {
       if (!g.turned) { if (Math.abs(g.v) > 3) turnTo(g.f0 + (g.v > 0 ? -1 : 1)); else turnTo(g.f0); }   // a flick turns one; a nudge settles back
     } else if (g.mode === "play") {
       g.hc.classList.remove("dragging"); drawHeld();
-      if (e.type === "pointerup") H.handOpts.onDrop(g.id, dy);
+      H.handOpts.onDrop(g.id, dy, g.decision);
     } else if (g.id === focusId) {
       const opts = d && d.kind === "play" && !busy ? optsFor(g.id) : [];
       if (opts.length) inspectWith(g.id, opts); else seat.inspect(g.id);
     } else turnTo(handIds().indexOf(g.id));
   }
   H.handOpts = {
-    render: renderHeld,
-    onDrop(id, dy) {
-      if (!d || d.kind !== "play" || busy || dy > -90) return;
+    render(container) {
+      handHost = container;
+      return holdHand && heldEl ? heldEl : renderHeld(container);
+    },
+    onDrop(id, dy, decision) {
+      if (handUpdating || decision !== d || !d || d.kind !== "play" || busy || dy > -90) return;
       const opts = optsFor(id);
       if (opts.length === 1) answer(opts);
       else if (opts.length) offer(opts, P.name(G.cards[id]));
@@ -1010,13 +1193,17 @@
   }
   // The inspector, with what you can do with the card as buttons under its text.
   function inspectWith(id, opts) {
+    const decision = d, fromHand = G.cards[id]?.zone === "hand";
     seat.inspect(id);
     const info = document.querySelector(".inspector .info");
     if (!info) return offer(opts, P.name(G.cards[id]));
     const box = el("div", "l-actions");
     opts.forEach(o => {
       const b = el("button", "l-opt", `<b>${pips(actionLabel(d.options[o - 1], P.name(G.cards[id])))}</b>${costOf(o)}`);
-      b.addEventListener("click", () => { seat.closeModals(); answer([o]); });
+      b.addEventListener("click", () => {
+        if (d !== decision || fromHand && handUpdating) return;
+        seat.closeModals(); answer([o]);
+      });
       box.appendChild(b);
     });
     // The facts first (owner, its numbers), then what you can do; a keyword the rules text already says isn't said twice.
@@ -1190,8 +1377,9 @@
     const t = e && (e.faces[0].text || "");
     return t ? `${src}: ${t.length > 140 ? t.slice(0, 138) + "…" : t}` : "";
   }
+  let responseFan = false;
   function status() {
-    if (!promptEl || !seat) return;
+    if (!promptEl || !seat || holdHand) return;
     const s = snap || {};
     if (!s.view?.players?.length) {
       feed();
@@ -1212,6 +1400,10 @@
     const stack = stackOpen();
     const arriving = stack && incomingStack.size > 0;
     const drawing = pendingHand.size > 0;
+    const wipePending = stack && creatureSweep(top);
+    const nextCast = replayView && typeof s.replay?.nextCast === "string" && s.replay.nextCast.trim();
+    const replayCue = nextCast ? `Next in the recording · ${nextCast}` : "";
+    let recorded = false;
     let what = "", hint = "", buttons = [];
     if (G.over || s.state === "over") { what = "Game over" + (s.over ? ": " + s.over.replace(/^over: /, "") : ""); buttons.push(["New game", menu, "act"]); }
     else if (!d) what = busy ? "…" : G.active === "you" ? "Moving on…" : "Waiting for " + P.player(G.active).name + "…";
@@ -1221,23 +1413,21 @@
       const canFloat = k === "play" && R.some(r => r?.mana);
       if (k === "mulligan") what = "Opening hand";
       else if (k === "play" && top && top.controller !== "you") {
-        what = opts.length ? "You can respond" : "No responses offered";
+        recorded = replayView && !opts.length && (replayCue || stack && !canFloat);
+        what = opts.length ? "You can respond" : replayCue || (recorded ? "Next action is recorded" : "No responses offered");
         if (canFloat && !opts.length) hint = "You can float mana from a marked source.";
-        const nextCast = replayView && s.replay?.nextCast;
-        if (!opts.length && typeof nextCast === "string" && nextCast.trim()) {
-          hint = [hint, `Next recorded cast · ${nextCast}`].filter(Boolean).join(" ");
-        }
-        buttons = [["Pass priority", () => answer([1]), opts.length ? "l-pass" : "act l-pass"]];
+        buttons = [["Pass priority", () => answer([1]), recorded ? "ghost l-pass" : opts.length ? "l-pass" : "act l-pass"]];
         if (opts.length) buttons.unshift(responseButton(opts));
       } else if (k === "play") {
         const blocking = blockers && blockers.length ? (blockers.length === 1 && blockers[0] === "you" ? "You declared blockers" : `${listNames(blockers.map(pid => P.player(pid).name))} declared blockers`) : "";
         const main = !top && G.active === "you" && ["Main phase", "Second main"].includes(G.phase);
         const zones = new Set(opts.map(o => G.cards[R[o - 1].card]?.zone));
-        const places = [["hand", "in your hand"], ["battlefield", "on the battlefield"], ["command", "on your commander plaque"]]
+        const places = [["hand", "in your hand"], ["battlefield", "on the battlefield"]]
           .filter(([zone]) => zones.has(zone)).map(([, place]) => place);
         const other = [["graveyard", "the graveyard"], ["exile", "exile"]].filter(([zone]) => zones.has(zone)).map(([, place]) => place);
         const unmarked = [...zones].some(zone => !["hand", "battlefield", "command", "graveyard", "exile"].includes(zone));
         hint = [places.length && `Highlights ${listNames(places)} mark available plays.`,
+          zones.has("command") && `Tap the marked “${P.player(P.ME).name}” life plaque for your commander play.`,
           other.length && `Open Choose a play for plays from ${listNames(other)}${unmarked ? " and other unmarked options" : ""}.`,
           !other.length && unmarked && "Open Choose a play for unmarked options."].filter(Boolean).join(" ");
         what = (attacking ? "Before blocks" : blocking) || (main ?
@@ -1281,25 +1471,39 @@
         buttons.unshift(["Hold", hold]);
       }
       if (k !== "mulligan" && !(k === "play" && top && opts.length === 0)) {
-        const delegate = ["Let Forge decide", auto, "ghost l-delegate"];
+        const delegate = [top && opts.length ? "Forge decides" : "Let Forge decide", auto, "ghost l-delegate"];
         buttons.push(delegate);
       }
     }
     const floating = Object.entries(P.player(P.ME).manaPool || {}).filter(([, n]) => n > 0)
       .map(([color, n]) => `${n} {${color}}`).join(" ");
     const watching = !G.over && s.state !== "over" && (arriving || !stack && (motion || drawing));
-    if (arriving) what = "On the way to the stack";
+    if (arriving) {
+      what = "On the way to the stack";
+      buttons = buttons.filter(([, , cls]) => !cls?.includes("l-choice"));
+    }
     else if (watching) {
       const drawsInView = [...pendingHand.values()].some(a => a.animation);
-      what = sweeping ? "" : drawsInView ? handArrivalHeadline([...pendingHand.keys()], false) : motion || "Cards are coming into your hand";
+      what = drawsInView ? handArrivalHeadline([...pendingHand.keys()], false) : motion || "Cards are coming into your hand";
+    } else if (wipePending && play) {
+      if (what !== replayCue && (recorded || playOptions().length)) hint = [what, hint].filter(Boolean).join(". ");
+      what = "Sunfall threatens every creature";
+    } else if (restoreNotice && play) {
+      what = restoreNotice;
     }
-    const ctx = [!watching && hint, d && !busy && !watching && !stack ? context() : "", floating ? `Floating mana: ${floating}` : ""].filter(Boolean).join(" · ");
+    const ctx = [!watching && hint, replayCue !== what && replayCue, d && !busy && !watching && !stack ? context() : "",
+      floating ? `Floating mana: ${floating}` : ""].filter(Boolean).join(" · ");
     if (top) buttons.splice(buttons[0]?.[2]?.includes("l-choice") ? 1 : 0, 0, ["Stack rules", openStackRules, "ghost l-stack-rules"]);
+    const openResponses = !!(play && stack && !watching && top.controller !== P.ME && playOptions().length);
+    if (responseFan !== openResponses) { responseFan = openResponses; drawHeld(); }
     if (play) {
       const pass = buttons.findIndex(([, , cls]) => cls?.includes("l-pass"));
-      if (pass >= 0) buttons.push(...buttons.splice(pass, 1));
+      if (pass >= 0) {
+        if (top && buttons.some(([, , cls]) => cls?.includes("l-delegate"))) buttons[pass][0] = "Pass";
+        buttons.push(...buttons.splice(pass, 1));
+      }
     }
-    const notice = restoreNotice || positionNotice;
+    const notice = positionNotice && `At the start of turn ${G.turn}\n${positionNotice}`;
     promptEl.innerHTML = `<div class="l-where">${esc(where)}</div>${notice ? `<div class="l-notice">${esc(notice)}</div>` : ""}` +
       `${what ? `<div class="l-what">${pips(what)}</div>` : ""}${stack ? stackSummary() : ""}${ctx ? `<div class="l-ctx">${pips(ctx)}</div>` : ""}` +
       `${recapHTML()}<div class="l-buttons${play ? " l-play-buttons" : ""}"></div>`;
@@ -1317,8 +1521,8 @@
     promptEl.classList.toggle("moving", !!watching);
     promptEl.classList.toggle("sweeping", sweeping);
     document.body.classList.toggle("l-watching", !!watching);
-    promptEl.classList.toggle("asking", !!d && !busy && !watching);
-    promptEl.classList.toggle("threat", !arriving && !busy && threat());
+    promptEl.classList.toggle("asking", !!d && !busy && !watching && !recorded);
+    promptEl.classList.toggle("threat", !arriving && !busy && (threat() || wipePending || sweeping));
     promptEl.hidden = !!d && d.kind === "mulligan" && !busy;
     syncHandPass();
     feed();
@@ -1331,17 +1535,22 @@
   }
   function effectPreview(text, rules, controller) {
     if (/^Landfall\.?$/i.test(text) && /Create a 2\/2 white Cat(?: Beast)? creature token/.test(rules) && /Put a \+1\/\+1 counter on each creature/.test(rules)) {
-      return `Mode unrecorded. 2/2 Cat Beast, or give ${controller} creatures +1/+1 counters and vigilance this turn.`;
+      return `2/2 Cat Beast, or a +1/+1 counter and vigilance this turn for each of ${controller} creatures.`;
     }
     const enters = text.match(/When (?:this creature|[^.]+) enters, draw [^.]+\./i);
     if (enters) return enters[0].replace(/^When .+ enters, (d)/i, "On entry, $1");
     const elemental = text.match(/^create an? (X|\d+)\/\1 (?:green )?Elemental\b/i);
     if (elemental) {
-      const x = elemental[1].toUpperCase();
+      const x = elemental[1] === "X" || elemental[1] === "x" ? text.match(/\bX\s*=\s*(\d+)\b/i)?.[1] || "X" : elemental[1];
       return x === "X" ? "Create an X/X Elemental token. The chosen X is unrecorded." : `Create a ${x}/${x} Elemental token.`;
     }
-    if (/^Exile all creatures\. Incubate X\b/i.test(text)) return "Exile all creatures. Create one Incubator with a +1/+1 counter per creature exiled.";
+    if (/^Exile all creatures\. Incubate X\b/i.test(text)) return "Exile creatures on every side. Incubate with a +1/+1 counter per creature exiled.";
     return text.split(/(?<=\.)\s|\n/)[0];
+  }
+  function denialPreview(text, target = "a spell") {
+    if (/^Counter target spell\.\s+Its controller may draw up to two cards at the beginning of the next turn['’]s upkeep\.\s+You draw a card at the beginning of the next turn['’]s upkeep\.$/i.test(text.trim())) {
+      return `Counter ${target}. Next upkeep, its controller may draw up to two. You draw one.`;
+    }
   }
 
   let feedEl, menuBtn, turnHeading = "", latest = [];
@@ -1400,6 +1609,7 @@
     history.length = 0; logged.clear(); losses = []; recapLosses = [];
     turnHeading = restoreNotice = positionNotice = "";
     latest = []; playChoice = null; sweeping = false;
+    sweepLayout = null;
     cancelAnimationFrame(motionFrame);
     motionFrame = 0; motion = ""; motionUntil = 0;
     pendingHand.forEach(arrival => arrival.animation?.cancel());
@@ -1420,18 +1630,31 @@
     return [life !== now && `Your life ${life} → ${now}`, pile].filter(Boolean).join("\n");
   }
   function tokenResult(departed, was, fresh) {
-    const log = fresh.find(e => !G.cards[e.card] && /created an Elemental and \w+ Beasts\.?$/i.test(logText(e.text)));
-    if (!log || !departed.some(st => !st.spell && /create an? (?:X|\d+)\/(?:X|\d+) Elemental/i.test(st.text))) return;
+    const maker = departed.find(st => !st.spell && /create an? (?:X|\d+)\/(?:X|\d+) (?:green )?Elemental/i.test(st.text));
+    if (!maker?.controller) return;
+    const creation = / created an? (?:\d+\/\d+ )?Elemental and (\w+ Beasts?)\.?$/i;
+    const log = fresh.find(e => !G.cards[e.card] && logText(e.text).startsWith(maker.controller + " ") && creation.test(logText(e.text)));
+    if (!log) return;
     const before = new Set(was.players.flatMap(p => (p.battlefield || []).map(c => c.id)));
-    const elements = Object.values(G.cards).filter(c => c.zone === "battlefield" && c.token && !before.has(c.id) && /^Elemental\b/.test(c.card));
+    const pid = pidOf[maker.controller];
+    const elements = Object.values(G.cards).filter(c => c.zone === "battlefield" && c.controller === pid && c.token && !before.has(c.id) && /^Elemental\b/.test(c.card));
     const { power, toughness } = elements.length === 1 ? elements[0] : {};
     if (power == null || toughness == null || before.has(log.card)) return;
-    const beasts = logText(log.text).match(/created an Elemental and (\w+ Beasts)\.?$/i)[1];
+    const beasts = logText(log.text).match(creation)[1];
     const group = `${power}/${toughness} Elemental and ${beasts}`;
-    return { log, moving: `${group} arriving. Beast source unrecorded.`, landed: `${group} arrived. Beast source unrecorded.` };
+    const side = `${pid === P.ME ? "your" : whoName(pid)} side`;
+    return { log, moving: `${group} arriving on ${side}`, headline: `${group} arrived on ${side}` };
   }
-  function outcomes(departed, was, fresh, tokenArrival) {
-    if (!departed.length) return "";
+  function sunfallResult(departed, fresh, leaving) {
+    const spell = departed.find(st => st.spell && st.source.name === "Sunfall");
+    if (!spell) return;
+    const reported = fresh.map(e => logText(e.text)).find(t => /^Sunfall exiled (?:\d+ creatures?|every creature)(?:[.;]|$)/i.test(t));
+    if (reported) return { spell, headline: reported.split(/[.;]/)[0], reported };
+    if (fresh.some(e => e.card === spell.source.id && /^STACK_RESOLVE$/i.test(e.type) && !/fizzl|countered/i.test(e.text)) &&
+        [...leaving.keys()].some(id => G.cards[id]?.zone === "exile")) return { spell, headline: "Sunfall exiled creatures" };
+  }
+  function outcomes(departed, was, fresh, tokenArrival, sunfall) {
+    if (!departed.length) return;
     const before = new Map(was.players.flatMap(p => p.battlefield || []).map(c => [c.id, c]));
     const evidence = new Map();
     fresh.forEach(e => {
@@ -1439,42 +1662,46 @@
       const items = departed.filter(st => {
         if (e.card != null && e.card !== st.source.id) return false;
         if (e.card != null && /^STACK_RESOLVE$/i.test(e.type)) return true;
-        if (st.spell) return text === st.source.name + " was countered" || st.source.name === "Sunfall" && text === "Sunfall exiled every creature";
+        if (st.spell) return text === st.source.name + " was countered";
         return false;
       });
       if (items.length === 1) evidence.set(items[0], text);
     });
     const results = departed.flatMap(st => {
       const name = st.source.name, result = evidence.get(st), card = G.cards[st.source.id];
-      if (name === "Sunfall" && st.spell && result && !/fizzl|countered/i.test(result)) {
-        const incubator = Object.values(G.cards).find(c => c.zone === "battlefield" && c.token && c.card === "Incubator" &&
-          c.controller === pidOf[st.controller] && !before.has(c.id));
-        if (incubator) return [`${result === "Sunfall exiled every creature" ? result : "Sunfall resolved"}. An Incubator arrived on ${incubator.controller === "you" ? "your" : whoName(incubator.controller)} page.`];
-      }
-      if (result) return [result + "."];
+      const where = destination(card), trip = st.spell && where !== "away" ? `${name} went ${where}.` : "";
+      if (result && st !== sunfall?.spell) return [result + ".", trip && !result.includes(where) && trip].filter(Boolean);
+      if (st === departed[0] && tokenArrival && departed.length === 1) return [];
       if (st.spell && card?.zone === "battlefield") return [`${name} entered.`];
-      if (st.spell && destination(card) !== "away") return [`${name} went ${destination(card)}.`];
+      if (trip) return [trip];
       return [`${st.spell ? name : shortCard(name) + "'s ability"} left the stack.`];
     });
-    for (const created of fresh.filter(e => /\bcreated\b/i.test(logText(e.text)))) {
+    for (const created of fresh.filter(e => e !== tokenArrival?.log && logText(e.text) !== sunfall?.reported && /\bcreated\b/i.test(logText(e.text)))) {
       let result = logText(created.text).replace(/\.?$/, ".");
       const source = G.cards[created.card] || before.get(created.card);
       if (source) result += ` Source: ${source.card || source.name}.`;
-      else if (tokenArrival?.log === created) {
-        result = tokenArrival.landed;
-        if (departed.length === 1 && !evidence.has(departed[0])) results.length = 0;
-      }
       if (!results.includes(result)) results.push(result);
+    }
+    if (sunfall) {
+      const caster = sunfall.spell.controller, pid = pidOf[caster];
+      const incubator = Object.values(G.cards).find(c =>
+        c.zone === "battlefield" && c.controller === pid && c.token && c.card === "Incubator" && !before.has(c.id));
+      const reported = /\bIncubator\b/i.test(sunfall.reported || "") ||
+        fresh.some(e => logText(e.text).startsWith(caster + " ") && /\bcreated\b.*\bIncubator\b/i.test(logText(e.text)));
+      if (incubator && !reported) results.push(`An Incubator arrived on ${pid === P.ME ? "your" : whoName(pid)} side.`);
     }
     const targets = [...new Set(departed.flatMap(st => st.targets || []))].filter(t => before.has(t));
     const changes = targets.map(id => {
       const card = G.cards[id], name = shortCard(before.get(id).name);
-      if (card?.zone === "battlefield") return `${name} is on the battlefield.`;
+      if (card?.zone === "battlefield") return `${name} stayed on the battlefield.`;
       const where = destination(card);
       return where === "away" ? `${name} left the battlefield.` : `${name} went ${where}.`;
     });
     // When the bridge skips steps, zones can establish where cards ended up; a clear stack can't establish why.
-    return [...results, ...changes].join(" ");
+    const headline = sunfall?.headline || tokenArrival?.headline || changes[0]?.replace(/\.$/, "");
+    const lead = sunfall?.reported || (sunfall || tokenArrival ? headline : "");
+    const text = [lead && lead.replace(/\.?$/, "."), ...changes, ...results].filter(Boolean).join(" ");
+    return { headline, text };
   }
   function recordLog(fresh, outcome, load, summarized, firstHandReport) {
     const player = P.player(G.active).name, heading = `Turn ${G.turn} · ${player}`;
@@ -1488,17 +1715,17 @@
       else entries.splice(at + 1, 0, active);
       turnHeading = heading; latest = [];
     }
-    const result = outcome && { type: "result", text: outcome };
+    const result = outcome && { type: "result", ...outcome };
     if (result) {
       const at = entries.indexOf(firstHandReport);
       entries.splice(at < 0 ? entries.length : at, 0, result);
     }
     history.push(...entries);
-    const restored = load && { type: "result", text: load };
+    const restored = load;
     if (restored) history.push(restored);
     const turnStart = entries.findLastIndex(isTurn);
     const recent = entries.slice(turnStart + 1).filter(e =>
-      !isTurn(e) && e !== summarized && (e === result || !outcome.startsWith(logText(e.text)))).reverse();
+      !isTurn(e) && e !== summarized && (e === result || !outcome?.text.startsWith(logText(e.text)))).reverse();
     latest = recent.concat(latest);
     if (restored) latest.unshift(restored);
     return result;
@@ -1515,12 +1742,11 @@
     };
     const pending = [...new Set(settled.map(castFor).filter(Boolean))];
     const distinct = pending.length && settled.find(e => !castFor(e));
-    const events = sweeping ? [motion] : pending.length
-      ? [...pending.slice(0, 2), ...(distinct ? [distinct.display || logText(distinct.text)] : [])] :
-      settled.slice(0, G.active !== "you" || G.combat ? 1 : 3).map(e => e.display || logText(e.text));
+    const eventText = e => e.headline || e.display || logText(e.text);
+    const events = pending.length
+      ? [...pending, ...(distinct ? [eventText(distinct)] : [])].slice(0, 2) :
+      settled.slice(0, G.active !== "you" || G.combat || settled[0]?.headline ? 1 : 2).map(eventText);
     const draw = events.findIndex(t => /^(?:You drew|Drew)\b/i.test(t) || t.startsWith(P.player(P.ME).name + " drew "));
-    feedEl.classList.toggle("l-casts", pending.length > 0);
-    feedEl.classList.toggle("l-exile-event", sweeping);
     feedEl.innerHTML = `<span class="l-feed-turn">${esc(turnHeading)}</span>${events.length ? `<span class="l-feed-events${events.length > 1 ? " recent" : ""}">${events.map((event, i) => `<span class="l-feed-event${i === draw ? " l-feed-draw" : ""}">${pips(event)}</span>`).join("")}</span>` : ""}`;
     feedEl.hidden = !turnHeading;
   }
@@ -1625,6 +1851,7 @@
     const top = G.stack[0];
     return !!top && top.controller !== "you" && aimedAtMe(top).length > 0;
   }
+  const creatureSweep = st => st?.spell && stackName(st) === "Sunfall";
   const myBoard = () => new Map(Object.values(G.cards).filter(c => c.zone === "battlefield" && c.controller === "you").map(c => [c.id, c]));
   const destination = c => ({ graveyard: "to the graveyard", exile: "to exile", hand: "to hand", command: "to the command zone", library: "to the library" })[c?.zone] || "away";
   // Keep the current losses beside the decision and keep earlier ones in the log.
@@ -1649,7 +1876,7 @@
   }
   function recapHTML() {
     const settled = recapLosses.filter(l => !l.inFlight);
-    if (!settled.length || sweeping) return "";
+    if (!settled.length) return "";
     const one = settled.length === 1 && settled[0];
     const title = `View your losses (${settled.length})`;
     const summary = one ? `${one.name} · ${one.where === "away" ? one.token ? "Token left play" : "Destination unknown" : one.where}` : lossSummary(settled);
@@ -1681,7 +1908,7 @@
         const row = el("section", "l-rules", `<b>${esc(name + " · " + stackController(st))}</b>`);
         if (effect) {
           const preview = effectPreview(effect, rules, stackPossessive(st));
-          row.appendChild(el("div", "", pips(preview.includes("unrecorded") ? preview : effect)));
+          row.appendChild(el("div", "", pips(/^Landfall\.?$/i.test(effect) ? preview : effect)));
         }
         if (rules && rules !== effect) row.appendChild(el("div", "", pips(rules)));
         box.appendChild(row);
@@ -1697,18 +1924,18 @@
       const choosing = !i && d?.kind === "targets" && st.controller === "you" && !st.targets.length;
       const targets = choosing ? sel.map(o => refs()[o - 1]).filter(Boolean).map(r => r.player ? pidOf[r.player] : r.card) : st.targets;
       const aim = targets.map(t => targetName(t, true) || "unrecorded target");
-      const threatened = st.controller !== "you" && aimedAtMe(st).length > 0;
+      const threatened = creatureSweep(st) || st.controller !== "you" && aimedAtMe(st).length > 0;
       let effect = effectPreview(text, rules, stackPossessive(st));
       if (aim.length === 1 && /^Exile target creature\. Its controller gains life equal to its power\./i.test(text)) {
         effect = `Exile ${aim[0]}. Its controller gains life equal to its power.`;
       } else if (aim.length === 1 && /^Counter target spell\./i.test(text)) {
         const consequences = text.slice("Counter target spell.".length).trim();
-        const drawAtUpkeep = /^Its controller may draw up to two cards at the beginning of the next turn['’]s upkeep\.\s+You draw a card at the beginning of the next turn['’]s upkeep\.$/i;
-        effect = [`Counter ${aim[0]}.`, drawAtUpkeep.test(consequences) ? "Next upkeep its controller may draw up to two. You draw one." : consequences].filter(Boolean).join(" ");
+        effect = denialPreview(text, aim[0]) || [`Counter ${aim[0]}.`, consequences].filter(Boolean).join(" ");
       }
+      else if (!aim.length && !choosing) effect = denialPreview(text) || effect;
       else if (aim.length) effect = `Aimed at ${listNames(aim)}. ${effect}`.trim();
       else if (choosing) effect = "Choosing targets";
-      const order = !i ? "Next if all pass" : threatened ? "Pending threat" : "Pending";
+      const order = incomingStack.has(st.id) ? "Arriving" : !i ? "Next if all pass" : threatened ? "Pending threat" : "Pending";
       return `<li><small class="l-order${threatened ? " aimed" : ""}">${order}</small> <b>${esc(title)}</b> <span>· ${esc(who)}</span>${effect ? `<div class="${!i && threatened ? "aimed" : ""}">${pips(effect)}</div>` : ""}</li>`;
     });
     return `<ol class="l-stackinfo" aria-label="Stack in resolution order">${rows.join("")}</ol>`;
@@ -1744,63 +1971,76 @@
 
   function laySift(group, shade) {
     const { T, cam } = seat, cards = group.children.filter(o => o.userData.pick?.sift);
-    const face = cards[0].userData.front;
-    face.geometry.computeBoundingBox();
-    const { min, max } = face.geometry.boundingBox;
-    const faceWidth = max.x - min.x, faceHeight = max.y - min.y;
-    const depth = 6, height = 2 * depth * Math.tan(cam.fov * Math.PI / 360), width = height * cam.aspect;
-    const n = cards.length, rows = n <= 6 ? 1 : n <= 14 ? 2 : n <= 27 ? 3 : 4, cols = Math.ceil(n / rows);
-    const colWidths = Array(cols).fill(faceWidth);
-    const tapped = cards.map(card => !!G.cards[card.userData.pick.id]?.tapped);
-    const angle = Math.PI / 12;
-    const sideways = 0.86 * (faceHeight * Math.cos(angle) + faceWidth * Math.sin(angle));
-    tapped.forEach((on, i) => { if (on) colWidths[i % cols] = sideways; });
-    const gap = 0.1, rowHeight = faceHeight + gap;
-    const edges = [0];
-    colWidths.forEach(w => edges.push(edges.at(-1) + w + gap));
-    const spread = edges.at(-1) - gap;
-    const scale = Math.min(1.25, width * 0.86 / spread, height * 0.7 / (rows * rowHeight));
-    const oldScale = Math.min(1.25, width * 0.86 / (cols * (faceWidth + 0.08)), height * 0.7 / (rows * rowHeight));
-    const right = new T.Vector3(1, 0, 0).applyQuaternion(cam.quaternion), up = new T.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
     const cap = document.querySelector(".proto-h .g-sifttitle");
-    const top = innerHeight * (0.54 - rows * rowHeight * scale / (2 * height));
-    if (cap) cap.style.top = Math.max(10, top - 14) + "px";
-    const header = ((cap?.offsetHeight || 0) + 14) * height / innerHeight;
-    const perspective = (depth + 0.35) / depth;
-    const backing = new T.Mesh(new T.PlaneGeometry((spread * scale + width * 0.035) * perspective, (rows * rowHeight * scale + height * 0.035 + header) * perspective),
-      new T.MeshBasicMaterial({ color: 0x593f2b, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
-    backing.position.copy(cam.position).addScaledVector(cam.getWorldDirection(new T.Vector3()), depth + 0.35)
-      .addScaledVector(up, (header / 2 - height * 0.04) * perspective);
+    const hint = cap?.querySelector("small");
+    if (hint) hint.style.visibility = "hidden";
+    const depth = 6.35;
+    const backing = new T.Mesh(new T.PlaneGeometry(1, 1),
+      new T.MeshBasicMaterial({ color: 0x725138, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
     backing.quaternion.copy(cam.quaternion);
     backing.renderOrder = shade.renderOrder + 1;
     group.add(backing);
     shade.userData.backing = backing;
     group.addEventListener("removed", () => { backing.geometry.dispose(); backing.material.dispose(); });
-    const offsets = cards.map((card, i) => {
-      const row = Math.floor(i / cols), col = i % cols, count = Math.min(cols, n - row * cols);
-      const x = (edges[col] + colWidths[col] / 2 - (edges[count] - gap) / 2) * scale;
-      const oldX = (col - (count - 1) / 2) * (faceWidth + 0.08) * oldScale;
-      const delta = right.clone().multiplyScalar(x - oldX)
-        .addScaledVector(up, ((rows - 1) / 2 - row) * rowHeight * (scale - oldScale));
-      const body = card.userData.cardBody;
+    const poses = cards.map(card => {
+      const body = card.userData.cardBody, source = card.position.clone(), rendered = source.clone();
+      const tap = body.rotation.z, home = card.quaternion.clone().multiply(body.quaternion);
+      let openTarget;
+      const lerp = card.position.lerpVectors;
+      // The fold's native target follows the pile. Its start must use the last displayed pose.
+      card.position.lerpVectors = function (from, to, progress) {
+        if (cap?.isConnected || !openTarget && from.equals(source)) openTarget = to;
+        return lerp.call(this, !cap?.isConnected && from === openTarget ? rendered : from, to, progress);
+      };
       body.raycast = (ray, hits) => card.userData.front.raycast(ray, hits);
-      return { body, delta };
+      return { card, body, tap, rendered, home, facing: home.clone(), scale: card.scale.x };
     });
-    const q = new T.Quaternion(), start = performance.now();
-    let closing;
-    return now => {
-      if (!document.body.classList.contains("sifting")) closing ??= now;
-      const clock = t => { const k = Math.max(0, Math.min(1, t)); return k < 0.5 ? 4 * k ** 3 : 1 - (-2 * k + 2) ** 3 / 2; };
-      const progress = closing == null ? clock((now - start) / 520) : 1 - clock((now - closing) / 380);
-      backing.material.opacity = progress;
-      shade.material.opacity = 0.48 * progress;
-      cards.forEach((card, i) => {
-        const { body, delta } = offsets[i];
-        const amount = closing == null ? Math.max(0, Math.min(1, progress * 1.4 - i * 0.4 / n)) : progress;
-        body.position.copy(delta).applyQuaternion(card.getWorldQuaternion(q).invert()).multiplyScalar(amount / Math.max(0.001, card.scale.x));
-        body.scale.setScalar(1 + amount * (scale / oldScale - 1));
+    const fwd = cam.getWorldDirection(new T.Vector3());
+    const turn = new T.Quaternion();
+    let openProgress = 0, lastPose;
+    return () => {
+      // The board writes its eased progress to the shade on each step of the same tween that moves the cards.
+      const nativeShade = shade.material.opacity, nativeProgress = nativeShade / 0.72;
+      const opening = !!cap?.isConnected;
+      if (opening) openProgress = nativeProgress;
+      const progress = openProgress * (opening ? 1 : nativeProgress);
+      const interrupted = document.body.classList.contains("sift-interrupted");
+      shade.material.opacity = (interrupted ? 0.12 : 0.32) * progress;
+      const restore = () => { shade.material.opacity = nativeShade; };
+      const pose = `${opening}/${nativeProgress}/${innerWidth}/${innerHeight}`;
+      if (pose === lastPose && opening) return restore;
+      lastPose = pose;
+      backing.material.opacity = (interrupted ? 0.24 : 0.54) * progress;
+      if (hint && progress >= 1) hint.style.visibility = "";
+      poses.forEach(({ card, body, tap, rendered, home, facing }, i) => {
+        if (opening) {
+          if (tap) {
+            const amount = Math.max(0, Math.min(1, progress * 1.4 - i * 0.4 / cards.length));
+            body.rotation.z = tap + amount * Math.PI * 7 / 12;
+            body.scale.setScalar(1 + amount * (1 / 0.86 - 1));
+          }
+          rendered.copy(card.position);
+          facing.copy(card.quaternion).multiply(body.quaternion);
+          poses[i].scale = card.scale.x * body.scale.x;
+        } else {
+          const folded = 1 - nativeProgress;
+          body.quaternion.copy(card.quaternion).invert().multiply(turn.slerpQuaternions(facing, home, folded));
+          const size = poses[i].scale * nativeProgress + card.scale.x * folded;
+          body.scale.setScalar(size / card.scale.x);
+        }
       });
-      group.updateMatrixWorld(true);
+      const visible = cards.filter(card => card.visible);
+      backing.visible = visible.length > 0 && progress > 0;
+      if (!backing.visible) return restore;
+      const box = enclosingBounds(visible.map(card => projectedBounds(card.userData.front)));
+      const pixel = 2 * depth * Math.tan(cam.fov * Math.PI / 360) / innerHeight;
+      const gap = 12 * unit() * progress;
+      backing.scale.set((box.right - box.left + 2 * gap) * pixel, (box.bottom - box.top + 2 * gap) * pixel, 1);
+      backing.position.set(((box.left + box.right) / 2 - innerWidth / 2) * pixel,
+        (innerHeight / 2 - (box.top + box.bottom) / 2) * pixel, 0)
+        .applyQuaternion(cam.quaternion).add(cam.position).addScaledVector(fwd, depth);
+      backing.updateMatrixWorld(true);
+      return restore;
     };
   }
 
@@ -1820,19 +2060,26 @@
       }
       return sift(ids, from, title && !/^pile$/i.test(title) ? title : "Cards", src);
     };
-    let siftFrame, siftBackdrop, siftLayout, exileOffsets;
+    let siftFrame, siftBackdrop, siftLayout, restoreSiftShade, exileOffsets, noticeAtSift;
     seat.scene.onBeforeRender = () => {
       const now = performance.now();
       for (const step of castingFaces) if (!step(now)) castingFaces.delete(step);
-      siftLayout?.(now);
+      restoreSiftShade = siftLayout?.();
       exileOffsets = routeExiles();
     };
     seat.scene.onAfterRender = () => {
-      if (!exileOffsets) return;
-      for (const [obj, { pos, scale }] of exileOffsets) {
+      restoreSiftShade?.();
+      for (const [obj, { pos, scale }] of exileOffsets || []) {
         obj.position.copy(pos);
         obj.scale.copy(scale);
         obj.updateMatrixWorld(true);
+      }
+      if (holdHand) {
+        // Put up the new fan and phase on the frame that has actually drawn the cut.
+        holdHand = false;
+        resetHeld();
+        window.Kit.hand(handHost, H.handOpts);
+        status(); mulligan(); refreshHistorySheet();
       }
     };
     const siftInScene = () => seat.scene.children.findLast(o => o.children.some(c => c.userData.pick?.sift));
@@ -1844,6 +2091,7 @@
         siftBackdrop.userData.backing.visible = false;
       }
       siftBackdrop = shade;
+      noticeAtSift = positionNotice;
       // Composite one shade over the board, then give the moving cards their own depth buffer.
       group.renderOrder = 30;
       shade.material.depthFunc = seat.T.AlwaysDepth;
@@ -1876,7 +2124,11 @@
     };
     const finishSift = () => {
       if (siftInScene() || heldEl?.getAnimations().some(a => a.transitionProperty === "transform")) siftFrame = requestAnimationFrame(finishSift);
-      else { body.classList.remove("sift-returning"); backBar(); }
+      else {
+        body.classList.remove("sift-returning", "sift-interrupted");
+        if (positionNotice === noticeAtSift) positionNotice = "";
+        backBar(); status();
+      }
     };
     new MutationObserver(() => {
       if (body.classList.contains("sifting")) {
@@ -1897,7 +2149,7 @@
         layerSift(group);
         if (body.classList.contains("sift-returning")) {
           cancelAnimationFrame(siftFrame);
-          body.classList.remove("sift-returning");
+          body.classList.remove("sift-returning", "sift-interrupted");
           backBar();
         }
       } else if (!body.classList.contains("sift-returning") && siftInScene()) {
