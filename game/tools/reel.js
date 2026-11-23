@@ -248,9 +248,27 @@ async function record(browser, clip, dir) {
   return { frames: m.frames + 1, errors };
 }
 
+// A machine-wide cap on recordings at once (lanes and fixers record side by side): each top-level run holds one of
+// SLOTS slots, a directory with its pid in it; a slot whose pid has gone is free again.
+const SLOTS = 2, LOCKS = path.join(require("os").homedir(), ".cache/seat-look");
+async function slot() {
+  if (process.env.SEAT_SLOT) return;                                  // a child of a run that holds one
+  fs.mkdirSync(LOCKS, { recursive: true });
+  for (let waited = 0; ; waited++) {
+    for (let i = 0; i < SLOTS; i++) {
+      const d = path.join(LOCKS, "slot-" + i);
+      try { fs.mkdirSync(d); fs.writeFileSync(path.join(d, "pid"), String(process.pid)); process.env.SEAT_SLOT = d;
+        process.on("exit", () => fs.rmSync(d, { recursive: true, force: true })); ["SIGINT", "SIGTERM"].forEach(sg => process.on(sg, () => process.exit(1))); return; }
+      catch (e) { let pid = 0; try { pid = +fs.readFileSync(path.join(d, "pid"), "utf8"); } catch (_) {} try { if (pid) process.kill(pid, 0); else if (waited > 2) throw 0; } catch (_) { fs.rmSync(d, { recursive: true, force: true }); } }
+    }
+    if (waited === 0) console.log("waiting for a recording slot");
+    await new Promise(r => setTimeout(r, 5000));
+  }
+}
+
 // More than one clip: one process per clip, JOBS at a time (each has its own browser; software rendering is per core).
 const chosen = CLIPS.filter(c => only ? only.has(c.name) : !c.manual);
-const ready = BASE ? Promise.resolve() : require("./serve.js").serve().then(s => { BASE = s.base; process.env.BASE = BASE; });
+const ready = slot().then(() => (BASE ? null : require("./serve.js").serve().then(s => { BASE = s.base; process.env.BASE = BASE; })));
 if (chosen.length > 1 && JOBS > 1) ready.then(() => {
   const { spawn } = require("child_process"), queue = chosen.map(c => c.name), passed = process.argv.slice(2).filter((a, i, all) => a.startsWith("--") || (i && all[i - 1].startsWith("--") && all[i - 1] !== "--quick"));
   let failed = 0;
