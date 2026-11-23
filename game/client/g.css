@@ -1,0 +1,88 @@
+/* Standees on WebGL: the canvas fills the stage; plates, the stack, the hand and controls float over it. */
+.proto-g { background: var(--table); touch-action: none; -webkit-user-select: none; user-select: none; }
+.g-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.g-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font: 600 calc(18 * var(--u)) var(--ui); }
+.g-overlay { position: absolute; inset: 0; pointer-events: none; }
+.g-overlay > * { pointer-events: auto; }
+
+/* Hand: only when your seat is in front. */
+/* Going, it slides all the way down over the board's whole 500 ms move, steadily, and only fades in the last part of
+   it, so halfway through it is plainly the whole hand, half gone, not a hand that blinked out. */
+.g-hand { position: absolute; left: 0; right: 0; bottom: 0; height: 0; transition: transform .5s cubic-bezier(.37,0,.63,1), opacity .5s cubic-bezier(.5,0,1,1); }
+.g-hand.away { transform: translateY(calc(200 * var(--u))); opacity: 0; }
+
+/* Replay */
+.g-replay {
+  position: absolute; right: calc(14 * var(--u) + env(safe-area-inset-right, 0px)); bottom: calc(14 * var(--u) + env(safe-area-inset-bottom, 0px));
+  width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: var(--muted); font: 600 18px/1 var(--ui); cursor: pointer;
+}
+
+/* Sifting */
+.g-sifttitle {
+  position: absolute; top: calc(16 * var(--u)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: calc(12 * var(--u));
+  padding: calc(6 * var(--u)) calc(8 * var(--u)) calc(6 * var(--u)) calc(18 * var(--u)); border-radius: 4px 12px 4px 12px; background: var(--sheet); color: var(--ink);
+  box-shadow: var(--sheet-shadow); font: italic 400 calc(20 * var(--u)) var(--serif); letter-spacing: .02em;
+}
+.g-sifttitle > span { display: grid; gap: 1px; }
+.g-sifttitle b { font: 400 calc(22 * var(--u))/1.1 var(--serif); font-style: normal; }
+.g-sifttitle b i { font-style: italic; color: var(--ink-2); font-size: .8em; }
+.g-sifttitle small { font: italic 400 calc(14 * var(--u))/1.2 var(--serif); color: var(--ink-2); }
+.g-sifttitle .g-close { position: static; }
+
+/* Modals: one at a time, ✕ always in the same place */
+.g-close {
+  position: absolute; top: calc(10 * var(--u)); right: calc(10 * var(--u)); width: 44px; height: 44px; border-radius: 50%; border: 0;
+  background: var(--plaque); box-shadow: var(--plaque-shadow); color: #1e1206; font: 600 20px/1 var(--ui); cursor: pointer; z-index: 2;
+}
+/* On a sheet, the ✕ is a bronze stud set into it. */
+.l-box .g-close, .g-profile .g-close, .g-sifttitle .g-close, .inspector .info > .g-close { width: 36px; height: 36px; color: #2a1606; font-size: 15px;
+  background: radial-gradient(circle at 36% 30%, #f3d9a2, #b08a4a 40%, #6a4a20 80%, #3a240c); box-shadow: 0 0 0 1.5px #2a1a08, inset 0 -2px 3px rgba(0,0,0,.35), 0 2px 5px rgba(0,0,0,.45); }
+.scrim .inspector { position: relative; }
+.inspector .info > .g-close { top: calc(14 * var(--u)); right: calc(14 * var(--u)); }   /* inside the leaf's corner, like the sheets' */
+.g-modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(8,5,3,.66); animation: g-fade .2s; }
+@keyframes g-fade { from { opacity: 0; } }
+.g-profile {
+  position: relative; width: min(calc(520 * var(--u)), 92vw); padding: calc(24 * var(--u)); border-radius: 3px; color: var(--ink);
+  background: var(--mounts), var(--sheet-quiet); box-shadow: var(--sheet-shadow), inset 0 6px 0 var(--seat);
+  outline: 1px solid rgba(60,40,15,.4); outline-offset: calc(-9 * var(--u));
+  --text: var(--ink); --muted: var(--ink-2);
+}
+
+.g-profile header { display: flex; align-items: center; gap: calc(14 * var(--u)); padding-right: 44px; }
+.g-profile .av { width: calc(64 * var(--u)); height: calc(64 * var(--u)); border-radius: 50%; background: #222 center / cover; flex: none; box-shadow: 0 0 0 4px var(--seat), 0 0 0 6px var(--ink); }
+.g-profile .av.sm { width: calc(30 * var(--u)); height: calc(30 * var(--u)); }
+.g-profile h3 { margin: 0; font: 400 calc(28 * var(--u))/1.1 var(--serif); color: var(--ink); }
+.g-profile .sub { color: var(--ink-2); font: italic 400 calc(16 * var(--u)) var(--serif); letter-spacing: .02em; }
+/* The life total as the plaques have it: numerals in the book's serif, engraved in a sunk brass panel. */
+.g-profile .big { margin-left: auto; padding: calc(4 * var(--u)) calc(14 * var(--u)) calc(6 * var(--u)); border-radius: 6px; background: linear-gradient(rgba(30,16,4,.42), rgba(30,16,4,.42)), var(--plaque); box-shadow: var(--plaque-shadow), inset 0 4px 10px rgba(0,0,0,.55);
+  color: #f0dcae; font: 400 calc(50 * var(--u))/1 var(--serif); text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+.g-profile header .big small { color: #e0c99a; }
+.g-profile .big small { display: block; font: italic 400 calc(13 * var(--u)) var(--serif); color: var(--muted); letter-spacing: .06em; text-shadow: none; }
+.g-profile h4 { margin: calc(18 * var(--u)) 0 calc(8 * var(--u)); padding-bottom: 4px; border-bottom: 1px solid rgba(60,40,15,.3); font: 400 calc(17 * var(--u)) var(--serif); color: var(--ink-2); letter-spacing: .03em; }
+.g-profile .flags { display: flex; gap: 8px; margin-top: calc(12 * var(--u)); }
+.g-profile .flags span { padding: 2px 10px; border-radius: 6px; background: rgba(22,18,14,.08); font: 400 calc(16 * var(--u))/1.5 var(--serif); }
+.g-profile .dmg { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.g-profile .dmg li { display: flex; align-items: center; gap: 10px; font-size: calc(15 * var(--u)); }
+.g-profile .dmg b { margin-left: auto; font: 400 calc(24 * var(--u)) var(--serif); }
+.g-profile .dmg small { color: var(--muted); font-size: .6em; }
+.g-profile .zones { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: calc(-8 * var(--u)); border-bottom: 1.5px solid rgba(60,40,15,.55); }
+/* Four columns ruled into the leaf, like a ledger's: no slips, only ink. Graveyard and exile open (an ember tick under the
+   label says so); hand and library only count. */
+.g-profile .zones > * {
+  display: grid; justify-items: center; gap: 2px; padding: calc(10 * var(--u)) 4px calc(8 * var(--u)); border: 0; border-radius: 0; background: none;
+  color: var(--ink-2); font: italic 400 calc(15 * var(--u)) var(--serif);
+}
+.g-profile .zones > * + * { border-left: 1px solid rgba(60,40,15,.4); }
+.g-profile .zones button { cursor: pointer; }
+.g-profile .zones button::after { content: ""; width: 1.8em; height: 2px; margin-top: 2px; background: var(--sig-option); border-radius: 1px; }
+.g-profile .zones button:active { background: rgba(90,60,20,.1); }
+.g-profile .zones b { font: 400 calc(30 * var(--u))/1 var(--serif); color: var(--ink); text-shadow: 0 1px 0 rgba(255,250,230,.6); }
+
+.g-peek {
+  position: fixed; z-index: 120; width: 260px; aspect-ratio: 488 / 680; border-radius: 12px; background: #111 center / cover;
+  box-shadow: 0 20px 50px rgba(0,0,0,.7); pointer-events: none; animation: g-fade .12s;
+}
+.g-peek.back { background: radial-gradient(circle, #c9a25c 0 9%, #6a4a20 10%, transparent 11%), radial-gradient(ellipse at 50% 45%, rgba(120,70,30,.25), rgba(0,0,0,.5)), var(--leather) center / 260px, #2a170c; box-shadow: inset 0 0 0 10px rgba(0,0,0,.25), inset 0 0 0 12px rgba(255,210,150,.14), 0 20px 50px rgba(0,0,0,.7); }
+
+/* The director's caption sits below the opponents' plates on this table. */
+body:has(.proto-g:not([hidden])) .caption { top: calc(176 * var(--u)); left: auto; right: calc(170 * var(--u)); transform: none; }

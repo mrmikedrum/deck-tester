@@ -1,0 +1,7 @@
+# Only the client, the tools and the look notes are versioned (for the look-loop lanes); recordings and rounds are not.
+/*
+!/.gitignore
+!/client/
+!/tools/
+!/LOOK.md
+/tools/node_modules/
