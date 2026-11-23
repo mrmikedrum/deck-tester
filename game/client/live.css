@@ -7,7 +7,6 @@
 }
 /* The prompt asks you to act: the option ring, like everything you can act on. */
 .l-prompt.asking { box-shadow: var(--sheet-shadow), 0 0 0 2px rgba(255,138,42,.9), 0 0 34px rgba(255,138,42,.55); }
-.l-copy { display: contents; }
 .l-where { font: italic 400 calc(11.5 * var(--u)) var(--serif); color: var(--ink-2); letter-spacing: .06em; }
 .l-what { font: 400 calc(19 * var(--u))/1.15 var(--serif); letter-spacing: .005em; text-wrap: balance; }
 .l-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: calc(6 * var(--u)); margin-top: calc(3 * var(--u)); }
@@ -34,7 +33,15 @@
 .l-buttons.response { display: grid; grid-template-columns: minmax(0, max-content) max-content; max-width: 100%; }
 .l-buttons.response button { min-width: 0; overflow-wrap: anywhere; }
 .l-buttons.response .ghost { grid-column: 1 / -1; justify-self: end; }
+.l-buttons .l-respond { padding: 6px 12px; }
+.l-respond > span { display: block; margin-top: 2px; font-size: calc(13.5 * var(--u)); }
+.l-buttons button.l-stack-rules { min-height: 44px; }
+.l-buttons.response .l-stack-rules { grid-column: 1; grid-row: 2; justify-self: start; }
+.l-buttons.response:has(.l-stack-rules) .ghost:not(.l-stack-rules) { grid-column: 2; grid-row: 2; }
 .l-buttons.response .cost { margin-left: .3em; white-space: nowrap; }
+.l-responses { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px 12px; margin: 4px 0 0; padding: 0;
+  list-style: none; font: 400 calc(15 * var(--u))/1.3 var(--serif); max-height: calc(64 * var(--u)); overflow: auto; }
+.l-responses .cost { margin-left: .35em; white-space: nowrap; }
 
 .l-sheet { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8,5,3,.6); padding: 16px; }
 .l-box {
@@ -56,8 +63,12 @@
 /* Something you can choose carries the ember's thin rule down its left edge, like everything you can act on; picked, it
    turns to gold and the rule goes. */
 .l-opt b { font-weight: 400; }
+.l-opt.l-read { box-shadow: inset 0 0 0 1px rgba(255,250,230,.45), inset 0 0 14px rgba(120,80,30,.12); }
 .l-opt .cost { float: right; margin-left: 10px; white-space: nowrap; }
 .l-opt small { color: var(--ink-2); font: 500 calc(13.5 * var(--u))/1.35 var(--ui); letter-spacing: 0; }
+.l-hand-pass { position: sticky; top: 0; z-index: 1; justify-content: space-between; margin: 0; padding: 0 6px;
+  background: var(--sheet-quiet); color: var(--ink); font: 400 calc(15 * var(--u)) var(--serif); }
+.l-hand-pass[hidden] { display: none; }
 /* Picked: the selected yellow, edged in ink so it holds on card stock. */
 .l-opt.on { background: linear-gradient(180deg, #ffe39a, #e8c25a); border-color: #6a4a10; box-shadow: inset 0 0 0 1px rgba(255,255,255,.6), 0 0 16px rgba(241,200,106,.6); }
 .l-opt.on small { color: var(--ink-2); }
@@ -111,6 +122,10 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
   font: italic 400 calc(12.5 * var(--u))/1.28 var(--serif); color: #3a2c1c;
 }
 .l-feed-event { color: var(--ink); font-style: normal; text-wrap: pretty; }
+.l-feed-event:first-child { font-weight: 700; }
+.l-feed-events { min-width: 0; }
+.l-feed-events.recent .l-feed-event { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-feed-events.recent .l-feed-event + .l-feed-event { color: #493820; }
 .l-log { display: grid; gap: 4px; font: 500 calc(14 * var(--u))/1.35 var(--ui); }
 .l-log div { padding: 4px 0; border-bottom: 1px solid rgba(22,18,14,.1); }
 .l-log .t-turn { color: var(--ink); font: 700 calc(16 * var(--u)) var(--num); letter-spacing: .04em; text-transform: uppercase; padding-top: 10px; border-bottom: 2px solid var(--ink); }
@@ -151,27 +166,21 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
 .l-recap { justify-self: stretch; display: flex; align-items: center; gap: 6px; min-width: 0; margin-bottom: 2px; padding: 0 0 0 10px; border-radius: calc(12 * var(--u));
   background: rgba(156,31,36,.12); border: 1px solid var(--sig-danger-ink); }
 .l-recap .l-lost { flex: 1; min-width: 0; min-height: 44px; padding: 4px 0; border: 0; background: none; cursor: pointer; text-align: left;
-  color: var(--sig-danger-ink); font: italic 400 calc(15 * var(--u)) var(--serif); }
+  color: var(--sig-danger-ink); font: 400 calc(16 * var(--u)) var(--serif); }
 .l-recap .l-lost small { display: block; color: var(--ink-2); font: 500 calc(12.5 * var(--u)) var(--ui); }
-.l-recap .g-close { position: static; flex: none; width: 44px; height: 44px; }
+.l-recap .g-close { position: static; flex: none; width: 44px; height: 44px; background: transparent; box-shadow: none; }
 .l-log small { display: block; color: var(--ink-2); font-size: calc(12.5 * var(--u)); }
 /* Something aimed at you: the prompt says so in red */
 .l-prompt.threat { box-shadow: var(--sheet-shadow), 0 0 0 2px rgba(255,58,58,.85), 0 0 34px rgba(255,58,58,.5); }
 .l-prompt.threat .l-what { color: var(--sig-danger-ink); }
 .l-prompt.threat::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(ellipse at 50% 120%, rgba(156,31,36,.35), transparent 60%); transition: opacity .3s; }
 .l-what { transition: color .3s; }
-/* Below the sift, the turn and its controls flank the life plaque and the graveyard. */
+/* The sift owns the instructions until the hand is back. */
 .l-prompt { transition: box-shadow .3s, opacity .25s; }
-body:is(.sifting, .sift-returning) .l-prompt, body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; pointer-events: none; }
-body:is(.sifting, .sift-returning) .l-prompt { display: flex; justify-content: space-between; align-items: end; width: auto; max-width: none;
-  left: calc(14 * var(--u) + env(safe-area-inset-left, 0px)); padding: 0; background: none; box-shadow: none; transition: opacity .25s; }
-body:is(.sifting, .sift-returning) .l-copy, body:is(.sifting, .sift-returning) .l-prompt .l-buttons:not(:empty) {
-  padding: calc(6 * var(--u)) calc(10 * var(--u)); border-radius: 6px; background: var(--sheet); box-shadow: var(--sheet-shadow); }
-body:is(.sifting, .sift-returning) .l-copy { display: block; max-width: min(38vw, calc(430 * var(--u))); text-align: left; }
-body.sifting .l-copy { animation: l-stackin .18s ease .5s backwards; }
-body:is(.sifting, .sift-returning) .l-prompt .l-buttons.response { display: flex; }
+body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; pointer-events: none; }
+body:is(.sifting, .sift-returning) :is(.l-prompt:not(.moving), .l-hand-view) { visibility: hidden; opacity: 0; pointer-events: none; }
 body.sifting .l-back { opacity: .75; }
-.sifting .proto-h .g-sifttitle small { animation: l-stackin .18s ease .43s both; }
+.sifting .proto-h .g-sifttitle .g-close { width: auto; min-height: 44px; padding: 0 calc(11 * var(--u)); white-space: nowrap; }
 /* Play goes on by itself: the button fills as the moment runs out */
 .l-buttons button.auto { position: relative; overflow: hidden; }
 .l-buttons button.auto::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--bone-3); transform-origin: left; animation: l-run 3.2s linear calc(-1 * var(--auto-elapsed, 0ms)) forwards; }
@@ -187,25 +196,30 @@ body.sifting .l-back { opacity: .75; }
    it returns. Fading as it slid made it a see-through strip over the table. */
 .held { position: absolute; bottom: calc(8 * var(--u)); width: 0; height: 0; z-index: 40; transition: transform .5s cubic-bezier(.37,0,.63,1), opacity 0s; }
 .proto-h .g-hand.away { transform: none; opacity: 1; }
-.g-hand.away .held, body.sift-returning .held { transform: translateY(calc(var(--hh) * 1.4 + 40px)); opacity: 0; transition: transform .5s cubic-bezier(.37,0,.63,1), opacity 0s .5s; }
+.g-hand.away .held { transform: translateY(calc(var(--hh) * 1.4 + 40px)); opacity: 0; transition: transform .5s cubic-bezier(.37,0,.63,1), opacity 0s .5s; }
 .held .hcard {
   position: absolute; left: calc(var(--hw) / -2); bottom: 0; width: var(--hw); height: var(--hh); border-radius: calc(var(--hw) * .045);
   background: #111 center / 100% 100% no-repeat; box-shadow: -4px 2px 14px rgba(0,0,0,.55); transform-origin: 50% 100%; touch-action: none;
   -webkit-user-select: none; user-select: none; cursor: grab;
 }
 .held .hcard.dragging { cursor: grabbing; box-shadow: 0 18px 40px rgba(0,0,0,.7); }
-.l-response-tabs {
-  position: absolute; left: calc(34 * var(--u)); bottom: calc(215 * var(--u)); width: calc(435 * var(--u));
-  display: flex; gap: calc(8 * var(--u)); overflow-x: auto; padding: 4px; z-index: 40;
-}
-.g-hand.away .l-response-tabs, body.sift-returning .l-response-tabs { visibility: hidden; }
-.l-response-tabs button {
-  flex: none; display: flex; align-items: center; gap: calc(8 * var(--u)); min-height: 44px; padding: 0 calc(10 * var(--u));
+.l-hand-label { display: none; position: absolute; inset: 4% auto auto 4%; width: var(--label-w, 92%); box-sizing: border-box;
+  padding: .27em .33em; border-radius: 3px; background: var(--sheet-quiet); color: var(--ink); pointer-events: none;
+  overflow-wrap: anywhere; font: 650 max(12px, calc(13.5 * var(--u)))/1.12 var(--ui); }
+.hcard:is(.front, .named, .arriving):not(.dragging) .l-hand-label, .l-cast .l-hand-label { display: block; }
+.held .hcard.arriving { z-index: 30 !important; }
+.hcard.arriving .l-hand-label { width: 92%; }
+.l-hand-label .cost { display: inline-block; margin-left: .35em; white-space: nowrap; }
+.l-hand-view {
+  position: absolute; z-index: 40; left: calc(14 * var(--u)); bottom: calc(222 * var(--u));
+  width: max-content; min-height: 44px; padding: 0 calc(12 * var(--u)); pointer-events: auto;
   background: var(--sheet); color: var(--ink); border: 1px solid #c67b37; border-radius: 6px;
   font: 400 calc(15 * var(--u))/1.1 var(--serif); cursor: pointer;
 }
+.g-hand.away .l-hand-view { visibility: hidden; }
 /* A card I cast, on its way out of the hand to the stack (castFrom). */
 .l-cast { position: fixed; z-index: 41; pointer-events: none; background: #111 center / 100% 100% no-repeat; box-shadow: 0 14px 34px rgba(0,0,0,.6); }
+.l-cast .l-hand-label { left: 50%; width: max-content; max-width: max(92%, 100px); transform: translateX(-50%); text-align: center; }
 
 /* The stack layer: what's on the stack and what it does, in one panel beside the cards. */
 /* One opaque sheet: the item that resolves next in full, everything under it a ruled line each. live.js puts it where it
@@ -214,15 +228,13 @@ body.sifting .l-back { opacity: .75; }
   position: fixed; z-index: 22; left: 50%; top: 30%; width: min(28vw, calc(260 * var(--u))); display: grid; gap: calc(6 * var(--u));
   pointer-events: none; font: 400 calc(14 * var(--u))/1.3 var(--serif); color: var(--text);
 }
-/* Leaving, it goes as the spell leaves the stack: fast at first, so it never reads as still pending (live.js hides it after). */
-.l-stackinfo.out { animation: l-stackout .3s ease-out both; }
-@keyframes l-stackout { to { opacity: 0; } }
 .l-stackinfo .more { pointer-events: auto; margin-top: 2px; padding: 0 10px; min-height: 44px; border-radius: 999px; border: 0; cursor: pointer; background: rgba(255,248,228,.3);
   box-shadow: inset 0 0 0 1px rgba(40,25,8,.5); color: var(--ink); font: italic 400 calc(13 * var(--u)) var(--serif); }
-@keyframes l-stackin { from { opacity: 0; } }
+body:not(.sifting) .l-stackinfo.via-prompt article.top .more { display: none; }
 /* Brief, where the full text won't fit beside the stack: a complete effect or aim, with rules one tap away. */
-.l-stackinfo:not(.brief) .effect, .l-stackinfo.brief p, .l-stackinfo.brief .by, .l-stackinfo.brief footer { display: none; }
+.l-stackinfo:not(.brief) :is(.effect, .short-by), .l-stackinfo.brief :is(p, div.by, footer) { display: none; }
 .l-stackinfo.brief { width: min(39vw, calc(340 * var(--u))); }
+.l-stackinfo.brief.via-prompt:has(.rest) { width: min(32vw, calc(248 * var(--u))); }
 .l-stackinfo.brief article.top { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 8px; padding-top: calc(6 * var(--u)); padding-bottom: calc(6 * var(--u)); }
 .l-stackinfo.brief article.top header { justify-content: flex-start; }
 .l-stackinfo.brief article.top header span { white-space: nowrap; }
@@ -247,6 +259,7 @@ body.sifting .l-back { opacity: .75; }
 .l-stackinfo .rest b { font: 400 calc(15 * var(--u)) var(--serif); flex: none; }
 .l-stackinfo .rest i { font: italic 400 calc(12.5 * var(--u)) var(--serif); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
 .l-stackinfo .rest .tg { margin: 0; }
+.l-stackinfo .rest .pending { flex-basis: 100%; }
 .l-stackinfo .rest li.aimed b, .l-stackinfo .rest li.aimed i { color: var(--sig-danger-ink); }
 .l-rules { white-space: pre-line; font: 400 calc(17 * var(--u))/1.4 var(--serif); }
 /* The hint is the panel's foot: a ruled strip of the same parchment, a shade deeper. */
@@ -263,7 +276,7 @@ body.sifting .l-back { opacity: .75; }
   background: #222 center / cover; box-shadow: 0 10px 26px rgba(0,0,0,.6);
 }
 .l-mullbox .l-buttons button { min-width: calc(150 * var(--u)); min-height: 52px; font-size: calc(17 * var(--u)); }
-/* Just drawn: an ember glow round its edge that dies away over 1.2 s (live.js slides it in from my library). */
+/* New arrivals keep an ember glow as they join the fan. */
 .held .hcard.drawn::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; animation: l-drawn 1.2s ease-out forwards;
   box-shadow: 0 0 0 3px rgba(255,170,80,.95), 0 0 30px 6px rgba(255,120,30,.8); }
 @keyframes l-drawn { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
