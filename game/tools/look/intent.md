@@ -9,12 +9,20 @@ When goals pull against each other, or a finding offers several fixes, choose wh
 - **Understand the board at a glance.** Clarity over density: open space, instant recognition, a composed tabletop
   rather than a dashboard. *Why:* density is the bane of understandability; Arena is the minimum bar.
 - **Never miss what changes.** Whatever just changed (a spell, an attack, a card arriving or leaving, whose turn it is)
-  is on screen and drawn to the eye, and nothing that changes is hidden or off screen. *Now:* the stack comes to the
-  middle and dims the table; the turn player's page comes forward a little.
+  is on screen and drawn to the eye, and nothing that changes is hidden or off screen. *Now:* the turn player's page
+  comes forward a little.
+- **Focus: one thing at a time may take the table.** Some moments deserve the player's whole attention: the stack,
+  a combat, one opponent's board, a pile. A focus is modal: it comes forward over the rest of the table, as large and
+  central as reads best, and may cover and dim the rest, because one tap away (or Escape) dismisses it and the whole
+  board is back as it was. Inside a focus everything reads fully (the real card image where that helps), and what the
+  focus involves (the cards the stack targets, the creatures in a combat) comes up above the dim in its own place on
+  the board, never covered. A focus never hides change: when something happens elsewhere it steps aside or shows it.
+  *Now:* the stack comes forward and dims the table; tapping away sets it aside small, tapping it brings it back;
+  leaning in brings a seat's page forward. Combat could have a focus of its own. *Why:* Mike (Nov 23): "it's okay to
+  overlap/hide things in the layout if it's in a modal way that's dismissable"; use it as a tool for clarity.
 - **Look closer without getting lost.** A player can look at one seat, a pile or a card closely and get back in one
-  tap; the view may move to show activity, but never in a way that hides activity elsewhere, and never needs
-  navigating (no free pan, pinch or orbit). *Now:* leaning in brings a page forward; a camera that frames the action is
-  equally fine if it pulls back when something happens elsewhere and lets the player look again.
+  tap; the view never needs navigating (no free pan, pinch or orbit). A camera that frames the action is fine if it
+  pulls back when something happens elsewhere and lets the player look again.
 - **Piles never hide what acts.** A card that attacks, blocks, dies, is targeted or otherwise acts leaves its pile while
   it acts, so the player sees exactly how many and which; it rejoins after. *Why:* a pile acting as a whole can't say
   how many are involved.
@@ -44,6 +52,10 @@ When goals pull against each other, or a finding offers several fixes, choose wh
 - **Tappable.** Every card and pile has at least a 44×44 pt patch that the hit test gives to it (Apple's minimum).
 - **Nothing covers what a card says.** No other card, label or panel hides more than a fifth of a card's name strip or
   of its foot (power, toughness, counters), or more than a third of its face. A pile's own cards may overlap each other.
+  This is the board at rest: a focus may cover the rest of the table, but never what it involves. The audit measures
+  the board with any focus set aside (the stack, and any 3D object marked `userData.focus = true` or HTML element marked
+  `data-focus`), then checks that the focus covers none of what it involves (the stack's targets, and the card ids in a
+  focus object's `userData.involves`).
 - **Folding order** as a board grows: identical cards pile with a count; opponents' lands are one pile; mana rocks join
   the lands; then like noncreatures fan into a named pile ("Artifacts 5"); only then, and only when the page is at its
   largest, do unlike creatures share a "+N" pile. A mixed pile hides what it holds, so it is the last resort, never a
