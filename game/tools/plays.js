@@ -45,8 +45,11 @@ const tokens = (() => {
   const s = clone(base); s.active = "Marath"; s.priority = "You";
   const marath = find(s, "Marath", "Marath, Will of the Wild");
   return run(s, [
-    v => { v.stack = [{ id: 1, source: marath, controller: "Marath", spell: false, text: "Marath, Will of the Wild - create an X/X Elemental", targets: [] }]; log(v, "Marath activated Marath, Will of the Wild"); },
-    v => { v.stack = []; const m = pl(v, "Marath"); m.battlefield.push(card("Marath", "Elemental (Marath)", { power: 4, toughness: 4 })); for (let i = 0; i < 4; i++) m.battlefield.push(card("Marath", "Beast")); log(v, "Marath created an Elemental and four Beasts"); },
+    v => { const mr = find(v, "Marath", marath.name), x = 2;   // X = 2: the cost is paid as he activates, two of his counters
+      mr.counters = { "+1/+1": mr.counters["+1/+1"] - x }; mr.power -= x; mr.toughness -= x;
+      v.stack = [{ id: 1, source: mr, controller: "Marath", spell: false, text: "Marath, Will of the Wild - create an X/X Elemental (X = 2)", targets: [] }]; log(v, "Marath removed two +1/+1 counters from Marath to activate Marath, Will of the Wild"); },
+    v => { v.stack = []; const m = pl(v, "Marath"), x = 2;
+      m.battlefield.push(card("Marath", "Elemental (Marath)", { power: x, toughness: x })); for (let i = 0; i < 4; i++) m.battlefield.push(card("Marath", "Beast")); log(v, "Marath created a 2/2 Elemental and four Beasts"); },
   ]);
 })();
 
@@ -69,8 +72,9 @@ const wipe = (() => {
   const sunfall = card("Dack", "Sunfall");
   return run(s, [
     v => { v.stack = [{ id: 1, source: sunfall, controller: "Dack", spell: true, text: "Sunfall", targets: [] }]; log(v, "Dack cast Sunfall"); },
-    v => { v.stack = []; v.players.forEach(p => { const dead = p.battlefield.filter(c => /Creature/.test(c.type)); p.battlefield = p.battlefield.filter(c => !/Creature/.test(c.type)); p.exile.push(...dead.filter(c => !c.token)); });
-      pl(v, "Dack").graveyard.push(sunfall); pl(v, "Dack").battlefield.push(card("Dack", "Incubator")); log(v, "Sunfall exiled every creature"); },
+    v => { v.stack = []; let x = 0;   // Incubate X: X is the number of creatures exiled, tokens too
+      v.players.forEach(p => { const dead = p.battlefield.filter(c => /Creature/.test(c.type)); x += dead.length; p.battlefield = p.battlefield.filter(c => !/Creature/.test(c.type)); p.exile.push(...dead.filter(c => !c.token)); });
+      pl(v, "Dack").graveyard.push(sunfall); pl(v, "Dack").battlefield.push(card("Dack", "Incubator", { counters: { "+1/+1": x } })); log(v, `Sunfall exiled ${x} creatures; Dack created an Incubator with ${x} +1/+1 counters`); },
   ]);
 })();
 
