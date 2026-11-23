@@ -154,6 +154,9 @@ while [ "$ROUNDS" -eq 0 ] || [ "$i" -lt "$ROUNDS" ]; do
     run_fixer "$R/fix.log" "$(p fix __FINDINGS__ "$R/findings.md" __PACKETS__ "$B" __OUT__ "$R/fix.md" __REVISE__ "" __OWN__ "$OWN" __RECORD__ "$(record_how)")"
     [ -f "$R/fix.md" ] || { echo "fixer wrote no $R/fix.md:"; tail -3 "$R/fix.log"; exit 1; }
     keep_scope >>"$R/fix.md"
+  fi
+  # Re-record after the fix (and again after a revision): its own step, so a restart picks it up.
+  if [ ! -f "$A/client.sum" ] || { [ -f "$R/fix-2.md" ] && [ "$R/fix-2.md" -nt "$A/client.sum" ]; }; then
     echo "== round $n: recording after the fix"; record "$A"
     node tools/eval.js "$R/eval" webkit >"$R/eval.log" 2>&1 || true
   fi
