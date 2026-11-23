@@ -331,6 +331,70 @@ shared by every seat, so a fork's order can differ; the fingerprint check caught
 search stalled. No refused attacks. One play it showed: Jev 1 chose Recon Craft Theta's crew nine times in a round
 when it couldn't be paid, each one failing.
 
+## Current-list piloting audit (2026-11-21)
+
+Fresh ManaBox exports, not the older example fixtures: Living Worlds `4fa7041f`, Assimilation
+`5815cfea`, both 100 cards. Python advisors and current-list scratch guides were supplied with
+Jev 1.13 outcomes lookahead. Batch b226 kept a one-land and a seven-land nature opening despite
+the guide; it is exploratory evidence, not a representative development baseline. Batches b231
+and b233 used explicit opening-hand checks (decisions recorded as pilot). London bottom choices
+were still model-made and can discard needed commander colors.
+
+The records still show material strategy errors despite useful candidate rollouts: Marath spent
+counters on incidental player damage instead of building tokens, a Commune with Lava was cast
+with X=0, an ordinary noncreature Cornucopia entered with zero charges in a list with no independent
+charge seeder, fetches took redundant basics while Atraxa colors were missing, and b231 cast Sunfall
+on its own board against passive opponents. Repeated crew/activation attempts also recur. b233
+reported 26/1511 failed forks, six decisions without lookahead and one turn handed to the loop guard.
+These are piloting/protocol limits, not reasons to cut the cards or claim deck power from aggregate
+board totals. A good opening filter is not sufficient strategic validation; inspect actual decisions
+and record any manual intervention separately.
+
+### Piloting repair and exact reconstruction (2026-11-21)
+
+Replayed the original current-list hashes/seeds in an isolated runtime, with every prior parked
+choice matching: g90764's actual T7 Sunfall choice after 58 decisions, g90761's first T4 Marath
+mode after 17, and g92576's T6 Commune X choice after 33. Both b226 extreme opening hands also
+reproduced. Captured states, choices and fresh forks live in `bench/situations/eternities-audit-*`.
+These reconstruct the position, not the original random model sample: historical request bodies
+and fork results were not retained, and Forge's AI continuation can vary.
+
+Concrete protocol defects repaired in the shared goldfish/table decider:
+- A hard-coded "win fast" goal competed with the supplied engine-development plan. Goldfish now
+  follows the plan and names the absence of opposing nonland targets; tables keep their own goal.
+- London cards are already bottomed when Forge asks keep, despite its "then bottom" prompt.
+  Keep advice now evaluates the actual remaining hand. The existing two-to-four-land opening
+  rule is enforced above four cards, with an explicit four-card floor. These deterministic
+  choices record `by: policy`, not model or forced. All London subsets (at most 35) are model
+  choices, rather than silently giving multi-card bottoms to Forge's AI. They are not rolled
+  out, which would reveal the next draw.
+- Failed actions were omitted by the successful-play turn digest. They now reach the model.
+  Independently of model obedience, an engine-rejected play is excluded while its observed
+  position is identical; any state change permits retry. This is failure feedback, not another
+  implementation of card legality or a card-specific ban.
+- Outcome boards now show counters, including counter-bearing lands, and explicitly attribute
+  lost own engines. Wide X samples retain zero, one and both bounds. Exile counts are visible,
+  explicitly *not* claimed to be playable cards: permissions may outlast the one-turn horizon.
+
+On the exact reconstructed Sunfall position, three fresh Jev 1.13 calls per presentation moved
+from sacrificing Cankerbloom 3/3 to passing 3/3; Sunfall probability fell from 15–16% to 3–4%.
+This is a small offline presentation check, not a deck-performance result. Both extreme b226
+hands were still kept 3/3 under either presentation, motivating deterministic opening policy
+rather than another wording-only fix. A native regression verifies the actual London sequence
+of kept-hand sizes 7, 7, 6, 5, 4 and the final logged policy keep.
+
+**Not solved:** the reconstructed Marath mode still preferred returning counters to itself over
+making a token (3/3 old and new); Commune still chose X=0 (3/3 each), including when the exile
+count was shown. Its X=0 fork builds more immediate mana, whereas larger X retains cards in
+exile for the following turn, beyond the evaluation horizon. Fetch colour selection, conditional
+engine assembly and longer-range strategy remain model limitations. Fresh current-list guides
+were supplied to these games, so stale example guides are not their cause; the example guides
+must not be assumed to describe later ManaBox edits. No deck or provider/model changes were made.
+
+Verification: 118 tests passed in an isolated HOME/socket, including native London ordering;
+the final model-only suite passed 28 tests after the additional impulse-outcome and captured-hand regressions.
+Shared goldfish and table servers were not restarted by this repair.
+
 ## Interactive table latency — 2026-11-22
 
 Read-only investigation of the live four-player bridge game (parents g260–g262). No live pilot, game state, or mode was changed. Across the observed parent fork records there were zero stalled-fork failures; six earlier failures were Tempt with Discovery replay drift. One TimeoutException in the accumulated table log belonged to the previous evening, not this game. A recent 97-fork snapshot had a median file lifetime of 12.31s and maximum 50.38s (filesystem birth-to-modification times, not pure compute timings). The current Marath board was the outlier: its 282 observed fork files summed to about 1,228s, versus about 80s for 395 Atraxa forks and 66s for 194 other-Marath forks. Parallel work means these sums are not game wall time. A live JVM sample caught a fork inside Forge combat prediction and mana-source evaluation.

@@ -1,0 +1,774 @@
+{
+ "id": "eternities-audit-g90761-T4-mode",
+ "plan": "These are the current 100-card III drafts after Mike’s own cuts, not an older fixture. Test their ordinary engine assembly and useful card flow over ten turns. Three passive opponents play lands only: do not waste removal or board wipes on yourself or use opponents’ lack of blockers as proof of multiplayer strength. Keep reaction cards unless a genuine useful line needs them. Mulligan by colors, early development and follow-up, not land count alone; the first mulligan is free. Use green early and fetch the typed duals required by the actual hand. Prioritize useful expiring exile cards before optional mana sinks, but let unusable removal expire rather than destroying your own engines. Explore meaningful attacks, scalable counters, card supply, and paid activation costs. Do not assume any card not in this actual list is available.\nNature / Marath: ramp and landfall feed +1/+1 counters and varied creature tokens; populate is a payoff for useful base-sized tokens. Marath creates his own counters and can seed Druid or another creature, make a base-sized Elemental, or use damage when productive. Do not spend his last counter gratuitously or burn opponents just because there is no interaction. Cankerbloom and Marketback Walker have replaced Evolution Witness, Grateful Apparition, Resourceful Defense and Tannuk. Preserve Marketback as a counter-growing resource: drawing requires death, not just entering. The Ozolith preserves counters, but dead creatures themselves do not return. No Riker, Pike, Janeway, Discovery or Shamanic Revelation is present. Both Cornucopia and Exploration Broodship ARE present. Station Broodship to the useful extra-land threshold when there is a land to use; do not tap important mana creatures without accounting for the opportunity cost. Build mana then prioritize card supply over more surplus ramp. Bond needs a power-three creature ENTRY, not later growth. Wildspeaker needs useful non-Human power; aim for four or more cards rather than a five-mana draw-two. Bankbuster draws without crew; War Room is a mana/life-intensive fallback. Mission permits its found nonland for this turn only; RR happens on a landfall trigger at five quest counters, not from proliferation alone. Wormhole produces land tokens, not creature tokens, and triggers once per attack declaration. Fetch/Device land swaps can multiply landfall only when a real landfall payoff exists; Device is not net ramp. Song copies base characteristics, not counters: a real 3/3 Golem, 4/4 Beast or Marath’s base-X Elemental is good; the zero-base Alien is not. Loading Zone is not a token doubler and does not cover ordinary noncreature mana rocks. Unbound copies X spells/Marath’s X abilities but not his fixed-cost entry counters.\n\nOpening-hand choices are supplied by an explicit pilot check. For subsequent play, do not activate Crew again when the Vehicle is already a creature: this adds no further benefit. For a single crew activation choose only enough creature power to pay, not all creatures. Do not repeatedly station a ship beyond a useful threshold or station a zero-power creature for zero counters. Keep useful attackers untapped.\n",
+ "state": {
+  "turn": "T4 main1",
+  "life": 38,
+  "mana": 1,
+  "land_drop": false,
+  "library": 88,
+  "hand": [
+   "Surge Conductor",
+   "Hit It!",
+   "Sword of Truth and Justice",
+   "Reckoner Bankbuster"
+  ],
+  "battlefield": [
+   {
+    "name": "Temple Garden",
+    "id": 87,
+    "tapped": true
+   },
+   {
+    "name": "Astral Cornucopia",
+    "id": 77
+   },
+   {
+    "name": "Stomping Ground",
+    "id": 36,
+    "tapped": true
+   },
+   {
+    "name": "Arcane Signet",
+    "id": 39,
+    "tapped": true
+   },
+   {
+    "name": "Marath, Will of the Wild",
+    "id": 100,
+    "commander": true,
+    "pt": "3/3",
+    "sick": true,
+    "counters": {
+     "+1/+1": 3
+    }
+   },
+   {
+    "name": "Karn's Bastion",
+    "id": 32
+   }
+  ],
+  "command": [],
+  "graveyard": [
+   "Windswept Heath",
+   "Arid Mesa"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 4,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Arcane Signet": "Arcane Signet {2} — Artifact — {T}: Add one mana of any color in your commander's color identity.",
+   "Astral Cornucopia": "Astral Cornucopia {X}{X}{X} — Artifact — Astral Cornucopia enters with X charge counters on it. / {T}: Choose a color. Add one mana of that color for each charge counter on this artifact.",
+   "Hit It!": "Hit It! {1}{R}{G} — Enchantment — Creatures you control have haste. / When this enchantment enters, reveal the top five cards of your library. Put a land card from among them onto the battlefield tapped and the rest into your graveyard.",
+   "Karn's Bastion": "Karn's Bastion — Land — {T}: Add {C}. / {4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Marath, Will of the Wild": "Marath, Will of the Wild {R}{G}{W} — Legendary Creature - Elemental Beast — Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it. / {X}, Remove any number of +1/+1 counters from Marath: Choose one. X can't be 0. / • Put X +1/+1 counters on target creature. / • Marath deals X damage to any target. / • Create an X/X green Elemental creature token.",
+   "Reckoner Bankbuster": "Reckoner Bankbuster {2} — Artifact - Vehicle — Reckoner Bankbuster enters with three charge counters on it. / {2}, {T}, Remove a charge counter from Reckoner Bankbuster: Draw a card. Then if there are no charge counters on Reckoner Bankbuster, create a Treasure token and a 1/1 colorless Pilot creature token with \"This token crews Vehicles as though its power were 2 greater.\" / Crew 3",
+   "Stomping Ground": "Stomping Ground — Land - Mountain Forest — As Stomping Ground enters, you may pay 2 life. If you don't, it enters tapped.",
+   "Surge Conductor": "Surge Conductor {3} — Artifact Creature - Robot — Whenever another nontoken artifact you control enters, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Sword of Truth and Justice": "Sword of Truth and Justice {3} — Artifact - Equipment — Equipped creature gets +2/+2 and has protection from white and from blue. / Whenever equipped creature deals combat damage to a player, put a +1/+1 counter on a creature you control, then proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.) / Equip {2}",
+   "Temple Garden": "Temple Garden — Land - Forest Plains — As Temple Garden enters, you may pay 2 life. If you don't, it enters tapped."
+  }
+ },
+ "decision": {
+  "kind": "mode",
+  "turn": "T4 main1",
+  "prompt": "modes for Marath, Will of the Wild",
+  "options": [
+   "Put X +1/+1 counters on target creature.",
+   "this deals X damage to any target.",
+   "Create an X/X green Elemental creature token."
+  ],
+  "details": [
+   "Put X +1/+1 counters on target creature.",
+   "Marath, Will of the Wild deals X damage to any target.",
+   "Create an X/X green Elemental creature token."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 4
+  },
+  {
+   "t": "draw",
+   "turn": 4,
+   "card": "Reckoner Bankbuster",
+   "id": 96
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90979"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90978"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90981"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90980"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90982"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90983"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90984"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g90985"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 7,
+   "answer": [
+    "Marath, Will of the Wild (commander)"
+   ],
+   "by": "model",
+   "p": 0.22
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "choose",
+   "prompt": "Select Mana to Produce (Arcane Signet)",
+   "options": 1,
+   "answer": [
+    "green"
+   ],
+   "by": "forced"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "pay",
+   "prompt": "mana to pay {R}{G}{W} for Marath, Will of the Wild, in order; none = automatic",
+   "options": 12,
+   "answer": [
+    "Temple Garden (W)",
+    "Stomping Ground (R)",
+    "Arcane Signet (G)"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "paid",
+   "turn": 4,
+   "card": "Marath, Will of the Wild",
+   "sources": [
+    "Temple Garden",
+    "Stomping Ground",
+    "Arcane Signet"
+   ],
+   "by": "ai"
+  },
+  {
+   "t": "cast",
+   "turn": 4,
+   "card": "Marath, Will of the Wild",
+   "id": 100,
+   "as": "Marath, Will of the Wild (commander)",
+   "by": "model"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91004"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91005"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91003"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 2,
+   "answer": [
+    "Karn's Bastion (land)"
+   ],
+   "by": "model",
+   "p": 0.76
+  },
+  {
+   "t": "land",
+   "turn": 4,
+   "card": "Karn's Bastion",
+   "id": 32
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91017"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91019"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91018"
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "play",
+   "options": 2,
+   "answer": [
+    "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…"
+   ],
+   "by": "model",
+   "p": 0.8
+  },
+  {
+   "t": "decision",
+   "turn": 4,
+   "kind": "number",
+   "prompt": "X for Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+   "options": 0,
+   "answer": [
+    "1"
+   ],
+   "by": "forced"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91035"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91033"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91036"
+  },
+  {
+   "t": "fork",
+   "turn": 4,
+   "session": "g91034"
+  }
+ ],
+ "default": "Put X +1/+1 counters on target creature.",
+ "lines": {
+  "Put X +1/+1 counters on target creature.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "mode",
+     "prompt": "modes for Marath, Will of the Wild",
+     "options": 3,
+     "answer": [
+      "Put X +1/+1 counters on target creature."
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for Put X +1/+1 counters on target creature.",
+     "options": 1,
+     "answer": [
+      "Marath, Will of the Wild 3/3 [+1/+1 3] (commander)"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {X} for Marath, Will of the Wild, in order; none = automatic",
+     "options": 6,
+     "answer": [
+      "Karn's Bastion (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "sources": [
+      "Karn's Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "id": 100,
+     "as": "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+     "x": 1,
+     "by": "agent"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 1,
+     "power": 3,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Plains",
+     "id": 54
+    },
+    {
+     "t": "end",
+     "turn": 5,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Surge Conductor",
+     "Hit It!",
+     "Sword of Truth and Justice",
+     "Reckoner Bankbuster",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Temple Garden",
+      "id": 87
+     },
+     {
+      "name": "Astral Cornucopia",
+      "id": 77
+     },
+     {
+      "name": "Stomping Ground",
+      "id": 36
+     },
+     {
+      "name": "Arcane Signet",
+      "id": 39
+     },
+     {
+      "name": "Marath, Will of the Wild",
+      "id": 100,
+      "commander": true,
+      "pt": "3/3",
+      "counters": {
+       "+1/+1": 3
+      }
+     },
+     {
+      "name": "Karn's Bastion",
+      "id": 32
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Windswept Heath",
+     "Arid Mesa"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "this deals X damage to any target.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "mode",
+     "prompt": "modes for Marath, Will of the Wild",
+     "options": 3,
+     "answer": [
+      "this deals X damage to any target."
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "targets",
+     "prompt": "target for Marath deals X damage to any target.",
+     "options": 5,
+     "answer": [],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {X} for Marath, Will of the Wild, in order; none = automatic",
+     "options": 6,
+     "answer": [
+      "Karn's Bastion (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "sources": [
+      "Karn's Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "id": 100,
+     "as": "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+     "x": 1,
+     "by": "agent"
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 1,
+     "power": 2,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Plains",
+     "id": 54
+    },
+    {
+     "t": "end",
+     "turn": 5,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Surge Conductor",
+     "Hit It!",
+     "Sword of Truth and Justice",
+     "Reckoner Bankbuster",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Temple Garden",
+      "id": 87
+     },
+     {
+      "name": "Astral Cornucopia",
+      "id": 77
+     },
+     {
+      "name": "Stomping Ground",
+      "id": 36
+     },
+     {
+      "name": "Arcane Signet",
+      "id": 39
+     },
+     {
+      "name": "Marath, Will of the Wild",
+      "id": 100,
+      "commander": true,
+      "pt": "2/2",
+      "counters": {
+       "+1/+1": 2
+      }
+     },
+     {
+      "name": "Karn's Bastion",
+      "id": 32
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Windswept Heath",
+     "Arid Mesa"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Create an X/X green Elemental creature token.": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "mode",
+     "prompt": "modes for Marath, Will of the Wild",
+     "options": 3,
+     "answer": [
+      "Create an X/X green Elemental creature token."
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 4,
+     "kind": "pay",
+     "prompt": "mana to pay {X} for Marath, Will of the Wild, in order; none = automatic",
+     "options": 6,
+     "answer": [
+      "Karn's Bastion (C)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "sources": [
+      "Karn's Bastion"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 4,
+     "card": "Marath, Will of the Wild",
+     "id": 100,
+     "as": "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+     "x": 1,
+     "by": "agent"
+    },
+    {
+     "t": "move",
+     "turn": 4,
+     "card": "Elemental Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "eot",
+     "turn": 4,
+     "lands": 3,
+     "mana": 4,
+     "unspent": 0,
+     "hand": 4,
+     "creatures": 2,
+     "power": 3,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 5
+    },
+    {
+     "t": "draw",
+     "turn": 5,
+     "card": "Plains",
+     "id": 54
+    },
+    {
+     "t": "end",
+     "turn": 5,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T5 main1",
+    "life": 38,
+    "mana": 4,
+    "land_drop": true,
+    "library": 87,
+    "hand": [
+     "Surge Conductor",
+     "Hit It!",
+     "Sword of Truth and Justice",
+     "Reckoner Bankbuster",
+     "Plains"
+    ],
+    "battlefield": [
+     {
+      "name": "Temple Garden",
+      "id": 87
+     },
+     {
+      "name": "Astral Cornucopia",
+      "id": 77
+     },
+     {
+      "name": "Stomping Ground",
+      "id": 36
+     },
+     {
+      "name": "Arcane Signet",
+      "id": 39
+     },
+     {
+      "name": "Marath, Will of the Wild",
+      "id": 100,
+      "commander": true,
+      "pt": "2/2",
+      "counters": {
+       "+1/+1": 2
+      }
+     },
+     {
+      "name": "Karn's Bastion",
+      "id": 32
+     },
+     {
+      "name": "Elemental Token",
+      "id": 406,
+      "pt": "1/1",
+      "token": true
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Windswept Heath",
+     "Arid Mesa"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 5,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Create an X/X green Elemental creature token."
+ ],
+ "note": "Reconstructed 2026-11-21 from g90761; matched 17 earlier parked decisions from original seed and exact current-list hash. Original answer: ['this deals X damage to any target.']. Historical model request/random sample was not retained. These expected labels reject documented blunders, not every alternative's long-run ranking."
+}
