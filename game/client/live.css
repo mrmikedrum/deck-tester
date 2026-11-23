@@ -12,6 +12,11 @@
 .l-where { font: 600 calc(15 * var(--u))/1.15 var(--ui); color: var(--ink-2); }
 .l-notice { font: 600 calc(15 * var(--u))/1.2 var(--ui); color: #764510; white-space: pre-line; }
 .l-what { font: 400 calc(19 * var(--u))/1.15 var(--serif); letter-spacing: .005em; text-wrap: balance; }
+.l-what:has(.l-restore-cue) { display: grid; }
+.l-what:has(.l-restore-cue) > span { grid-area: 1 / 1; }
+.l-restore-cue, .l-prompt.restoring .l-what > span:first-child,
+.l-prompt.restoring .l-ctx, .l-prompt.restoring .l-buttons button:not(.l-hold) { visibility: hidden; }
+.l-prompt.restoring .l-restore-cue { visibility: visible; }
 .l-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: calc(6 * var(--u)); margin-top: calc(3 * var(--u)); }
 .l-buttons:empty { display: none; }
 /* Buttons, three tiers and one rule each. Primary (the answer): bronze with an ember lit in it, cream text.
@@ -34,10 +39,10 @@
 .l-buttons button:disabled, .l-row button:disabled { opacity: .35; }
 .l-buttons button:active, .l-row button:active { transform: translateY(1px); }
 .l-play-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
-.l-play-buttons:has(.l-stack-rules):has(.l-delegate, .auto) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.l-play-buttons:has(.l-stack-rules):has(.l-delegate, .auto) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr); }
 .l-play-buttons button { min-width: 0; padding-inline: calc(6 * var(--u)); }
 .l-play-buttons .l-choice { grid-column: 1 / -1; grid-row: 1; padding-block: calc(7 * var(--u)); }
-.l-play-buttons button:is(.l-stack-rules, .l-delegate) { padding-inline: calc(5 * var(--u)); white-space: nowrap; }
+.l-play-buttons button:is(.l-stack-rules, .l-delegate) { padding-inline: calc(5 * var(--u)); }
 .l-choice-label, .l-response-names { display: block; }
 .l-choice-label { white-space: nowrap; }
 .l-choice-label + .l-response-names { margin-top: calc(2 * var(--u)); }
@@ -105,7 +110,7 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
 .proto-h .g-hand { right: calc(290 * var(--u)); }
 /* Rules text in the overlays is the book's serif, a size up for the same legibility. Only the inspector's rules, read
    closely at length, stay in the sans (common.css). */
-.l-ctx { font: 400 calc(14 * var(--u))/1.3 var(--serif); color: var(--ink-2); max-width: calc(290 * var(--u)); text-wrap: pretty; }
+.l-ctx, .l-replay-status { font: 400 calc(14 * var(--u))/1.3 var(--serif); color: var(--ink-2); max-width: calc(290 * var(--u)); text-wrap: pretty; }
 .l-menu {
   position: fixed; z-index: 30; left: calc(12 * var(--u) + env(safe-area-inset-left, 0px)); top: calc(10 * var(--u) + env(safe-area-inset-top, 0px));
   min-height: 40px; padding: 0 calc(16 * var(--u)); border-radius: 6px; border: 0;
@@ -131,6 +136,8 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
 .l-feed-events { min-width: 0; }
 .l-feed-events.recent .l-feed-event { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .l-feed-events.recent .l-feed-event + .l-feed-event { color: #493820; }
+.l-feed:has(.l-feed-events.summary) { column-gap: calc(6 * var(--u)); }
+.l-feed-events.summary .l-feed-event + .l-feed-event { color: #493820; }
 .l-feed-events.recent .l-feed-event.l-feed-draw { text-decoration: underline; text-decoration-color: #765024; text-underline-offset: .15em; }
 .l-log { display: grid; gap: 4px; font: 500 calc(14 * var(--u))/1.35 var(--ui); }
 .l-log div { padding: 4px 0; border-bottom: 1px solid rgba(22,18,14,.1); }
@@ -162,7 +169,12 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
 .l-back { position: fixed; z-index: 30; top: calc(10 * var(--u) + env(safe-area-inset-top, 0px)); right: calc(14 * var(--u) + env(safe-area-inset-right, 0px));
   display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 18px; border-radius: 4px 12px 4px 12px; background: var(--sheet); color: var(--ink);
   box-shadow: var(--sheet-shadow); font: italic 400 calc(18 * var(--u)) var(--serif); letter-spacing: .02em; }
-.l-back button { min-height: 40px; padding: 0 16px; border-radius: 6px; border: 0; background: var(--plaque); box-shadow: var(--plaque-shadow); color: #1e1206; font: 400 calc(15 * var(--u)) var(--serif); cursor: pointer; }
+.l-back button { min-height: 44px; padding: 0 16px; border-radius: 6px; border: 0; background: var(--plaque); box-shadow: var(--plaque-shadow); color: #1e1206; font: 600 calc(16 * var(--u)) var(--serif); cursor: pointer; }
+.l-prompt.inspecting { background: var(--sheet-quiet); }
+.l-prompt.inspecting .l-buttons button, .l-prompt.inspecting:not(.moving) .l-buttons button.act {
+  color: var(--ink); background: #e6d6ae; text-shadow: none; box-shadow: inset 0 0 0 1px rgba(60,40,15,.45);
+}
+body.l-leaning .held { filter: saturate(.72); }
 /* Leaning in, the stack steps out of the way; this slip, top centre, says it is still there. */
 .l-stackchip { position: fixed; z-index: 30; top: calc(10 * var(--u) + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); pointer-events: none;
   padding: calc(6 * var(--u)) calc(16 * var(--u)); border-radius: 3px; background: var(--sheet-quiet); color: var(--ink); box-shadow: var(--sheet-shadow);
@@ -173,8 +185,9 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
   background: rgba(156,31,36,.12); border: 1px solid var(--sig-danger-ink); }
 .l-recap .l-lost { flex: 1; min-width: 0; min-height: 44px; padding: 4px 0; border: 0; background: none; cursor: pointer; text-align: left;
   color: var(--sig-danger-ink); font: 400 calc(16 * var(--u)) var(--serif); }
-.l-recap .l-lost small { display: block; color: var(--ink-2); font: 500 calc(12.5 * var(--u)) var(--ui); }
-.l-recap .g-close { position: static; flex: none; width: 44px; height: 44px; background: transparent; box-shadow: none; }
+.l-recap .l-lost small, .l-recap .l-lost span { display: block; color: var(--ink); font: 600 calc(15 * var(--u))/1.2 var(--ui); }
+.l-recap .l-lost span { margin-top: calc(2 * var(--u)); text-decoration: underline; }
+.l-recap .g-close { position: static; flex: none; width: 44px; height: 44px; background: transparent; box-shadow: none; color: #6a4b39; font-size: 15px; }
 .l-log small { display: block; color: var(--ink-2); font-size: calc(12.5 * var(--u)); }
 /* Something aimed at you: the prompt says so in red */
 .l-prompt.threat { box-shadow: var(--sheet-shadow), 0 0 0 2px rgba(255,58,58,.85), 0 0 34px rgba(255,58,58,.5); }
@@ -183,10 +196,12 @@ svg.l-drag circle { fill: rgba(255,210,26,.25); stroke: var(--sig-selected); str
 .l-what { transition: color .3s; }
 /* The sift owns the instructions until the hand is back. */
 .l-prompt { transition: box-shadow .3s, opacity .25s; }
+.l-prompt.restoring { transition: none; }
 body.sheet-open:has(.l-sheet) .l-prompt { opacity: .35; pointer-events: none; }
 body.sifting .l-prompt, body.sift-returning:not(.sift-interrupted) .l-prompt { visibility: hidden; opacity: 0; pointer-events: none; }
 body.sift-interrupted .l-prompt { transition: box-shadow .3s; }
-body.sifting:has(.l-sift-table) .l-back { visibility: hidden; }
+body.sifting:has(.l-sift-table) .l-back, body.sift-returning:has(.l-sift-fold) .l-back { visibility: hidden; }
+.proto-h .l-sift-fold { box-sizing: border-box; pointer-events: none; }
 .sifting .proto-h .g-sifttitle .g-close { width: auto; min-height: 44px; padding: 0 calc(11 * var(--u)); white-space: nowrap; }
 .l-sift-table { min-height: 44px; padding: 0 calc(11 * var(--u)); border: 1px solid rgba(60,40,15,.55); border-radius: 5px;
   background: transparent; color: var(--ink); font: 400 calc(15 * var(--u)) var(--serif); white-space: nowrap; cursor: pointer; }
@@ -212,21 +227,22 @@ body.sifting:has(.l-sift-table) .l-back { visibility: hidden; }
   -webkit-user-select: none; user-select: none; cursor: grab;
 }
 .held .hcard.dragging { cursor: grabbing; box-shadow: 0 18px 40px rgba(0,0,0,.7); }
-.held .hcard.casting { pointer-events: none; overflow: visible; border: 0; background: var(--sleeve); outline: 2px solid var(--sleeve); }
-.l-cast-face { display: block; width: 100%; height: 100%; border-radius: inherit; }
-.l-cast-owner { position: absolute; left: 50%; top: 102%; transform: translate(-50%, -50%); }
-.l-hand-art { position: absolute; inset: 30% 3% 13%; border-block: 1px solid rgba(44,30,16,.65); background: #302419 center / cover; pointer-events: none; }
+.held .hcard.casting { pointer-events: none; overflow: visible; }
+.l-cast-face { position: absolute; inset: -2px; width: calc(100% + 4px); height: calc(100% + 4px);
+  background: var(--cast-sleeve); outline: 2px solid var(--cast-sleeve); border-radius: inherit; opacity: 0; }
+.l-cast-owner { position: absolute; left: 50%; transform: translate(-50%, -50%); opacity: 0; }
+.l-hand-art { position: absolute; inset: 20% 3% 13%; border-block: 1px solid rgba(44,30,16,.65); background: #302419 35% center / cover; pointer-events: none; }
 .l-hand-label { position: absolute; top: 2px; left: 0; box-sizing: border-box; width: var(--label-w, 100%);
   max-width: 100%; padding: 3px 3px 4px; border-radius: 2px; color: var(--ink);
   overflow-wrap: anywhere; pointer-events: none; font: 700 max(12px, calc(14 * var(--u)))/1.04 "Barlow Condensed", var(--ui); }
 .l-hand-label .cost { display: inline-block; white-space: nowrap; }
 .l-hand-rules { display: none; }
-.held .hcard.reading .l-hand-art { inset-block: 14% 29%; }
-.held .hcard.response:not(.dragging, .casting) .l-hand-art { right: auto; width: calc(var(--label-w) - 3px); }
-.held .hcard.reading .l-hand-rules {
+.held .hcard:has(.l-hand-rules) .l-hand-art { inset-block: 23% 28%; background-size: 145% auto; background-position: 93% center; }
+.held .hcard .l-hand-rules {
   position: absolute; inset: 72% 5% 1%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
-  overflow: hidden; color: var(--ink); font: 600 max(11px, calc(12.5 * var(--u)))/1.1 var(--ui); pointer-events: none;
+  visibility: hidden; overflow: hidden; color: var(--ink); font: 600 max(11px, calc(12.5 * var(--u)))/1.1 var(--ui); pointer-events: none;
 }
+.held .hcard.reading .l-hand-rules { visibility: visible; }
 .hcard.dragging .l-hand-label { width: 100%; }
 .held .hcard.arriving { z-index: 30 !important; }
 .held .hcard.playable .l-hand-label { background: #f7dea1; }

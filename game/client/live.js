@@ -19,6 +19,7 @@
   const flights = new Set(), pendingHand = new Map(), incomingStack = new Set(), exilePaths = new Map(), castingFaces = new Set();
   const handBatches = new Set(), boardBatches = new Set();
   let restoreNotice = "", positionNotice = "", playChoice = null, replayView = false, sweeping = false;
+  let restoring = false, restoreTimer, motionEntry;
 
   // ---- The engine's view, as GAME ---------------------------------------------------------------------------------
   const COUNTER = { "+1/+1": "P1P1", "-1/-1": "M1M1", "Loyalty": "LOYALTY", "LOYAL": "LOYALTY" };
@@ -153,11 +154,16 @@
       handUpdating = true;
     }
     if (changedDecision) closeMulligan();
-    let moving = "", sweep = false, sceneBefore, resultsInFlight, lossesInFlight, previousPiles, departing;
+    let moving = "", sweep = false, sceneBefore, resultsInFlight, lossesInFlight, previousPiles, departing, counter;
     if (changedView) {
       await cardsFor(names(s.view));
       remember(s.view);
       const before = myBoard();
+      const setAside = jump ? G.stack.filter(st => !s.view.stack.some(next => next.id === st.id && next.source?.id === st.card)).map(st => {
+        const name = stackName(st) + (st.spell ? "" : "’s ability");
+        const targets = st.targets.map(t => typeof t === "number" && G.cards[t] ? shortCard(P.name(G.cards[t])) : targetName(t)).filter(Boolean);
+        return targets.length ? `${name} → ${listNames(targets)}` : name;
+      }) : [];
       if (jump && replay && s.view.turn > was.turn) previousPiles = biggestCreaturePiles();
       apply(s.view);
       if (jump) {
@@ -169,10 +175,9 @@
       const fresh = log.filter(e => !logged.has(logKey(e))).map(e => ({ ...e }));
       const rewound = jump && s.view.turn <= was.turn && (s.view.turn < was.turn || (log.at(-1)?.i ?? -1) < (tail?.i ?? -1));
       restoreNotice = rewound ? `Back to ${G.active === P.ME ? "your" : whoName(G.active)} earlier ${G.phase.toLowerCase()}` : "";
-      const setAside = rewound ? was.stack.filter(st => st.source && !s.view.stack.some(next => next.id === st.id && next.source?.id === st.source.id))
-        .map(st => st.spell ? st.source.name : st.source.name + "’s ability") : [];
+      restoring = rewound;
       positionNotice = "";
-      if (was?.phase !== s.view.phase) recapLosses = [];
+      if (was?.turn !== s.view.turn) recapLosses = [];
       let outcome, tokenArrival, waiting, firstHandReport;
       if (was && !jump) {
         const departed = was.stack.filter(st => st.source && !s.view.stack.some(n => n.id === st.id));
@@ -186,7 +191,8 @@
         tokenArrival = tokenResult(departed, was, fresh);
         const sunfall = sunfallResult(departed, fresh, departing);
         sweep = !!sunfall;
-        outcome = outcomes(departed, was, fresh, tokenArrival, sunfall);
+        counter = counterResult(departed, was, fresh);
+        outcome = outcomes(departed, was, fresh, tokenArrival, sunfall, counter);
         const attacks = attackersAtMe();
         const arrivals = trackHandArrivals(was, s.view, fresh);
         if (arrivals.length) {
@@ -239,7 +245,8 @@
       }
       const restored = restoreNotice && { type: "result",
         text: [restoreNotice + ".", setAside.length && `Set aside ${listNames(setAside)}.`].filter(Boolean).join(" "),
-        headline: setAside.length ? `Set aside ${setAside.length} pending ${setAside.length === 1 ? "play" : "plays"}` : "Position restored" };
+        summary: setAside.length ? [`Set aside ${setAside[0]}`,
+          ...(setAside.length > 2 ? [`and ${setAside.length - 1} more plays`] : setAside.slice(1))] : ["Position restored"] };
       const result = recordLog(fresh, outcome, restored, tokenArrival?.log, firstHandReport);
       if (waiting) {
         if (result) waiting.push(result);
@@ -258,8 +265,9 @@
     // The leaned page covers part of the table, so whatever happens beyond it (anything on the stack, a combat, any other
     // opponent's cards or life) brings the whole table back at once; a look is a tap away again.
     const table = p => JSON.stringify(p ? [p.battlefield, p.graveyard, p.exile, p.life] : null), same = k => JSON.stringify(was[k] || null) === JSON.stringify(s.view[k] || null);
-    const elsewhere = !!lean && !!was && changedView && (!same("stack") || !same("combat") ||
-      s.view.players.some(p => { const pid = pidOf[p.name]; return pid !== lean.seat && pid !== P.ME && table(was.players.find(q => q.name === p.name)) !== table(p); }));
+    const focusSeat = lean?.seat ?? leanReturn?.seat;
+    const elsewhere = !!focusSeat && !!was && changedView && (!same("stack") || !same("combat") ||
+      s.view.players.some(p => { const pid = pidOf[p.name]; return pid !== focusSeat && pid !== P.ME && table(was.players.find(q => q.name === p.name)) !== table(p); }));
     const stackChanged = !!was && changedView && !same("stack");
     const body = document.body;
     const sifting = body.classList.contains("sifting");
@@ -271,12 +279,17 @@
       seat.unsift();
     }
     if (lean && (jump || lean.turn !== G.turn || (changedDecision && d) || elsewhere)) { seat.unsift(); seat.setFocus(null); }
+    if (leanReturn?.quiet && (!was || interrupted || leanReturn.turn !== G.turn)) {
+      leanReturn.quiet = false;
+      backBar();
+    }
     H.soft = G.active !== "you" ? { seat: G.active } : {};
     H.stackLayer = stackOpen();
     H.handAway = !!d && d.kind === "mulligan";
     if (changedView || changedDecision) {
       if (moving) {
         motion = moving; sweeping = sweep;
+        motionEntry = counter?.by && `${counter.by.source.name} is resolving`;
         sweepLayout = sweep ? { first: boardBuild + 1 } : null;
       }
       holdHand = jump;
@@ -366,7 +379,7 @@
       motion = "Survivors are settling";
       updated = true;
     }
-    if (!boardMoving && motion) { motion = ""; sweeping = false; sweepLayout = null; updated = true; }
+    if (!boardMoving && motion) { motion = ""; motionEntry = null; sweeping = false; sweepLayout = null; updated = true; }
     if (updated) { status(); refreshHistorySheet(); }
     if (boardMoving || pendingHand.size) {
       motionFrame = requestAnimationFrame(settleMotion);
@@ -680,18 +693,18 @@
     const room = rest.reduce((n, w, i) => n + (response[i] ? 0 : Math.max(0, w - shoulders[i])), 0);
     const openedResponses = response.filter(Boolean).length;
     const step = rest.map((w, i) => {
-      if (openedResponses) return response[i] ? Math.min(wide, w + (room + 14 * unit()) / openedResponses) : Math.min(w, shoulders[i]);
+      if (openedResponses) return response[i] ? Math.min(wide, w + (room + 40 * unit()) / openedResponses) : Math.min(w, shoulders[i]);
       return Math.min(wide, w * (span - reserved) / span + (opened ? reserved * weights[i] / opened : 0));
     });
     const xs = [0];
     step.forEach(w => xs.push(xs.at(-1) + w));
-    const mid = xs.at(-1) / 2, half = Math.max(1, mid);
+    const mid = xs.at(-1) / 2, half = Math.max(1, mid), extra = Math.max(0, xs.at(-1) - span) / 2;
     const lean = Math.max(-1, Math.min(1, fVel * 14)), dirn = fVel < 0 ? 1 : -1;
     return xs.map((x0, i) => {
       const k = (x0 - mid) / half, near = 0.4 + 0.6 * Math.exp(-Math.abs(i - f));
       const lift = Math.sin(Math.PI * Math.max(0, Math.min(1, 1 - Math.abs(i - f - 0.5) * 2)));   // the card being thumbed over
       return {
-        x: x0 - mid - lean * W * 0.05 * near, y: k * k * W * 0.025 - lift * W * 0.07,
+        x: x0 - mid + extra - lean * W * 0.05 * near, y: k * k * W * 0.025 - lift * W * 0.07,
         rot: k * 1.5 - lean * 3 * near + lift * 2 * dirn, z: 10 + i, label: Math.max(0, (step[i] ?? W) - 4),
       };
     });
@@ -706,8 +719,7 @@
       hc.style.transform = `translate(${q.x}px, ${q.y}px) rotate(${q.rot}deg)`;
       hc.style.zIndex = q.z;
       hc.style.setProperty("--label-w", q.label + "px");
-      hc.classList.toggle("reading", cards.length <= 3 && q.label >= W * 0.8 && !!hc.querySelector(".l-hand-rules"));
-      hc.classList.toggle("response", responseFan && q.label < W * 0.85 && G.playable.includes(+hc.dataset.id));
+      if (performance.now() >= handLiftUntil) hc.classList.toggle("reading", q.label >= W * 0.8 && !!hc.querySelector(".l-hand-rules"));
     });
   }
   // A damped spring from where the hand is to where it's going, so a turn overshoots a touch and settles.
@@ -861,7 +873,7 @@
     return heldEl;
   }
   // Lift in the fan's original layer so the next card still owns its title strip.
-  function liftCast(id, front, tag, sleeveColor, ms) {
+  function liftCast(id, ms) {
     if (!heldEl || heldEl.closest(".g-hand.away")) return;
     const cards = fanCards(), hc = cards.find(card => +card.dataset.id === id);
     if (!hc) return;
@@ -872,47 +884,37 @@
     const style = getComputedStyle(hc), from = style.transform;
     const mat = new DOMMatrixReadOnly(from);
     const delay = lift ? Math.min(200, ms * 0.4) : 0;
-    const height = hc.offsetHeight * Math.hypot(mat.a, mat.b);
+    const { W, H } = heldSize();
+    const label = hc.querySelector(".l-hand-label");
+    label.style.width = getComputedStyle(label).width;
+    label.getAnimations().forEach(a => a.cancel());
     const angle = Math.atan2(mat.b, mat.a);
-    const copyFace = (source, cls) => {
-      const canvas = el("canvas", cls);
-      canvas.width = source.width; canvas.height = source.height;
-      canvas.getContext("2d").drawImage(source, 0, 0);
-      return canvas;
-    };
-    // The DOM lift and the mesh flight use the same face and owner strip.
-    const face = copyFace(front.material.map.image, "l-cast-face");
-    const owner = copyFace(tag.material.map.image, "l-cast-owner");
-    if (!front.geometry.boundingBox) front.geometry.computeBoundingBox();
-    const faceSize = front.geometry.boundingBox;
-    owner.style.width = 100 * tag.geometry.parameters.width / (faceSize.max.x - faceSize.min.x) + "%";
-    owner.style.height = 100 * tag.geometry.parameters.height / (faceSize.max.y - faceSize.min.y) + "%";
-    hc.style.setProperty("--sleeve", sleeveColor);
-    hc.replaceChildren(face, owner);
+    // Keep the fan face until the card clears its neighbours and hands off to the mesh.
     hc.getAnimations().forEach(a => a.cancel());
     hc.classList.add("casting");
     hc.style.transform = from;
-    hc.animate([{ transform: from }, { transform: `translateY(-${lift}px) ${from}` }], {
+    const animation = hc.animate([{ transform: from }, { transform: `translateY(-${lift}px) ${from}` }], {
       duration: delay, fill: "forwards", easing: "cubic-bezier(.35,.05,.75,.85)",
     });
     handLiftUntil = Math.max(handLiftUntil, performance.now() + delay);
     if (hg?.id === id) hg = null;
-    return { card: hc, x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 - lift, height, angle, delay, finish: () => hc.remove() };
+    return { card: hc, label, x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 - lift,
+      width: W, height: H, scale: Math.hypot(mat.a, mat.b), angle, delay, animation };
   }
   function castFromHand(id) {
     let mesh;
     seat.scene.traverse(o => { if (o.userData.pick?.stack && o.userData.pick.id === id) mesh = o; });
     const body = mesh?.userData.cardBody, ms = seat.stackLanding();
     if (!body || !ms) return;
-    const tag = mesh.children.findLast(o => o.isMesh && o.material?.map);
-    const front = mesh.userData.front, sleeveColor = P.seatColor(P.ME);
-    if (!tag) return;
-    const cast = liftCast(id, front, tag, sleeveColor, ms);
+    const front = mesh.userData.front, tag = mesh.children.findLast(o => o.isMesh && o.material?.map);
+    if (!front || !tag) return;
+    const cast = liftCast(id, ms);
     if (!cast) return;
     const { T, cam } = seat, fromTime = performance.now(), rest = body.quaternion.clone();
     const geom = front.geometry;
     if (!geom.boundingBox) geom.computeBoundingBox();
-    const faceHeight = geom.boundingBox.max.y - geom.boundingBox.min.y;
+    const { min, max } = geom.boundingBox, faceHeight = max.y - min.y, faceWidth = max.x - min.x;
+    const sleeveColor = P.seatColor(P.ME);
     const sleeve = new T.Mesh(geom, new T.MeshBasicMaterial({ color: sleeveColor, toneMapped: false }));
     sleeve.position.z = -front.position.z;
     sleeve.scale.set(1.04, 1.03, 1);
@@ -920,10 +922,25 @@
     const trim = mesh.children.filter(o => o !== body).map(o => ({
       o, pos: o.position.clone(), q: o.quaternion.clone(), scale: o.scale.clone(),
     }));
+    const copyFace = (texture, cls) => {
+      const source = texture.image, canvas = el("canvas", cls);
+      canvas.width = source.width;
+      canvas.height = source.height;
+      canvas.getContext("2d").drawImage(source, 0, 0);
+      return canvas;
+    };
+    const face = copyFace(front.material.map, "l-cast-face");
+    const owner = copyFace(tag.material.map, "l-cast-owner");
+    owner.style.width = 100 * tag.geometry.parameters.width / faceWidth + "%";
+    owner.style.height = 100 * tag.geometry.parameters.height / faceHeight + "%";
+    owner.style.top = (0.5 - tag.position.y / faceHeight) * 100 + "%";
+    cast.card.style.setProperty("--cast-sleeve", sleeveColor);
+    cast.card.append(face, owner);
     mesh.visible = false;
+    body.visible = tag.visible = false;
     const finish = () => {
-      cast.finish();
-      mesh.visible = true;
+      cast.card.remove();
+      mesh.visible = body.visible = tag.visible = true;
       body.position.set(0, 0, 0);
       body.quaternion.copy(rest);
       body.scale.setScalar(1);
@@ -933,25 +950,39 @@
       const elapsed = now - fromTime;
       if (!mesh.parent?.parent || elapsed >= ms || !heldEl.contains(cast.card)) { finish(); return false; }
       if (elapsed < cast.delay) return true;
-      mesh.visible = true;
       const z = mesh.getWorldPosition(new T.Vector3()).project(cam).z;
       const screen = new T.Vector3(2 * cast.x / innerWidth - 1, 1 - 2 * cast.y / innerHeight, z);
       const from = mesh.worldToLocal(screen.clone().unproject(cam));
-      const upper = mesh.worldToLocal(screen.add(new T.Vector3(0, cast.height / innerHeight, 0)).unproject(cam));
+      const upper = mesh.worldToLocal(screen.add(new T.Vector3(0, cast.height * cast.scale / innerHeight, 0)).unproject(cam));
       const facing = mesh.getWorldQuaternion(new T.Quaternion()).invert().multiply(cam.quaternion)
         .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), -cast.angle));
       const k = (elapsed - cast.delay) / (ms - cast.delay), q = k * k * (3 - 2 * k);
+      const fromScale = 2 * upper.distanceTo(from) / faceHeight;
+      from.sub(front.position.clone().applyQuaternion(facing).multiplyScalar(fromScale));
       body.position.copy(from).multiplyScalar(1 - q);
       body.quaternion.slerpQuaternions(facing, rest, q);
-      body.scale.setScalar(1 + (2 * upper.distanceTo(from) / faceHeight - 1) * (1 - q));
+      body.scale.setScalar(1 + (fromScale - 1) * (1 - q));
       body.updateMatrix();
       trim.forEach(({ o, pos, q, scale }) => {
         o.position.copy(pos).applyMatrix4(body.matrix);
         o.quaternion.copy(body.quaternion).multiply(q);
         o.scale.copy(scale).multiplyScalar(body.scale.x);
       });
-      cast.card.style.visibility = "hidden";
       mesh.updateMatrixWorld(true);
+      // Keep the card opaque as the stack face takes over, aligned to the real mesh for landing.
+      const at = (x, y) => seat.project(new T.Vector3(x, y, 0).applyMatrix4(front.matrixWorld));
+      const center = at(0, 0), right = at(max.x, 0), bottom = at(0, min.y);
+      const origin = heldEl.getBoundingClientRect();
+      const reveal = (start, duration) => Math.max(0, Math.min(1, (k - start) / duration));
+      if (cast.animation.playState !== "idle") cast.animation.cancel();
+      cast.card.style.transformOrigin = "center";
+      cast.card.style.transform = `matrix(${2 * (right.x - center.x) / cast.width}, ${2 * (right.y - center.y) / cast.width},
+        ${2 * (bottom.x - center.x) / cast.height}, ${2 * (bottom.y - center.y) / cast.height},
+        ${center.x - origin.left}, ${center.y - origin.bottom + cast.height / 2})`;
+      cast.label.style.opacity = 1 - reveal(0.22, 0.24);
+      face.style.opacity = reveal(0.42, 0.53);
+      owner.style.opacity = reveal(0.53, 0.42);
+      mesh.visible = true;
       return true;
     });
   }
@@ -1007,9 +1038,9 @@
     }
     if (!best) return [target];
     staged.push(boxAt(best.start));
-    return [best.start, best.entry, target];
+    return best.start.x === best.entry.x ? [best.start, target] : [best.start, best.entry, target];
   }
-  // Stage each arrival where it can be seen while it waits its turn, then slide it into the fan.
+  // Each draw gets its own entrance, then slides into the fan.
   function animateHandArrival(id, delay, index, count, deals) {
     const arrival = pendingHand.get(id), hc = heldEl.querySelector(`.hcard[data-id="${id}"]`);
     if (!hc?.animate) { pendingHand.delete(id); return; }
@@ -1023,6 +1054,9 @@
         const dy = y - centreY + (1 - scale) * (centreY - origin.bottom);
         return { translate: `${dx}px ${dy}px`, scale: String(scale), offset: i === route.length - 1 ? 1 : i * 0.42 };
       });
+      keyframes[0].opacity = 0;
+      keyframes.push({ opacity: 1, offset: 0.12 });
+      keyframes.sort((a, b) => a.offset - b.offset);
     } else {
       const stage = arrival.from || { x: centreX, y: r.top - r.height * 0.15 };
       const spacing = Math.min(r.width * 0.55, r.width * 2 / count);
@@ -1328,7 +1362,6 @@
   const listNames = names => new Intl.ListFormat("en").format(names);
   const stackName = st => P.name(P.card(st.card));
   const stackController = st => st.unknownController ? "Controller unrecorded" : P.player(st.controller).name;
-  const stackPossessive = st => st.unknownController ? "its controller’s" : whoName(st.controller);
   function stackHeadline(st) {
     const name = st.spell ? stackName(st) : `${shortCard(stackName(st))}'s ability`;
     return `${name} is going on the stack`;
@@ -1384,7 +1417,7 @@
     if (!s.view?.players?.length) {
       feed();
       promptEl.hidden = false;
-      ["asking", "moving", "threat"].forEach(cls => promptEl.classList.remove(cls));
+      promptEl.classList.remove("asking", "moving", "threat", "restoring", "inspecting");
       promptEl.innerHTML = `<div class="l-what">${esc(s.state === "starting" ? "Shuffling up… (the first game takes about a minute)" : s.state === "error" ? "Couldn't start: " + (s.error || "") : "No game yet")}</div><div class="l-buttons"></div>`;
       if (s.state !== "starting") { const b = el("button", "act", "New game"); b.addEventListener("click", menu); promptEl.querySelector(".l-buttons").appendChild(b); }
       return;
@@ -1402,7 +1435,6 @@
     const drawing = pendingHand.size > 0;
     const wipePending = stack && creatureSweep(top);
     const nextCast = replayView && typeof s.replay?.nextCast === "string" && s.replay.nextCast.trim();
-    const replayCue = nextCast ? `Next in the recording · ${nextCast}` : "";
     let recorded = false;
     let what = "", hint = "", buttons = [];
     if (G.over || s.state === "over") { what = "Game over" + (s.over ? ": " + s.over.replace(/^over: /, "") : ""); buttons.push(["New game", menu, "act"]); }
@@ -1413,8 +1445,8 @@
       const canFloat = k === "play" && R.some(r => r?.mana);
       if (k === "mulligan") what = "Opening hand";
       else if (k === "play" && top && top.controller !== "you") {
-        recorded = replayView && !opts.length && (replayCue || stack && !canFloat);
-        what = opts.length ? "You can respond" : replayCue || (recorded ? "Next action is recorded" : "No responses offered");
+        recorded = replayView && !opts.length && !!(nextCast || stack && !canFloat);
+        what = opts.length ? "You can respond" : recorded ? "" : "No responses offered";
         if (canFloat && !opts.length) hint = "You can float mana from a marked source.";
         buttons = [["Pass priority", () => answer([1]), recorded ? "ghost l-pass" : opts.length ? "l-pass" : "act l-pass"]];
         if (opts.length) buttons.unshift(responseButton(opts));
@@ -1468,11 +1500,10 @@
       }
       if (k === "play" && autoTimer !== null && !opts.length) {
         buttons[0][2] += " auto";
-        buttons.unshift(["Hold", hold]);
+        buttons.unshift(["Hold", hold, "l-hold"]);
       }
       if (k !== "mulligan" && !(k === "play" && top && opts.length === 0)) {
-        const delegate = [top && opts.length ? "Forge decides" : "Let Forge decide", auto, "ghost l-delegate"];
-        buttons.push(delegate);
+        buttons.push(["Let Forge decide", auto, "ghost l-delegate"]);
       }
     }
     const floating = Object.entries(P.player(P.ME).manaPool || {}).filter(([, n]) => n > 0)
@@ -1486,13 +1517,23 @@
       const drawsInView = [...pendingHand.values()].some(a => a.animation);
       what = drawsInView ? handArrivalHeadline([...pendingHand.keys()], false) : motion || "Cards are coming into your hand";
     } else if (wipePending && play) {
-      if (what !== replayCue && (recorded || playOptions().length)) hint = [what, hint].filter(Boolean).join(". ");
+      if (playOptions().length) hint = [what, hint].filter(Boolean).join(". ");
       what = "Sunfall threatens every creature";
+    } else if (recorded && threat()) {
+      what = `${stackName(top)} threatens ${listNames(aimedAtMe(top).map(t => targetName(t, true)))}`;
     } else if (restoreNotice && play) {
-      what = restoreNotice;
+      what = "Your decision · " + String(G.phase).toLowerCase();
     }
-    const ctx = [!watching && hint, replayCue !== what && replayCue, d && !busy && !watching && !stack ? context() : "",
+    const rewind = play && restoreNotice, restoreCue = !!rewind && restoring;
+    const inspecting = !!(lean || leanReturn?.quiet) && !watching && !restoring && !G.over;
+    if (inspecting) {
+      hint = "";
+      if (play) what = "Your decision is still available";
+    }
+    const ctx = [!watching && hint, d && !busy && !watching && !stack ? context() : "",
       floating ? `Floating mana: ${floating}` : ""].filter(Boolean).join(" · ");
+    const replayStatus = [recorded && "Replay · no responses to choose",
+      nextCast && `Next in the recording · ${nextCast}`].filter(Boolean);
     if (top) buttons.splice(buttons[0]?.[2]?.includes("l-choice") ? 1 : 0, 0, ["Stack rules", openStackRules, "ghost l-stack-rules"]);
     const openResponses = !!(play && stack && !watching && top.controller !== P.ME && playOptions().length);
     if (responseFan !== openResponses) { responseFan = openResponses; drawHeld(); }
@@ -1503,9 +1544,12 @@
         buttons.push(...buttons.splice(pass, 1));
       }
     }
-    const notice = positionNotice && `At the start of turn ${G.turn}\n${positionNotice}`;
+    const notice = positionNotice;
+    const headline = rewind ? `<span>${pips(what)}</span><span class="l-restore-cue">${esc(rewind)}</span>` : pips(what);
     promptEl.innerHTML = `<div class="l-where">${esc(where)}</div>${notice ? `<div class="l-notice">${esc(notice)}</div>` : ""}` +
-      `${what ? `<div class="l-what">${pips(what)}</div>` : ""}${stack ? stackSummary() : ""}${ctx ? `<div class="l-ctx">${pips(ctx)}</div>` : ""}` +
+      `${what ? `<div class="l-what">${headline}</div>` : ""}${stack ? stackSummary() : ""}` +
+      replayStatus.map(line => `<div class="l-replay-status">${esc(line)}</div>`).join("") +
+      `${ctx ? `<div class="l-ctx">${pips(ctx)}</div>` : ""}` +
       `${recapHTML()}<div class="l-buttons${play ? " l-play-buttons" : ""}"></div>`;
     promptEl.querySelector(".l-lost")?.addEventListener("click", lostSheet);
     promptEl.querySelector(".l-recap .g-close")?.addEventListener("click", () => { recapLosses = []; status(); });
@@ -1521,7 +1565,9 @@
     promptEl.classList.toggle("moving", !!watching);
     promptEl.classList.toggle("sweeping", sweeping);
     document.body.classList.toggle("l-watching", !!watching);
-    promptEl.classList.toggle("asking", !!d && !busy && !watching && !recorded);
+    promptEl.classList.toggle("asking", !!d && !busy && !watching && !recorded && !restoring && !inspecting);
+    promptEl.classList.toggle("restoring", restoreCue);
+    promptEl.classList.toggle("inspecting", inspecting);
     promptEl.classList.toggle("threat", !arriving && !busy && (threat() || wipePending || sweeping));
     promptEl.hidden = !!d && d.kind === "mulligan" && !busy;
     syncHandPass();
@@ -1533,9 +1579,9 @@
     const x = text.startsWith(prefix) ? text.slice(prefix.length) : text;
     return x.length > 90 && !full ? x.slice(0, 88) + "…" : x;
   }
-  function effectPreview(text, rules, controller) {
+  function effectPreview(text, rules, choosingMode = false) {
     if (/^Landfall\.?$/i.test(text) && /Create a 2\/2 white Cat(?: Beast)? creature token/.test(rules) && /Put a \+1\/\+1 counter on each creature/.test(rules)) {
-      return `2/2 Cat Beast, or a +1/+1 counter and vigilance this turn for each of ${controller} creatures.`;
+      return choosingMode ? "Landfall · you are choosing the mode" : "Landfall · mode unrecorded";
     }
     const enters = text.match(/When (?:this creature|[^.]+) enters, draw [^.]+\./i);
     if (enters) return enters[0].replace(/^When .+ enters, (d)/i, "On entry, $1");
@@ -1546,6 +1592,12 @@
     }
     if (/^Exile all creatures\. Incubate X\b/i.test(text)) return "Exile creatures on every side. Incubate with a +1/+1 counter per creature exiled.";
     return text.split(/(?<=\.)\s|\n/)[0];
+  }
+  function modeEntry(items) {
+    const name = !busy && d?.kind === "mode" && d.prompt?.match(/^modes for (.+?)(?:, a mode may repeat)?$/i)?.[1];
+    if (!name) return;
+    const matching = items.filter(st => !st.spell && !st.unknownController && st.controller === P.ME && stackName(st) === name);
+    if (matching.length === 1) return matching[0];
   }
   function denialPreview(text, target = "a spell") {
     if (/^Counter target spell\.\s+Its controller may draw up to two cards at the beginning of the next turn['’]s upkeep\.\s+You draw a card at the beginning of the next turn['’]s upkeep\.$/i.test(text.trim())) {
@@ -1608,6 +1660,8 @@
   function clearHistory() {
     history.length = 0; logged.clear(); losses = []; recapLosses = [];
     turnHeading = restoreNotice = positionNotice = "";
+    clearTimeout(restoreTimer);
+    restoring = false; motionEntry = null;
     latest = []; playChoice = null; sweeping = false;
     sweepLayout = null;
     cancelAnimationFrame(motionFrame);
@@ -1641,9 +1695,37 @@
     const { power, toughness } = elements.length === 1 ? elements[0] : {};
     if (power == null || toughness == null || before.has(log.card)) return;
     const beasts = logText(log.text).match(creation)[1];
+    const player = pid === P.ME ? "You" : maker.controller;
     const group = `${power}/${toughness} Elemental and ${beasts}`;
-    const side = `${pid === P.ME ? "your" : whoName(pid)} side`;
-    return { log, moving: `${group} arriving on ${side}`, headline: `${group} arrived on ${side}` };
+    return { log, moving: `${group} arriving on ${pid === P.ME ? "your" : whoName(pid)} side`,
+      summary: [`${player} got a ${power}/${toughness} Elemental`, `${beasts[0].toUpperCase() + beasts.slice(1)} · source unrecorded`] };
+  }
+  function departureInLog(departed, entry, text) {
+    const items = departed.filter(st => {
+      if (entry.card != null && entry.card !== st.source.id) return false;
+      if (entry.card != null && /^STACK_RESOLVE$/i.test(entry.type)) return true;
+      return st.spell && text === `${st.source.name} was countered`;
+    });
+    if (items.length === 1) return items[0];
+  }
+  function counterResult(departed, was, fresh) {
+    const countered = new Set(fresh.map(entry => {
+      const text = logText(entry.text).replace(/\.$/, "");
+      if (text.endsWith(" was countered")) {
+        const st = departureInLog(departed, entry, text);
+        if (st?.spell && text === `${st.source.name} was countered`) return st;
+      }
+    }).filter(Boolean));
+    if (countered.size !== 1) return;
+    const [spell] = countered;
+    const counters = departed.filter(st => st !== spell && st.spell && st.targets?.includes(spell.source.id) && /^Counter target spell\./i.test(st.source.text || ""));
+    const by = counters.length === 1 ? counters[0] : null;
+    const battlefield = was.players.flatMap(p => p.battlefield || []);
+    const saved = (spell.targets || []).flatMap(id => {
+      const target = battlefield.find(c => c.id === id);
+      return target && G.cards[id]?.zone === "battlefield" ? [shortCard(target.name)] : [];
+    });
+    return { spell, by, saved };
   }
   function sunfallResult(departed, fresh, leaving) {
     const spell = departed.find(st => st.spell && st.source.name === "Sunfall");
@@ -1653,19 +1735,14 @@
     if (fresh.some(e => e.card === spell.source.id && /^STACK_RESOLVE$/i.test(e.type) && !/fizzl|countered/i.test(e.text)) &&
         [...leaving.keys()].some(id => G.cards[id]?.zone === "exile")) return { spell, headline: "Sunfall exiled creatures" };
   }
-  function outcomes(departed, was, fresh, tokenArrival, sunfall) {
+  function outcomes(departed, was, fresh, tokenArrival, sunfall, counter) {
     if (!departed.length) return;
     const before = new Map(was.players.flatMap(p => p.battlefield || []).map(c => [c.id, c]));
     const evidence = new Map();
     fresh.forEach(e => {
       const text = logText(e.text).replace(/\.$/, "");
-      const items = departed.filter(st => {
-        if (e.card != null && e.card !== st.source.id) return false;
-        if (e.card != null && /^STACK_RESOLVE$/i.test(e.type)) return true;
-        if (st.spell) return text === st.source.name + " was countered";
-        return false;
-      });
-      if (items.length === 1) evidence.set(items[0], text);
+      const item = departureInLog(departed, e, text);
+      if (item) evidence.set(item, text);
     });
     const results = departed.flatMap(st => {
       const name = st.source.name, result = evidence.get(st), card = G.cards[st.source.id];
@@ -1682,14 +1759,19 @@
       if (source) result += ` Source: ${source.card || source.name}.`;
       if (!results.includes(result)) results.push(result);
     }
+    let summary = tokenArrival?.summary;
     if (sunfall) {
       const caster = sunfall.spell.controller, pid = pidOf[caster];
-      const incubator = Object.values(G.cards).find(c =>
+      const incubators = Object.values(G.cards).filter(c =>
         c.zone === "battlefield" && c.controller === pid && c.token && c.card === "Incubator" && !before.has(c.id));
+      const count = incubators.length === 1 ? incubators[0].counters?.P1P1 : null;
+      const gain = count == null ? "" : `${whoName(pid)} Incubator · ${count} +1/+1 counters`;
       const reported = /\bIncubator\b/i.test(sunfall.reported || "") ||
         fresh.some(e => logText(e.text).startsWith(caster + " ") && /\bcreated\b.*\bIncubator\b/i.test(logText(e.text)));
-      if (incubator && !reported) results.push(`An Incubator arrived on ${pid === P.ME ? "your" : whoName(pid)} side.`);
+      if (incubators.length === 1 && !reported) results.push(gain || `An Incubator arrived on ${whoName(pid)} side.`);
+      if (gain) summary = [sunfall.headline, gain];
     }
+    if (counter) summary = [`${counter.spell.source.name} was countered`, ...counter.saved.map(name => `${name} stayed on the battlefield`)];
     const targets = [...new Set(departed.flatMap(st => st.targets || []))].filter(t => before.has(t));
     const changes = targets.map(id => {
       const card = G.cards[id], name = shortCard(before.get(id).name);
@@ -1698,15 +1780,25 @@
       return where === "away" ? `${name} left the battlefield.` : `${name} went ${where}.`;
     });
     // When the bridge skips steps, zones can establish where cards ended up; a clear stack can't establish why.
-    const headline = sunfall?.headline || tokenArrival?.headline || changes[0]?.replace(/\.$/, "");
-    const lead = sunfall?.reported || (sunfall || tokenArrival ? headline : "");
+    const headline = sunfall?.headline || (!counter && fresh.some(e => / was countered\.?$/.test(logText(e.text))) ?
+      "Spells left the stack" : changes[0]?.replace(/\.$/, ""));
+    const lead = sunfall?.reported || (sunfall ? headline : tokenArrival?.summary.join(". ") || "");
     const text = [lead && lead.replace(/\.?$/, "."), ...changes, ...results].filter(Boolean).join(" ");
-    return { headline, text };
+    return { headline, summary, text };
   }
   function recordLog(fresh, outcome, load, summarized, firstHandReport) {
     const player = P.player(G.active).name, heading = `Turn ${G.turn} · ${player}`;
     fresh.forEach(e => logged.add(logKey(e)));
     const entries = fresh.filter(e => logText(e.text));
+    entries.forEach(e => {
+      const text = logText(e.text);
+      const ability = G.stack.find(st => !st.spell && text.endsWith(` to activate ${stackName(st)}`));
+      if (!ability) return;
+      const name = stackName(ability), prefix = `${stackController(ability)} removed `;
+      const cost = text.startsWith(prefix) && text.slice(prefix.length).split(` from ${shortCard(name)} to activate `);
+      const token = effectPreview(abilityText(ability.text, name, true), "").match(/^Create a (\d+\/\d+ Elemental) token\.$/)?.[1];
+      if (cost?.length === 2 && token) e.feedText = `${shortCard(name)} spent ${cost[0]} for a ${token}`;
+    });
     const isTurn = e => e.type.toLowerCase() === "turn";
     const active = { type: "turn", text: heading };
     if (heading !== turnHeading) {
@@ -1742,12 +1834,13 @@
     };
     const pending = [...new Set(settled.map(castFor).filter(Boolean))];
     const distinct = pending.length && settled.find(e => !castFor(e));
-    const eventText = e => e.headline || e.display || logText(e.text);
-    const events = pending.length
+    const eventText = e => e.headline || e.display || e.feedText || logText(e.text);
+    const summary = settled[0]?.summary;
+    const events = motionEntry ? [motionEntry] : summary?.length ? summary.slice(0, 2) : pending.length
       ? [...pending, ...(distinct ? [eventText(distinct)] : [])].slice(0, 2) :
       settled.slice(0, G.active !== "you" || G.combat || settled[0]?.headline ? 1 : 2).map(eventText);
     const draw = events.findIndex(t => /^(?:You drew|Drew)\b/i.test(t) || t.startsWith(P.player(P.ME).name + " drew "));
-    feedEl.innerHTML = `<span class="l-feed-turn">${esc(turnHeading)}</span>${events.length ? `<span class="l-feed-events${events.length > 1 ? " recent" : ""}">${events.map((event, i) => `<span class="l-feed-event${i === draw ? " l-feed-draw" : ""}">${pips(event)}</span>`).join("")}</span>` : ""}`;
+    feedEl.innerHTML = `<span class="l-feed-turn">${esc(turnHeading)}</span>${events.length ? `<span class="l-feed-events${summary && !motionEntry ? " summary" : events.length > 1 ? " recent" : ""}">${events.map((event, i) => `<span class="l-feed-event${i === draw ? " l-feed-draw" : ""}">${pips(event)}</span>`).join("")}</span>` : ""}`;
     feedEl.hidden = !turnHeading;
   }
   function refreshHistorySheet(box = sheetEl?.querySelector("[data-history]")) {
@@ -1815,14 +1908,20 @@
   }
 
   // ---- Focus you chose, pauses on what the others do, and what you lost while they did it -----------------------
-  let lean = null, backEl, stackChipEl, autoTimer = null, autoUntil = 0, losses = [], recapLosses = [];
-  H.onFocus = pid => { lean = pid ? { seat: pid, turn: G.turn } : null; backBar(); H.stackLayer = stackOpen(); requestAnimationFrame(status); };
+  let lean = null, leanReturn = null, backEl, stackChipEl, autoTimer = null, autoUntil = 0, losses = [], recapLosses = [];
+  H.onFocus = pid => {
+    leanReturn = pid || !lean ? null : { ...lean, quiet: true };
+    lean = pid ? { seat: pid, turn: G.turn } : null;
+    backBar(); H.stackLayer = stackOpen(); requestAnimationFrame(status);
+  };
   function backBar() {
     if (!backEl) return;
+    document.body.classList.toggle("l-leaning", !!(lean || leanReturn?.quiet));
     const returning = document.body.classList.contains("sift-returning");
     const side = lean ? `${P.player(lean.seat).name}'s side` : "the table";
-    backEl.hidden = !lean && !returning;
-    backEl.innerHTML = `<span>${esc(returning ? `Returning to ${side}` : side)}</span>${lean ? "<button>Back to the table</button>" : ""}`;
+    backEl.hidden = !lean && !returning && !leanReturn;
+    const message = leanReturn ? `Returning to the table from ${whoName(leanReturn.seat)} side` : returning ? `Returning to ${side}` : side;
+    backEl.innerHTML = `<span>${esc(message)}</span>${lean ? "<button>Back to the table</button>" : ""}`;
     stackChip();
   }
   // Leaning in hides the stack; a slip at the top says it is still there and how deep. Words only: the way back is the bar.
@@ -1878,9 +1977,9 @@
     const settled = recapLosses.filter(l => !l.inFlight);
     if (!settled.length) return "";
     const one = settled.length === 1 && settled[0];
-    const title = `View your losses (${settled.length})`;
+    const title = `${settled.length} of your cards left play`;
     const summary = one ? `${one.name} · ${one.where === "away" ? one.token ? "Token left play" : "Destination unknown" : one.where}` : lossSummary(settled);
-    return `<div class="l-recap"><button class="l-lost"><b>${esc(title)}</b><small>${esc(summary)}</small></button><button class="g-close" aria-label="Dismiss loss notice">✕</button></div>`;
+    return `<div class="l-recap"><button class="l-lost"><b>${one ? "Your loss" : esc(title)}</b><small>${esc(summary)}</small><span>View loss report ›</span></button><button class="g-close" aria-label="Dismiss loss notice">✕</button></div>`;
   }
   function lostSheet() {
     sheet("What you lost", box => {
@@ -1901,13 +2000,14 @@
     const items = G.stack.slice();
     if (!items.length) return;
     if (items.length === 1 && items[0].spell) return seat.inspect(items[0].card);
+    const mode = modeEntry(items);
     sheet("Stack rules · first to last", box => {
       items.forEach(st => {
         const name = stackName(st), rules = P.face(P.card(st.card))?.text || "";
         const effect = st.spell ? "" : abilityText(st.text, name, true);
         const row = el("section", "l-rules", `<b>${esc(name + " · " + stackController(st))}</b>`);
         if (effect) {
-          const preview = effectPreview(effect, rules, stackPossessive(st));
+          const preview = effectPreview(effect, rules, mode === st);
           row.appendChild(el("div", "", pips(/^Landfall\.?$/i.test(effect) ? preview : effect)));
         }
         if (rules && rules !== effect) row.appendChild(el("div", "", pips(rules)));
@@ -1916,6 +2016,7 @@
     });
   }
   function stackSummary() {
+    const mode = modeEntry(G.stack);
     const rows = G.stack.map((st, i) => {
       const name = stackName(st), title = st.spell ? name : shortCard(name) + "'s ability";
       const who = [stackController(st), st.actor].filter(Boolean).join(" · ");
@@ -1925,7 +2026,7 @@
       const targets = choosing ? sel.map(o => refs()[o - 1]).filter(Boolean).map(r => r.player ? pidOf[r.player] : r.card) : st.targets;
       const aim = targets.map(t => targetName(t, true) || "unrecorded target");
       const threatened = creatureSweep(st) || st.controller !== "you" && aimedAtMe(st).length > 0;
-      let effect = effectPreview(text, rules, stackPossessive(st));
+      let effect = effectPreview(text, rules, mode === st);
       if (aim.length === 1 && /^Exile target creature\. Its controller gains life equal to its power\./i.test(text)) {
         effect = `Exile ${aim[0]}. Its controller gains life equal to its power.`;
       } else if (aim.length === 1 && /^Counter target spell\./i.test(text)) {
@@ -1969,19 +2070,30 @@
   const newGame = menu;
   H.overlay = ({ statusEl }) => { statusEl.hidden = true; };
 
+  let siftPaper;
   function laySift(group, shade) {
     const { T, cam } = seat, cards = group.children.filter(o => o.userData.pick?.sift);
-    const cap = document.querySelector(".proto-h .g-sifttitle");
-    const hint = cap?.querySelector("small");
-    if (hint) hint.style.visibility = "hidden";
+    const cap = document.querySelector(".proto-h .g-sifttitle:not(.l-sift-fold)");
+    const parent = cap?.parentNode;
+    let foldCap, captionBounds;
+    if (cap) { cap.dataset.focus = ""; cap.style.opacity = "0"; }
+    group.userData.focus = true;
     const depth = 6.35;
+    if (!siftPaper) {
+      const paper = SeatWorld.vellum(256, { tone: "#d4bb91", wear: 0.65 }).map;
+      const ink = paper.getContext("2d");
+      ink.strokeStyle = "rgba(98,59,30,.33)";
+      ink.strokeRect(2.5, 2.5, 251, 251);
+      siftPaper = new T.CanvasTexture(paper);
+      siftPaper.colorSpace = T.SRGBColorSpace;
+    }
     const backing = new T.Mesh(new T.PlaneGeometry(1, 1),
-      new T.MeshBasicMaterial({ color: 0x725138, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+      new T.MeshBasicMaterial({ map: siftPaper, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
     backing.quaternion.copy(cam.quaternion);
     backing.renderOrder = shade.renderOrder + 1;
     group.add(backing);
     shade.userData.backing = backing;
-    group.addEventListener("removed", () => { backing.geometry.dispose(); backing.material.dispose(); });
+    group.addEventListener("removed", () => { backing.geometry.dispose(); backing.material.dispose(); foldCap?.remove(); });
     const poses = cards.map(card => {
       const body = card.userData.cardBody, source = card.position.clone(), rendered = source.clone();
       const tap = body.rotation.z, home = card.quaternion.clone().multiply(body.quaternion);
@@ -2005,13 +2117,35 @@
       if (opening) openProgress = nativeProgress;
       const progress = openProgress * (opening ? 1 : nativeProgress);
       const interrupted = document.body.classList.contains("sift-interrupted");
+      if (opening) {
+        cap.style.opacity = Math.min(1, nativeProgress * 3);
+        cap.style.visibility = nativeProgress > 0.04 ? "" : "hidden";
+        const { left, height } = cap.getBoundingClientRect();
+        captionBounds = { left: left - parent.getBoundingClientRect().left, height };
+      } else if (cap && !interrupted && nativeProgress > 0.22) {
+        if (!foldCap) {
+          foldCap = cap.cloneNode(false);
+          foldCap.classList.add("l-sift-fold");
+          if (captionBounds) {
+            foldCap.style.left = `${captionBounds.left}px`;
+            foldCap.style.height = `${captionBounds.height}px`;
+            foldCap.style.transform = "translateY(-100%)";
+          }
+          foldCap.appendChild(cap.querySelector("span").cloneNode(true));
+          foldCap.querySelector("small").textContent = "Putting the pile back";
+          parent.appendChild(foldCap);
+        }
+        foldCap.style.visibility = "";
+        foldCap.style.opacity = Math.min(1, (nativeProgress - 0.22) * 3);
+      } else if (foldCap) {
+        foldCap.remove(); foldCap = null;
+      }
       shade.material.opacity = (interrupted ? 0.12 : 0.32) * progress;
       const restore = () => { shade.material.opacity = nativeShade; };
       const pose = `${opening}/${nativeProgress}/${innerWidth}/${innerHeight}`;
       if (pose === lastPose && opening) return restore;
       lastPose = pose;
-      backing.material.opacity = (interrupted ? 0.24 : 0.54) * progress;
-      if (hint && progress >= 1) hint.style.visibility = "";
+      backing.material.opacity = Math.min(1, (interrupted ? 0.24 : 1.25) * progress);
       poses.forEach(({ card, body, tap, rendered, home, facing }, i) => {
         if (opening) {
           if (tap) {
@@ -2063,6 +2197,10 @@
     let siftFrame, siftBackdrop, siftLayout, restoreSiftShade, exileOffsets, noticeAtSift;
     seat.scene.onBeforeRender = () => {
       const now = performance.now();
+      if (handLiftUntil && now >= handLiftUntil) {
+        handLiftUntil = 0;
+        drawHeld();
+      }
       for (const step of castingFaces) if (!step(now)) castingFaces.delete(step);
       restoreSiftShade = siftLayout?.();
       exileOffsets = routeExiles();
@@ -2074,12 +2212,27 @@
         obj.scale.copy(scale);
         obj.updateMatrixWorld(true);
       }
+      if (leanReturn) {
+        const key = "floor" + leanReturn.seat, floor = seat.pieces()[key]?.obj;
+        if (leanReturn.build !== boardBuild) {
+          leanReturn.build = boardBuild;
+          leanReturn.target = seat.poses()[key];
+        }
+        const target = leanReturn.target;
+        if (!floor || !target || floor.position.distanceToSquared(target.pos) < 1e-8) {
+          const { quiet } = leanReturn;
+          leanReturn = null;
+          backBar();
+          if (quiet) status();
+        }
+      }
       if (holdHand) {
         // Put up the new fan and phase on the frame that has actually drawn the cut.
         holdHand = false;
         resetHeld();
         window.Kit.hand(handHost, H.handOpts);
         status(); mulligan(); refreshHistorySheet();
+        if (restoring) restoreTimer = setTimeout(() => { restoring = false; status(); }, 280);
       }
     };
     const siftInScene = () => seat.scene.children.findLast(o => o.children.some(c => c.userData.pick?.sift));
@@ -2133,7 +2286,7 @@
     new MutationObserver(() => {
       if (body.classList.contains("sifting")) {
         const group = siftInScene();
-        const title = document.querySelector(".proto-h .g-sifttitle");
+        const title = document.querySelector(".proto-h .g-sifttitle:not(.l-sift-fold)");
         const hint = title?.querySelector("small"), close = title?.querySelector(".g-close");
         const dest = lean ? `${P.player(lean.seat).name}'s side` : "the table";
         if (hint) hint.textContent = `Tap a card to inspect it · Put back returns to ${dest}`;
@@ -2164,6 +2317,7 @@
     feedEl = el("button", "l-feed"); feedEl.hidden = true; feedEl.setAttribute("aria-label", "What happened"); feedEl.addEventListener("click", fullLog); document.body.appendChild(feedEl);
     stackChipEl = el("div", "l-stackchip"); stackChipEl.hidden = true; document.body.appendChild(stackChipEl);
     backEl = el("div", "l-back"); backEl.hidden = true;
+    backEl.dataset.focus = "";
     backEl.addEventListener("click", e => { if (e.target.closest("button")) { seat.unsift(); seat.focusOn(null); } });
     document.body.appendChild(backEl);
 
