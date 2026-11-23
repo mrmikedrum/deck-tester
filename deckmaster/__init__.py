@@ -1,1 +1,1 @@
-"""MTG Goldfish: agent-driven Commander goldfishing on top of Forge."""
+"""Deckmaster: Commander decks on Forge, for agents that test them and people who play them."""

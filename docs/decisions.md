@@ -4,8 +4,8 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 
 ## Made
 
-- **Embed Forge rather than write a rules engine.** The previous homegrown Rust engine, now in
-  `../mtg-goldfish-legacy`, modeled cards as closed enums and parsed Oracle text by pattern. On the
+- **Embed Forge rather than write a rules engine.** The previous homegrown Rust engine,
+  `mrmikedrum/mtg-goldfish` (since deleted), modeled cards as closed enums and parsed Oracle text by pattern. On the
   Eternities decks it marked 37% of cards as implemented, and the ones spot-checked were silently wrong.
   Forge scripts nearly every card and exposes every player decision through one interface. The M0 spike
   confirmed it holds: every card known, decisions intercepted, snapshots restored, and about 100 games in
