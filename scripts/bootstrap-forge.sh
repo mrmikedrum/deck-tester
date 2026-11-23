@@ -60,7 +60,7 @@ if [ -n "$NAMES" ]; then
   echo "$NAMES" | grep -r -n -x -F -f - "$DEST/forge-gui/res/cardsfolder" || FOUND=$?
   if [ "$FOUND" -ne 1 ]; then
     echo "$FORGE_COMMIT defines cards the series adds (above), or they couldn't be checked: check upstream's" >&2
-    echo "with the same scenarios, then drop ours from the series (skills/forge-cards)" >&2
+    echo "with the same scenarios, then drop ours from the series (agent/skills/forge-cards)" >&2
     exit 1
   fi
 fi

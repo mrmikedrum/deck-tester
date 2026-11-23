@@ -1,6 +1,6 @@
 // Screenshots of Seat for the look: offline scenarios plus a mocked bridge for the live prompt, sheets and marks.
 //   node tools/shoot.js <outdir> [webkit|chromium] [only,names]
-// Serve client/ on :8797 first (python3 -m http.server 8797).
+// Serve client/ on :8797 first (node tools/serve.js).
 const path = require("path");
 const pw = require(process.env.PW || "playwright");
 global.window = {}; require(path.join(__dirname, "../client/data.js")); const CARDS = window.CARDS;

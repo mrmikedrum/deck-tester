@@ -1,7 +1,7 @@
 // An evaluation loop for Seat's transitions: drives the board through focus changes, scenario changes and stack
 // changes, and measures what a person would see as stutter, resets or flicker, without a person watching.
 //   node tools/eval.js [outdir] [webkit|chromium]
-// Serve client/ on :8797 first. Writes <outdir>/eval.json and <outdir>/eval.md, plus a strip of frames per transition.
+// Serve client/ on :8797 first (node tools/serve.js). Writes <outdir>/eval.json and <outdir>/eval.md, plus a strip of frames per transition.
 //
 // Checks:
 //   rebuilds   how many pieces were built vs reused on each redraw (a redraw that rebuilds everything restarts effects)

@@ -119,7 +119,7 @@ These are in WebKit at 1180×820, the iPad size, at 2× scale. `shots/after/*.pn
 To re-run:
 
 ```bash
-cd client && python3 -m http.server 8797
+node tools/serve.js            # serves client/ and the card cache on :8797
 ```
 
 ```bash
@@ -144,7 +144,7 @@ stuttered on each. Now:
   scene (renderOrder 0); floors draw first. Lane and stack geometry are disposed.
 - The composer runs 2× MSAA at no more than 1.5× pixel ratio.
 
-**Eval loop**: `node tools/eval.js shots/eval webkit` (serve `client/` on :8797). It drives focus, scenario and
+**Eval loop**: `node tools/eval.js shots/eval webkit` (with `node tools/serve.js` running). It drives focus, scenario and
 stack transitions, offline and against the mocked bridge, and reports per transition: redraws, built vs reused,
 object identity kept, frame p50/p95, a flicker score (pixel difference per 100 ms between captures) and leak
 counts, with a strip of captures per transition and verdicts in `shots/eval/eval.md`. Software rendering makes
@@ -152,6 +152,10 @@ frame times relative only; a flicker "spike" on a 500 ms move can be capture pac
 the strip before believing it.
 
 ## Motion loop (Nov 21)
+
+*Paused (Nov 23).* It ran with the client as a repository of its own, its lanes on worktrees of that; it needs
+reworking for this repository (outputs under `.deckmaster/`, lanes on branches with pull requests, lanes split by
+module after the TypeScript migration) before it runs again ([roadmap](../docs/roadmap.md)).
 
 Stills and wall-clock strips missed what was wrong with motion, so review now works from frame-exact recordings.
 - `tools/reel.js` records the clips in `tools/clips.js` on a virtual clock (rAF, `performance.now`, timers and CSS

@@ -48,13 +48,25 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
   patches doesn't justify a second codebase; the series rebases with git's three-way merge, and every game
   record names its build, so results from different engines are never mixed. General fixes are offered
   upstream from a GitHub fork (`mrmikedrum/forge`); hooks only this host needs stay local.
-- **Fresh history in a standalone repo.** This repo lives at `mrmikedrum/deck-tester`, not as a fork of
-  the old `mrmikedrum/mtg-goldfish`. The old code and its history stay in `../mtg-goldfish-legacy`.
+- **Fresh history in a standalone repo.** This repo started as `mrmikedrum/deck-tester`, not as a fork of the
+  old Rust `mrmikedrum/mtg-goldfish`, which was later deleted (a git bundle of it is on the NAS working share).
+- **One product, Deckmaster, in one repo (2026-11-23).** The goldfish tool, the networked tables and the game
+  client grew into one product: an engine, a tester, a game and the agent skills, named for what they do. They stay
+  in one repository because the client reads the engine's view directly, so one change can cover both sides.
+  The game client joined with its own history (the look loop's rounds), less Scryfall's images, which are
+  Wizards' and this repository is public: card images are a runtime cache the game server fills.
+- **Decks are state, not part of Deckmaster.** Each deck's vision, notes, list, plan and advisor live in the decks
+  repository (loosely coupled: a documented folder format), and Deckmaster reads them into a deck database of its
+  own, so decks from elsewhere (players at a table) fit the same way.
+- **The game client moves to TypeScript and Vite.** Agents write nearly all of it, and a type checker catches the
+  mistakes they make; three.js comes from npm rather than a CDN. Python stays stdlib-only; the client and its
+  tools are the repository's only Node.
 - **GPL-3.0.** Forge is GPL-3.0, the engine links it, and the patch series and card scripts derive from it.
 
 ## Open
 
-- **Where pilots live.** Passed by path for now; Deckmaster decides whether they belong with a project.
+- **Where pilots live.** Passed by path for now; with decks as state they move to each deck's folder in the
+  decks repository ([roadmap](roadmap.md)).
 
 ## Real-deck pilot mode
 

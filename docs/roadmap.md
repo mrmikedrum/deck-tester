@@ -3,6 +3,31 @@
 Each milestone ends with something an agent can use. Delete a milestone when it ships. What has shipped is
 described in [architecture](architecture.md).
 
+## Decks as state, and the agent
+
+Decks leave the repository: a deck database (SQLite, stdlib) with immutable revisions by list hash, filled by
+`deckmaster deck sync` from the decks repository's `deckmaster/` folders (each deck's manifest, plan and advisor,
+its list a ManaBox mirror or a `.dck`) and `deck import` (text or Forge `.dck`). The plan comes with the deck, so
+`--guide` goes; `examples/` moves out; tests keep small unrelated fixture decks. The agent skills and the ManaBox
+CLI (Node, run as `deckmaster manabox`) move in from the decks repository, which keeps only deck state, and
+Drummer's skill is reinstalled from here. Importing a player's deck from the game client comes later, with
+multiplayer.
+
+## The game client on TypeScript
+
+Strict TypeScript and Vite, three.js from npm, split by concern out of `h.js` and `live.js`, with the seat layout
+as a pure module of its own. Each step keeps recordings equivalent (identical telemetry). Its own plan comes first.
+
+## The game's protocol
+
+Types for the engine's view and decisions as the client's contract, checked against views a real engine game
+saves as fixtures, so a shape change breaks the client build.
+
+## Opponents' boards, then the look loop again
+
+A design exploration of how big opponent boards read (several real-world paradigms side by side, judged blind),
+then the look loop resumes on the new modules, its lanes on branches with pull requests.
+
 ## Browser target handoff
 
 A verified controller fix clears AI-preset targets before a browser-owned cast/activation asks for targets.
@@ -44,7 +69,7 @@ Local card scripts work today ([architecture](architecture.md#local-card-scripts
 - More scenarios (`bench/scenarios.py`): the late land drop held in hand (Jev misses more than Forge's AI
   from turn 6), fetch-land timing, rocks versus creatures, counters versus tokens for Marath, draw
   engines; then confirm on 40 games against the baseline in [measurements](measurements.md).
-- More advisor roles as decks need them (`goldfish/advice.py`): sacrifice outlets, untap effects, cost
+- More advisor roles as decks need them (`deckmaster/advice.py`): sacrifice outlets, untap effects, cost
   reducers; and a scenario for each role that gets a line.
 - Confirm the after-line on 40 games against the baseline (it is measured on the bench only).
 - An ability Forge offers but that can't be paid (a crew with every creature tapped) fails, and Jev chooses it
@@ -56,7 +81,7 @@ Local card scripts work today ([architecture](architecture.md#local-card-scripts
 
 ## Tables
 
-`goldfish table` hosts agents with people (architecture, Tables). Next:
+`deckmaster table` hosts agents with people (architecture, Tables). Next:
 
 - Copy forks that still fail now and then: a rebound spell (Ephemerate) not offered at the copy's upkeep, a token
   missing from a copy's targets, and cards put on the bottom in random order (Dack Fayden), since the table's

@@ -1,4 +1,4 @@
-// Bake the Grimoire's textures to image files, once: node tools/bake.js  (serves from :8797)
+// Bake the Grimoire's textures to image files, once: node tools/bake.js  (with node tools/serve.js running)
 const fs = require("fs");
 const pw = require(process.env.PW || "playwright");
 (async () => {

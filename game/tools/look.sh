@@ -1,4 +1,6 @@
 #!/bin/sh
+# PAUSED: written for the client as a repository of its own (lane b's worktree path no longer holds); rework before
+# running it again, see game/LOOK.md.
 # The look loop, in lanes. Each round: merge the other lane's branch; record frame-exact clips; blind witnesses from
 # more than one model family review them, each with its own focus; a merge verifies and ranks what is in this lane's
 # scope and hands the rest to the other lane; a fixer works the list in the files this lane owns; a reviewer checks the

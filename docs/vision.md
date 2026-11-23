@@ -1,8 +1,25 @@
 # Vision
 
+Deckmaster is a home for Commander decks on [Forge](https://github.com/Card-Forge/forge): agents build, curate and
+test decks, and people play them. Four parts, by what they do rather than where they sit:
+
+- **Engine.** Forge, embedded and patched, hosting goldfish games and networked tables. Forge decides the rules.
+- **Tester.** Agents playtest a deck: goldfishing it alone (below), or at a table where Jev and each deck's advisor
+  pilot the seats.
+- **Game.** A person sits at a table from an iPad browser and plays against those pilots. The table's design goals,
+  with their reasons, are in [game/tools/look/intent.md](../game/tools/look/intent.md); how it looks is in
+  [game/LOOK.md](../game/LOOK.md).
+- **Agent.** The skills an agent (Drummer, Claude or Codex sessions) uses to work on decks: curation, card search,
+  ManaBox as an integration, and testing through the tester.
+
+Decks are state, not part of Deckmaster: each deck's vision, notes, list, plan and advisor live in the decks
+repository, and Deckmaster reads them.
+
+# Tester: goldfishing
+
 ## Mission
 
-Let Deckmaster playtest a Commander deck by goldfishing it, cheaply enough in tokens and reasoning that the
+Let an agent playtest a Commander deck by goldfishing it, cheaply enough in tokens and reasoning that the
 agent's attention goes to judging the deck rather than running the game.
 
 A goldfish asks: when nobody interferes, does the deck do what it was built to do? It usually looks at
@@ -11,8 +28,8 @@ whether the engine assembles, and where the deck stalls (screw, flood, dead card
 
 ## Who it serves
 
-Agents: Drummer's Deckmaster skill, plus Claude or Codex sessions doing deck work. No human ever plays
-through it, so there's no UI. Its outputs are read by a model and are written to be cheap to read.
+Agents: Drummer's Deckmaster skill, plus Claude or Codex sessions doing deck work. Its outputs are read by a
+model and are written to be cheap to read; people play through the game, not the tester.
 
 ## Two modes
 
@@ -40,7 +57,8 @@ Both modes run the same games on the same engine; they differ only in who answer
 
 ## Not goals
 
-- A human interface of any kind.
-- Opponent interaction, politics or social simulation: opponents are passive. Deckmaster judges fun.
+- A human interface: the game is that.
+- Opponent interaction, politics or social simulation in a goldfish: opponents are passive (tables have real
+  opponents). Deckmaster's agent judges fun.
 - Playing games to completion, or estimating win rates.
-- Deckbuilding advice; Deckmaster owns judgment about the deck.
+- Deckbuilding advice in the tester's reports; the agent owns judgment about the deck.

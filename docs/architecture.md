@@ -1,24 +1,27 @@
 # Architecture
 
 ```
-agent ──shell──▶ bin/goldfish (Python) ──JSON lines, Unix socket──▶ engine (JVM, Forge embedded)
+agent ──shell──▶ bin/deckmaster (Python) ──JSON lines, Unix socket──▶ engine (JVM, Forge embedded)
                    │ runs batches, the pilot and the decision model   │ one thread per game
                    ▼                                                  ▼
-             digests, reports ◀───────────── game records (.goldfish/runs/g<N>.jsonl) ◀┘
+             digests, reports ◀───────────── game records (.deckmaster/runs/g<N>.jsonl) ◀┘
+
+browser ──HTTP──▶ deckmaster game (Python) ──same socket──▶ table engine (JVM): the person's seat and Jev's
 ```
 
 | Path | Language | Owns |
 |------|----------|------|
 | `engine/` | Java 17, Maven | Forge host: game setup, decision routing and logging, forks, snapshots, overrides, recording facts |
-| `goldfish/` | Python 3.9, stdlib only | CLI, engine client, digests, batch runner and pilot runtime, reports |
+| `deckmaster/` | Python 3.9, stdlib only | CLI, engine client, digests, batch runner and pilot runtime, reports, the game server |
+| `game/client/` | browser JavaScript, three.js | The game client: the table and the HTML around it |
+| `game/tools/` | Node, Playwright | Frame-exact recordings of the client, layout audits, the look loop |
 | `vendor/forge/` | Java, Forge | Upstream Forge at the pin, with our patch series; its card data is the card pool |
 | `scripts/` | sh | Fetching, patching and building Forge; building the engine |
 | `bench/` | Python | Fork fidelity, scenarios and model-reading experiments ([measurements](measurements.md)) |
 | deck, plan and pilot (outside) | text + Python | The decklist, and optionally a deck plan and a pilot file, passed by path |
 
 Decisions have to be intercepted inside Forge, so the engine is Java. Everything an agent writes or reads
-(pilots, metrics, reports) is Python: that matches Deckmaster's tooling, and it changes without rebuilding
-the JVM.
+(pilots, metrics, reports) is Python, so it changes without rebuilding the JVM.
 
 ## Decisions: the one seam
 
@@ -93,8 +96,8 @@ Two rules keep the deciders consistent:
 - Priority outside the agent's stops passes, whoever is in the seat. Forge's AI never acts on its own
   between decisions, so the log holds everything that happened.
 
-Automated mode is the same session with something else in the agent's seat. `goldfish run`
-(`goldfish/batch.py`) starts one session per seed, at most `--workers` at once. Each parked decision goes
+Automated mode is the same session with something else in the agent's seat. `deckmaster run`
+(`deckmaster/batch.py`) starts one session per seed, at most `--workers` at once. Each parked decision goes
 first to the pilot's function for its kind, then to the decision model if the batch has a plan, then to
 Forge's AI. With neither, nothing is asked and games never park. Answers carry who gave them, so the
 record and the report show the share each decider took.
@@ -106,10 +109,10 @@ manual play can.
 ## Sessions and processes
 
 One engine process per machine, so the card database (the slow part of Forge's startup) loads once.
-`bin/goldfish` builds the engine when its sources change. It starts the engine on first use and speaks one
-JSON request per connection over `.goldfish/engine.sock`. `start` restarts an idle engine whose code is
-out of date; `goldfish engine stop` ends it and every session in it. Forge's console noise goes to
-`.goldfish/engine.log`.
+`bin/deckmaster` builds the engine when its sources change. It starts the engine on first use and speaks one
+JSON request per connection over `.deckmaster/engine.sock`. `start` restarts an idle engine whose code is
+out of date; `deckmaster engine stop` ends it and every session in it. Forge's console noise goes to
+`.deckmaster/engine.log`.
 
 Each game runs on its own thread and parks at each decision. Every CLI command is a short process. Game
 state is read or changed only while the game thread is parked or finished, so nothing touches it
@@ -147,16 +150,16 @@ Cards are named, never numbered. Ids appear only so a card seen twice counts onc
 Python derives everything else:
 
 - **Shown after each command:** what happened since the agent last looked, on one line.
-- **`goldfish log`:** a header naming `deck@hash` and seed, then one line per turn. `--decisions` adds the
+- **`deckmaster log`:** a header naming `deck@hash` and seed, then one line per turn. `--decisions` adds the
   choices, marking those the agent didn't make with who did (and the model's confidence); `--turn N` lists
   every fact.
-- **`goldfish cards`:** cards seen (drawn, scryed, surveilled, revealed; each card once) and cards played
+- **`deckmaster cards`:** cards seen (drawn, scryed, surveilled, revealed; each card once) and cards played
   (lands and spells), by name. `--by-turn` splits them per turn.
 
 Restoring a snapshot drops the abandoned line from these views; `--all` keeps it.
 
-- **`goldfish run` / `report`:** a batch manifest in `.goldfish/batches/b<N>.json` lists its games. The
-  report (`goldfish/report.py`) gives per-turn averages (lands, potential and unspent mana, the share of
+- **`deckmaster run` / `report`:** a batch manifest in `.deckmaster/batches/b<N>.json` lists its games. The
+  report (`deckmaster/report.py`) gives per-turn averages (lands, potential and unspent mana, the share of
   games that missed a land drop, cumulative spells, damage to opponents), when the commander was cast, and
   mulligans. With a pilot or the model, it also gives the share of decisions each decider made, and the
   model's calls and cost. `--per-game` adds a line per game (open any with `--session gN log`); `--cards`
@@ -164,7 +167,7 @@ Restoring a snapshot drops the abandoned line from these views; `--all` keeps it
 
 ## The decision model
 
-`run --guide PLAN` puts a small decision model in the agent's seat (`goldfish/model.py`): TypeSafe's Jev,
+`run --guide PLAN` puts a small decision model in the agent's seat (`deckmaster/model.py`): TypeSafe's Jev,
 through OpenRouter's (Jev 1.14) or Defapi's (Jev 1.13) decisions API, which take the same requests. It
 doesn't generate text: it picks one of the named options and returns probabilities, and only input is
 billed. The agent's reasoning is spent once, on the plan: a few
@@ -220,8 +223,8 @@ then refused to cancel it, over and over). After 100 decisions in one turn, Forg
 the report counts those games and `--per-game` names the turn.
 
 Keys come from `OPENROUTER_API_KEY` or `DEFAPI_API_KEY`, or the files `openrouter.key` and `defapi.key` in
-`~/.config/goldfish/`. The first provider with a key is used; `GOLDFISH_DECISION_PROVIDER` picks one and
-`GOLDFISH_DECISION_MODEL` another model. `goldfish model` makes one tiny call to check. OpenClaw's own
+`~/.config/deckmaster/`. The first provider with a key is used; `DECKMASTER_DECISION_PROVIDER` picks one and
+`DECKMASTER_DECISION_MODEL` another model. `deckmaster model` makes one tiny call to check. OpenClaw's own
 OpenRouter key can't be used: it's a protected secret, reachable from a subprocess only through OpenClaw's
 secret proxy, which covers only commands OpenClaw runs itself.
 
@@ -235,7 +238,7 @@ to pass it on to the model or Forge's AI. Answers are recorded `by: pilot`. A pi
 or `None`; a file with only `advise` is an advisor, deciding nothing itself.
 
 **Writing an advisor.** The deck's designer knows which pieces matter; the advisor is where that knowledge
-goes, and the harness parses nothing on its own. `goldfish/advice.py` is the platform: a script declares
+goes, and the harness parses nothing on its own. `deckmaster/advice.py` is the platform: a script declares
 the deck's pieces as roles (lists of this deck's cards, optionally also a phrase from card text where a
 role is better said that way) and rules of the form "when these cards or roles are in these zones, say
 this". Zones are the board, the hand, the graveyard, exile and the command zone, plus what the current
@@ -267,7 +270,7 @@ caller's choice; nothing here assumes a location.
 
 ## Cards Forge lacks or gets wrong
 
-`goldfish start` refuses a deck with cards Forge doesn't know, and names them. A missing card comes from a
+`deckmaster start` refuses a deck with cards Forge doesn't know, and names them. A missing card comes from a
 newer Forge pin or a local card script, and a card that misbehaves mid-game can be corrected with an
 override; see [Forge dependency](#forge-dependency) and Overrides. Each override is recorded.
 
@@ -330,7 +333,7 @@ for each creature") and an ability activated more than once (Crystalline Crawler
 those, abilities that cost mana last so they pay from the pool, then pays the spell from the pool.
 
 A drift is caught as a decision or fingerprint mismatch, named in the error and in the parent's record,
-and that decision is asked plain. `GOLDFISH_TRACE=1` in the engine's environment logs every priority and
+and that decision is asked plain. `DECKMASTER_TRACE=1` in the engine's environment logs every priority and
 attack for tracing a new one. `bench/fidelity.py` forks games at fixed turns and counts exact replays,
 with Forge's AI answering (`ai`) or with every decision answered by rule (`scripted`, so a drift repeats);
 run it on a deck with new mechanics before trusting comparisons on it.
@@ -349,11 +352,11 @@ with the error. `bench/fidelity.py --forks copy` and `bench/table_fidelity.py` m
 
 ## Tables: agents playing with people
 
-`goldfish table DECK[,PLAN[,PILOT]]... --people N` hosts a Commander game over Forge's network play: one agent
+`deckmaster table DECK[,PLAN[,PILOT]]... --people N` hosts a Commander game over Forge's network play: one agent
 seat per deck, driven by the decision model with its plan and advisor, and N open seats people join from
 their own Forge (Online Multiplayer, Join, the address printed). A second engine process, the table engine
-(`.goldfish/table.sock`, `table.log`), hosts it: it starts Forge's full model with a headless GUI
-(`HeadlessGui`), from an assets folder of its own under `.goldfish/table/` so Forge's user files stay out of
+(`.deckmaster/table.sock`, `table.log`), hosts it: it starts Forge's full model with a headless GUI
+(`HeadlessGui`), from an assets folder of its own under `.deckmaster/table/` so Forge's user files stay out of
 the person's own Forge, and runs Forge's network server and lobby. A patch lets the lobby seat our players
 in its AI slots; each seat is a session (`Session.atTable`) attached to the shared game, parking its
 decisions like a goldfish game. Besides its own main phases and anything on the stack, a seat stops on other
@@ -367,7 +370,7 @@ the text alone or left to Forge's AI. What the model doesn't answer goes to Forg
 included (its match host turns that on). If Forge's game thread dies, the table ends as an error (the stack trace
 is in `table.log`) instead of waiting on a game that will never move.
 
-The goldfish decider stays as measured; a table seat's is `goldfish/table_model.py`, which changes only what
+The goldfish decider stays as measured; a table seat's is `deckmaster/table_model.py`, which changes only what
 differs at a table through the decider's hooks (`context`, `instructions`, `explores`, `lines`, `result`): the
 model reads a table framing and each other player's life, hand size, lands, board (with who attacks or blocks
 whom) and commander, with their cards' text, which the engine's state view gives a table seat; it plays out its
@@ -377,13 +380,33 @@ everyone's life, mana left unused before the seat's turn,
 and what the forks can't show, since the others pass in them: how many of its creatures stay untapped to block
 until its next turn and what the others' creatures could attack it for. Decisions say whether they come in the
 seat's own turn (`mine`). A change to table play is measured at tables (`bench/table_scenarios.py`,
-`bench/table_fidelity.py`, table reports), not on the goldfish bench. Each table writes a manifest to `.goldfish/tables/t<N>.json` when it ends; `goldfish table-report [tN]`
+`bench/table_fidelity.py`, table reports), not on the goldfish bench. Each table writes a manifest to `.deckmaster/tables/t<N>.json` when it ends; `deckmaster table-report [tN]`
 summarises it from the seats' records: the result, each player's life by round, and per agent seat who
 decided, how its forks went, its commander and its development.
 
 People need the Forge desktop app at the engine's exact build: `scripts/build-forge-client.sh` builds it from a
 full Forge checkout holding the pin and the series, card scripts included. With no people seated, Forge's match host adds a
 spectator, which pauses on each event as if someone watched; agent-only tables run slowly for that reason.
+
+## The game: a person at a table
+
+`deckmaster game` (`deckmaster/game.py`) seats a person at a table from a browser. It opens a table on the table
+engine with the person in seat one, answering every decision (no `ask` list), and the other seats piloted by Jev
+with each deck's plan and advisor through the same `table.play` as CLI tables; a deck without them is refused,
+never stock-piloted. The person's seat is `watch`ed: it also stops on what the others put on the stack, so they
+see it. The server polls the engine's `view` of that seat (`Session.view`: every zone, the stack with targets,
+combat, mana, Forge's game log) and serves it to the client by long polling (`/api/view?v=N`); answers go back by
+option ref (`/api/answer`), so an answer names the option it means rather than a position that may have moved.
+Mana stays the player's own: `--mana creatures` asks which sources pay when a creature could; mana abilities can
+float real mana before a cast. Card text and Scryfall images are fetched on demand (`/api/cards`) into
+`.deckmaster/cache/cards/` and served same-origin, which the client's canvases need.
+
+The client (`game/client/`) is a three.js table (`h.js`, with `world.js` textures and `fx.js` effects) under an
+HTML layer (`live.js`): prompt and buttons, hand, stack panel, sheets, log. Its design goals live in
+`game/tools/look/intent.md` and its look in `game/LOOK.md`. The view and decision shapes it reads are the
+engine's; no schema pins them yet ([roadmap](roadmap.md)). `game/tools/` records the client frame-exactly on a
+virtual clock, with fixture boards and plays served by mock (`boards.js`, `plays.js`, `clips.js`), and audits
+layout limits per frame; two recordings of the same client have identical telemetry.
 
 ## Snapshots and overrides
 
@@ -437,8 +460,8 @@ git -C vendor/forge format-patch -N --zero-commit --no-signature -o "$PWD/script
 
 Bootstrap refuses to rebuild over uncommitted edits or unexported commits there. A build is named by
 the pin and a hash of the series (`cec1aaea-01284e96`) and installed as its own Maven version, so a
-candidate never replaces the live build; `.goldfish/forge-build` records what is installed. The engine
-compiles against that version, refuses to start when it isn't the checkout's (`goldfish doctor` shows
+candidate never replaces the live build; `.deckmaster/forge-build` records what is installed. The engine
+compiles against that version, refuses to start when it isn't the checkout's (`deckmaster doctor` shows
 both), and every game record's `start` fact carries it as `forge`.
 
 ### Local card scripts
@@ -454,7 +477,7 @@ upstream's with the same scenarios, then drop ours from the patch. Rules scenari
 `tests/test_trek_cards.py`. Game records carry the cards the series adds (`local_cards`), and record headers and
 reports show them.
 
-[`skills/forge-cards/SKILL.md`](../skills/forge-cards/SKILL.md) owns the procedure for adding, checking
+[`agent/skills/forge-cards/SKILL.md`](../agent/skills/forge-cards/SKILL.md) owns the procedure for adding, checking
 and retiring cards.
 
 ### Updating upstream support
