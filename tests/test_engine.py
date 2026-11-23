@@ -159,7 +159,8 @@ def stand_in_model(state, questions, usage=None, session=None):
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class ModelGameTest(unittest.TestCase):
     def play(self, hybrid):
-        with mock.patch.object(model, "call", stand_in_model), mock.patch.object(model, "key", lambda: "test"):
+        with mock.patch.object(model, "call", stand_in_model), mock.patch.object(model, "key", lambda: "test"), \
+                mock.patch.object(model, "provider", lambda: model.PROVIDERS[0]):
             return batch.run(decklist.load(DECK), "test", games=1, seed=7, turns=3, opponents=3, pilot=None,
                              workers=1, guide="Ramp, then cast Marath.", hybrid=hybrid)
 

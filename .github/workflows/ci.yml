@@ -14,3 +14,21 @@ jobs:
         with:
           python-version: "3.9"
       - run: python -m unittest discover -s tests -v
+
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Scripts parse
+        run: for f in game/client/*.js game/tools/*.js; do node --check "$f"; done
+      - name: Every file a page loads exists
+        run: |
+          node -e '
+          const fs = require("fs"), path = require("path"); let bad = 0;
+          for (const h of fs.readdirSync("game/client").filter(f => f.endsWith(".html")))
+            for (const m of fs.readFileSync("game/client/" + h, "utf8").matchAll(/(?:src|href)="([^"]+)"/g))
+              if (!/^https?:/.test(m[1]) && !fs.existsSync(path.join("game/client", m[1]))) { console.log(h + ": missing " + m[1]); bad++; }
+          process.exit(bad ? 1 : 0);'
