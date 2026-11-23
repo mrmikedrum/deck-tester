@@ -32,6 +32,17 @@ When goals pull against each other, or a finding offers several fixes, choose wh
   their side, and a card that stays on the battlefield stays where it was. *Why:* place is how a player remembers.
 - **What matters first.** For opponents: creatures, then artifacts, enchantments and planeswalkers; their lands barely
   matter. Tapped reads instantly. *Now:* creatures stand up; everything else lies flat.
+- **A big board reads like a player describing it.** Past a certain size people stop looking at every card on a real
+  table too: they shingle creatures, put one token card under a die, push tapped things aside, and say what they have:
+  "30 power, 16 of it trample, two fliers, biggest is an 8/8, one deathtouch". When a board outgrows its place, lean on
+  that kind of summary, and on hints that answer the player's real question at that moment ("no fliers that can block",
+  "your Baloth can block this"), rather than on more, smaller cards. Overlap on purpose (a shingled column, a fanned
+  row, a regiment of tokens) is welcome when the group says what it holds and each card can still be told apart or
+  opened. *Why:* Mike (Nov 23): "I'd prefer intentional overlap and summary text/UI hints"; "be smart with it, try lots
+  of things", taking inspiration from what real players do under real constraints.
+- **Opponents' boards are open to rethinking.** Fixed-size pages were the loop's own fix for wonky mat transitions,
+  not a goal. Any paradigm that shows a big opponent board usably and legibly is welcome, if it still feels real: a
+  physical mat that simply grows and shrinks doesn't, but other real-world arrangements might.
 - **Real objects, behaving like them.** Cards, piles and pages move, pile and stack as things on a real table would;
   realism is a means to legibility, not the goal.
 - **One look, not a collage.** *Now:* the Grimoire (vellum pages with ruled borders in the seat colour, bronze mounts,
@@ -56,8 +67,12 @@ When goals pull against each other, or a finding offers several fixes, choose wh
   the board with any focus set aside (the stack, and any 3D object marked `userData.focus = true` or HTML element marked
   `data-focus`), then checks that the focus covers none of what it involves (the stack's targets, and the card ids in a
   focus object's `userData.involves`).
-- **Folding order** as a board grows: identical cards pile with a count; opponents' lands are one pile; mana rocks join
-  the lands; then like noncreatures fan into a named pile ("Artifacts 5"); only then, and only when the page is at its
-  largest, do unlike creatures share a "+N" pile. A mixed pile hides what it holds, so it is the last resort, never a
-  way to meet another limit: no creature sits in a mixed pile while a noncreature on its page still lies on its own.
-  Legendary and commander cards stay out of piles as long as anything else can fold.
+
+## Folding by importance (judged, not measured)
+When a board outgrows its place, the least important things fold, overlap or summarise first, and the most prominent
+stay out longest. First to go: lands and mana rocks, identical cards (one pile with a count), tapped things, small
+creatures and plain tokens. Last to go: the commander, legendary and big creatures, anything evasive or with a keyword
+that changes combat (flying, trample, deathtouch, menace, lifelink, first strike, indestructible, hexproof),
+planeswalkers, and anything that acts on me or on a creature (auras, equipment, a card targeting or affecting play). A
+mixed pile or summary must say what it holds in the terms that matter (count, total power, the keywords in it, the
+biggest).

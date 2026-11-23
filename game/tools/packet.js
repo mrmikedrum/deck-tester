@@ -123,7 +123,7 @@ const FLOOR = { any: 44, oppCreature: 56, myCreature: 72, tap: 44, nameCover: 20
 const SEATNAME = { you: "Me", ana: "Marath (left)", bo: "Atraxa (across)", cy: "Dack (right)" };
 async function audits(page, track, dir, out) {
   const [VW, VH] = track.viewport, md = ["", "## Layout audit (hard limits from tools/look/intent.md)", "",
-    `Floors: any card or pile ${FLOOR.any} px wide, an opponent's creature ${FLOOR.oppCreature}, my creature ${FLOOR.myCreature}; every piece a ${FLOOR.tap}×${FLOOR.tap} pt patch the hit test gives it; nothing hidden; no creature in a mixed pile while a noncreature lies alone; no card's name or stats strip more than ${FLOOR.nameCover}% or face more than ${FLOOR.faceCover}% covered by another piece or a panel.`, ""];
+    `Floors: any card or pile ${FLOOR.any} px wide, an opponent's creature ${FLOOR.oppCreature}, my creature ${FLOOR.myCreature}; every piece a ${FLOOR.tap}×${FLOOR.tap} pt patch the hit test gives it; nothing hidden; no card's name or stats strip more than ${FLOOR.nameCover}% or face more than ${FLOOR.faceCover}% covered by another piece or a panel.`, ""];
   let fails = 0;
   for (const a of track.audits) {
     const fr = a.objects ? { objects: a.objects } : track.frames[a.frame], tag = `stage-${String(a.frame).padStart(3, "0")}`;
@@ -158,12 +158,12 @@ async function audits(page, track, dir, out) {
       const coverList = (list, f) => (list.length ? "**" + list.length + "**: " + list.map(([k, p]) => `${(p.names[0] || "?")} ${f === "name" ? (p.cover.name >= (p.cover.foot || 0) ? "name " + p.cover.name : "stats " + p.cover.foot) : p.cover[f]}% by ${p.cover.by.map(who).join(", ")}`).join("; ") : 0);
       const faces = all.filter(e => !e[1].hidden && face(e)).map(face);
       const nm = ([, p]) => (p.names[0] || "?") + (p.n > 1 ? ` ×${p.n}` : "");
-      // A mixed pile of creatures (unlike names) hides what it holds: allowed only once every noncreature is folded.
+      // Mixed piles of creatures (unlike names), for the record: what folds first is judged by importance, not measured.
       const mixed = all.filter(([, p]) => p.role === "creature" && p.n > 1 && new Set(p.names).size > 1 && !p.hidden);
       const loneNon = all.filter(([, p]) => ["support", "mana"].includes(p.role) && p.n === 1 && !p.hidden);
       const early = mixed.length && loneNon.length ? mixed.length : 0;
-      fails += hidden.reduce((n, [, p]) => n + p.n, 0) + small.length + untappable.length + named.length + faced.length + early;
-      md.push(`| ${SEATNAME[pid]} | ${total} | ${alone} | ${piles.length} (${piles.reduce((n, [, p]) => n + p.n, 0)}) | ${hidden.length ? "**" + hidden.reduce((n, [, p]) => n + p.n, 0) + "**: " + hidden.map(nm).join(", ") : 0} | ${faces.length ? Math.round(Math.min(...faces)) : "-"} | ${small.length ? "**" + small.length + "**: " + small.map(e => nm(e) + " " + Math.round(face(e))).join(", ") : 0} | ${untappable.length ? "**" + untappable.length + "**: " + untappable.map(e => nm(e) + " " + e[1].tapSquare).join(", ") : 0} | ${coverList(named, "name")} | ${coverList(faced, "face")} | ${mixed.length ? mixed.reduce((n, [, p]) => n + p.n, 0) + " in " + mixed.length + (early ? " — **folded before " + loneNon.length + " lone noncreature" + (loneNon.length > 1 ? "s" : "") + "**" : "") : 0} |`);
+      fails += hidden.reduce((n, [, p]) => n + p.n, 0) + small.length + untappable.length + named.length + faced.length;
+      md.push(`| ${SEATNAME[pid]} | ${total} | ${alone} | ${piles.length} (${piles.reduce((n, [, p]) => n + p.n, 0)}) | ${hidden.length ? "**" + hidden.reduce((n, [, p]) => n + p.n, 0) + "**: " + hidden.map(nm).join(", ") : 0} | ${faces.length ? Math.round(Math.min(...faces)) : "-"} | ${small.length ? "**" + small.length + "**: " + small.map(e => nm(e) + " " + Math.round(face(e))).join(", ") : 0} | ${untappable.length ? "**" + untappable.length + "**: " + untappable.map(e => nm(e) + " " + e[1].tapSquare).join(", ") : 0} | ${coverList(named, "name")} | ${coverList(faced, "face")} | ${mixed.length ? mixed.reduce((n, [, p]) => n + p.n, 0) + " in " + mixed.length + (early ? " (" + loneNon.length + " lone noncreature" + (loneNon.length > 1 ? "s" : "") + " beside)" : "") : 0} |`);
     }
     md.push("");
   }
