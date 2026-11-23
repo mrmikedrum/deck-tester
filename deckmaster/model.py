@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple
 
 from . import engine, records, render
 
-KEYS = Path.home() / ".config" / "goldfish"
+KEYS = Path.home() / ".config" / "deckmaster"
 
 
 class Provider:
@@ -29,7 +29,7 @@ class Provider:
 
     def __init__(self, name: str, url: str, model: str, variable: str):
         self.name, self.url, self.variable = name, url, variable
-        self.model = os.environ.get("GOLDFISH_DECISION_MODEL", model)
+        self.model = os.environ.get("DECKMASTER_DECISION_MODEL", model)
         self.file = KEYS / f"{name}.key"
 
     def key(self) -> Optional[str]:
@@ -43,8 +43,8 @@ PROVIDERS = [
 
 
 def provider() -> Provider:
-    """GOLDFISH_DECISION_PROVIDER if set, otherwise the first provider with a key."""
-    named = os.environ.get("GOLDFISH_DECISION_PROVIDER")
+    """DECKMASTER_DECISION_PROVIDER if set, otherwise the first provider with a key."""
+    named = os.environ.get("DECKMASTER_DECISION_PROVIDER")
     for candidate in PROVIDERS:
         if candidate.name == named if named else candidate.key():
             return candidate
@@ -487,7 +487,7 @@ HYBRIDS = ("outcomes", "plain")
 FAST = 0.7  # fast mode: a plain pick at least this confident is played without playing the options out (docs: "Routing")
 # Forks replaying at once across every game in this process: throughput stops growing at about eight on ten
 # cores (bench/forkbench.py), and beyond that each fork only waits longer.
-FORKS_AT_ONCE = threading.BoundedSemaphore(int(os.environ.get("GOLDFISH_FORKS", "8")))
+FORKS_AT_ONCE = threading.BoundedSemaphore(int(os.environ.get("DECKMASTER_FORKS", "8")))
 
 
 class Line:

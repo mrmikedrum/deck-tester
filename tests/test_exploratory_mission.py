@@ -1,7 +1,7 @@
 """Native Forge scenarios: setup overrides do not count as landfall resolutions."""
 import unittest
 
-from goldfish import engine
+from deckmaster import engine
 
 
 class ExploratoryMissionRules(unittest.TestCase):

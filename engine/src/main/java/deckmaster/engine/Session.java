@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import forge.StaticData;
 import forge.ai.AIOption;
@@ -214,7 +214,7 @@ final class Session {
         game = table;
         pilot = player;
         table.subscribeToEvents(recorder);
-        recorder.write("start", "forge", System.getProperty("goldfish.forge"), "deck", setup.deckName(), "hash", setup.deckHash(),
+        recorder.write("start", "forge", System.getProperty("deckmaster.forge"), "deck", setup.deckName(), "hash", setup.deckHash(),
                 "commander", setup.commanders(), "seat", seatName, "table", true);
     }
 
@@ -374,7 +374,7 @@ final class Session {
                     pilotTurn = from.pilotTurn();
                     game.subscribeToEvents(recorder);
                     setupMillis = (System.nanoTime() - began) / 1_000_000;
-                    recorder.write("start", "forge", System.getProperty("goldfish.forge"), "seed", setup.seed(), "deck", setup.deckName(),
+                    recorder.write("start", "forge", System.getProperty("deckmaster.forge"), "seed", setup.seed(), "deck", setup.deckName(),
                             "hash", setup.deckHash(), "commander", setup.commanders(), "opponents", setup.opponents(),
                             "fork", parent, "via", "copy", "replays", script.size());
                     game.getPhaseHandler().mainGameLoop();
@@ -405,7 +405,7 @@ final class Session {
                 pilot = game.getPlayers().stream().filter(p -> p.getName().equals(PILOT)).findFirst().orElseThrow();
                 game.subscribeToEvents(recorder);
                 setupMillis = (System.nanoTime() - began) / 1_000_000;
-                recorder.write("start", "forge", System.getProperty("goldfish.forge"), "local_cards", System.getProperty("goldfish.localCards"),
+                recorder.write("start", "forge", System.getProperty("deckmaster.forge"), "local_cards", System.getProperty("deckmaster.localCards"),
                         "seed", setup.seed(), "deck", setup.deckName(), "hash", setup.deckHash(),
                         "commander", setup.commanders(), "turns", setup.turnLimit() > 0 ? setup.turnLimit() : null,
                         "opponents", setup.opponents(), "ai", setup.flatMc() ? "flatmc" : setup.aiMode() == null ? null : setup.aiMode().name().toLowerCase(Locale.ROOT),
@@ -441,7 +441,7 @@ final class Session {
         }
         List<String> frames = new ArrayList<>();
         for (StackTraceElement frame : running.getStackTrace()) {
-            if (frame.getClassName().startsWith("forge.") || frame.getClassName().startsWith("goldfish.")) {
+            if (frame.getClassName().startsWith("forge.") || frame.getClassName().startsWith("deckmaster.")) {
                 frames.add(frame.getClassName().replaceAll(".*\\.", "") + "." + frame.getMethodName() + ":" + frame.getLineNumber());
             }
             if (frames.size() == 8) {

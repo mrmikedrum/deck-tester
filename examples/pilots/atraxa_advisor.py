@@ -3,7 +3,7 @@
 Facts distinguish cast triggers, entry triggers, proliferation and crew costs; this hook advises the
 model but never substitutes for Forge's legal actions or makes the final choice itself.
 """
-from goldfish.advice import Advisor
+from deckmaster.advice import Advisor
 
 adv = Advisor()
 

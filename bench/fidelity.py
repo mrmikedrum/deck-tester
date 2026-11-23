@@ -15,7 +15,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from goldfish import decklist, engine, model  # noqa: E402
+from deckmaster import decklist, engine, model  # noqa: E402
 
 
 def play(deck, seed, mode, fork_turns, last, forks="copy"):

@@ -1,6 +1,6 @@
 __pycache__/
 *.pyc
-.goldfish/
+.deckmaster/
 vendor/
 engine/target/
 .DS_Store

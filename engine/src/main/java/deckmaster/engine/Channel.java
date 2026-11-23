@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import java.util.List;
 import java.util.concurrent.SynchronousQueue;

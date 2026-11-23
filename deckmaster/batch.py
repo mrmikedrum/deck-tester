@@ -27,7 +27,7 @@ MAX_DECISIONS = 100  # decisions in one turn before the loop guard hands the res
 
 
 def load_pilot(path: str) -> Dict[str, Callable]:
-    spec = importlib.util.spec_from_file_location("goldfish_pilot", path)
+    spec = importlib.util.spec_from_file_location("deckmaster_pilot", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     handlers = {kind: getattr(module, kind) for kind in KINDS + ("advise",) if callable(getattr(module, kind, None))}

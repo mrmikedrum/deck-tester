@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from goldfish import decklist, engine, model, records  # noqa: E402
+from deckmaster import decklist, engine, model, records  # noqa: E402
 
 SITUATIONS = Path(__file__).resolve().parent / "situations"
 DECK = Path(__file__).resolve().parent.parent / "examples" / "decks" / "eternities-living-worlds-iii.txt"

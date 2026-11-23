@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-HOME = ROOT / ".goldfish"
+HOME = ROOT / ".deckmaster"
 SOCKET = HOME / "engine.sock"
 LOG = HOME / "engine.log"
 MODE = []  # extra arguments for the engine: ["table"] for the table engine (see use_table)
@@ -93,7 +93,7 @@ def _start() -> None:
     java = str(Path(env["JAVA_HOME"]) / "bin" / "java") if "JAVA_HOME" in env else "java"
     # Detach through a shell so the engine outlives this command and isn't our child.
     subprocess.run(["/bin/sh", "-c", 'nohup "$@" >>"$0" 2>&1 </dev/null &', str(LOG),
-                    java, "-Dgoldfish.forge=" + wanted, "-Dgoldfish.localCards=" + ", ".join(local_cards()), f"-Xmx{os.environ.get('GOLDFISH_HEAP', '2g')}", "-cp", classpath, "goldfish.engine.Server", str(RES), str(HOME), *MODE], env=env, check=True)
+                    java, "-Ddeckmaster.forge=" + wanted, "-Ddeckmaster.localCards=" + ", ".join(local_cards()), f"-Xmx{os.environ.get('DECKMASTER_HEAP', '2g')}", "-cp", classpath, "deckmaster.engine.Server", str(RES), str(HOME), *MODE], env=env, check=True)
     deadline = time.time() + 90
     while time.time() < deadline:
         try:

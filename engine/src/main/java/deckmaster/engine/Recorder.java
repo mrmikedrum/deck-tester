@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.Gson;

@@ -43,7 +43,7 @@ def progress(reply: dict) -> str:
         return decision(reply["decision"])
     if reply.get("over"):
         return f"over: {reply['over']}"
-    return "still running; check again with: goldfish decision"
+    return "still running; check again with: deckmaster decision"
 
 
 def _permanent(p: dict) -> str:

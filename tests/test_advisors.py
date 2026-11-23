@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from goldfish import advice, batch, model
+from deckmaster import advice, batch, model
 
 ROOT = Path(__file__).resolve().parent.parent
 

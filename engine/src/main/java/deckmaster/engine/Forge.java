@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import forge.CardStorageReader;
 import forge.StaticData;

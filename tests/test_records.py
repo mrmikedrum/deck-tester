@@ -1,6 +1,6 @@
 import unittest
 
-from goldfish import records, render
+from deckmaster import records, render
 
 FACTS = [
     {"t": "start", "turn": 0, "seed": 11, "deck": "marath", "hash": "56fe6c23"},

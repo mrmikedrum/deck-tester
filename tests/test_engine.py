@@ -5,7 +5,7 @@ from pathlib import Path
 
 from unittest import mock
 
-from goldfish import batch, decklist, engine, model, records, report
+from deckmaster import batch, decklist, engine, model, records, report
 
 DECK = Path(__file__).resolve().parent.parent / "examples" / "decks" / "eternities-living-worlds-iii.txt"
 

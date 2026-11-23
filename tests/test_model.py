@@ -2,7 +2,7 @@
 
 import unittest
 
-from goldfish import model
+from deckmaster import model
 
 
 def decision(kind, options, low=1, high=1, details=None, repeat=False, prompt=""):
@@ -98,7 +98,7 @@ class ContextTest(unittest.TestCase):
 
 class AdviceTest(unittest.TestCase):
     def test_rules_match_cards_and_roles_by_zone_and_what_is_castable(self):
-        from goldfish.advice import Advisor, text_matches
+        from deckmaster.advice import Advisor, text_matches
         adv = Advisor()
         adv.role("doubler", "Parallel Lives", text=text_matches("twice that many"))
         adv.when("doubled", board=["doubler"], castable_from={"command": ["Marath, Will of the Wild"]})

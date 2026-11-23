@@ -3,7 +3,7 @@
 These are conditional facts for the decision model, not a second rules engine or a deterministic pilot.
 Keep the approved deck identity in the plan; put position-specific sequencing reminders here.
 """
-from goldfish.advice import Advisor
+from deckmaster.advice import Advisor
 
 adv = Advisor()
 adv.role('fetch', 'Arid Mesa', 'Bloodstained Mire', 'Flooded Strand', 'Misty Rainforest',

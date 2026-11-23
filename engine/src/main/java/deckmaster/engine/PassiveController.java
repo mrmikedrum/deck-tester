@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import forge.ai.PlayerControllerAi;
 import forge.game.Game;

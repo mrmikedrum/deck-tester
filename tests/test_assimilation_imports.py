@@ -1,6 +1,6 @@
 """Native rules checks for the three upstream assimilation scripts imported into our card patch."""
 import unittest
-from goldfish import engine
+from deckmaster import engine
 
 
 class AssimilationImports(unittest.TestCase):

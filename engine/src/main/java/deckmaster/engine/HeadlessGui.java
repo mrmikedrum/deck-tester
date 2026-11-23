@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,7 +37,7 @@ final class HeadlessGui implements IGuiBase {
     @Override public boolean isRunningOnDesktop() { return true; }
     @Override public boolean isLibgdxPort() { return false; }
     @Override public String getCurrentVersion() { return BuildInfo.getVersionString(); }
-    @Override public String getUserAgent() { return "goldfish-table"; }
+    @Override public String getUserAgent() { return "deckmaster-table"; }
     @Override public void invokeInEdtNow(Runnable runnable) { runnable.run(); }
     @Override public void invokeInEdtLater(Runnable runnable) { runnable.run(); }
     @Override public void invokeInEdtAndWait(Runnable proc) { proc.run(); }

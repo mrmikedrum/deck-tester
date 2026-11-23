@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from goldfish import batch, report
+from deckmaster import batch, report
 
 
 def eot(turn, lands, mana, unspent, opponents_life):
@@ -56,7 +56,7 @@ class SummaryTest(unittest.TestCase):
 
 
     def test_reports_label_games_with_local_scripts(self):
-        from goldfish import records
+        from deckmaster import records
         facts = [{'t': 'start', 'seed': 1, 'local_cards': 'Test Card'}]
         self.assertIn('local card scripts: Test Card', records.header(facts))
         self.assertEqual(report.game_summary(facts, [])['local_cards'], 'Test Card')

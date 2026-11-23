@@ -3,7 +3,7 @@ decision, the one or two things about the position that its designer knows matte
 
 The designer knows the deck's pieces. The script declares them and the conditions under which to speak:
 
-    from goldfish.advice import Advisor
+    from deckmaster.advice import Advisor
 
     adv = Advisor()
     adv.role("doubler", "Doubling Season", "Parallel Lives", "Hardened Scales")

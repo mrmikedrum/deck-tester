@@ -1,6 +1,6 @@
 ---
 name: forge-cards
-description: Maintain this goldfish host's Forge dependency and script-only card additions; check upstream, verify native behavior and retire local scripts when upstream catches up.
+description: Maintain Deckmaster's Forge dependency and script-only card additions; check upstream, verify native behavior and retire local scripts when upstream catches up.
 ---
 
 # Forge card maintenance

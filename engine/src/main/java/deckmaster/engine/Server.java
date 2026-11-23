@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 /**
  * The engine process: loads Forge once, then serves JSON-line requests on a Unix socket under the
- * goldfish home directory, one request and one reply per connection. Sessions live until ended.
+ * deckmaster home directory, one request and one reply per connection. Sessions live until ended.
  */
 public final class Server {
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
@@ -78,7 +78,7 @@ public final class Server {
         Path socket = home.resolve(tableMode ? "table.sock" : "engine.sock");
         if (Files.exists(socket)) {
             try (SocketChannel running = SocketChannel.open(UnixDomainSocketAddress.of(socket))) {
-                System.err.println("another goldfish engine is already listening on " + socket);
+                System.err.println("another deckmaster engine is already listening on " + socket);
                 System.exit(0);
             } catch (IOException stale) {
                 Files.delete(socket); // left by an engine that has gone
@@ -86,7 +86,7 @@ public final class Server {
         }
         try (ServerSocketChannel listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
             listener.bind(UnixDomainSocketAddress.of(socket));
-            System.err.println("goldfish engine ready on " + socket);
+            System.err.println("deckmaster engine ready on " + socket);
             while (true) {
                 SocketChannel client = listener.accept();
                 Thread handler = new Thread(() -> server.serve(client), "request");
@@ -317,7 +317,7 @@ public final class Server {
 
     private Map<String, Object> openTable(JsonObject request) throws Exception {
         if (!tableMode) {
-            throw new IllegalStateException("tables are hosted by the table engine (goldfish table)");
+            throw new IllegalStateException("tables are hosted by the table engine (deckmaster table)");
         }
         if (table != null) {
             throw new IllegalStateException("a table is already open on port " + table.port);

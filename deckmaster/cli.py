@@ -61,7 +61,7 @@ def _session(args) -> str:
         return args.session
     if CURRENT.exists():
         return CURRENT.read_text().strip()
-    raise engine.EngineError("no session; start one with: goldfish start DECK")
+    raise engine.EngineError("no session; start one with: deckmaster start DECK")
 
 
 def _new_facts(reply: dict) -> list:
@@ -255,7 +255,7 @@ def run(args) -> int:
 def report_cmd(args) -> int:
     batch_id = args.batch or batch.latest()
     if not batch_id:
-        raise engine.EngineError("no batches yet; run one with: goldfish run DECK")
+        raise engine.EngineError("no batches yet; run one with: deckmaster run DECK")
     for line in report.build(batch.load(batch_id), show_games=args.per_game, show_cards=args.cards):
         print(line)
     return 0
@@ -280,7 +280,7 @@ def engine_cmd(args) -> int:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="goldfish", description="Commander goldfishing for agents.")
+    parser = argparse.ArgumentParser(prog="deckmaster", description="Deckmaster: Commander on Forge, for agents and players.")
     parser.add_argument("--session", help="session id (default: the last one started)")
     commands = parser.add_subparsers(dest="command", required=True)
 

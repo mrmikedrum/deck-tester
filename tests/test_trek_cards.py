@@ -1,6 +1,6 @@
 """Real Forge regression scenarios for the native Star Trek scripts (no model calls)."""
 import unittest
-from goldfish import engine, decklist
+from deckmaster import engine, decklist
 
 class TrekCardRules(unittest.TestCase):
     def setUp(self):

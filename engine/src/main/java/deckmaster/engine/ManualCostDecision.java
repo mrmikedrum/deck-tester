@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import forge.ai.AiCostDecision;
 import forge.game.card.Card;

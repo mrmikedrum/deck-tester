@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import forge.LobbyPlayer;
 import forge.ai.AiCache;
@@ -68,8 +68,8 @@ public class ManualController extends PlayerControllerAi {
             AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_MAIN2, AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_DECLBLK,
             AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_ENEMY_DECLBLK, AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
 
-    /** GOLDFISH_TRACE in the engine's environment writes each priority and attack to the engine log. */
-    private static final boolean TRACE = System.getenv("GOLDFISH_TRACE") != null;
+    /** DECKMASTER_TRACE in the engine's environment writes each priority and attack to the engine log. */
+    private static final boolean TRACE = System.getenv("DECKMASTER_TRACE") != null;
 
     private final Session session;
     /** True while casting something the agent chose: its targets, modes, X and payment are the agent's too. */

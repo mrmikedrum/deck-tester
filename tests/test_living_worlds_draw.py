@@ -1,7 +1,7 @@
 """Native card-supply scenarios for the Living Worlds refinement candidates."""
 import unittest
 
-from goldfish import engine
+from deckmaster import engine
 from tests import test_exploratory_mission as mission_rules
 
 

@@ -4,15 +4,15 @@
 # repository under a version naming this build, so builds never replace each other.
 # Resolve the current daily: git ls-remote https://github.com/Card-Forge/forge.git refs/tags/daily-snapshots
 # Patches and updates: docs/architecture.md, "Forge dependency".
-# Isolate builds: GOLDFISH_MAVEN_ARGS=-Dmaven.repo.local=/absolute/path
+# Isolate builds: DECKMASTER_MAVEN_ARGS=-Dmaven.repo.local=/absolute/path
 set -eu
 
 FORGE_COMMIT=e7020aa13c376001a7c13e9d2a069a17efe7ab12
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/vendor/forge"
-STAMP="$ROOT/.goldfish/forge-build"
+STAMP="$ROOT/.deckmaster/forge-build"
 # The goldfish branch tip as the series last left it, so a failed build can be retried.
-APPLIED="$ROOT/.goldfish/forge-applied"
+APPLIED="$ROOT/.deckmaster/forge-applied"
 
 if [ ! -d "$DEST/.git" ]; then
   mkdir -p "$DEST"
@@ -70,16 +70,16 @@ if ! git -C "$DEST" -c user.name=goldfish -c user.email=goldfish@localhost \
   echo "then export the series again" >&2
   exit 1
 fi
-mkdir -p "$ROOT/.goldfish"
+mkdir -p "$ROOT/.deckmaster"
 git -C "$DEST" rev-parse HEAD > "$APPLIED"
 
 # SNAPSHOT, as in upstream's own builds, keeps it a development build: Forge loads cardsfolder/upcoming only for those.
 VERSION="$(sed -n 's:.*<versionCode>\(.*\)</versionCode>.*:\1:p' "$DEST/pom.xml" | head -1)-SNAPSHOT-goldfish-$BUILD"
 JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21)}"
 export JAVA_HOME
-(cd "$DEST" && mvn ${GOLDFISH_MAVEN_ARGS:-} -q -pl forge-core,forge-game,forge-ai,forge-gui -am -DskipTests \
+(cd "$DEST" && mvn ${DECKMASTER_MAVEN_ARGS:-} -q -pl forge-core,forge-game,forge-ai,forge-gui -am -DskipTests \
   -Dcheckstyle.skip -Drevision="$VERSION" flatten:flatten install)
-mkdir -p "$ROOT/.goldfish"
+mkdir -p "$ROOT/.deckmaster"
 printf 'build=%s\nversion=%s\ncommit=%s\nhead=%s\n' "$BUILD" "$VERSION" "$FORGE_COMMIT" \
   "$(git -C "$DEST" rev-parse HEAD)" > "$STAMP"
 echo "forge $BUILD installed as $VERSION"

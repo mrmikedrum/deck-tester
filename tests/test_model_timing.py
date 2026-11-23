@@ -2,7 +2,7 @@
 import socket
 import unittest
 from unittest.mock import patch, MagicMock
-from goldfish import model
+from deckmaster import model
 
 class ModelTimingTest(unittest.TestCase):
     def test_retry_timeout_is_not_hidden_by_success(self):

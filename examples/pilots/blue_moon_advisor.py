@@ -3,7 +3,7 @@ as a land keeping a creature's abilities, and tap and untap loops work on those 
 Moon now, what a choice turns it into, and which loop pieces are on the board. Facts only; the played-out options
 show what each line does."""
 
-from goldfish.advice import Advisor
+from deckmaster.advice import Advisor
 
 adv = Advisor()
 YUE = "Princess Yue"

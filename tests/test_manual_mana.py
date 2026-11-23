@@ -6,7 +6,7 @@ import tempfile
 import threading
 import unittest
 
-from goldfish import engine
+from deckmaster import engine
 
 
 @unittest.skipUnless(engine.FORGE_BUILD.exists(), 'requires installed Forge')

@@ -1,6 +1,6 @@
 import unittest
 
-from goldfish import model, table_model, table_report
+from deckmaster import model, table_model, table_report
 
 STATE = {"turn": "T3 main1", "life": 38, "mana": 3, "library": 90, "hand": ["Forest"], "land_drop": False,
          "battlefield": [{"name": "Forest"}], "command": ["Marath, Will of the Wild"], "graveyard": [], "exile": [],

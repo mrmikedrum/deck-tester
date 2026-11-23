@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from goldfish import decklist, engine, model, table_model  # noqa: E402
+from deckmaster import decklist, engine, model, table_model  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DECKS = {"Jev": "eternities-living-worlds-iii", "Ana": "eternities-assimilation-iii", "Bo": "blue-moon-combat-revision"}

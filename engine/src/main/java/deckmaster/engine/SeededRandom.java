@@ -1,4 +1,4 @@
-package goldfish.engine;
+package deckmaster.engine;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import unittest
 from unittest import mock
 
-from goldfish import batch, model, table
+from deckmaster import batch, model, table
 
 ROOT = Path(__file__).resolve().parent.parent
 
