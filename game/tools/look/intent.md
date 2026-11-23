@@ -33,6 +33,9 @@ When goals pull against each other, or a finding offers several fixes, choose wh
   outside or Escape.
 
 ## Hard limits (measured by tools/packet.js; a change that breaks one is not done)
+- **Game behaviour is not this loop's to change.** What the client sends the engine (which decisions it answers, with
+  which options, in what order, and when it answers on its own) stays as it is; only how things are shown and offered
+  changes. The recordings use a mocked engine, so they can't catch a mistake here: keep the protocol untouched.
 - **Nothing on the battlefield is hidden.** Every permanent is either drawn on its page or in a pile with a visible
   count that opens a sift of the cards at full size when tapped.
 - **Floor sizes** (card face width on screen at 1180×820, every seat including across): any card or pile 44 px; an
