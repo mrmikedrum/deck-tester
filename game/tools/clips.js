@@ -9,6 +9,16 @@ const take = (st, v) => `window.Live.take(${JSON.stringify({ v, state: "playing"
 // Tap the biggest pile on a seat's page, as a player would to look through it.
 const siftBiggest = pid => `(() => { const pc = Object.values(__h.pieces()).filter(p => p.pid === "${pid}" && p.ids.length > 1 && p.role !== "zone").sort((a, b) => b.ids.length - a.ids.length)[0]; if (pc) __h.sift(pc.ids, pc.obj.getWorldPosition(new __h.T.Vector3()), "pile"); })()`;
 
+// A finger tap on the table at a point, the way the canvas hears one.
+const tapAt = xy => `(() => { const [x, y] = ${xy}, cv = __h.renderer().domElement, o = { clientX: x, clientY: y, pointerId: 1, isPrimary: true, bubbles: true };
+  cv.dispatchEvent(new PointerEvent("pointerdown", o)); cv.dispatchEvent(new PointerEvent("pointerup", o)); })()`;
+// The open table nearest the middle of the screen: no card, pile or panel there, and clear of the stack.
+const openTable = `(() => { const cv = __h.renderer().domElement, r = __h.stackRect(), pts = [];
+  for (let y = 40; y < innerHeight - 40; y += 12) for (let x = 40; x < innerWidth - 40; x += 12) pts.push([x, y]);
+  pts.sort((a, b) => Math.hypot(a[0] - innerWidth / 2, a[1] - innerHeight / 2) - Math.hypot(b[0] - innerWidth / 2, b[1] - innerHeight / 2));
+  return pts.find(([x, y]) => document.elementFromPoint(x, y) === cv && !__h.pickAt(x, y) && !(r && x > r.left - 20 && x < r.right + 20 && y > r.top - 20 && y < r.bottom + 20)) || [innerWidth / 2, innerHeight / 2]; })()`;
+const stackMiddle = `(() => { const r = __h.stackRect(); return r ? [(r.left + r.right) / 2, (r.top + r.bottom) / 2] : [innerWidth / 2, innerHeight / 2]; })()`;
+
 module.exports = [
   { name: "game", live: BOARDS[0], ms: 1500 * BOARDS.length + 4200, audit: true,
     about: "One game from turn 2 to turn 15: every seat's board grows a turn-step at a time. Then I lean in on Marath's crowded side, tap his biggest pile to look through it, and close it.",
@@ -36,6 +46,11 @@ module.exports = [
     ["wipe", "Dack casts Sunfall: it goes on the stack, then resolves, exiling every creature on the table; Dack gets an Incubator token.", ["Dack casts Sunfall", "Sunfall resolves: every creature is exiled"]],
   ].map(([name, about, labels]) => ({ name, live: PLAYS[name].first, ms: 2000 * labels.length + 1800, about, audit: true,
     beats: PLAYS[name].steps.map((st, i) => ({ at: 300 + 2000 * i, label: labels[i], js: take(st, i + 2) })) })),
+  { name: "stack", live: PLAYS.counter.first, ms: 6200, audit: true,
+    about: "Dack casts Swords to Plowshares at my Meloku. I tap the open table to set the stack aside and see the whole board, then tap the small stack to look at it again.",
+    beats: [{ at: 300, label: "Dack casts Swords to Plowshares at Meloku", js: take(PLAYS.counter.steps[0], 2) },
+            { at: 2500, label: "I tap the table: the stack steps aside", js: tapAt(openTable) },
+            { at: 4300, label: "I tap the small stack: it comes back", js: tapAt(stackMiddle) }] },
   // Offline scenario jumps cut between unrelated boards: a dev tool, not a game moment. Record it by name if wanted.
   { name: "scenarios", manual: true, live: null, ms: 5000, setup: ['__h.loadScenario("early")'], about: "The game jumps ahead: from an early board to a mid-game board to a late-game board, each side gaining many permanents.",
     beats: [{ at: 300, label: "mid-game board", js: '__h.loadScenario("mid")' },

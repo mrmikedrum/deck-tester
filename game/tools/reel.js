@@ -101,17 +101,22 @@ const TRACK = () => {
 // ---- A layout audit, at chosen frames: what the hit test gives each piece, what is hidden --------------------------
 const AUDIT = step => {
   const h = window.__h, cv = h.renderer().domElement, byObj = new Map(), cells = {};
+  // The stack, while it is up, is the focus and may stand in front of the board (one tap sets it aside): the board is
+  // measured as it is with the stack set aside, except that the stack may not cover what it points at.
+  const stackGs = new Set(); h.scene.traverse(o => { if (o.userData.pick && o.userData.pick.stack && o.parent) stackGs.add(o.parent); });
+  const stackUp = [...stackGs].some(g => { for (let q = g; q; q = q.parent) if (!q.visible) return false; return true; });
+  const aimed = new Set(stackUp ? (window.Proto.G.stack || []).flatMap(st => (st.targets || []).filter(t => typeof t === "number")) : []);
   for (const [k, pc] of Object.entries(h.pieces())) byObj.set(pc.obj, k);
   const keyOf = o => { for (let q = o; q; q = q.parent) if (byObj.has(q)) return byObj.get(q); return null; };
   const W = innerWidth, H = innerHeight, cols = Math.ceil(W / step), rows = Math.ceil(H / step), owner = new Array(cols * rows).fill(null);
-  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+  const grid = () => { for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
     const x = i * step + step / 2, y = j * step + step / 2, el = document.elementFromPoint(x, y);
     if (el !== cv) { const c = el && el.closest("[class]"); owner[j * cols + i] = "panel:" + (c ? c.className.split(" ")[0] : el ? el.tagName.toLowerCase() : "?"); continue; }   // the hand, the prompt or another overlay
     const hit = h.pickAt(x, y); if (!hit) continue;
     const k = keyOf(hit.obj); if (!k) continue;
     owner[j * cols + i] = k;
     (cells[k] = cells[k] || { pick: hit.pick, set: new Set() }).set.add(j * cols + i);
-  }
+  } };
   // What covers each card: of the points inside its face (and its name strip, the top sixth, and its foot, the bottom
   // sixth, where power, toughness and counters sit), what is drawn on
   // top there. A panel over the canvas, or the first visible thing a ray from the eye meets, labels and signs included;
@@ -126,7 +131,7 @@ const AUDIT = step => {
       const m = hit.object; if (!m.isMesh || !m.material) continue;
       let vis = true; for (let q = m; q; q = q.parent) if (!q.visible) { vis = false; break; }
       const mat = [].concat(m.material)[0]; if (!vis || (mat.transparent && mat.opacity < 0.1)) continue;
-      let q = m; while (q && !pieceOf.has(q)) q = q.parent;
+      let q = m; while (q && !pieceOf.has(q)) { if (stackGs.has(q)) return "stack"; q = q.parent; }
       return q ? pieceOf.get(q) : null;                              // the table, the page, or nothing of a piece
     }
     return null;
@@ -157,15 +162,20 @@ const AUDIT = step => {
     for (const c of [...set].sort((a, b) => a - b)) { const i = c % cols, j = (c - i) / cols; const v = 1 + Math.min(dp.get(c - 1) || 0, dp.get(c - cols) || 0, dp.get(c - cols - 1) || 0); if (i === 0) dp.set(c, 1); else dp.set(c, v); best = Math.max(best, dp.get(c)); }
     return best * step;
   };
-  const poses = h.poses(), pieces = {};
-  for (const [k, pc] of Object.entries(h.pieces())) {
+  const poses = h.poses(), pieces = {}, aimCover = {};
+  for (const [k, pc] of Object.entries(h.pieces()))                  // what the stack points at, with the stack up
+    if (!["floor", "zone"].includes(pc.role) && pc.ids.some(id => aimed.has(id)) && !(poses[k] || {}).hide) aimCover[k] = coverOf(k, pc.obj);
+  const shown = [...stackGs].map(g => [g, g.visible]); shown.forEach(([g]) => (g.visible = false));
+  try { grid(); for (const [k, pc] of Object.entries(h.pieces())) {
     if (["floor", "zone"].includes(pc.role)) continue;
     const c = cells[k], t = poses[k] || {};
     pieces[k] = { role: pc.role, pid: pc.pid, n: pc.ids.length, names: pc.ids.slice(0, 6).map(id => { const c = window.Proto.card(id); return c ? window.Proto.name(c) : null; }).filter(Boolean),
       pick: c ? c.pick.type : null, tapPx: c ? c.set.size * step * step : 0, tapSquare: c ? square(c.set) : 0, hidden: !!t.hide,
       cover: t.hide ? null : coverOf(k, pc.obj) };
-  }
-  return { pieces };
+    const a = aimCover[k], b = pieces[k].cover;                    // the worse of the two, for what the stack points at
+    if (a && b) pieces[k].cover = { face: Math.max(a.face, b.face), name: Math.max(a.name, b.name), foot: Math.max(a.foot, b.foot), by: [...new Set([...a.by, ...b.by])] };
+  } } finally { shown.forEach(([g, v]) => (g.visible = v)); }
+  return { pieces, stackUp };
 };
 
 async function livePage(ctx, first) {

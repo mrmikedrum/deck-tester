@@ -9,8 +9,14 @@ When goals pull against each other, or a finding offers several fixes, choose wh
 - **Understand the board at a glance.** Clarity over density: open space, instant recognition, a composed tabletop
   rather than a dashboard. *Why:* density is the bane of understandability; Arena is the minimum bar.
 - **Never miss what changes.** Whatever just changed (a spell, an attack, a card arriving or leaving, whose turn it is)
-  is on screen and drawn to the eye, and nothing that changes is hidden or off screen. *Now:* the stack comes to the
-  middle and dims the table; the turn player's page comes forward a little.
+  is on screen and drawn to the eye, and nothing that changes is hidden or off screen. *Now:* the turn player's page
+  comes forward a little.
+- **The stack is the focus while it's up.** A spell or ability on the stack has the player's attention: its cards stand
+  large and central, in front of the table (they may cover the board), showing the real card image so it can be read,
+  and the table dims behind them. It still points at what it affects: those cards stay in their places on the board but
+  come up above the dim, and the stack never covers them. Tapping away sets the stack aside, small, so the whole board
+  shows again; tapping the small stack brings it back. *Why:* this is the moment the player must read and answer; Mike
+  (Nov 23): "it's okay if the stack is in front of things… bigger and more centered… even using the real card art".
 - **Look closer without getting lost.** A player can look at one seat, a pile or a card closely and get back in one
   tap; the view may move to show activity, but never in a way that hides activity elsewhere, and never needs
   navigating (no free pan, pinch or orbit). *Now:* leaning in brings a page forward; a camera that frames the action is
@@ -44,6 +50,8 @@ When goals pull against each other, or a finding offers several fixes, choose wh
 - **Tappable.** Every card and pile has at least a 44×44 pt patch that the hit test gives to it (Apple's minimum).
 - **Nothing covers what a card says.** No other card, label or panel hides more than a fifth of a card's name strip or
   of its foot (power, toughness, counters), or more than a third of its face. A pile's own cards may overlap each other.
+  While it's up, the stack's own cards are exempt over the board (the audit measures the board as it is with the stack
+  set aside), but not over the cards it points at.
 - **Folding order** as a board grows: identical cards pile with a count; opponents' lands are one pile; mana rocks join
   the lands; then like noncreatures fan into a named pile ("Artifacts 5"); only then, and only when the page is at its
   largest, do unlike creatures share a "+N" pile. A mixed pile hides what it holds, so it is the last resort, never a
