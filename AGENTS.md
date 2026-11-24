@@ -37,15 +37,16 @@ README; load further detail only when the task needs it. For development or diag
 | `game/tools/` | Recording and judging the client: `reel.js` (frame-exact clips), `packet.js` (review packets and the layout audit), `clips.js`, `boards.js` and `plays.js` (fixtures), the look loop (`look.sh`, `look/`); see [game/LOOK.md](game/LOOK.md) |
 | `agent/skills/` | Agent skills; `forge-cards/` is the procedure for the card scripts our series adds to Forge |
 | `bench/` | Fork fidelity (goldfish and tables), scenarios and decision-model experiments |
-| `examples/` | Real decklists used as fixtures, deck plans, pilots and advisors (moving to the decks repository) |
-| `tests/` | `unittest` suites; `test_engine.py` plays a real game and skips without Forge |
-| `.deckmaster/` | Runtime, gitignored: engine and table-engine sockets and logs, game records in `runs/`, the card image cache in `cache/cards/` |
+| `deckmaster/decks.py` | The deck database: decks from the decks repository (`deck sync`) and imports, with immutable revisions; see the README |
+| `tests/` | `unittest` suites; `test_engine.py` plays a real game and skips without Forge; `fixtures/` holds frozen decklists and advisors |
+| `.deckmaster/` | Runtime, gitignored: engine and table-engine sockets and logs, game records in `runs/`, the card image cache in `cache/cards/`; the deck database is in `~/.local/share/deckmaster/` |
 
 ## Commands
 
 ```bash
 scripts/bootstrap-forge.sh                # once, and after the Forge pin or patches change (JDK 21, Maven)
 python3 -m unittest discover -s tests -v  # all tests; the engine test needs Forge
+bin/deckmaster deck sync                  # after decks change in the decks repository
 bin/deckmaster doctor                     # toolchain and Forge status
 bin/deckmaster engine stop                # after changing engine code with sessions open
 bin/deckmaster game                       # serve the game on this machine's network

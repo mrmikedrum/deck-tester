@@ -7,35 +7,25 @@ which the other players pass (and block), and hands what the model doesn't answe
 import socket
 import threading
 import time
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-from . import batch, decklist, engine, model, table_model, table_report
+from . import batch, decks, engine, model, table_model, table_report
 
 PORT = 36743
 
 
 class Seat:
-    """One agent seat: a name, a decklist, a plan (text, or a file) and optionally a pilot or advisor file."""
+    """One agent seat: a name and a deck, which brings its plan and advisor (decks.Deck)."""
 
-    def __init__(self, name: str, deck: str, plan: Optional[str] = None, pilot: Optional[str] = None):
-        self.name, self.deck_path, self.pilot, self.plan_path = name, deck, pilot, plan
-        self.plan = Path(plan).read_text() if plan and Path(plan).is_file() else plan
-        self.deck = decklist.load(deck)
-        self.handlers = batch.load_pilot(pilot) if pilot else {}
+    def __init__(self, name: str, deck: "decks.Deck"):
+        self.name, self.slug, self.revision, self.plan, self.pilot = name, deck.slug, deck.revision, deck.plan, deck.advisor
+        self.deck = deck.list
+        self.handlers = batch.load_pilot(deck.advisor) if deck.advisor else {}
 
     def request(self) -> dict:
         asks = (set(self.handlers) - {"advise"}) | (set(table_model.ASKS) if self.plan else set())
         return {"name": self.name, "commanders": self.deck.commanders, "main": self.deck.main,
-                "deck": Path(self.deck_path).stem, "hash": self.deck.revision(), "ask": sorted(asks), "mana": "auto"}
-
-
-def parse(spec: str, number: int) -> Seat:
-    """DECK[,PLAN[,PILOT]] as given on the command line; the seat is named after its deck."""
-    parts = spec.split(",")
-    deck = parts[0]
-    name = f"Jev {number} ({Path(deck).stem})"
-    return Seat(name, deck, parts[1] if len(parts) > 1 and parts[1] else None, parts[2] if len(parts) > 2 else None)
+                "deck": self.slug, "hash": self.deck.revision(), "ask": sorted(asks), "mana": "auto"}
 
 
 def address() -> str:

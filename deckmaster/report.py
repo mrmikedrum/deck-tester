@@ -2,6 +2,7 @@
 
 import statistics
 from collections import Counter, defaultdict
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 from . import records
@@ -62,7 +63,7 @@ def summary(manifest: dict, summaries: List[dict]) -> List[str]:
     games = manifest["games"]
     seeds = [g["seed"] for g in games]
     ai = "Forge AI" + ("" if manifest.get("ai", "default") == "default" else f" ({manifest['ai']})")
-    pilot = " + ".join(([manifest["pilot"]] if manifest.get("pilot") else []) +
+    pilot = " + ".join(([Path(manifest["pilot"]).name] if manifest.get("pilot") else []) +
                        (["model with plan"] if manifest.get("model") else []) + [ai])
     cap = f"to turn {manifest['turns']}" if manifest.get("turns") else "uncapped"
     lines = [f"{manifest['id']} · {manifest['deck']}@{manifest['hash']} · {len(games)} games · seeds "

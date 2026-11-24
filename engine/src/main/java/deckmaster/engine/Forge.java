@@ -57,9 +57,12 @@ public final class Forge {
     public static void startForTables(java.nio.file.Path res, java.nio.file.Path dir) throws java.io.IOException {
         java.nio.file.Path assets = dir.resolve("assets");
         java.nio.file.Files.createDirectories(assets);
-        java.nio.file.Path link = assets.resolve("res");
+        java.nio.file.Path link = assets.resolve("res"), target = res.toAbsolutePath();
+        if (java.nio.file.Files.isSymbolicLink(link) && !java.nio.file.Files.readSymbolicLink(link).equals(target)) {
+            java.nio.file.Files.delete(link);   // a checkout that moved leaves its old link behind
+        }
         if (!java.nio.file.Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-            java.nio.file.Files.createSymbolicLink(link, res.toAbsolutePath());
+            java.nio.file.Files.createSymbolicLink(link, target);
         }
         java.nio.file.Path user = dir.resolve("user").toAbsolutePath();
         java.nio.file.Files.writeString(assets.resolve("forge.profile.properties"),

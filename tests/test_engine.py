@@ -7,7 +7,7 @@ from unittest import mock
 
 from deckmaster import batch, decklist, engine, model, records, report
 
-DECK = Path(__file__).resolve().parent.parent / "examples" / "decks" / "eternities-living-worlds-iii.txt"
+DECK = Path(__file__).resolve().parent / "fixtures" / "decks" / "marath-tokens.txt"
 
 
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")

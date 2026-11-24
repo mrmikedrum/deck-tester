@@ -1,9 +1,10 @@
-"""Read Commander decklists in the text formats Deckmaster and Moxfield export.
+"""Read Commander decklists in the text formats ManaBox and Moxfield export, and Forge's .dck.
 
-Accepted section headers: Deckmaster's `// COMMANDER`, `// SIDEBOARD`, `// MAYBEBOARD`
+Accepted section headers: ManaBox's `// COMMANDER`, `// SIDEBOARD`, `// MAYBEBOARD`
 (a blank line after commander cards switches to the main deck), Moxfield's `~~Commanders~~`
 style, and `# commander`, `[Commander]` or a bare `Commander` line. Card lines are
 `QUANTITY Name [(SET) NUMBER] [*F*]`; anything after a literal ` | ` is an annotation and ignored.
+A .dck's `[metadata]` is skipped and its `Name|SET|[NUMBER]` cards read by name.
 Side and maybe boards are read but never played.
 """
 
@@ -23,6 +24,7 @@ _SECTIONS = {
     "main": "main", "mainboard": "main", "deck": "main",
     "side": "side", "sideboard": "side",
     "maybe": "maybe", "maybeboard": "maybe",
+    "metadata": "skip",
 }
 _HEADER = re.compile(r"^(?://|#|~~|\[)?\s*([A-Za-z]+)\s*(?:~~|\])?:?$")
 _CARD = re.compile(r"^(\d+)x?\s+(.+?)(?:\s+\([A-Za-z0-9]+\)(?:\s+\S+)?)?(?:\s+\*[A-Z]\*)?$")
@@ -75,15 +77,23 @@ def parse(text: str) -> Decklist:
         if header and header.group(1).lower() in _SECTIONS:
             section = _SECTIONS[header.group(1).lower()]
             continue
+        if section == "skip":
+            continue
         card = _CARD.match(line)
         if not card:
             raise DecklistError(f"line {number}: not a card or section header: {raw!r}")
-        qty, name = int(card.group(1)), card.group(2).strip()
+        qty, name = int(card.group(1)), card.group(2).split("|", 1)[0].strip()  # .dck: Name|SET|[NUMBER]
         if section == "commander":
             deck.commanders.extend([name] * qty)
         elif section == "main":
             deck.main.append((qty, name))
     return deck
+
+
+def dck_name(text: str) -> str:
+    """A Forge .dck's deck name ([metadata] Name=...), or ''."""
+    found = re.search(r"^Name=(.+)$", text, re.M)
+    return found.group(1).strip() if found else ""
 
 
 def load(path: str) -> Decklist:

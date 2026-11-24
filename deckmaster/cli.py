@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import batch, decklist, engine, model, records, render, report, table
+from . import batch, decklist, decks, engine, model, records, render, report, table
 
 ROOT = Path(__file__).resolve().parent.parent
 CURRENT = engine.HOME / "current"
@@ -38,6 +38,44 @@ def doctor(_args) -> int:
     for name, ok, detail in checks:
         print(f"{'ok ' if ok else 'MISSING'} {name}: {detail}")
     return 0 if all(ok for _, ok, _ in checks) else 1
+
+
+def deck_sync(args) -> int:
+    try:
+        results = decks.sync(args.decks)
+    except (OSError, ValueError) as error:
+        print(f"error: {error}")
+        return 1
+    for slug, what in results:
+        print(f"{slug}: {what}")
+    if not results:
+        print(f"no deck manifests (deckmaster/<slug>.json) under {decks.decks_root(args.decks)}")
+    return 0
+
+
+def deck_import(args) -> int:
+    try:
+        slug, added = decks.import_list(args.path, args.name, args.slug)
+    except (OSError, ValueError) as error:
+        print(f"error: {error}")
+        return 1
+    deck = decks.get(slug)
+    print(f"{slug}: {deck.name} @{deck.list.revision()}" + ("" if added else " (unchanged)"))
+    return 0
+
+
+def deck_list(_args) -> int:
+    for deck in decks.all_decks():
+        extras = ", ".join(x for x, has in (("plan", deck.plan), ("advisor", deck.advisor)) if has) or "list only"
+        print(f"{deck.slug}  {deck.name} @{deck.list.revision()} · {extras} · {deck.source}")
+    return 0
+
+
+def _deck(arg: str) -> decks.Deck:
+    try:
+        return decks.resolve(arg)
+    except (OSError, ValueError) as error:
+        raise engine.EngineError(str(error))
 
 
 def deck_check(args) -> int:
@@ -85,13 +123,14 @@ def _show(reply: dict) -> None:
 
 
 def start(args) -> int:
-    deck = decklist.load(args.deck)
+    chosen = _deck(args.deck)
+    deck = chosen.list
     problems = deck.problems()
     if problems:
         print("deck problems: " + "; ".join(problems))
         return 1
     payload = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "stops": args.stops,
-               "mana": args.mana, "opponents": args.opponents, "ai": args.ai, "deck": Path(args.deck).stem, "hash": deck.revision()}
+               "mana": args.mana, "opponents": args.opponents, "ai": args.ai, "deck": chosen.slug, "hash": deck.revision()}
     if args.seed is not None:
         payload["seed"] = args.seed
     if args.turns is not None:
@@ -105,7 +144,7 @@ def start(args) -> int:
     engine.refresh()
     reply = engine.request(payload)
     CURRENT.write_text(reply["session"])
-    print(f"{reply['session']} seed {reply['seed']} · {Path(args.deck).stem}@{deck.revision()}")
+    print(f"{reply['session']} seed {reply['seed']} · {chosen.slug}@{deck.revision()}")
     if reply.get("ai_avoids") and args.ask is not None:
         print("Forge's AI doesn't play: " + ", ".join(reply["ai_avoids"]))
     _show(reply)
@@ -225,11 +264,11 @@ def table_report_cmd(args) -> int:
 
 
 def host_table(args) -> int:
-    seats = [table.parse(spec, i + 1) for i, spec in enumerate(args.seats)]
+    seats = [table.Seat(f"Jev {i + 1} ({deck.slug})", deck) for i, deck in enumerate(_deck(arg) for arg in args.seats)]
     for seat in seats:
         problems = seat.deck.problems()
         if problems:
-            print(f"{seat.deck_path}: " + "; ".join(problems))
+            print(f"{seat.slug}: " + "; ".join(problems))
             return 1
     outcome = table.host(seats, args.people, args.port)
     for name, result in outcome.items():
@@ -238,15 +277,15 @@ def host_table(args) -> int:
 
 
 def run(args) -> int:
-    deck = decklist.load(args.deck)
+    chosen = _deck(args.deck)
+    deck = chosen.list
     problems = deck.problems()
     if problems:
         print("deck problems: " + "; ".join(problems))
         return 1
     seed = args.seed if args.seed is not None else int.from_bytes(__import__("os").urandom(2), "big") * 100
-    guide = Path(args.guide).read_text() if args.guide and Path(args.guide).is_file() else args.guide
-    manifest = batch.run(deck, Path(args.deck).stem, args.games, seed, args.turns, args.opponents, args.pilot,
-                         args.workers, args.ai, guide, args.hybrid, args.fast, args.forks)
+    manifest = batch.run(deck, chosen.slug, args.games, seed, args.turns, args.opponents, args.pilot or chosen.advisor,
+                         args.workers, args.ai, chosen.plan, args.hybrid, args.fast, args.forks)
     for line in report.build(manifest, show_games=args.per_game, show_cards=args.cards):
         print(line)
     return 0
@@ -297,9 +336,18 @@ def main(argv=None) -> int:
     check = deck.add_parser("check", help="parse a decklist and report construction problems")
     check.add_argument("path")
     check.set_defaults(run=deck_check)
+    syncing = deck.add_parser("sync", help="read the decks repository's deck manifests into the deck database")
+    syncing.add_argument("--decks", help="the decks repository (default: ~/.config/deckmaster/config.json, else ../mtg-decks)")
+    syncing.set_defaults(run=deck_sync)
+    importing = deck.add_parser("import", help="add a decklist (text or Forge .dck) to the deck database")
+    importing.add_argument("path")
+    importing.add_argument("--name", help="the deck's name (default: the .dck's, or the file name)")
+    importing.add_argument("--slug", help="what to call it on the command line (default: from the name)")
+    importing.set_defaults(run=deck_import)
+    deck.add_parser("list", help="the decks in the deck database").set_defaults(run=deck_list)
 
     begin = commands.add_parser("start", help="start a manual game and show the first decision")
-    begin.add_argument("deck")
+    begin.add_argument("deck", help="a deck in the deck database (deck list), or a decklist file")
     begin.add_argument("--seed", type=int)
     begin.add_argument("--turns", type=int, help="end the game after this many of your turns (default: no limit)")
     begin.add_argument("--stops", choices=("main", "all"), default="main",
@@ -314,32 +362,32 @@ def main(argv=None) -> int:
     begin.set_defaults(run=start)
 
     play = commands.add_parser("run", help="play a batch of games automatically and report")
-    play.add_argument("deck")
+    play.add_argument("deck", help="a deck in the deck database (deck list), or a decklist file; a deck's plan and "
+                      "advisor come with it")
     play.add_argument("--games", type=int, default=20)
     play.add_argument("--seed", type=int, help="first seed; game N uses seed+N (default: random)")
     play.add_argument("--turns", type=int, default=8, help="end each game after this many of your turns (0: no limit)")
-    play.add_argument("--guide", help="the deck plan in plain language (text, or a file): the decision model plays "
-                      "by it, with Forge's AI deciding what the model can't")
     play.add_argument("--hybrid", choices=model.HYBRIDS, default="outcomes",
-                      help="with --guide: outcomes (Forge's AI plays each option out and the model picks by text and "
+                      help="with a plan: outcomes (Forge's AI plays each option out and the model picks by text and "
                       "result) or plain (the model picks by text alone)")
     play.add_argument("--fast", action="store_true",
-                      help="with --guide: a pick the model makes confidently from the text alone is played without "
+                      help="with a plan: a pick the model makes confidently from the text alone is played without "
                       "playing the options out; quicker, more calls, and possibly worse play")
-    play.add_argument("--pilot", help="Python file answering some decision kinds before the model or Forge's AI")
+    play.add_argument("--pilot", help="Python file answering some decision kinds before the model or Forge's AI "
+                      "(default: the deck's advisor)")
     play.add_argument("--opponents", type=int, default=3)
     play.add_argument("--workers", type=int, default=8, help="games played at once")
     play.add_argument("--ai", choices=("default", "hybrid", "sim", "flatmc"), default="default",
                       help="Forge's AI: its rules; rules with a one-play safety simulation; or a 3-action lookahead search")
     play.add_argument("--forks", choices=("copy", "replay"), default="copy",
-                      help="with --guide: play options out in forks made from a copy of the game (default), or replayed from the seed")
+                      help="with a plan: play options out in forks made from a copy of the game (default), or replayed from the seed")
     play.add_argument("--per-game", action="store_true", help="add a line per game")
     play.add_argument("--cards", action="store_true", help="add how often each card was seen and played")
     play.set_defaults(run=run)
 
     hosting = commands.add_parser("table", help="host a Commander table: agent seats play, people join from Forge")
-    hosting.add_argument("seats", nargs="+", metavar="DECK[,PLAN[,PILOT]]",
-                         help="one agent seat each: a decklist, its plan (text or file) and a pilot or advisor file")
+    hosting.add_argument("seats", nargs="+", metavar="DECK",
+                         help="one agent seat each: a deck in the deck database, which brings its plan and advisor")
     hosting.add_argument("--people", type=int, default=1, help="open seats for people joining from Forge")
     hosting.add_argument("--port", type=int, default=table.PORT)
     hosting.set_defaults(run=host_table)
@@ -347,9 +395,9 @@ def main(argv=None) -> int:
     playing = commands.add_parser("game", help="serve the game client: you play one seat in a browser, Jev pilots the others")
     playing.add_argument("--port", type=int, default=8765, help="the web port (open /live.html on it)")
     playing.add_argument("--table-port", type=int, default=36799, help="the first of the ports Forge's table lobby uses")
-    playing.add_argument("--deck", default="blue-moon-combat-revision.txt", help="your deck, in examples/decks")
-    playing.add_argument("--opponents", default="eternities-living-worlds-iii.txt,eternities-assimilation-iii.txt,dack-cedh.txt",
-                         help="the other seats' decks, comma-separated")
+    playing.add_argument("--deck", default="blue-moon-combat-revision", help="your deck, from the deck database")
+    playing.add_argument("--opponents", default="eternities-living-worlds-iii,eternities-assimilation-iii,dack-cedh",
+                         help="the other seats' decks, comma-separated; each needs a plan and an advisor")
     playing.add_argument("--start", action="store_true", help="open a table at once")
     playing.add_argument("--seed", type=int)
     playing.add_argument("--fill-cache", action="store_true",

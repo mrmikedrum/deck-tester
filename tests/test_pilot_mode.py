@@ -1,10 +1,14 @@
 """Real-deck primary modes must be explicit; hybrid fallbacks remain permitted."""
+import contextlib
+import json
+import os
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
 from unittest import mock
 
-from deckmaster import batch, game, model, table
+from deckmaster import batch, decks, game, model, table
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -23,9 +27,10 @@ class PilotModeTest(unittest.TestCase):
                 table.host([seat], 0)
             use_table.assert_not_called()
 
-    def test_every_browser_opponent_has_current_guidance_and_uses_table_pilot(self):
-        for name in game.PILOTS:
-            seat = game.configured_seat(ROOT / 'examples/decks' / name)
+    def test_every_browser_opponent_has_its_plan_and_advisor_and_uses_table_pilot(self):
+        with deck_repository() as root:
+            decks.sync(root)
+            seat = game.configured_seat('marath-tokens')
             self.assertTrue(seat.plan)
             self.assertIn('advise', seat.handlers)
             self.assertIn('play', seat.request()['ask'])
@@ -34,5 +39,20 @@ class PilotModeTest(unittest.TestCase):
             with mock.patch.object(table, 'play') as play:
                 host.jev_seat(seat, 'test-session', 1, 4)
                 play.assert_called_once_with(seat, 'test-session', 4, host.usage, host.outcomes)
-        with self.assertRaisesRegex(ValueError, 'stock AI mode is disabled'):
-            game.configured_seat('unconfigured.txt')
+            with self.assertRaisesRegex(ValueError, 'stock AI mode is disabled'):
+                game.configured_seat('yue-moon')   # a list without plan or advisor
+
+
+@contextlib.contextmanager
+def deck_repository():
+    """A decks repository with two fixture decks (one with a plan and an advisor), and a database of its own."""
+    with tempfile.TemporaryDirectory() as root, mock.patch.dict(os.environ, {'DECKMASTER_DB': root + '/decks.db'}):
+        here = Path(root) / 'projects' / 'demo' / 'deckmaster'
+        here.mkdir(parents=True)
+        fixtures = ROOT / 'tests' / 'fixtures'
+        (here / 'marath-tokens.plan.md').write_text('Ramp, then cast Marath.')
+        (here / 'marath-tokens.json').write_text(json.dumps({
+            'name': 'Marath tokens', 'list': str(fixtures / 'decks' / 'marath-tokens.txt'),
+            'plan': 'marath-tokens.plan.md', 'advisor': str(fixtures / 'advisors' / 'marath.py')}))
+        (here / 'yue-moon.json').write_text(json.dumps({'list': str(fixtures / 'decks' / 'yue-moon.txt')}))
+        yield root

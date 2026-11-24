@@ -57,16 +57,12 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
   Wizards' and this repository is public: card images are a runtime cache the game server fills.
 - **Decks are state, not part of Deckmaster.** Each deck's vision, notes, list, plan and advisor live in the decks
   repository (loosely coupled: a documented folder format), and Deckmaster reads them into a deck database of its
-  own, so decks from elsewhere (players at a table) fit the same way.
+  own, so decks from elsewhere (players at a table) fit the same way. A deck's advisor and plan come with it, so
+  there is no `--guide`; Deckmaster's tests use frozen fixture decks, not the live ones.
 - **The game client moves to TypeScript and Vite.** Agents write nearly all of it, and a type checker catches the
   mistakes they make; three.js comes from npm rather than a CDN. Python stays stdlib-only; the client and its
   tools are the repository's only Node.
 - **GPL-3.0.** Forge is GPL-3.0, the engine links it, and the patch series and card scripts derive from it.
-
-## Open
-
-- **Where pilots live.** Passed by path for now; with decks as state they move to each deck's folder in the
-  decks repository ([roadmap](roadmap.md)).
 
 ## Real-deck pilot mode
 

@@ -21,8 +21,8 @@ def decision(*options, kind='play', prompt=''):
 
 class AdvisorsTest(unittest.TestCase):
     def setUp(self):
-        self.nature = batch.load_pilot(str(ROOT / 'examples/pilots/marath_advisor.py'))['advise']
-        self.assimilation = batch.load_pilot(str(ROOT / 'examples/pilots/atraxa_advisor.py'))['advise']
+        self.nature = batch.load_pilot(str(ROOT / 'tests/fixtures/advisors/marath.py'))['advise']
+        self.assimilation = batch.load_pilot(str(ROOT / 'tests/fixtures/advisors/atraxa.py'))['advise']
 
     def test_native_counter_labels_enable_marath_spending_fact(self):
         state = position(dict(name='Marath, Will of the Wild', pt='3/3', counters={'+1/+1': 3}))

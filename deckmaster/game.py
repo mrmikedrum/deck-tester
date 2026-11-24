@@ -18,11 +18,10 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import decklist, engine, model, table
+from . import decks, engine, model, table
 
 ROOT = Path(__file__).resolve().parent.parent
 CLIENT = ROOT / "game" / "client"
-DECKS = ROOT / "examples" / "decks"
 CACHE = engine.HOME / "cache" / "cards"
 UA = {"User-Agent": "deckmaster-game/0.1", "Accept": "application/json"}
 ARGS = None
@@ -62,7 +61,8 @@ class Table:
     def open(self, me, others, seed=None, mana="creatures"):
         # Resolve every real-deck opponent before replacing any existing game. Never silently
         # fall back to stock Forge-AI mode when a deck lacks a configured Jev plan/advisor.
-        agents = [configured_seat(path) for path in others]
+        mine = decks.get(me[:-4] if me.endswith(".txt") else me)
+        agents = [configured_seat(slug) for slug in others]
         model.key()  # check configured Jev access; never expose the key in a response or log
         try:
             engine.request({"cmd": "table_end"})
@@ -74,8 +74,7 @@ class Table:
         seats = []
         self.usage, self.outcomes, self.pilots = model.Usage(), {}, {"You": "human"}
         names = {"You"}
-        for i, path in enumerate([me] + others):
-            deck = decklist.load(path)
+        for i, deck in enumerate([mine.list] + [agent.deck for agent in agents]):
             base_name = short(deck.commanders[0]) if i else "You"
             name = base_name
             suffix = 2
@@ -83,7 +82,8 @@ class Table:
                 name = f"{base_name} {suffix}"
                 suffix += 1
             names.add(name)
-            seat = {"name": name, "commanders": deck.commanders, "main": deck.main, "deck": Path(path).stem,
+            seat = {"name": name, "commanders": deck.commanders, "main": deck.main,
+                    "deck": mine.slug if i == 0 else agents[i - 1].slug,
                     "hash": deck.revision(), "mana": mana if i == 0 else "auto"}
             if seed is not None:
                 seat["seed"] = seed + i
@@ -171,23 +171,12 @@ def short(commander):
     return name.split(" ")[0] if len(name) > 10 else name
 
 
-# The browser currently offers these four real decks. Plans/advisors own deck guidance;
-# the same table.play path as CLI Jev tables owns model decisions and ordinary fallbacks.
-PILOTS = {
-    "eternities-living-worlds-iii.txt": ("living-worlds.txt", "marath_advisor.py"),
-    "eternities-assimilation-iii.txt": ("assimilation.txt", "atraxa_advisor.py"),
-    "blue-moon-combat-revision.txt": ("blue-moon.txt", "blue_moon_advisor.py"),
-    "dack-cedh.txt": ("dack-cedh.txt", "dack_advisor.py"),
-}
-
-
-def configured_seat(path):
-    path = Path(path)
-    if path.name not in PILOTS:
-        raise ValueError(f"No Jev plan/advisor configured for {path.name}; stock AI mode is disabled")
-    plan, advisor = PILOTS[path.name]
-    root = ROOT / "examples"
-    return table.Seat("pending", str(path), str(root / "plans" / plan), str(root / "pilots" / advisor))
+def configured_seat(slug):
+    """A Jev seat for a deck in the deck database: it must bring its plan and advisor (stock AI mode is disabled)."""
+    deck = decks.get(slug[:-4] if slug.endswith(".txt") else slug)   # a client may remember a deck by its old file name
+    if not deck.plan or not deck.advisor:
+        raise ValueError(f"{deck.slug} has no Jev plan and advisor; stock AI mode is disabled")
+    return table.Seat("pending", deck)
 
 
 TABLE = Table()
@@ -322,7 +311,7 @@ class Handler(BaseHTTPRequestHandler):
             names = [n for n in q.get("n", []) if n]
             return self.send(200, cards(names))
         if url.path == "/api/decks":
-            return self.send(200, sorted(p.name for p in DECKS.glob("*.txt")))
+            return self.send(200, [d.slug for d in decks.all_decks()])
         path = url.path.lstrip("/") or "live.html"
         root, rel = (CACHE, path[len("cache/"):]) if path.startswith("cache/") else (CLIENT, path)
         f = (root / rel).resolve()
@@ -339,8 +328,8 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/override":
                 return self.send(200, TABLE.override(b["args"]))
             if url.path == "/api/new":
-                me = str(DECKS / b.get("deck", ARGS.deck))
-                others = [str(DECKS / d) for d in b.get("opponents", ARGS.opponents.split(","))]
+                me = b.get("deck", ARGS.deck)
+                others = b.get("opponents", ARGS.opponents.split(","))
                 threading.Thread(target=lambda: safe_open(me, others, b.get("seed"), b.get("mana", "creatures")), daemon=True).start()
                 return self.send(200, {"ok": True})
         except Exception as error:
@@ -408,7 +397,7 @@ def serve(args):
     engine.use_table()
     load_cards()
     if args.start:
-        threading.Thread(target=lambda: safe_open(str(DECKS / args.deck), [str(DECKS / o) for o in args.opponents.split(",")], args.seed, "creatures"), daemon=True).start()
+        threading.Thread(target=lambda: safe_open(args.deck, args.opponents.split(","), args.seed, "creatures"), daemon=True).start()
     server = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     server.daemon_threads = True
     print(f"Deckmaster game: http://{lan_address()}:{args.port}/live.html  (the first game takes about a minute to start)", flush=True)
