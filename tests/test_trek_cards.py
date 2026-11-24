@@ -5,7 +5,7 @@ from deckmaster import engine, decklist
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class TrekCardRules(unittest.TestCase):
     def setUp(self):
-        d=decklist.load(engine.ROOT/'examples/decks/eternities-living-worlds-iii.txt')
+        d=decklist.load(engine.ROOT/'tests/fixtures/decks/marath-tokens.txt')
         self.r=engine.request(dict(cmd='start',commanders=d.commanders,main=d.main,seed=42,turns=20,mana='auto'))
         self.sid=self.r['session'];self.req('answer',answer=[1])
         for card in list(self.state()['hand']): self.ov('move',card,'library')

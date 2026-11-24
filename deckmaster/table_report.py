@@ -103,7 +103,7 @@ def build(manifest: dict) -> List[str]:
 
 def manifest(table_reply: dict, seats: list, people: List[str], began: float, result: str, usage) -> dict:
     """What a finished table records about itself; people are named as they joined."""
-    entries = [{"name": s.name, "deck": s.deck_path, "plan": s.plan_path, "pilot": s.pilot,
+    entries = [{"name": s.name, "deck": s.slug, "revision": s.revision, "plan": bool(s.plan), "pilot": s.pilot,
                 "session": table_reply["seats"][s.name]} for s in seats]
     entries += [{"name": name} for name in people]
     return {"port": table_reply["port"], "seats": entries, "result": result,

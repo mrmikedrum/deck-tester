@@ -167,7 +167,7 @@ Restoring a snapshot drops the abandoned line from these views; `--all` keeps it
 
 ## The decision model
 
-`run --guide PLAN` puts a small decision model in the agent's seat (`deckmaster/model.py`): TypeSafe's Jev,
+A deck with a plan puts a small decision model in the agent's seat (`deckmaster/model.py`): TypeSafe's Jev,
 through OpenRouter's (Jev 1.14) or Defapi's (Jev 1.13) decisions API, which take the same requests. It
 doesn't generate text: it picks one of the named options and returns probabilities, and only input is
 billed. The agent's reasoning is spent once, on the plan: a few
@@ -189,7 +189,7 @@ hand holds, the colours they make, and which cards need a colour they don't, wit
 question (two to four lands that make the colours the spells need); at a play decision with a land in
 hand, whether the land drop is still there. Deck knowledge stays out of the model: a pilot file may define
 `advise(state, decision, this_turn)` and return a line the model reads with the plan ("you have a mana
-engine ready"); `examples/pilots/marath_advisor.py` is one. Played-out lines never name a drawn card, and
+engine ready"); a deck's advisor is one. Played-out lines never name a drawn card, and
 a line that starts with pass keeps passing that turn, so pass is never dressed up by what Forge's AI did
 afterwards.
 
@@ -255,8 +255,8 @@ for numbers. The model reads the result as one line with the plan, so:
 - measure a rule on a scenario (`bench/scenarios.py`, then `bench/try.py --advisor FILE` against the same
   scenario without it) and keep it only if it moves the pick.
 
-`examples/pilots/marath_advisor.py` is the template; `atraxa_advisor.py`, `dack_advisor.py` and
-`blue_moon_advisor.py` are the other decks'. A rule may also name what is on the stack (`stack=`), for
+Each deck's advisor lives with the deck in the decks repository; `tests/fixtures/advisors/marath.py` is a frozen
+example. A rule may also name what is on the stack (`stack=`), for
 advice while a trigger waits to resolve. For an engine that takes several decisions, `bench/playturn.py`
 sets up a position with overrides and lets the model play the turn with the advisor, then shows the
 decisions it made.
@@ -265,8 +265,17 @@ Mana abilities are paid automatically and never offered as plays, with one excep
 cost taps another permanent (Springleaf Drum, Holdout Settlement) is a choice with consequences (which
 creature taps, and what triggers), so it is offered as a play; its mana waits in the pool for the next
 cost. The Blue Moon deck's tap loop is played this way.
-`examples/pilots/commander_first.py` casts the commander whenever it's offered. Where pilots live is the
-caller's choice; nothing here assumes a location.
+`deckmaster/pilots/commander_first.py` casts the commander whenever it's offered. A deck's advisor comes with
+it from the deck database; `--pilot FILE` puts any other in its place.
+
+## Decks
+
+Decks are state, kept in the deck database (`deckmaster/decks.py`, SQLite in `~/.local/share/deckmaster/`): a deck
+is a slug, a name and where it came from, and a series of immutable revisions, each a list (identified by the
+hash game records name), the plan, and the advisor's path and hash. `deck sync` reads every `deckmaster/<slug>.json`
+manifest in the decks repository, a documented folder format and the only contract between the two repositories;
+a revision is added only when the list, plan or advisor changed. `deck import` adds a text decklist or a Forge
+`.dck`. Commands resolve a deck argument as a manifest or decklist file if one exists, else as a slug.
 
 ## Cards Forge lacks or gets wrong
 

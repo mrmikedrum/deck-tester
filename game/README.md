@@ -7,8 +7,9 @@ target); Jev with each deck's advisor pilots the other three. On the Mac:
 bin/deckmaster game            # prints the address to open: http://<this machine>:8765/live.html
 ```
 
-then choose decks and start from **Game**. The first game takes about a minute to start. `--deck` and
-`--opponents` set the default decks (from `examples/decks/`), `--start` opens a table at once.
+then choose decks and start from **Game**. The first game takes about a minute to start. The decks come from the
+deck database (`deckmaster deck sync`); an opponent's deck needs a plan and an advisor. `--deck` and `--opponents`
+set the defaults, `--start` opens a table at once.
 
 ## Playing
 
@@ -43,8 +44,8 @@ then choose decks and start from **Game**. The first game takes about a minute t
 
 `deckmaster/game.py` serves this client and relays one live table to it: the table engine's view of the game and
 each decision, with option refs the answers point back to, over long polling. Opponents use the same Jev table
-pilot and Python advisors as guided tests; stock Forge AI as a primary pilot is disabled, though recorded Forge
-fallbacks inside that pilot remain. Current deck files are read when a new table starts. Controller changes need
+pilot and advisors as automated tests; stock Forge AI as a primary pilot is disabled, though recorded Forge
+fallbacks inside that pilot remain. A table plays the decks' latest revisions when it starts. Controller changes need
 an idle-engine restart before the next table.
 
 Card images come from Scryfall into `.deckmaster/cache/cards/`, served from here so the board's canvases stay

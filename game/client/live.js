@@ -1875,11 +1875,11 @@
     if (!decks) { try { decks = await (await fetch("api/decks")).json(); } catch (e) { decks = []; } }
     const pick = (label, value) => {
       const w = el("label", "l-field", `<span>${esc(label)}</span>`), sl = el("select");
-      decks.forEach(n => { const o = el("option", "", esc(n.replace(/\.txt$/, ""))); o.value = n; if (n === value) o.selected = true; sl.appendChild(o); });
+      decks.forEach(n => { const o = el("option", "", esc(n)); o.value = n; if (n === String(value).replace(/\.txt$/, "")) o.selected = true; sl.appendChild(o); });
       w.appendChild(sl); return [w, sl];
     };
     const saved = (() => { try { return JSON.parse(localStorage.getItem("seat-game") || "null"); } catch (e) { return null; } })() || {};
-    const deflt = ["blue-moon-combat-revision.txt", "eternities-living-worlds-iii.txt", "eternities-assimilation-iii.txt", "dack-cedh.txt"];
+    const deflt = ["blue-moon-combat-revision", "eternities-living-worlds-iii", "eternities-assimilation-iii", "dack-cedh"];
     sheet("New game", box => {
       const fields = [["Your deck", saved.deck || deflt[0]], ["Left (Jev)", (saved.opponents || [])[0] || deflt[1]], ["Across (Jev)", (saved.opponents || [])[1] || deflt[2]], ["Right (Jev)", (saved.opponents || [])[2] || deflt[3]]].map(([l, v]) => pick(l, v));
       fields.forEach(([w]) => box.appendChild(w));

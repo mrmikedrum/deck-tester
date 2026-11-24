@@ -3,12 +3,12 @@ from pathlib import Path
 
 from deckmaster import decklist
 
-EXAMPLES = Path(__file__).resolve().parent.parent / "examples" / "decks"
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "decks"
 
 
 class ParseTest(unittest.TestCase):
     def test_moxfield_export(self):
-        deck = decklist.load(EXAMPLES / "eternities-living-worlds-iii.txt")
+        deck = decklist.load(FIXTURES / "marath-tokens.txt")
         self.assertEqual(deck.commanders, ["Marath, Will of the Wild"])
         self.assertEqual(deck.size, 100)
         self.assertEqual(deck.problems(), [])

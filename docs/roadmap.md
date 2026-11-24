@@ -3,15 +3,11 @@
 Each milestone ends with something an agent can use. Delete a milestone when it ships. What has shipped is
 described in [architecture](architecture.md).
 
-## Decks as state, and the agent
+## The agent
 
-Decks leave the repository: a deck database (SQLite, stdlib) with immutable revisions by list hash, filled by
-`deckmaster deck sync` from the decks repository's `deckmaster/` folders (each deck's manifest, plan and advisor,
-its list a ManaBox mirror or a `.dck`) and `deck import` (text or Forge `.dck`). The plan comes with the deck, so
-`--guide` goes; `examples/` moves out; tests keep small unrelated fixture decks. The agent skills and the ManaBox
-CLI (Node, run as `deckmaster manabox`) move in from the decks repository, which keeps only deck state, and
-Drummer's skill is reinstalled from here. Importing a player's deck from the game client comes later, with
-multiplayer.
+The agent skills and the ManaBox CLI (Node, run as `deckmaster manabox`) move in from the decks repository, which
+keeps only deck state; ManaBox's login and catalog state move to `~/.local/share/deckmaster/`, and Drummer's skill
+is reinstalled from here. Importing a player's deck from the game client comes later, with multiplayer.
 
 ## The game client on TypeScript
 

@@ -18,12 +18,24 @@ Needs JDK 17+ (21 recommended) and Maven; then once:
 
 ```bash
 scripts/bootstrap-forge.sh
+bin/deckmaster deck sync      # read the decks repository (../mtg-decks) into the deck database
 ```
+
+## Decks
+
+Decks are state, not part of Deckmaster. In the decks repository, any folder can hold a `deckmaster/` folder with a
+manifest per deck, `<slug>.json`: its name and, relative to the manifest, its `list` (a text decklist or a Forge
+`.dck`), its `plan` (what the decision model reads) and its `advisor` (a Python file built on
+`deckmaster/advice.py`), the last two optional. `deck sync` reads them all into the deck database
+(`~/.local/share/deckmaster/`); a change to a list, plan or advisor adds a revision, and every game records the
+revision it played. `deck import FILE` adds a decklist or a `.dck` on its own, `deck list` shows them, and every
+command that takes a deck takes its slug or a decklist file. The decks repository is `../mtg-decks` unless
+`~/.config/deckmaster/config.json` names another (`{"decks": PATH}`).
 
 ## Manual mode
 
 ```bash
-bin/deckmaster start examples/decks/eternities-living-worlds-iii.txt --seed 11
+bin/deckmaster start eternities-living-worlds-iii --seed 11
 ```
 
 Every command prints what happened since you last looked, then the decision waiting for you:
@@ -52,12 +64,13 @@ the list changes. `--ask mulligan,play` asks only those kinds and lets Forge's A
 
 ## Automated mode
 
-For the current Eternities exports, attach the Python advisor **and** its strategy guide. Outcomes mode
-plays candidate actions forward; an advisor adds position-specific facts, not deterministic choices:
+A deck from the deck database brings its plan and advisor: the decision model plays by the plan, outcomes mode
+plays candidate actions forward, and the advisor adds position-specific facts, not deterministic choices.
+`--pilot FILE` puts another pilot in the advisor's place.
 
 ```sh
-bin/deckmaster run /tmp/eternities-nature.txt --games 2 --turns 8 --pilot examples/pilots/marath_advisor.py --guide examples/plans/living-worlds.txt --hybrid outcomes
-bin/deckmaster run /tmp/eternities-assimilation.txt --games 2 --turns 8 --pilot examples/pilots/atraxa_advisor.py --guide examples/plans/assimilation.txt --hybrid outcomes
+bin/deckmaster run eternities-living-worlds-iii --games 2 --turns 8
+bin/deckmaster run eternities-assimilation-iii --games 2 --turns 8
 ```
 
 Check the manifest's `pilot` and `hybrid`, and the report's model line. A fork that doesn't replay into
@@ -68,8 +81,10 @@ either way.
 
 
 ```bash
-bin/deckmaster run examples/decks/eternities-living-worlds-iii.txt --games 100 --seed 1000
+bin/deckmaster run eternities-living-worlds-iii --games 100 --seed 1000
 ```
+
+A report (this one is older, from before decks were piloted by their plan, with Forge's AI playing):
 
 ```
 b4 · eternities-living-worlds-iii@56fe6c23 · 100 games · seeds 1000-1099 · Forge AI · to turn 8 · 40.9s
@@ -85,7 +100,7 @@ commander never cast in 100 games
 mulligans: 0 in 84, 1 in 11, 2 in 4, 3 in 1
 ```
 
-Real-deck runs require `--guide PLAN` for Jev or `--pilot FILE` with a manual `play` handler. Stock
+Real-deck runs need a deck with a plan (for Jev) or `--pilot FILE` with a manual `play` handler. Stock
 Forge-AI mode is reserved for passive goldfish opponents, not the deck being tested. Existing hybrid
 fallbacks within an agent/Jev pilot remain allowed and recorded. Pilot functions are named after decision
 kinds (`mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `block`,
@@ -95,11 +110,10 @@ kinds (`mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `cho
 |--------|------|
 | `--games N`, `--seed N` | How many games; game N uses seed+N, so any game can be replayed with `start --seed` |
 | `--turns N` | Turns per game (default 8; 0 for no limit) |
-| `--pilot FILE` | Answer some decision kinds yourself; a pilot may also define `advise(state, decision, this_turn)` to give the model a line of deck guidance |
-| `--guide PLAN` | Put the decision model (Jev) in the seat with this plain-language deck plan; each option is played out in a fork of the game and the model picks (see architecture) |
-| `--hybrid plain` | With `--guide`: the model picks from the text alone, nothing played out |
-| `--fast` | With `--guide`: a confident text-only pick skips the forks; quicker, more calls, possibly worse play (off by default) |
-| `--forks replay` | With `--guide`: play options out in forks replayed from the seed instead of made from a copy of the game (the default, about 30 times quicker) |
+| `--pilot FILE` | Answer some decision kinds yourself, in place of the deck's advisor; a pilot may also define `advise(state, decision, this_turn)` to give the model a line of deck guidance. With a plan, the decision model (Jev) plays the rest: each option is played out in a fork of the game and the model picks (see architecture) |
+| `--hybrid plain` | With a plan: the model picks from the text alone, nothing played out |
+| `--fast` | With a plan: a confident text-only pick skips the forks; quicker, more calls, possibly worse play (off by default) |
+| `--forks replay` | With a plan: play options out in forks replayed from the seed instead of made from a copy of the game (the default, about 30 times quicker) |
 | `--ai hybrid\|sim\|flatmc` | Forge's other AIs: `flatmc` is its Monte Carlo layer, as its desktop app plays; `hybrid` and `sim` are older lookahead, slower and no better (see measurements) |
 | `--per-game`, `--cards` | Add a line per game; add how often each card was seen and played |
 | `report [bN]` | Show a batch's report again, with the same flags |
@@ -109,20 +123,18 @@ kinds (`mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `cho
 
 ## Tables: agents and people
 
-`deckmaster table` hosts a Commander game over Forge's network play: agent seats (Jev, with a deck plan and advisor)
-and open seats for people, who join from the Forge desktop app built at the engine's version.
+`deckmaster table` hosts a Commander game over Forge's network play: agent seats (Jev, with each deck's plan and
+advisor) and open seats for people, who join from the Forge desktop app built at the engine's version.
 
 ```sh
 scripts/build-forge-client.sh ../forge   # once per Forge build: the desktop app people join with
-bin/deckmaster table examples/decks/eternities-living-worlds-iii.txt,examples/plans/living-worlds.txt,examples/pilots/marath_advisor.py \
-  examples/decks/eternities-assimilation-iii.txt,examples/plans/assimilation.txt,examples/pilots/atraxa_advisor.py \
-  examples/decks/blue-moon-combat-revision.txt,examples/plans/blue-moon.txt,examples/pilots/blue_moon_advisor.py --people 1
+bin/deckmaster table eternities-living-worlds-iii eternities-assimilation-iii blue-moon-combat-revision --people 1
 ```
 
 It prints the address to join (Online Multiplayer, Join) and plays until the game ends; Ctrl-C ends it.
 On macOS the firewall must allow incoming connections for the engine's Java (`$(/usr/libexec/java_home -v 21)/bin/java`),
-or a join drops at once; on the hosting machine itself, joining at `127.0.0.1` works either way. A seat
-needs a Jev plan or manual play pilot; a bare deck is rejected rather than silently stock-piloted.
+or a join drops at once; on the hosting machine itself, joining at `127.0.0.1` works either way. A seat's
+deck needs a plan or a play pilot; a bare list is rejected rather than silently stock-piloted.
 When it ends it prints a report: life by round and, per agent seat,
 who decided, its lookahead and its development; `bin/deckmaster table-report [tN]` shows it again.
 

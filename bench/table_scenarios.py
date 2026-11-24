@@ -17,9 +17,8 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from deckmaster import decklist, engine, model, table_model  # noqa: E402
+from deckmaster import decks, engine, model, table_model  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
 DECKS = {"Jev": "eternities-living-worlds-iii", "Ana": "eternities-assimilation-iii", "Bo": "blue-moon-combat-revision"}
 PLAN = ("Marath ramp: make land drops and ramp, cast Marath, grow a board of creatures and tokens. Keep your life "
         "total and the creatures the plan needs safe; deal with threats that matter.")
@@ -113,7 +112,7 @@ SCENARIOS = {
 
 
 def seat_request(name: str) -> dict:
-    deck = decklist.load(ROOT / "examples" / "decks" / f"{DECKS[name]}.txt")
+    deck = decks.get(DECKS[name]).list   # from the deck database (deckmaster deck sync)
     return {"name": name, "commanders": deck.commanders, "main": deck.main, "deck": DECKS[name], "hash": deck.revision(),
             "ask": sorted(table_model.ASKS), "mana": "auto"}
 

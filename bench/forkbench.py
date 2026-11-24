@@ -15,13 +15,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from deckmaster import decklist, engine, model  # noqa: E402
+from deckmaster import decks, engine, model  # noqa: E402
 
-DECK = Path(__file__).resolve().parent.parent / "examples" / "decks" / "eternities-living-worlds-iii.txt"
+DECK = "eternities-living-worlds-iii"   # from the deck database (deckmaster deck sync)
 
 
 def park(seed: int, turn: int) -> dict:
-    deck = decklist.load(DECK)
+    deck = decks.get(DECK).list
     reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": seed,
                             "turns": turn + 2, "ask": ["play"], "mana": "auto"})
     while reply.get("decision") and not (model.turn(reply["decision"]) >= turn and reply["decision"]["kind"] == "play"
