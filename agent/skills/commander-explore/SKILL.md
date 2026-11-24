@@ -5,7 +5,7 @@ description: Explore Commander concepts, alternative mechanical packages and com
 
 # Explore possibilities
 
-Start from Mike's spark or the existing project vision and relevant notes. Flavor-first, mechanic-first and commander-first are all valid; unresolved choices may stay open.
+Start from the player's spark or the existing project vision and relevant notes. Flavor-first, mechanic-first and commander-first are all valid; unresolved choices may stay open.
 
 Offer a few genuinely different possibilities: the table moment, how the engine works, likely friction and a satisfying ending. Compare commanders as mascot, engine or both, including dependence and threat perception—not popularity alone. Separate the desired experience from any particular implementation.
 
@@ -15,4 +15,4 @@ When a direction has a playable draft, use [goldfish](../commander-goldfish/SKIL
 
 Exploration is provisional, not a new commitment. Keep only consequential live ideas or abandoned-direction reasons in project notes; a passing idea needs neither a new deck nor a document. Review-ready candidate lists follow the active persistence workflow; coherent list changes use [refine](../commander-refine/SKILL.md).
 
-When Mike wants to establish or revise the project's intent, use [the vision interview](../commander-vision-doc/SKILL.md). This exploration skill cannot edit `vision.md` or override its approval boundary.
+When the player wants to establish or revise the project's intent, use [the vision interview](../commander-vision-doc/SKILL.md). This exploration skill cannot edit `vision.md` or override its approval boundary.

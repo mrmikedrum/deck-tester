@@ -1,13 +1,13 @@
 # Game client migration: handoff
 
-The game client (`game/client/`) moves to TypeScript and Vite. This page is the brief for whoever plans and runs
-that work: what Mike has decided, what he explicitly left open, the state of the code, and how to prove a step
+The game client (`game/client/`) moves to TypeScript and Vite. This page is the brief for planning and running
+that work: what is decided, what is explicitly left open, the state of the code, and how to prove a step
 changed nothing. Delete it when the migration ships; what it settles belongs in [architecture](architecture.md)
 and [decisions](decisions.md).
 
 ## Decided
 
-- **TypeScript and Vite** for the client (Mike, 2026-11-23). Agents write nearly all of it, and a type checker
+- **TypeScript and Vite** for the client. Agents write nearly all of it, and a type checker
   catches the mistakes they make.
 - **The migration gets its own plan**, worked out separately and after the repository restructure (which is
   done). Nothing below the "Open" heading is decided, however confidently it reads.
@@ -87,8 +87,8 @@ differs where. Run the layout audit too: every `packet.md` ends with `LAYOUT: PA
 
 ## After the migration
 
-The protocol agent's contract; then the opponent-board exploration; then the look loop again, reworked: its
+The protocol contract; then the opponent-board exploration; then the look loop again, reworked: its
 outputs under `.deckmaster/`, its lanes on branches with pull requests, split by module rather than by file
-([game/LOOK.md](../game/LOOK.md)). Mike's design direction for the table lives in `intent.md`: clarity over
+([game/LOOK.md](../game/LOOK.md)). The design direction for the table lives in `intent.md`: clarity over
 density, focus states (the stack, a combat or one seat may take the table while it can be dismissed in one tap),
 folding by importance, intentional overlap with summaries, boards described the way a player would.

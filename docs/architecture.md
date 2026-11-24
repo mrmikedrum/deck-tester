@@ -18,7 +18,7 @@ browser ──HTTP──▶ deckmaster game (Python) ──same socket──▶ 
 | `vendor/forge/` | Java, Forge | Upstream Forge at the pin, with our patch series; its card data is the card pool |
 | `scripts/` | sh | Fetching, patching and building Forge; building the engine |
 | `bench/` | Python | Fork fidelity, scenarios and model-reading experiments ([measurements](measurements.md)) |
-| `agent/` | Markdown, Python | The deck partner: its guidance and skills, Scryfall search/cache, the deck audit, Drummer's adapter |
+| `agent/` | Markdown, Python | The deck partner: its guidance and skills, Scryfall search/cache, the deck audit |
 | the decks repository (outside) | text + Python | Each deck's list, plan and advisor, read by `deck sync` ([Decks](#decks)) |
 
 Decisions have to be intercepted inside Forge, so the engine is Java. Everything an agent writes or reads
@@ -225,9 +225,7 @@ the report counts those games and `--per-game` names the turn.
 
 Keys come from `OPENROUTER_API_KEY` or `DEFAPI_API_KEY`, or the files `openrouter.key` and `defapi.key` in
 `~/.config/deckmaster/`. The first provider with a key is used; `DECKMASTER_DECISION_PROVIDER` picks one and
-`DECKMASTER_DECISION_MODEL` another model. `deckmaster model` makes one tiny call to check. OpenClaw's own
-OpenRouter key can't be used: it's a protected secret, reachable from a subprocess only through OpenClaw's
-secret proxy, which covers only commands OpenClaw runs itself.
+`DECKMASTER_DECISION_MODEL` another model. `deckmaster model` makes one tiny call to check.
 
 ## Pilots
 

@@ -6,11 +6,10 @@ test decks, and people play them. Four parts, by what they do rather than where 
 - **Engine.** Forge, embedded and patched, hosting goldfish games and networked tables. Forge decides the rules.
 - **Tester.** Agents playtest a deck: goldfishing it alone (below), or at a table where Jev and each deck's advisor
   pilot the seats.
-- **Game.** A person sits at a table from an iPad browser and plays against those pilots. The table's design goals,
-  with their reasons, are in [game/tools/look/intent.md](../game/tools/look/intent.md); how it looks is in
-  [game/LOOK.md](../game/LOOK.md).
-- **Agent.** The skills an agent (Drummer, Claude or Codex sessions) uses to work on decks: curation, card search,
-  and testing through the tester.
+- **Game.** A person sits at a table from a browser (designed for landscape tablet/iPad as well as desktop) and plays
+  against those pilots. The table's design goals, with their reasons, are in
+  [game/tools/look/intent.md](../game/tools/look/intent.md); how it looks is in [game/LOOK.md](../game/LOOK.md).
+- **Agent.** The skills an AI agent uses to work on decks: curation, card search, and testing through the tester.
 
 Decks are state, not part of Deckmaster: each deck's vision, notes, list, plan and advisor live in the decks
 repository, and Deckmaster reads them.
@@ -28,7 +27,7 @@ whether the engine assembles, and where the deck stalls (screw, flood, dead card
 
 ## Who it serves
 
-Agents: Drummer's Deckmaster skill, plus Claude or Codex sessions doing deck work. Its outputs are read by a
+Agents doing deckbuilding and playtesting work. Outputs are read by a
 model and are written to be cheap to read; people play through the game, not the tester.
 
 ## Two modes

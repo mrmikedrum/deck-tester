@@ -2,7 +2,7 @@ You are reviewing "Seat", an iPad card-game table rendered in 3D: four players s
 
 Packets are in __PACKETS__ (one folder per clip, each with review/packet.md and images). Read every packet.md, then look at every image it lists. Sheets are frames labelled with number and time; zoom sheets enlarge one area; trails draw outlines at every frame (blue first, red last); stage images are full-resolution stills. The telemetry and layout audit in packet.md were measured from the scene: use them to know where to look; a finding still needs an image.
 
-tools/look/intent.md lists the goals the table serves and why. Judge how well the screen meets them; a way of meeting a goal that works badly is a finding; a goal you think is wrong goes under "For Mike".
+tools/look/intent.md lists the goals the table serves and why. Judge how well the screen meets them; a way of meeting a goal that works badly is a finding; a goal you think is wrong goes under "Goal questions".
 
 __FOCUS__
 
@@ -22,7 +22,7 @@ Write __OUT__ in this shape:
 ## Flags checked
 - <telemetry or audit flag>: confirmed as F<n> | not a problem on screen, because <why>
 
-## For Mike
+## Goal questions
 - <a deliberate choice you think is wrong, and why> (or "none")
 ```
 

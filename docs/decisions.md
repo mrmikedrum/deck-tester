@@ -4,9 +4,9 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 
 ## Made
 
-- **Embed Forge rather than write a rules engine.** The previous homegrown Rust engine,
-  `mrmikedrum/mtg-goldfish` (since deleted), modeled cards as closed enums and parsed Oracle text by pattern. On the
-  Eternities decks it marked 37% of cards as implemented, and the ones spot-checked were silently wrong.
+- **Embed Forge rather than write a rules engine.** An earlier homegrown Rust engine prototype
+  modeled cards as closed enums and parsed Oracle text by pattern. On real
+  Commander decks it marked 37% of cards as implemented, and the ones spot-checked were silently wrong.
   Forge scripts nearly every card and exposes every player decision through one interface. The M0 spike
   confirmed it holds: every card known, decisions intercepted, snapshots restored, and about 100 games in
   45 s.
@@ -47,18 +47,15 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
 - **Forge is an upstream pin plus a small labelled patch series, not a maintained fork.** A handful of
   patches doesn't justify a second codebase; the series rebases with git's three-way merge, and every game
   record names its build, so results from different engines are never mixed. General fixes are offered
-  upstream from a GitHub fork (`mrmikedrum/forge`); hooks only this host needs stay local.
-- **Fresh history in a standalone repo.** This repo started as `mrmikedrum/deck-tester`, not as a fork of the
-  old Rust `mrmikedrum/mtg-goldfish`, which was later deleted (a git bundle of it is on the NAS working share).
-- **One product, Deckmaster, in one repo (2026-11-23).** The goldfish tool, the networked tables and the game
+  upstream from a GitHub fork of Forge; hooks only this host needs stay local.
+- **One product, Deckmaster, in one repo.** The goldfish tool, the networked tables and the game
   client grew into one product: an engine, a tester, a game and the agent skills, named for what they do. They stay
   in one repository because the client reads the engine's view directly, so one change can cover both sides.
-  The game client joined with its own history (the look loop's rounds), less Scryfall's images, which are
-  Wizards' and this repository is public: card images are a runtime cache the game server fills.
+  Card images stay out of git (Wizards' images): they are fetched into a runtime cache the game server fills.
 - **The agent lives in Deckmaster; decks and private integrations don't.** The deck partner's guidance, skills and
   generic tools are Deckmaster's agent part, so they change with the engine and tester they drive; the decks repository
-  keeps only state (Mike's taste included), and private/external-app integrations stay out of this public repo behind
-  the local plugin hook in `~/.config/deckmaster/config.json`.
+  keeps only state (personal taste and playgroup preferences included), and private/external-app integrations stay out
+  of this public repo behind the local plugin hook in `~/.config/deckmaster/config.json`.
 - **Decks are state, not part of Deckmaster.** Each deck's vision, notes, list, plan and advisor live in the decks
   repository (loosely coupled: a documented folder format), and Deckmaster reads them into a deck database of its
   own, so decks from elsewhere (players at a table) fit the same way. A deck's advisor and plan come with it, so

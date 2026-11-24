@@ -5,7 +5,7 @@ description: Discover new Magic cards and alternative synergies beyond an existi
 
 # Search
 
-Read the active project's vision and state and relevant preferences (decks repository: `docs/mikes-deckbuilding-preferences.md`). Use [query patterns](references/search-patterns.md) for discovery and [verification](references/verification.md) for consequential card/interaction claims.
+Read the active project's vision and state and any player preferences referenced by the decks repository. Use [query patterns](references/search-patterns.md) for discovery and [verification](references/verification.md) for consequential card/interaction claims.
 
 Choose the task:
 - Theme: translate fantasy into mechanics, story roles and visual/flavor avenues; commander optional.
@@ -28,6 +28,6 @@ python3 agent/skills/commander-search/scripts/scryfall.py named 'Insight Engine'
 
 The name index locates leads; evaluate candidates from exact rules, not remembered effects. `--view full` retains all retrieved fields, including printing/art data; the existing default remains full JSON. Views retain coverage, warnings and source timestamps; saved-result inspection never fetches. Display limits expose `displayed_cards`, `view_total_cards` and `next_offset`; retrieval completeness does not mean every result has been inspected. Missing names are absent from that saved result, not proof the card doesn't exist. Track query/date/pages in a temporary [ledger](../../templates/card-ledger.md), then retain only consequential findings and unresolved coverage in project notes. A complete query is not exhaustive concept discovery. Stop repeated unavailable-source retries.
 
-Offer manageable batches with link, specific fit, role/timing and drawback. Before promoting a search hit to a recommendation, apply Mike's [thematic resonance standard](../../docs/mikes-deckbuilding-preferences.md#thematic-resonance): assess name, intended art and identity separately from mechanical synergy, and expose any substantial mismatch rather than assuming a reskin. Inspect artwork when the fit depends on it; unviewed art remains unverified. A full-set request needs all pages or an explicit gap. Verify finalists before recommending changes; raw hits remain scratch.
+Offer manageable batches with link, specific fit, role/timing and drawback. Before promoting a search hit to a recommendation, check thematic resonance against the project's vision and player preferences: assess name, intended art and identity separately from mechanical synergy, and expose any substantial mismatch rather than assuming a reskin. Inspect artwork when the fit depends on it; unviewed art remains unverified. A full-set request needs all pages or an explicit gap. Verify finalists before recommending changes; raw hits remain scratch.
 
 Publish curated proposals/workbenches through the active persistence workflow; [refine](../commander-refine/SKILL.md) owns coherent main-list changes. Preserve artwork-specific printings.

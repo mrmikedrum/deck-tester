@@ -28,8 +28,7 @@ then the look loop resumes on the new modules, its lanes on branches with pull r
 
 A verified controller fix clears AI-preset targets before a browser-owned cast/activation asks for targets.
 The native browser regression casts Marath, chooses his counter mode, explicitly selects Grizzly Bears,
-and checks that Bears receives the counter while Marath pays one. It must be loaded at the next engine
-restart; the currently running human game is deliberately left untouched until Mike authorizes ending it.
+and checks that Bears receives the counter while Marath pays one. It loads at the next engine restart.
 
 ## Manual-play legality regression
 

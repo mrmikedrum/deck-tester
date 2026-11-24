@@ -1,7 +1,7 @@
 # Seat: what it is for
 
-Mike's goals for the table, with why. A change may replace how a goal is met (the "now" notes) with something that
-meets it better; it may not give up the goal. A finding that a goal itself is wrong goes under "For Mike".
+Design goals for the table, with why. A change may replace how a goal is met (the "now" notes) with something that
+meets it better; it may not give up the goal. A finding that a goal itself is wrong goes under "Goal questions".
 
 When goals pull against each other, or a finding offers several fixes, choose whatever gives the player the most clarity.
 
@@ -18,8 +18,8 @@ When goals pull against each other, or a finding offers several fixes, choose wh
   focus involves (the cards the stack targets, the creatures in a combat) comes up above the dim in its own place on
   the board, never covered. A focus never hides change: when something happens elsewhere it steps aside or shows it.
   *Now:* the stack comes forward and dims the table; tapping away sets it aside small, tapping it brings it back;
-  leaning in brings a seat's page forward. Combat could have a focus of its own. *Why:* Mike (Nov 23): "it's okay to
-  overlap/hide things in the layout if it's in a modal way that's dismissable"; use it as a tool for clarity.
+  leaning in brings a seat's page forward. Combat could have a focus of its own. *Why:* overlapping or dimming the
+  background is fine when it is modal and one-tap dismissible — use it as a tool for clarity.
 - **Look closer without getting lost.** A player can look at one seat, a pile or a card closely and get back in one
   tap; the view never needs navigating (no free pan, pinch or orbit). A camera that frames the action is fine if it
   pulls back when something happens elsewhere and lets the player look again.
@@ -38,8 +38,8 @@ When goals pull against each other, or a finding offers several fixes, choose wh
   that kind of summary, and on hints that answer the player's real question at that moment ("no fliers that can block",
   "your Baloth can block this"), rather than on more, smaller cards. Overlap on purpose (a shingled column, a fanned
   row, a regiment of tokens) is welcome when the group says what it holds and each card can still be told apart or
-  opened. *Why:* Mike (Nov 23): "I'd prefer intentional overlap and summary text/UI hints"; "be smart with it, try lots
-  of things", taking inspiration from what real players do under real constraints.
+  opened. *Why:* intentional overlap and summary text/UI hints scale far better than shrinking cards to illegible
+  postage stamps — take inspiration from what real players do under real table constraints.
 - **Opponents' boards are open to rethinking.** Fixed-size pages were the loop's own fix for wonky mat transitions,
   not a goal. Any paradigm that shows a big opponent board usably and legibly is welcome, if it still feels real: a
   physical mat that simply grows and shrinks doesn't, but other real-world arrangements might.

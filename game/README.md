@@ -1,7 +1,7 @@
 # Deckmaster game
 
-You sit in one seat at a four-player Commander table, in a browser (an iPad, added to the Home Screen, is the
-target); Jev with each deck's advisor pilots the other three. On the Mac:
+You sit in one seat at a four-player Commander table, in a browser (designed for landscape tablets/iPads and
+desktop); Jev with each deck's advisor pilots the other three. From the host machine:
 
 ```bash
 bin/deckmaster game            # prints the address to open: http://<this machine>:8765/live.html

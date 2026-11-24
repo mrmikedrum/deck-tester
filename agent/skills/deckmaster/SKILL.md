@@ -1,6 +1,6 @@
 ---
 name: deckmaster
-description: Build and refine Magic Commander decks with Mike through exploration, card discovery, draft iteration, Forge goldfishing and game feedback. Preserve the project's vision, challenge existing card choices, and prioritize distinctive, fun games over generic power.
+description: Build and refine Magic Commander decks through exploration, card discovery, draft iteration, Forge goldfishing and game feedback. Preserve the project's vision, challenge existing card choices, and prioritize distinctive, fun games over generic power.
 ---
 
 # Deckmaster
@@ -12,7 +12,7 @@ Reuse guidance already present in the current context when moving between skills
 ## Load only the relevant workflows
 
 - **Explore possibilities:** [explore](../commander-explore/SKILL.md) for concepts, commanders and alternative engines without rewriting approved intent.
-- **Establish or revise intent:** [vision interview](../commander-vision-doc/SKILL.md) for probing questions and the only agent workflow allowed to edit `vision.md`; revisions require Mike's permission.
+- **Establish or revise intent:** [vision interview](../commander-vision-doc/SKILL.md) for probing questions and the only agent workflow allowed to edit `vision.md`; revisions require the player's permission.
 - **Find or verify cards:** [search](../commander-search/SKILL.md) for Scryfall, confirmed tags, mechanical adjacency and consequential card facts.
 - **Build or improve a list:** [refine](../commander-refine/SKILL.md) for packages, cuts, roles, curve and mana. Substantive refinement includes discovery beyond the existing pool and comparison against incumbents; neither familiarity nor novelty earns a slot.
 - **Test a list:** [goldfish](../commander-goldfish/SKILL.md) to pilot staged drafts in Forge against passive opponents, including during refinement before publication.

@@ -99,13 +99,13 @@ keep_scope() {
 }
 status() { printf '%s\n' "$1" >>look/STATUS.md; }
 [ -f look/STATUS.md ] || printf '# Look loop, lane %s: one line per round\n\n' "$LANE" >look/STATUS.md
-# Finished recordings keep their video, sheets and stills; the raw frames go, and the rest moves to the NAS working
-# share (config/nas-working-storage.json) when it is mounted, since the local disk is tight.
-ARCHIVE="$HOME/NAS/OpenClaw Workspace/seat-look-reels/lane-$LANE"
+# Finished recordings keep their video, sheets and stills; raw frames are removed, and when LOOK_ARCHIVE_DIR is set
+# and writable, older rounds move there to save local disk space.
+ARCHIVE="${LOOK_ARCHIVE_DIR:+$LOOK_ARCHIVE_DIR/lane-$LANE}"
 archive() {
   for d in "$@"; do
     [ -d "$d" ] || continue; rm -rf "${d:?}"/*/frames "${d:?}"/*/still-*.png
-    if mount | grep -q "on $HOME/NAS/OpenClaw Workspace "; then mkdir -p "$ARCHIVE" && rsync -a --remove-source-files "${d:?}" "$ARCHIVE/" && rm -rf "${d:?}"; fi
+    if [ -n "$ARCHIVE" ] && [ -d "$LOOK_ARCHIVE_DIR" ]; then mkdir -p "$ARCHIVE" && rsync -a --remove-source-files "${d:?}" "$ARCHIVE/" && rm -rf "${d:?}"; fi
   done
 }
 free_gb() { df -g "$HERE" | awk 'NR == 2 { print $4 }'; }

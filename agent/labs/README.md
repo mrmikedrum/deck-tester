@@ -1,14 +1,14 @@
 # Behavioral labs
 
-Scenarios prepared; **no model-comparison campaign run**. [Retrieval checks](../docs/validation.md) do not prove conversational quality. Synthetic workflow tests exercise mechanics, not the quality of an agent's decisions.
+Scenarios prepared; **no model-comparison campaign run**. Synthetic workflow tests exercise mechanics, not the quality of an agent's decisions.
 
 ## Method
 
 Compare original guides, skills with conversation-only state, and skills with persistent brief. Hold model/tools/card snapshot/token-time budget fixed. Use fresh isolated sessions/directories, sequential turns and bounded resume context; no shared writable memory. Separate fixed-card reasoning from live search.
 
-Begin with 3 development repetitions; promising variants get ≥6 per case. Report pass counts, invalid runs, latency/tool usage, not a statistical guarantee. Keep holdouts untuned; Mike judges usefulness, blind independent grading can assess observable criteria.
+Begin with 3 development repetitions; promising variants get ≥6 per case. Report pass counts, invalid runs, latency/tool usage, not a statistical guarantee. Keep holdouts untuned; human review judges usefulness, while blind independent grading can assess observable criteria.
 
-Persistence/sync cases use disposable fixtures/simulated CLIs, never live accounts. Record supplied lists/cards, hashes, tool surfaces/results, artifacts, feedback and invalid reasons. Existing OpenClaw harness needs an isolated adapter.
+Persistence/sync cases use disposable fixtures/simulated CLIs, never live accounts. Record supplied lists/cards, hashes, tool surfaces/results, artifacts, feedback and invalid reasons.
 
 ## Cases
 
@@ -51,6 +51,6 @@ Persistence/sync cases use disposable fixtures/simulated CLIs, never live accoun
 
 ## Score and iterate
 
-Score 0/1/2 with evidence: intent retention, revision handling, verified accuracy, search breadth/relevance, functional coherence, social reasoning, coverage, usefulness. Invented verification, silently changed constraints and false completeness are critical failures regardless of prose. Judge supported surprises Mike wants, not exact wording or fashionable cards.
+Score 0/1/2 with evidence: intent retention, revision handling, verified accuracy, search breadth/relevance, functional coherence, social reasoning, coverage, usefulness. Invented verification, silently changed constraints and false completeness are critical failures regardless of prose. Judge supported surprises the player wants, not exact wording or fashionable cards.
 
 Change the smallest responsible component; rerun affected cases and untouched holdouts. Preserve failures without adding a global prohibition for every example.
