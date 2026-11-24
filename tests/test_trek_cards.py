@@ -13,7 +13,7 @@ class TrekCardRules(unittest.TestCase):
             for _ in range(3):self.ov('create',name,'battlefield')
     def tearDown(self):self.req('end')
     @classmethod
-    def tearDownClass(cls):engine.request({'cmd':'shutdown'},start=False)
+    def tearDownClass(cls):engine.stop()
     def req(self,cmd,**kw):
         self.r=engine.request(dict(cmd=cmd,session=self.sid,**kw));return self.r
     def ov(self,*args):return self.req('override',args=list(args))
