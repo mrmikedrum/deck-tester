@@ -194,7 +194,7 @@ Then write $R/fix-2.md."
   overall=$(awk '/^## Overall/{f=1; next} f && NF {print; exit}' "$R/judge.md" | sed "s/^$after better/after better/; s/^[XY] better/before better/" | cut -c1-160)
   # The round's work goes on this lane's branch, for the other lane to merge.
   git add -A client tools LOOK.md 2>/dev/null || true
-  git -c user.name="mrmikedrum" -c user.email="mdrum@omitv.org" commit -qm "Look lane $LANE, round $n: $overall" 2>/dev/null || true
+  git commit -qm "Look lane $LANE, round $n: $overall" 2>/dev/null || true
   gates=$(grep -h "LAYOUT" "$A"/*/review/packet.md 2>/dev/null | grep -c FAIL || true)
   status "- round $n ($(date +%m-%d\ %H:%M), $(( ($(date +%s) - T0) / 60 )) min): $(grep -c '^### F' "$R/findings.md") findings; review $(grep -o 'VERDICT: [a-z]*' "$R/fix-review.md" | cut -d' ' -f2)$( [ -f "$R/fix-2.md" ] && echo ', revised'); layout fails in $gates clips; judge: $overall"
   archive "$B" $(ls -d reels/r*-after 2>/dev/null | grep -v "^$A\$")
