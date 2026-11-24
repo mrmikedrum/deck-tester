@@ -3,26 +3,21 @@
 Facts distinguish cast triggers, entry triggers, proliferation and crew costs; this hook advises the
 model but never substitutes for Forge's legal actions or makes the final choice itself.
 """
-from goldfish.advice import Advisor
+from deckmaster.advice import Advisor
 
 adv = Advisor()
-
 
 def countered(p):
     return [card for card in p.state.get('battlefield', [])
             if any(n > 0 for n in card.get('counters', {}).values())]
 
-
 def incubators(p):
     return [card for card in p.state.get('battlefield', []) if card['name'] == 'Incubator Token']
-
 
 adv.when(lambda p: f"{len(countered(p))} permanents have counters of some kind. Atraxa's end-step "
          'proliferation can add one of EACH kind already present on chosen permanents; it cannot seed a '
          'new counter kind or put the first counter on an empty component.',
          board=["Atraxa, Praetors' Voice"], test=lambda p: bool(countered(p)))
-adv.when('Tekuthal replaces a proliferation with TWO proliferations. It does not double every counter '
-         'placement or the number of tokens you create.', board=['Tekuthal, Inquiry Dominus'])
 adv.when('Loading Zone doubles counters placed on your creatures, Spacecraft and Planets, not tokens '
          'or every ordinary artifact. Maturation Chamber is a noncreature artifact, not a Spacecraft.',
          board=['Loading Zone'])
@@ -58,13 +53,7 @@ adv.when(lambda p: 'Atraxa is untapped with power '
          + '. Her vigilance preserves that station resource after attacking; stationing before combat '
          'would tap her. Summoning sickness does not prevent serving as station crew.',
          board=["Atraxa, Praetors' Voice"], test=lambda p: not p.tapped("Atraxa, Praetors' Voice"))
-adv.when('Ezuri draws when YOU proliferate. Incubator/charge-counter growth can therefore replenish '
-         'cards; this is different from merely putting a counter on something.', board=['Ezuri, Stalker of Spheres'])
 
-adv.when(lambda p: f"Only {len(p.hand)} cards remain in hand. Decode draws two without requiring an "
-         'artifact fleet or combat damage. Void is a bonus after a NONLAND permanent departure or warped '
-         'spell this turn; sacrificing a fetchland does not enable it.', castable=['Decode Transmissions'],
-         test=lambda p: len(p.hand) <= 4)
 adv.when('Warp Speed overrides tapped-land entries. Its draw ability discounts only GENERIC mana for '
          'differently named lands; it still requires UU and sacrificing the enchantment.', board=['Warp Speed'])
 adv.when('The passive opponents have no nonland permanents. Sunfall would erase your own creatures, '
@@ -73,5 +62,38 @@ adv.when('The passive opponents have no nonland permanents. Sunfall would erase 
          all(o.get('other') == 0 for o in p.state['opponents']))
 adv.when(lambda p: 'Castable from the graveyard now: ' + ', '.join(p.castable_from['graveyard']) + '.',
          test=lambda p: bool(p.castable_from['graveyard']))
+
+adv.role('mana_myr', 'Copper Myr', 'Gold Myr', 'Silver Myr')
+adv.when('These Myr are one-mana sources after summoning sickness wears off: Copper makes green, '
+         'Gold makes white, Silver makes blue. Counters grow their bodies, not their mana output. '
+         'Stationing taps a Myr and competes with its mana ability; a sick Myr may serve as station '
+         'crew but cannot yet tap for mana.',
+         any_of={'board': ['mana_myr'], 'castable': ['mana_myr']})
+adv.when('Harmonize draws three without needing creatures, counters, combat or graveyard targets. '
+         'It can start card flow while conditional engines are missing their input.', castable=['Harmonize'])
+adv.when('Terrasymbiosis needs +1/+1 counters placed on a CREATURE and draws that many only once '
+         'per turn. Charge/quest growth alone does not feed it. Sequence it before a large placement '
+         'or counter-bearing creature entry when useful; optional draw can be declined.',
+         board=['Terrasymbiosis'])
+
+adv.when('Insight Engine makes its own charge counter before drawing for its charge total. '
+         'It does not require a creature army; spare mana can deploy and start this card engine '
+         'instead of leaving it in hand while repeatedly buying small upgrades.',
+         any_of={'board': ['Insight Engine'], 'castable': ['Insight Engine']})
+adv.when('Uthros Research Craft needs 3 charge counters before FUTURE artifact casts draw cards '
+         'and add another charge. Tokens and transformations do not count as casts. Its creature '
+         'threshold is 12; station crew competes with mana and combat.', board=['Uthros Research Craft'])
+adv.when('A charged Bankbuster draws for two mana, tap and one charge without needing crew. '
+         'Proliferation replenishes charges; crewing is optional and must not repeatedly consume '
+         'the creatures needed for actual development.', board=['Reckoner Bankbuster'])
+adv.when('Steel Overseer seeds or grows +1/+1 counters on EACH artifact creature, not on '
+         'ordinary noncreature artifacts or untransformed Incubators. It needs tap and cannot '
+         'activate while summoning-sick; deploy it before expecting repeated army upgrades.',
+         any_of={'board': ['Steel Overseer'], 'castable': ['Steel Overseer']})
+adv.when('Inspiring Call draws for creatures with +1/+1 counters and protects them. A large '
+         'counterless Borg army does not by itself make a large refill.', castable=['Inspiring Call'])
+adv.when('The Borg Queen’s static +2/+2 grows other artifact creatures WITHOUT adding counters. '
+         'That pumps an unseeded Borg army, but does not itself create new proliferation targets.',
+         board=['The Borg Queen'])
 
 advise = adv.advise

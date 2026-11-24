@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from goldfish import model, records, render  # noqa: E402
+from deckmaster import model, records, render  # noqa: E402
 
 SITUATIONS = Path(__file__).resolve().parent / "situations"
 
@@ -342,7 +342,7 @@ def main():
     args = parser.parse_args()
     global ADVISOR
     if args.advisor:
-        from goldfish import batch
+        from deckmaster import batch
         ADVISOR = batch.load_pilot(args.advisor).get("advise")
     cases = load(args.only.split(",") if args.only else None, args.all, args.unlabelled)
     if args.scenarios:

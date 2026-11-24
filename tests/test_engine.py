@@ -5,7 +5,7 @@ from pathlib import Path
 
 from unittest import mock
 
-from goldfish import batch, decklist, engine, model, records, report
+from deckmaster import batch, decklist, engine, model, records, report
 
 DECK = Path(__file__).resolve().parent.parent / "examples" / "decks" / "eternities-living-worlds-iii.txt"
 
@@ -37,6 +37,50 @@ class ManualGameTest(unittest.TestCase):
         seen, played = records.cards(facts)
         self.assertEqual(len(seen), 8)  # the opening seven and the turn-1 draw
         self.assertEqual(played, [])    # the land play was undone by the restore
+
+    def test_a_dead_commander_may_go_to_the_command_zone(self):
+        deck = decklist.load(DECK)
+        reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2})
+        session = reply["session"]
+        try:
+            engine.request({"cmd": "answer", "session": session, "answer": [1]})
+            engine.request({"cmd": "override", "session": session, "args": ["move", "Marath, Will of the Wild", "battlefield"]})
+            engine.request({"cmd": "override", "session": session, "args": ["destroy", "Marath, Will of the Wild"]})
+        finally:
+            reply = engine.request({"cmd": "end", "session": session})
+        # asked during an override, the choice goes to Forge's AI and is recorded as its answer
+        asked = [f for f in records.load(reply["records"]) if f["t"] == "decision" and "command zone" in f.get("prompt", "")]
+        self.assertEqual([f["by"] for f in asked], ["ai"])
+
+    def test_a_copy_may_have_new_targets(self):
+        deck = decklist.load(DECK)
+        reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2})
+        session = reply["session"]
+
+        def answer(label):
+            options = reply["decision"]["options"]
+            pick = next(i for i, o in enumerate(options) if o.startswith(label)) + 1
+            return engine.request({"cmd": "answer", "session": session, "answer": [pick]})
+        try:
+            engine.request({"cmd": "answer", "session": session, "answer": [1]})
+            for args in (["move", "Marath, Will of the Wild", "battlefield"], ["counter", "Marath, Will of the Wild", "+1/+1", "4"],
+                         ["create", "Unbound Flourishing"], ["create", "Grizzly Bears"], ["create", "Plains"]):
+                engine.request({"cmd": "override", "session": session, "args": args})
+            engine.request({"cmd": "snapshot", "session": session, "name": "set"})
+            reply = engine.request({"cmd": "restore", "session": session, "name": "set"})
+            reply = answer("Marath, Will of the Wild:")
+            while reply["decision"]["kind"] != "targets":  # X and the mode, in the order Forge asks them
+                reply = (engine.request({"cmd": "answer", "session": session, "answer": [1]})
+                         if reply["decision"]["kind"] == "number" else answer("Put X +1/+1 counters"))
+            reply = answer("Marath")
+            self.assertTrue(reply["decision"]["prompt"].startswith("choose new targets for the copy of Marath"))
+            reply = answer("yes")
+            self.assertEqual(reply["decision"]["kind"], "targets")
+            answer("Grizzly Bears")
+        finally:
+            reply = engine.request({"cmd": "end", "session": session})
+        targets = [f["answer"] for f in records.load(reply["records"]) if f["t"] == "decision" and f["kind"] == "targets"]
+        self.assertEqual(targets[-1], ["Grizzly Bears 2/2"])
 
 
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
@@ -78,11 +122,16 @@ class ForkTest(unittest.TestCase):
             while reply.get("decision") and model.turn(reply["decision"]) < 3:
                 reply = engine.request({"cmd": "answer", "session": session, "defer": True})
             parked = reply["decision"]
-            fork = engine.request({"cmd": "fork", "session": session})
+            fork = engine.request({"cmd": "fork", "session": session, "via": "replay"})
             forks.append(fork["session"])
             self.assertEqual(fork["parent"], session)
             self.assertGreaterEqual(fork["replayed"], 2)  # the mulligan and turn 1 and 2 plays, at least
             self.assertEqual(fork["decision"], parked)
+            # A copy fork (the default) starts from a copy of the game here: nothing to replay, same decision.
+            copy = engine.request({"cmd": "fork", "session": session})
+            forks.append(copy["session"])
+            self.assertEqual(copy["replayed"], 0)
+            self.assertEqual(copy["decision"], parked)
             # The fork is a game of its own: answering it leaves the parent parked where it was.
             engine.request({"cmd": "answer", "session": fork["session"], "defer": True})
             self.assertEqual(engine.request({"cmd": "decision", "session": session})["decision"], parked)
@@ -110,7 +159,8 @@ def stand_in_model(state, questions, usage=None, session=None):
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class ModelGameTest(unittest.TestCase):
     def play(self, hybrid):
-        with mock.patch.object(model, "call", stand_in_model), mock.patch.object(model, "key", lambda: "test"):
+        with mock.patch.object(model, "call", stand_in_model), mock.patch.object(model, "key", lambda: "test"), \
+                mock.patch.object(model, "provider", lambda: model.PROVIDERS[0]):
             return batch.run(decklist.load(DECK), "test", games=1, seed=7, turns=3, opponents=3, pilot=None,
                              workers=1, guide="Ramp, then cast Marath.", hybrid=hybrid)
 
@@ -131,6 +181,38 @@ class ModelGameTest(unittest.TestCase):
 
     def test_plain_plays_a_whole_game_without_playing_out(self):
         self.assertEqual(self.play("plain")["model"]["played_out"], 0)
+
+
+
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed")
+class OpeningPolicyGameTest(unittest.TestCase):
+    def test_london_bottoms_before_keep_and_policy_stops_at_four(self):
+        reply = engine.request({"cmd": "start", "commanders": ["Marath, Will of the Wild"],
+                                "main": [[99, "Wastes"]], "seed": 21003, "turns": 1, "ask": list(model.KINDS)})
+        decider = model.Decider("Develop.", 3, model.Usage(), hybrid="plain")
+        kept = []
+        try:
+            for _ in range(12):
+                d = reply["decision"]
+                if d["kind"] == "play":
+                    break
+                if d["kind"] == "mulligan":
+                    state = engine.request({"cmd": "state", "session": reply["session"]})["state"]
+                    kept.append(len(state["hand"]))
+                    reply = decider.step(reply)
+                else:
+                    self.assertTrue(model.bottoming(d))
+                    # All Wastes: identical bottoms; no remote model needed to verify native ordering.
+                    reply = engine.request({"cmd": "answer", "session": reply["session"],
+                                            "answer": list(range(1, d["min"] + 1)), "by": "test"})
+            self.assertEqual(kept, [7, 7, 6, 5, 4])
+            self.assertEqual(reply["decision"]["kind"], "play")
+            facts = records.load(reply["records"])
+            picks = [f for f in facts if f["t"] == "decision" and f["kind"] == "mulligan"]
+            self.assertEqual([f["by"] for f in picks], ["policy"] * 5)
+            self.assertEqual(picks[-1]["answer"], ["keep"])
+        finally:
+            engine.request({"cmd": "end", "session": reply["session"]})
 
 
 if __name__ == "__main__":

@@ -1,13 +1,15 @@
-# MTG Goldfish
+# Deckmaster
 
-Agent-driven Commander goldfishing on top of [Forge](https://github.com/Card-Forge/forge). An agent plays a
-deck's first turns against passive opponents, either by hand (manual mode, available now) or with a pilot
-script or Forge's AI (automated mode), and gets back compact reports on how the deck develops.
+A home for Commander decks on [Forge](https://github.com/Card-Forge/forge): agents playtest decks by goldfishing
+them or at a table of model-piloted seats, and people play those tables from a browser. Goldfishing an agent's deck
+plays its first turns against passive opponents, either by hand (manual mode) or with a pilot script and the
+decision model (automated mode), and returns compact reports on how the deck develops.
 
-- [Vision](docs/vision.md): what this is for, the two modes, and principles
-- [Architecture](docs/architecture.md): components, the decision seam, records, forks and Forge
+- [Vision](docs/vision.md): what this is for, its parts, and principles
+- [Architecture](docs/architecture.md): components, the decision seam, records, forks, the game server and Forge
 - [Measurements](docs/measurements.md): speed, fork fidelity and decision-model results
 - [Roadmap](docs/roadmap.md) and [decisions](docs/decisions.md)
+- [The game](game/README.md): playing a table in the browser
 - [AGENTS.md](AGENTS.md): how to work on this repo
 
 ## Setup
@@ -21,7 +23,7 @@ scripts/bootstrap-forge.sh
 ## Manual mode
 
 ```bash
-bin/goldfish start examples/decks/eternities-living-worlds-iii.txt --seed 11
+bin/deckmaster start examples/decks/eternities-living-worlds-iii.txt --seed 11
 ```
 
 Every command prints what happened since you last looked, then the decision waiting for you:
@@ -41,7 +43,7 @@ T0 setup mulligan (keep this hand): 1 keep · 2 mulligan
 | `cards [--by-turn]` | Cards seen and played, by name |
 | `snapshot NAME` / `restore NAME` | Save the game at a play decision and go back to it |
 | `override move\|create\|life\|counter\|tap\|untap …` | Correct the game by hand, for example `override counter Ouroboroid +1/+1 2` |
-| `end` | End the game; records stay in `.goldfish/runs/` |
+| `end` | End the game; records stay in `.deckmaster/runs/` |
 
 A game runs until it ends or you `end` it; `--turns N` ends it after your Nth turn. The three opponents only
 play lands. `--mana` sets when you pick which sources pay for a spell: `creatures` (default, when a creature
@@ -54,8 +56,8 @@ For the current Eternities exports, attach the Python advisor **and** its strate
 plays candidate actions forward; an advisor adds position-specific facts, not deterministic choices:
 
 ```sh
-bin/goldfish run /tmp/eternities-nature.txt --games 2 --turns 8 --pilot examples/pilots/marath_advisor.py --guide examples/plans/living-worlds.txt --hybrid outcomes
-bin/goldfish run /tmp/eternities-assimilation.txt --games 2 --turns 8 --pilot examples/pilots/atraxa_advisor.py --guide examples/plans/assimilation.txt --hybrid outcomes
+bin/deckmaster run /tmp/eternities-nature.txt --games 2 --turns 8 --pilot examples/pilots/marath_advisor.py --guide examples/plans/living-worlds.txt --hybrid outcomes
+bin/deckmaster run /tmp/eternities-assimilation.txt --games 2 --turns 8 --pilot examples/pilots/atraxa_advisor.py --guide examples/plans/assimilation.txt --hybrid outcomes
 ```
 
 Check the manifest's `pilot` and `hybrid`, and the report's model line. A fork that doesn't replay into
@@ -66,7 +68,7 @@ either way.
 
 
 ```bash
-bin/goldfish run examples/decks/eternities-living-worlds-iii.txt --games 100 --seed 1000
+bin/deckmaster run examples/decks/eternities-living-worlds-iii.txt --games 100 --seed 1000
 ```
 
 ```
@@ -83,9 +85,11 @@ commander never cast in 100 games
 mulligans: 0 in 84, 1 in 11, 2 in 4, 3 in 1
 ```
 
-Forge's AI plays every game unless `--pilot FILE` names a Python file whose functions (named after decision
-kinds: `mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `pay`) answer
-those kinds; returning `None` hands one back to the AI. See `examples/pilots/commander_first.py`.
+Real-deck runs require `--guide PLAN` for Jev or `--pilot FILE` with a manual `play` handler. Stock
+Forge-AI mode is reserved for passive goldfish opponents, not the deck being tested. Existing hybrid
+fallbacks within an agent/Jev pilot remain allowed and recorded. Pilot functions are named after decision
+kinds (`mulligan`, `play`, `targets`, `mode`, `number`, `confirm`, `order`, `choose`, `attack`, `block`,
+`pay`); returning `None` hands that one decision to the ordinary fallback.
 
 | Option | Does |
 |--------|------|
@@ -95,9 +99,30 @@ those kinds; returning `None` hands one back to the AI. See `examples/pilots/com
 | `--guide PLAN` | Put the decision model (Jev) in the seat with this plain-language deck plan; each option is played out in a fork of the game and the model picks (see architecture) |
 | `--hybrid plain` | With `--guide`: the model picks from the text alone, nothing played out |
 | `--fast` | With `--guide`: a confident text-only pick skips the forks; quicker, more calls, possibly worse play (off by default) |
-| `--ai hybrid\|sim` | Forge's experimental lookahead; slower and no better so far, and `sim` crashes (see measurements) |
+| `--forks replay` | With `--guide`: play options out in forks replayed from the seed instead of made from a copy of the game (the default, about 30 times quicker) |
+| `--ai hybrid\|sim\|flatmc` | Forge's other AIs: `flatmc` is its Monte Carlo layer, as its desktop app plays; `hybrid` and `sim` are older lookahead, slower and no better (see measurements) |
 | `--per-game`, `--cards` | Add a line per game; add how often each card was seen and played |
 | `report [bN]` | Show a batch's report again, with the same flags |
 
 `mana` is everything that could tap; `unspent` is what was left untapped at the end step.
-`bin/goldfish --session g3 log` addresses an older game; the default is the last one started.
+`bin/deckmaster --session g3 log` addresses an older game; the default is the last one started.
+
+## Tables: agents and people
+
+`deckmaster table` hosts a Commander game over Forge's network play: agent seats (Jev, with a deck plan and advisor)
+and open seats for people, who join from the Forge desktop app built at the engine's version.
+
+```sh
+scripts/build-forge-client.sh ../forge   # once per Forge build: the desktop app people join with
+bin/deckmaster table examples/decks/eternities-living-worlds-iii.txt,examples/plans/living-worlds.txt,examples/pilots/marath_advisor.py \
+  examples/decks/eternities-assimilation-iii.txt,examples/plans/assimilation.txt,examples/pilots/atraxa_advisor.py \
+  examples/decks/blue-moon-combat-revision.txt,examples/plans/blue-moon.txt,examples/pilots/blue_moon_advisor.py --people 1
+```
+
+It prints the address to join (Online Multiplayer, Join) and plays until the game ends; Ctrl-C ends it.
+On macOS the firewall must allow incoming connections for the engine's Java (`$(/usr/libexec/java_home -v 21)/bin/java`),
+or a join drops at once; on the hosting machine itself, joining at `127.0.0.1` works either way. A seat
+needs a Jev plan or manual play pilot; a bare deck is rejected rather than silently stock-piloted.
+When it ends it prints a report: life by round and, per agent seat,
+who decided, its lookahead and its development; `bin/deckmaster table-report [tN]` shows it again.
+

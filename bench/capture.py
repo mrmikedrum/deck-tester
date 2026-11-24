@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from goldfish import batch, decklist, engine, model, records  # noqa: E402
+from deckmaster import batch, decklist, engine, model, records  # noqa: E402
 
 SITUATIONS = Path(__file__).resolve().parent / "situations"
 

@@ -1,0 +1,1021 @@
+{
+ "id": "scenario-moon-recast-yue-first",
+ "plan": "Blue creatures and copies, built on Princess Yue. Make a land drop every turn and cast Sol Ring early; Springleaf Drum and the lands that tap a creature for mana want creatures first. The engine is Moons: when a creature of yours becomes a copy of Princess Yue, keep the commander at the legend rule, and the copy dies and returns as a land named Moon that keeps a creature's abilities (a clone chooses what to copy as it returns; a creature changed by Metamorphic Alteration or Blade of Shared Souls returns as itself). Moons tap for mana, can be untapped like lands and escape creature removal; tap payoffs such as Tui and La, Fallowsage and Pestered Wellguard make the best ones. So keep Princess Yue on the battlefield as a creature: cast her early, and when she dies put her in the command zone and recast her. A clone usually does more on Yue than as a copy of another creature, though a much stronger creature can be worth copying. Tap and untap tricks grow the board; attack with it. Hold counterspells and bounce for what matters, and draw cards with spare mana.\n",
+ "state": {
+  "turn": "T5 main1",
+  "life": 40,
+  "mana": 7,
+  "land_drop": true,
+  "library": 95,
+  "hand": [
+   "Vizier of Many Faces"
+  ],
+  "battlefield": [
+   {
+    "name": "Island",
+    "id": 406
+   },
+   {
+    "name": "Island",
+    "id": 407
+   },
+   {
+    "name": "Island",
+    "id": 408
+   },
+   {
+    "name": "Island",
+    "id": 409
+   },
+   {
+    "name": "Island",
+    "id": 410
+   },
+   {
+    "name": "Island",
+    "id": 411
+   },
+   {
+    "name": "Island",
+    "id": 412
+   },
+   {
+    "name": "Fallowsage",
+    "id": 413,
+    "pt": "2/2",
+    "sick": true
+   }
+  ],
+  "command": [
+   "Princess Yue"
+  ],
+  "graveyard": [
+   "Deserted Temple",
+   "Vizier of Many Faces",
+   "Nykthos, Shrine to Nyx",
+   "Loyal Drake"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 5,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Fallowsage": "Fallowsage {3}{U} — Creature - Merfolk Wizard — Whenever Fallowsage becomes tapped, you may draw a card.",
+   "Princess Yue": "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2.",
+   "Vizier of Many Faces": "Vizier of Many Faces {2}{U}{U} — Creature - Shapeshifter Cleric — You may have Vizier of Many Faces enter as a copy of any creature on the battlefield, except if Vizier of Many Faces was embalmed, the token has no mana cost, it's white, and it's a Zombie in addition to its other types. / Embalm {3}{U}{U}"
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T5 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Vizier of Many Faces",
+   "Princess Yue (commander)",
+   "Vizier of Many Faces: Embalm {3}{U}{U} ({3}{U}{U}, Exile this card from…"
+  ],
+  "details": [
+   "pass priority",
+   "Vizier of Many Faces {2}{U}{U} — Creature - Shapeshifter Cleric — You may have Vizier of Many Faces enter as a copy of any creature on the battlefield, except if Vizier of Many Faces was embalmed, the token has no mana cost, it's white, and it's a Zombie in addition to its other types. / Embalm {3}{U}{U}",
+   "Princess Yue {2}{U} — Legendary Creature - Human Noble Ally — When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.) / {T}: Scry 2.",
+   "Vizier of Many Faces: Embalm {3}{U}{U} ({3}{U}{U}, Exile this card from your graveyard: Create a token that's a copy of this card, except it's white, it has no mana cost, and it's a Zombie in addition to its other types. Embalm only as a sorcery.)"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 5
+  },
+  {
+   "t": "draw",
+   "turn": 5,
+   "card": "Island",
+   "id": 41
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Springleaf Drum",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Faerie Mastermind",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Sol Ring",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Glasspool Mimic",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "from": "hand",
+   "to": "library"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Vizier of Many Faces",
+   "to": "hand"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Island",
+   "to": "battlefield"
+  },
+  {
+   "t": "move",
+   "turn": 5,
+   "card": "Fallowsage",
+   "to": "battlefield"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g78918"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g78919"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g78921"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g78920"
+  },
+  {
+   "t": "fork",
+   "turn": 5,
+   "session": "g78922"
+  }
+ ],
+ "default": "Vizier of Many Faces: Embalm {3}{U}{U} ({3}{U}{U}, Exile this card from…",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 7,
+     "mana": 7,
+     "unspent": 7,
+     "hand": 1,
+     "creatures": 1,
+     "power": 2,
+     "permanents": 1,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 7,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Vizier of Many Faces",
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island",
+      "id": 406
+     },
+     {
+      "name": "Island",
+      "id": 407
+     },
+     {
+      "name": "Island",
+      "id": 408
+     },
+     {
+      "name": "Island",
+      "id": 409
+     },
+     {
+      "name": "Island",
+      "id": 410
+     },
+     {
+      "name": "Island",
+      "id": 411
+     },
+     {
+      "name": "Island",
+      "id": 412
+     },
+     {
+      "name": "Fallowsage",
+      "id": 413,
+      "pt": "2/2"
+     }
+    ],
+    "command": [
+     "Princess Yue"
+    ],
+    "graveyard": [
+     "Deserted Temple",
+     "Vizier of Many Faces",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Vizier of Many Faces": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Vizier of Many Faces"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{U}{U} for Vizier of Many Faces, in order; none = automatic",
+     "options": 7,
+     "answer": [
+      "Island (U)",
+      "Island (U)",
+      "Island (U)",
+      "Island (U)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Vizier of Many Faces",
+     "sources": [
+      "Island",
+      "Island",
+      "Island",
+      "Island"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Vizier of Many Faces",
+     "id": 405,
+     "as": "Vizier of Many Faces",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Vizier of Many Faces)",
+     "options": 1,
+     "answer": [
+      "Fallowsage 2/2"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Princess Yue (commander)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{U} for Princess Yue, in order; none = automatic",
+     "options": 3,
+     "answer": [
+      "Island (U)",
+      "Island (U)",
+      "Island (U)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Princess Yue",
+     "sources": [
+      "Island",
+      "Island",
+      "Island"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Princess Yue",
+     "id": 100,
+     "as": "Princess Yue (commander)",
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 7,
+     "mana": 7,
+     "unspent": 0,
+     "hand": 0,
+     "creatures": 3,
+     "power": 7,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 7,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island",
+      "id": 406
+     },
+     {
+      "name": "Island",
+      "id": 407
+     },
+     {
+      "name": "Island",
+      "id": 408
+     },
+     {
+      "name": "Island",
+      "id": 409
+     },
+     {
+      "name": "Island",
+      "id": 410
+     },
+     {
+      "name": "Island",
+      "id": 411
+     },
+     {
+      "name": "Island",
+      "id": 412
+     },
+     {
+      "name": "Fallowsage",
+      "id": 413,
+      "pt": "2/2"
+     },
+     {
+      "name": "Fallowsage",
+      "id": 405,
+      "pt": "2/2"
+     },
+     {
+      "name": "Princess Yue",
+      "id": 100,
+      "commander": true,
+      "pt": "3/2"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Vizier of Many Faces",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Princess Yue (commander)": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Princess Yue (commander)"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{U} for Princess Yue, in order; none = automatic",
+     "options": 7,
+     "answer": [
+      "Island (U)",
+      "Island (U)",
+      "Island (U)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Princess Yue",
+     "sources": [
+      "Island",
+      "Island",
+      "Island"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Princess Yue",
+     "id": 100,
+     "as": "Princess Yue (commander)",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "Vizier of Many Faces"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {2}{U}{U} for Vizier of Many Faces, in order; none = automatic",
+     "options": 4,
+     "answer": [
+      "Island (U)",
+      "Island (U)",
+      "Island (U)",
+      "Island (U)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Vizier of Many Faces",
+     "sources": [
+      "Island",
+      "Island",
+      "Island",
+      "Island"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 5,
+     "card": "Vizier of Many Faces",
+     "id": 405,
+     "as": "Vizier of Many Faces",
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Vizier of Many Faces)",
+     "options": 2,
+     "answer": [
+      "Fallowsage 2/2"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 7,
+     "mana": 7,
+     "unspent": 0,
+     "hand": 0,
+     "creatures": 3,
+     "power": 7,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 7,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island",
+      "id": 406
+     },
+     {
+      "name": "Island",
+      "id": 407
+     },
+     {
+      "name": "Island",
+      "id": 408
+     },
+     {
+      "name": "Island",
+      "id": 409
+     },
+     {
+      "name": "Island",
+      "id": 410
+     },
+     {
+      "name": "Island",
+      "id": 411
+     },
+     {
+      "name": "Island",
+      "id": 412
+     },
+     {
+      "name": "Fallowsage",
+      "id": 413,
+      "pt": "2/2"
+     },
+     {
+      "name": "Princess Yue",
+      "id": 100,
+      "commander": true,
+      "pt": "3/2"
+     },
+     {
+      "name": "Fallowsage",
+      "id": 405,
+      "pt": "2/2"
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     "Deserted Temple",
+     "Vizier of Many Faces",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Vizier of Many Faces: Embalm {3}{U}{U} ({3}{U}{U}, Exile this card from…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "play",
+     "options": 4,
+     "answer": [
+      "Vizier of Many Faces: Embalm {3}{U}{U} ({3}{U}{U}, Exile this card from…"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Vizier of Many Faces",
+     "from": "graveyard",
+     "to": "exile"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "pay",
+     "prompt": "mana to pay {3}{U}{U} for Vizier of Many Faces, in order; none = automatic",
+     "options": 7,
+     "answer": [
+      "Island (U)",
+      "Island (U)",
+      "Island (U)",
+      "Island (U)",
+      "Island (U)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 5,
+     "card": "Vizier of Many Faces",
+     "sources": [
+      "Island",
+      "Island",
+      "Island",
+      "Island",
+      "Island"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 5,
+     "card": "Vizier of Many Faces",
+     "id": 93,
+     "as": "Vizier of Many Faces: Embalm {3}{U}{U} ({3}{U}{U}, Exile this card from…",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 5,
+     "kind": "choose",
+     "prompt": "Choose a card (Vizier of Many Faces)",
+     "options": 1,
+     "answer": [
+      "Fallowsage 2/2"
+     ],
+     "by": "forced"
+    },
+    {
+     "t": "move",
+     "turn": 5,
+     "card": "Fallowsage",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "eot",
+     "turn": 5,
+     "lands": 7,
+     "mana": 7,
+     "unspent": 2,
+     "hand": 1,
+     "creatures": 2,
+     "power": 4,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 6
+    },
+    {
+     "t": "draw",
+     "turn": 6,
+     "card": "Island",
+     "id": 41
+    },
+    {
+     "t": "end",
+     "turn": 6,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T6 main1",
+    "life": 40,
+    "mana": 7,
+    "land_drop": true,
+    "library": 94,
+    "hand": [
+     "Vizier of Many Faces",
+     "Island"
+    ],
+    "battlefield": [
+     {
+      "name": "Island",
+      "id": 406
+     },
+     {
+      "name": "Island",
+      "id": 407
+     },
+     {
+      "name": "Island",
+      "id": 408
+     },
+     {
+      "name": "Island",
+      "id": 409
+     },
+     {
+      "name": "Island",
+      "id": 410
+     },
+     {
+      "name": "Island",
+      "id": 411
+     },
+     {
+      "name": "Island",
+      "id": 412
+     },
+     {
+      "name": "Fallowsage",
+      "id": 413,
+      "pt": "2/2"
+     },
+     {
+      "name": "Fallowsage",
+      "id": 415,
+      "pt": "2/2",
+      "token": true
+     }
+    ],
+    "command": [
+     "Princess Yue"
+    ],
+    "graveyard": [
+     "Deserted Temple",
+     "Nykthos, Shrine to Nyx",
+     "Loyal Drake"
+    ],
+    "exile": [
+     "Vizier of Many Faces"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 6,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "Princess Yue (commander)"
+ ],
+ "note": "Blue Moon with seven mana: Princess Yue first, then Vizier copying her makes a Moon; Vizier first only copies Fallowsage."
+}

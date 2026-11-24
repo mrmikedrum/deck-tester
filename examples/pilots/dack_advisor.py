@@ -1,6 +1,6 @@
 """Advisor for the Dack cEDH deck: fast mana into the commander, and the untap engines around monoliths."""
 
-from goldfish.advice import Advisor
+from deckmaster.advice import Advisor
 
 adv = Advisor()
 adv.role("fast mana", "Sol Ring", "Mana Vault", "Mana Crypt", "Chrome Mox", "Mox Diamond", "Mox Opal", "Lotus Petal",

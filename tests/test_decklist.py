@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from goldfish import decklist
+from deckmaster import decklist
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples" / "decks"
 

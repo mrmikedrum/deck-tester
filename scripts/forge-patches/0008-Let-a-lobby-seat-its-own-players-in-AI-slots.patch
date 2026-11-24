@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 20:03:04 -0700
+Subject: [PATCH] Let a lobby seat its own players in AI slots
+
+A host that drives some seats itself (an agent playing over the network
+against people) needs those slots to get its own player, with its own
+controller. The lobby builds Forge's AI player inline; a function set on
+the lobby can now supply the player for an AI slot instead.
+
+Goldfish-Upstream: local only, a seat hook for this host.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../src/main/java/forge/gamemodes/match/GameLobby.java | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/forge-gui/src/main/java/forge/gamemodes/match/GameLobby.java b/forge-gui/src/main/java/forge/gamemodes/match/GameLobby.java
+index a3124a0090d..2ceded4aa36 100644
+--- a/forge-gui/src/main/java/forge/gamemodes/match/GameLobby.java
++++ b/forge-gui/src/main/java/forge/gamemodes/match/GameLobby.java
+@@ -45,6 +45,13 @@ public abstract class GameLobby implements IHasGameType {
+     private IUpdateable listener;
+ 
+     private HostedMatch hostedMatch;
++    /** Supplies the player for an AI slot; null, or a null result, keeps Forge's AI. */
++    private java.util.function.Function<LobbySlot, LobbyPlayer> aiSeats;
++
++    /** For a host that seats its own players in AI slots (an agent driving a seat); null keeps Forge's AI. */
++    public void setAiSeats(final java.util.function.Function<LobbySlot, LobbyPlayer> seats) {
++        aiSeats = seats;
++    }
+     private final HashMap<LobbySlot, IGameController> gameControllers = Maps.newHashMap();
+ 
+     public boolean isAllowNetworking() {
+@@ -519,7 +526,8 @@ public abstract class GameLobby implements IHasGameType {
+             final LobbyPlayer lobbyPlayer;
+             if (isAI) {
+                 String aiProfileOverride = slot.getAiProfile();
+-                lobbyPlayer = GamePlayerUtil.createAiPlayer(name, avatar, sleeve, aiOptions, aiProfileOverride);
++                final LobbyPlayer seated = aiSeats == null ? null : aiSeats.apply(slot);
++                lobbyPlayer = seated != null ? seated : GamePlayerUtil.createAiPlayer(name, avatar, sleeve, aiOptions, aiProfileOverride);
+             } else {
+                 boolean setNameNow = false;
+                 if (!hasNameBeenSet && slot.getType() == LobbySlotType.LOCAL) {

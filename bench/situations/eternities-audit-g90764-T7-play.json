@@ -1,0 +1,1002 @@
+{
+ "id": "eternities-audit-g90764-T7-play",
+ "plan": "These are the current 100-card III drafts after Mike’s own cuts, not an older fixture. Test their ordinary engine assembly and useful card flow over ten turns. Three passive opponents play lands only: do not waste removal or board wipes on yourself or use opponents’ lack of blockers as proof of multiplayer strength. Keep reaction cards unless a genuine useful line needs them. Mulligan by colors, early development and follow-up, not land count alone; the first mulligan is free. Use green early and fetch the typed duals required by the actual hand. Prioritize useful expiring exile cards before optional mana sinks, but let unusable removal expire rather than destroying your own engines. Explore meaningful attacks, scalable counters, card supply, and paid activation costs. Do not assume any card not in this actual list is available.\nAssimilation / Atraxa: manufacture artifact creatures and seed counters, then use charge/counter growth for fleet production, cards, mana and pressure. Harmonize and Sword of Truth and Justice replace Ezuri, Grateful Apparition, Metastatic Evangel, Resourceful Defense and Tekuthal. None of those removed cards is available. There is no Cyberdrive Awakener. Independent Harmonize and charged Bankbuster/Insight can prevent relying entirely on combat draw. Build Chamber/Conquest before artifact casts/entries when tempo allows: Chamber counts artifact SPELL CASTS; Conquest and Surge count NONTOKEN artifact entries. Tokens and Incubator transformations do not trigger them. Chamber costs four and tap, but does not remove counters; activate for worthwhile output rather than stalling development for one token. Cornucopia, Chamber, Insight, Bankbuster and ship/world charges can all benefit from Atraxa even if the Borg creatures have no counters. Loading Zone does not double charges on ordinary noncreature artifacts. Overseer, Ouroboroid, Filigree and token-only Salvager can seed bodies; proliferation cannot supply a first counter. Atraxa can attack with vigilance and station afterward. Other creatures generally cannot both attack and station. Station Research Craft before an artifact cast to actually draw; fleet flying needs Sphere at six or Cube at twelve. Locutus/Adjutant require combat DAMAGE, not just attacking. Glissa can transform all Incubators for free at combat; do not pay individually without a reason, and remember noncreature Incubators cannot attack. Borg Queen costs seven and Death Is Irrelevant eight; do not strand early development to chase them. They assimilate nontoken creatures with +1/+1 counters; Queen also statically buffs artifact creatures. Keep removal for real targets; Sunfall and Organic Extinction are not ordinary goldfish development, and Organic Extinction destroys your own nonartifact support/Atraxa. Biomass Mutation and Expansion Algorithm are closing applications for an assembled board, not automatic early mana dumps.\n\nOpening-hand choices are supplied by an explicit pilot check. For subsequent play, do not activate Crew again when the Vehicle is already a creature: this adds no further benefit. For a single crew activation choose only enough creature power to pay, not all creatures. Do not repeatedly station a ship beyond a useful threshold or station a zero-power creature for zero counters. Keep useful attackers untapped.\n",
+ "state": {
+  "turn": "T7 main1",
+  "life": 39,
+  "mana": 7,
+  "land_drop": true,
+  "library": 83,
+  "hand": [
+   "Insight Engine",
+   "Organic Extinction",
+   "Sunfall",
+   "Expansion Algorithm"
+  ],
+  "battlefield": [
+   {
+    "name": "Plains",
+    "id": 50
+   },
+   {
+    "name": "Forest",
+    "id": 22
+   },
+   {
+    "name": "Cankerbloom",
+    "id": 60,
+    "tapped": true,
+    "pt": "3/2"
+   },
+   {
+    "name": "Evendo, Waking Haven",
+    "id": 83,
+    "counters": {
+     "Charge": 29
+    }
+   },
+   {
+    "name": "Hangarback Walker",
+    "id": 74,
+    "tapped": true,
+    "pt": "2/2",
+    "counters": {
+     "+1/+1": 2
+    }
+   },
+   {
+    "name": "Forest",
+    "id": 21
+   },
+   {
+    "name": "Forest",
+    "id": 23
+   },
+   {
+    "name": "Terrasymbiosis",
+    "id": 72
+   },
+   {
+    "name": "Surge Conductor",
+    "id": 91,
+    "tapped": true,
+    "pt": "3/2"
+   },
+   {
+    "name": "Plains",
+    "id": 46
+   }
+  ],
+  "command": [
+   "Atraxa, Praetors' Voice"
+  ],
+  "graveyard": [
+   "Nature's Lore",
+   "Wooded Foothills"
+  ],
+  "exile": [],
+  "stack": [],
+  "opponents": [
+   {
+    "name": "Opp 1",
+    "life": 40,
+    "lands": 6,
+    "other": 0
+   },
+   {
+    "name": "Opp 2",
+    "life": 40,
+    "lands": 6,
+    "other": 0
+   },
+   {
+    "name": "Opp 3",
+    "life": 40,
+    "lands": 7,
+    "other": 0
+   }
+  ],
+  "text": {
+   "Atraxa, Praetors' Voice": "Atraxa, Praetors' Voice {G}{W}{U}{B} — Legendary Creature - Phyrexian Angel Horror — Flying, vigilance, deathtouch, lifelink / At the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Cankerbloom": "Cankerbloom {1}{G} — Creature - Phyrexian Fungus — {1}, Sacrifice Cankerbloom: Choose one — / • Destroy target artifact. / • Destroy target enchantment. / • Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Evendo, Waking Haven": "Evendo, Waking Haven — Land - Planet — This land enters tapped. / STATION 12+ {G}, {T}: Add {G} for each creature you control. / {T}: Add {G}. / {G}, {T}: Add {G} for each creature you control. / Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It’s an artifact creature at 12+.)",
+   "Expansion Algorithm": "Expansion Algorithm {X}{U}{U} — Sorcery — Proliferate X times. (To proliferate, choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Hangarback Walker": "Hangarback Walker {X}{X} — Artifact Creature - Construct — Hangarback Walker enters with X +1/+1 counters on it. / When Hangarback Walker dies, create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on Hangarback Walker. / {1}, {T}: Put a +1/+1 counter on Hangarback Walker.",
+   "Insight Engine": "Insight Engine {2}{U} — Artifact — {2}, {T}: Put a charge counter on this artifact, then draw a card for each charge counter on it.",
+   "Organic Extinction": "Organic Extinction {8}{W}{W} — Sorcery — Improvise (Your artifacts can help cast this spell. Each artifact you tap after you're done activating mana abilities pays for {1}.) / Destroy all nonartifact creatures.",
+   "Sunfall": "Sunfall {3}{W}{W} — Sorcery — Exile all creatures. Incubate X, where X is the number of creatures exiled this way. (Create an Incubator token with X +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)",
+   "Surge Conductor": "Surge Conductor {3} — Artifact Creature - Robot — Whenever another nontoken artifact you control enters, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+   "Terrasymbiosis": "Terrasymbiosis {2}{G} — Enchantment — Whenever you put one or more +1/+1 counters on a creature you control, you may draw that many cards. Do this only once each turn."
+  }
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T7 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Sunfall",
+   "Cankerbloom: {1}, Sacrifice this: Choose one — • Destroy targe…"
+  ],
+  "details": [
+   "pass priority",
+   "Sunfall {3}{W}{W} — Sorcery — Exile all creatures. Incubate X, where X is the number of creatures exiled this way. (Create an Incubator token with X +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)",
+   "Cankerbloom: {1}, Sacrifice Cankerbloom: Choose one — • Destroy target artifact. • Destroy target enchantment. • Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true
+ },
+ "so_far": [
+  {
+   "t": "turn",
+   "turn": 7
+  },
+  {
+   "t": "draw",
+   "turn": 7,
+   "card": "Expansion Algorithm",
+   "id": 81
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91611"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91610"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91612"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91609"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91624"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91625"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "play",
+   "options": 5,
+   "answer": [
+    "Evendo, Waking Haven: Station (Tap another creature you control: Put ch…"
+   ],
+   "by": "model",
+   "p": 0.39
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91640"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91637"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91638"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91639"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "choose",
+   "prompt": "tap for Evendo, Waking Haven",
+   "options": 3,
+   "answer": [
+    "Hangarback Walker 2/2 [+1/+1 2]"
+   ],
+   "by": "model",
+   "p": 0.46
+  },
+  {
+   "t": "activate",
+   "turn": 7,
+   "card": "Evendo, Waking Haven",
+   "id": 83,
+   "as": "Evendo, Waking Haven: Station (Tap another creature you control: Put ch…",
+   "by": "model"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91654"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91652"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91653"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "play",
+   "options": 2,
+   "answer": [
+    "pass"
+   ],
+   "by": "model",
+   "p": 0.24
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91667"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91665"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91666"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91664"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91668"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "play",
+   "options": 4,
+   "answer": [
+    "Evendo, Waking Haven: Station (Tap another creature you control: Put ch…"
+   ],
+   "by": "model",
+   "p": 0.55
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91685"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91684"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91686"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "choose",
+   "prompt": "tap for Evendo, Waking Haven",
+   "options": 2,
+   "answer": [
+    "Surge Conductor 3/2"
+   ],
+   "by": "model",
+   "p": 0.08
+  },
+  {
+   "t": "activate",
+   "turn": 7,
+   "card": "Evendo, Waking Haven",
+   "id": 83,
+   "as": "Evendo, Waking Haven: Station (Tap another creature you control: Put ch…",
+   "by": "model"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91696"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91698"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91697"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "play",
+   "options": 2,
+   "answer": [
+    "pass"
+   ],
+   "by": "model",
+   "p": 0.28
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91715"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91716"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91713"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91714"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91719"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "play",
+   "options": 4,
+   "answer": [
+    "Evendo, Waking Haven: Station (Tap another creature you control: Put ch…"
+   ],
+   "by": "model",
+   "p": 0.52
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "choose",
+   "prompt": "tap for Evendo, Waking Haven",
+   "options": 1,
+   "answer": [
+    "Cankerbloom 3/2"
+   ],
+   "by": "forced"
+  },
+  {
+   "t": "activate",
+   "turn": 7,
+   "card": "Evendo, Waking Haven",
+   "id": 83,
+   "as": "Evendo, Waking Haven: Station (Tap another creature you control: Put ch…",
+   "by": "model"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91731"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91729"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91730"
+  },
+  {
+   "t": "decision",
+   "turn": 7,
+   "kind": "play",
+   "options": 2,
+   "answer": [
+    "pass"
+   ],
+   "by": "model",
+   "p": 0.12
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91744"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91743"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91745"
+  },
+  {
+   "t": "fork",
+   "turn": 7,
+   "session": "g91746"
+  }
+ ],
+ "default": "pass",
+ "lines": {
+  "pass": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "pass"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "eot",
+     "turn": 7,
+     "lands": 6,
+     "mana": 7,
+     "unspent": 7,
+     "hand": 4,
+     "creatures": 3,
+     "power": 8,
+     "permanents": 4,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 8
+    },
+    {
+     "t": "draw",
+     "turn": 8,
+     "card": "Sword of Truth and Justice",
+     "id": 76
+    },
+    {
+     "t": "end",
+     "turn": 8,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T8 main1",
+    "life": 39,
+    "mana": 7,
+    "land_drop": true,
+    "library": 82,
+    "hand": [
+     "Insight Engine",
+     "Organic Extinction",
+     "Sunfall",
+     "Expansion Algorithm",
+     "Sword of Truth and Justice"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains",
+      "id": 50
+     },
+     {
+      "name": "Forest",
+      "id": 22
+     },
+     {
+      "name": "Cankerbloom",
+      "id": 60,
+      "pt": "3/2"
+     },
+     {
+      "name": "Evendo, Waking Haven",
+      "id": 83,
+      "counters": {
+       "Charge": 29
+      }
+     },
+     {
+      "name": "Hangarback Walker",
+      "id": 74,
+      "pt": "2/2",
+      "counters": {
+       "+1/+1": 2
+      }
+     },
+     {
+      "name": "Forest",
+      "id": 21
+     },
+     {
+      "name": "Forest",
+      "id": 23
+     },
+     {
+      "name": "Terrasymbiosis",
+      "id": 72
+     },
+     {
+      "name": "Surge Conductor",
+      "id": 91,
+      "pt": "3/2"
+     },
+     {
+      "name": "Plains",
+      "id": 46
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Nature's Lore",
+     "Wooded Foothills"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 8,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Sunfall": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Sunfall"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "pay",
+     "prompt": "mana to pay {3}{W}{W} for Sunfall, in order; none = automatic",
+     "options": 7,
+     "answer": [
+      "Plains (W)",
+      "Plains (W)",
+      "Forest (G)",
+      "Forest (G)",
+      "Forest (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 7,
+     "card": "Sunfall",
+     "sources": [
+      "Plains",
+      "Plains",
+      "Forest",
+      "Forest",
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "cast",
+     "turn": 7,
+     "card": "Sunfall",
+     "id": 78,
+     "as": "Sunfall",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "order",
+     "prompt": "cards to exile (Sunfall)",
+     "options": 3,
+     "answer": [
+      "Cankerbloom 3/2 (tapped)",
+      "Hangarback Walker 2/2 [+1/+1 2] (tapped)",
+      "Surge Conductor 3/2 (tapped)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 7,
+     "card": "Cankerbloom",
+     "from": "battlefield",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 7,
+     "card": "Hangarback Walker",
+     "from": "battlefield",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 7,
+     "card": "Surge Conductor",
+     "from": "battlefield",
+     "to": "exile"
+    },
+    {
+     "t": "move",
+     "turn": 7,
+     "card": "Incubator Token",
+     "to": "battlefield",
+     "token": true
+    },
+    {
+     "t": "eot",
+     "turn": 7,
+     "lands": 6,
+     "mana": 6,
+     "unspent": 1,
+     "hand": 3,
+     "creatures": 0,
+     "power": 0,
+     "permanents": 2,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 8
+    },
+    {
+     "t": "draw",
+     "turn": 8,
+     "card": "Sword of Truth and Justice",
+     "id": 76
+    },
+    {
+     "t": "end",
+     "turn": 8,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T8 main1",
+    "life": 39,
+    "mana": 6,
+    "land_drop": true,
+    "library": 82,
+    "hand": [
+     "Insight Engine",
+     "Organic Extinction",
+     "Expansion Algorithm",
+     "Sword of Truth and Justice"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains",
+      "id": 50
+     },
+     {
+      "name": "Forest",
+      "id": 22
+     },
+     {
+      "name": "Evendo, Waking Haven",
+      "id": 83,
+      "counters": {
+       "Charge": 29
+      }
+     },
+     {
+      "name": "Forest",
+      "id": 21
+     },
+     {
+      "name": "Forest",
+      "id": 23
+     },
+     {
+      "name": "Terrasymbiosis",
+      "id": 72
+     },
+     {
+      "name": "Plains",
+      "id": 46
+     },
+     {
+      "name": "Incubator Token",
+      "id": 406,
+      "counters": {
+       "+1/+1": 3
+      },
+      "token": true
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Nature's Lore",
+     "Wooded Foothills",
+     "Sunfall"
+    ],
+    "exile": [
+     "Cankerbloom",
+     "Hangarback Walker",
+     "Surge Conductor"
+    ],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 8,
+      "other": 0
+     }
+    ]
+   }
+  },
+  "Cankerbloom: {1}, Sacrifice this: Choose one — • Destroy targe…": {
+   "facts": [
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "play",
+     "options": 3,
+     "answer": [
+      "Cankerbloom: {1}, Sacrifice this: Choose one — • Destroy targe…"
+     ],
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "mode",
+     "prompt": "modes for Cankerbloom",
+     "options": 3,
+     "answer": [],
+     "by": "ai"
+    },
+    {
+     "t": "move",
+     "turn": 7,
+     "card": "Cankerbloom",
+     "from": "battlefield",
+     "to": "graveyard"
+    },
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "pay",
+     "prompt": "mana to pay {1} for Cankerbloom, in order; none = automatic",
+     "options": 7,
+     "answer": [
+      "Forest (G)"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "paid",
+     "turn": 7,
+     "card": "Cankerbloom",
+     "sources": [
+      "Forest"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "activate",
+     "turn": 7,
+     "card": "Cankerbloom",
+     "id": 60,
+     "as": "Cankerbloom: {1}, Sacrifice this: Choose one — • Destroy targe…",
+     "by": "model"
+    },
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "decision",
+     "turn": 7,
+     "kind": "play",
+     "options": 2,
+     "answer": [
+      "pass"
+     ],
+     "by": "ai"
+    },
+    {
+     "t": "eot",
+     "turn": 7,
+     "lands": 6,
+     "mana": 6,
+     "unspent": 5,
+     "hand": 4,
+     "creatures": 2,
+     "power": 5,
+     "permanents": 3,
+     "opponents_life": 120
+    },
+    {
+     "t": "turn",
+     "turn": 8
+    },
+    {
+     "t": "draw",
+     "turn": 8,
+     "card": "Sword of Truth and Justice",
+     "id": 76
+    },
+    {
+     "t": "end",
+     "turn": 8,
+     "reason": "horizon"
+    }
+   ],
+   "state": {
+    "turn": "T8 main1",
+    "life": 39,
+    "mana": 6,
+    "land_drop": true,
+    "library": 82,
+    "hand": [
+     "Insight Engine",
+     "Organic Extinction",
+     "Sunfall",
+     "Expansion Algorithm",
+     "Sword of Truth and Justice"
+    ],
+    "battlefield": [
+     {
+      "name": "Plains",
+      "id": 50
+     },
+     {
+      "name": "Forest",
+      "id": 22
+     },
+     {
+      "name": "Evendo, Waking Haven",
+      "id": 83,
+      "counters": {
+       "Charge": 29
+      }
+     },
+     {
+      "name": "Hangarback Walker",
+      "id": 74,
+      "pt": "2/2",
+      "counters": {
+       "+1/+1": 2
+      }
+     },
+     {
+      "name": "Forest",
+      "id": 21
+     },
+     {
+      "name": "Forest",
+      "id": 23
+     },
+     {
+      "name": "Terrasymbiosis",
+      "id": 72
+     },
+     {
+      "name": "Surge Conductor",
+      "id": 91,
+      "pt": "3/2"
+     },
+     {
+      "name": "Plains",
+      "id": 46
+     }
+    ],
+    "command": [
+     "Atraxa, Praetors' Voice"
+    ],
+    "graveyard": [
+     "Nature's Lore",
+     "Wooded Foothills",
+     "Cankerbloom"
+    ],
+    "exile": [],
+    "stack": [],
+    "opponents": [
+     {
+      "name": "Opp 1",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 2",
+      "life": 40,
+      "lands": 7,
+      "other": 0
+     },
+     {
+      "name": "Opp 3",
+      "life": 40,
+      "lands": 8,
+      "other": 0
+     }
+    ]
+   }
+  }
+ },
+ "expected": [
+  "pass",
+  "Cankerbloom: {1}, Sacrifice this: Choose one — • Destroy targe…"
+ ],
+ "note": "Reconstructed 2026-11-21 from g90764; matched 58 earlier parked decisions from original seed and exact current-list hash. Original answer: ['Sunfall']. Historical model request/random sample was not retained. These expected labels reject documented blunders, not every alternative's long-run ranking."
+}

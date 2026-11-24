@@ -1,6 +1,11 @@
 __pycache__/
 *.pyc
-.goldfish/
-vendor/
+.deckmaster/
+/vendor
 engine/target/
 .DS_Store
+# The game client's tools: their packages, and the look loop's recordings and rounds (paused; see game/LOOK.md)
+game/tools/node_modules
+/game/look/
+/game/reels/
+/game/lanes/

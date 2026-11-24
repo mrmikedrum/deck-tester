@@ -15,13 +15,13 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from goldfish import decklist, engine, model  # noqa: E402
+from deckmaster import decklist, engine, model  # noqa: E402
 
 
-def play(deck, seed, mode, fork_turns, last):
+def play(deck, seed, mode, fork_turns, last, forks="copy"):
     asks = ["play"] if mode in ("ai", "explicit") else list(model.KINDS) + ["order", "pay"]
     r = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": seed,
-                        "turns": last + 1, "ask": asks, "mana": "auto"})
+                        "turns": last + 1, "ask": asks, "mana": "auto", "forks": forks})
     s = r["session"]
     results = []
     answered = {}
@@ -41,7 +41,7 @@ def play(deck, seed, mode, fork_turns, last):
                     results.append((turn, "ok", f["ms"], f["replayed"]))
                     engine.request({"cmd": "end", "session": f["session"]})
                 except engine.EngineError as e:
-                    results.append((turn, f"parent {s}: " + str(e)[:400], int(1000 * (time.time() - began)), None))
+                    results.append((turn, f"parent {s}: " + str(e), int(1000 * (time.time() - began)), None))
             answered[turn] = answered.get(turn, 0) + 1
             if mode in ("explicit", "scripted") and d["options"] and d["max"] == 1:
                 real = [o for o in d["options"] if o != "pass"]
@@ -77,6 +77,7 @@ def main():
     p.add_argument("--seeds", default="1,2,3")
     p.add_argument("--turns", default="3,5,8")
     p.add_argument("--workers", type=int, default=4)
+    p.add_argument("--forks", choices=("copy", "replay"), default="copy")
     a = p.parse_args()
     seeds = [int(x) for x in a.seeds.split(",")]
     turns = [int(x) for x in a.turns.split(",")]
@@ -87,7 +88,7 @@ def main():
 
     def one(job):
         deck, seed = job
-        return deck, seed, play(decklist.load(deck), seed, a.mode, set(turns), max(turns))
+        return deck, seed, play(decklist.load(deck), seed, a.mode, set(turns), max(turns), a.forks)
 
     with ThreadPoolExecutor(max_workers=a.workers) as pool:
         outs = list(pool.map(one, jobs))

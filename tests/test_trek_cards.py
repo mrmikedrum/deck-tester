@@ -1,7 +1,8 @@
 """Real Forge regression scenarios for the native Star Trek scripts (no model calls)."""
 import unittest
-from goldfish import engine, decklist
+from deckmaster import engine, decklist
 
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class TrekCardRules(unittest.TestCase):
     def setUp(self):
         d=decklist.load(engine.ROOT/'examples/decks/eternities-living-worlds-iii.txt')

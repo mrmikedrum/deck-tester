@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from goldfish import batch, report
+from deckmaster import batch, report
 
 
 def eot(turn, lands, mana, unspent, opponents_life):
@@ -41,7 +41,7 @@ class SummaryTest(unittest.TestCase):
                     "model": {"model": "m", "calls": 1, "cost": 0.0, "seconds_per_call": 0.1, "drifted": 2},
                     "games": [{"seed": 7, "session": "g1"}]}
         text = "\n".join(report.summary(manifest, [blind]))
-        self.assertIn("forks: 4 of 6 drifted", text)
+        self.assertIn("forks: 4 of 6 failed", text)
         self.assertIn("g1 from T2", text)
 
     def test_report_lines(self):
@@ -53,6 +53,13 @@ class SummaryTest(unittest.TestCase):
         self.assertTrue(lines[3].startswith("lands"))
         self.assertIn("missed %", "\n".join(lines))
         self.assertIn("commander cast in 1/1 · median T2 · T2-T2", lines)
+
+
+    def test_reports_label_games_with_local_scripts(self):
+        from deckmaster import records
+        facts = [{'t': 'start', 'seed': 1, 'local_cards': 'Test Card'}]
+        self.assertIn('local card scripts: Test Card', records.header(facts))
+        self.assertEqual(report.game_summary(facts, [])['local_cards'], 'Test Card')
 
 
 class PilotTest(unittest.TestCase):

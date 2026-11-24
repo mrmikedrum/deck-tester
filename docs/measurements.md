@@ -4,6 +4,10 @@ What has been measured, dated, with the conditions. The newest result in a secti
 older ones stay as the baseline they were compared against. [Architecture](architecture.md) describes the
 design these numbers shaped.
 
+The two Eternities III decks in `examples/decks` were updated to their ManaBox lists on 2026-11-04 (10 and 12
+cards, mostly Star Trek). Results recorded before then used the earlier lists, so compare new runs with each
+other, not with those.
+
 ## M0: the Forge spike (2026-10-23, Apple Silicon, 10 cores, JDK 21)
 
 Measured with the spike harness, on the Marath deck against three passive opponents. The harness was
@@ -137,6 +141,27 @@ and worth knowing. The state view shows the land as it is, with its current abil
 advice (a land that only scries) and Tui and La 5 times in 5 with the advisor's line about what the choice
 makes; Forge's AI's default was Wake Thrasher.
 
+**Blue Moon built on Yue (2026-11-04).** At a table Blue Moon never made a Moon: three clones copied other
+creatures (two of them legends it already had, so they died at once) and Yue, back in the command zone, was
+never recast. The plan said "clones are best copying your best creature" and the advisor said so too. The new
+plan and advisor say what a Moon is and how it's made; Yue stays a creature and goes to the command zone when
+she dies. Metamorphic Alteration and Blade of Shared Souls make Moons too, checked in Forge: the creature made
+a copy of Yue returns as itself (Fallowsage as a Moon that draws when tapped, not legendary), and the Blade
+does it again with each equip. Machine God's Effigy doesn't: its copy isn't a creature. Labels now mark a
+commander on the battlefield, since at the legend rule both read "Princess Yue 3/2". On five scenarios
+(`moon-*`, with outcomes, 5 repeats each, against 3 for the old ones), the old plan scored 9 of 12 without
+the advisor and 6 of 12 with it (its clone line pulled Vizier ahead of recasting Yue); the new plan 18 of 20
+alone, 20 of 20 with the advisor, and the tapped-commander case 5 of 5. Four 8-turn games each, seeds
+4001–4004: creature clones copied Yue 6 of 6 times against 3 of 12, with 6 Moons against 3, and the same
+development (lands 7.5 against 6.5 at turn 8, power 18.8 against 20.8).
+
+**Commanders in goldfish games never went back to the command zone** until 2026-11-04: the goldfish engine
+set the game type to Commander without applying the variant, and Forge's command-zone rule (CR 903.9a)
+checks the variant. A dead commander stayed in the graveyard, and Yue's trigger made her a Moon. Tables,
+set up through a lobby, were right all along. Goldfish results from before then never saw a commander
+recast after dying. With the fix, Princess Yue dying asks; Jev said no (she became a Moon) 4 times in 5
+until the advisor said what each answer does, then yes 5 in 5 (`moon-yue-to-command`).
+
 **Stability.** Asked three times, Jev gave the same answer on 45 of 47 labelled situations with outcomes
 and 42 of 47 from the text alone, and taking the plurality of three changed accuracy by one point at most
 (82% to 83% text-only; 96% either way with outcomes). Repeating a question is not worth its cost here.
@@ -221,3 +246,157 @@ late and on noncreature permanents (it casts creatures over rocks and enchantmen
 this round's changes moved lands up (8.9 to 9.2) and mana and creatures down (13.8 to 12.1, 7.5 to 6.4),
 within what 20 games can tell. Missed land drops late in the game, with a land in hand by a rough count
 about as often as Forge's AI, are the next scenario to build.
+
+## Copy forks (2026-11-03)
+
+Forks made from a copy of the game (architecture, Copy forks), on Forge `e7020aa1` with the copier patch. On
+the six lists and seeds of the forks recheck, then twelve new seeds to turn 10, with Forge's AI answering and
+scripted: 94 of 94 and 95 of 95, then 168 of 168 and 170 of 170, then (after the last copier fixes) 139 of 139
+and 143 of 143 landed in the same game, the same as replay forks. A copy fork took a median 20-40 ms at every
+turn, against a replay's 0.36 s at turn 3 and 1.17 s at turn 8. Before the patch, 76-87% of copies matched
+their game and up to 3.8% failed: the stack lost its abilities, the copy lost dungeons, priority, warp and
+imprint links, class levels and what entered this turn.
+
+At a four-player table with every seat forking at each play decision (`bench/table_fidelity.py`, four example
+decks to turn 7): 172 of 180 at first (abilities whose source was sacrificed to pay for them, two-faced lands),
+then 234 of 234, median 16 ms.
+
+What the model reads: at every play decision of four Living Worlds and four Assimilation games to turn 6
+(`bench/forks_compare.py`), every option was played out in a replay fork and in a copy fork and its result
+line compared. 202 of 204 decisions read identically; the 2 that didn't also differ between two replay
+forks, where Forge's AI plays the line out differently. A Jev batch (4 games to turn 6) took 27 s with copy
+forks against 82 s with replay forks, 19 ms a fork against 645 ms; Jev's own picks vary between runs (seed
+302's opening hand: mulligan at p 0.3 one run, keep at p 0.14 the next), so batches don't match game for game.
+
+**Forge's Monte Carlo AI** (`run --ai flatmc`), 20 games to turn 8, seeds 1-20, one at a time: Living Worlds
+7.6 lands and 9.6 mana with the plain AI, 8.4 and 11.7 with Monte Carlo; Assimilation 7.3 and 13.0, 7.5 and
+12.3, commander median turn 5 and 4. About three times the time (71 s against 22 s). Its rollouts swap Forge's
+global random object, so games beside each other would disturb each other's draws.
+
+
+## Tables (2026-11-04)
+
+**Copy forks at a table** (`bench/table_fidelity.py`, the four example decks to turn 8, every seat forking at
+each play and block decision, the first seat activating Marath for tokens so the others meet it on the stack):
+364 of 364 landed in the same game, 6 of them at blocks, median 16 ms. On the way, copies had lost a modal
+ability's chosen mode (Marath on the stack), the AI memory that decides what can be paid (a waterbend cost's
+tapped creatures), and a Saga or dungeon whose last chapter or room was still on the stack (state-based
+actions ran before the stack was copied).
+
+**Table situations** (`bench/table_scenarios.py`): thirteen hand-built positions in a three-player table, each
+with an answer fixed before any run, decided by a Jev seat as at a table (forks, then the model), with Forge's
+AI's own pick (the default line) scored the same way. Three runs each: Jev 32 of 39, Forge's AI 36 of 39. Both
+right every time: blocks (a good block, no chump at 40 life, a chump to survive, surviving three attackers at
+6 life), Swords on a lethal attacker and on the biggest threat, finishing a player at 3 life, not attacking
+into two 6/4s, holding back when the crack-back is lethal. Jev only: attacking the open player rather than the
+one with a blocker (Forge's AI doesn't attack). Jev's misses: blocking a deathtouch 1/1 with a 6/4 at 40 life
+(0 of 3), and at the end of the turn before its own, holding Restoration Angel (0 of 3) and once Secure the
+Wastes (2 of 3). On these basics Jev is right most of the time and doesn't beat Forge's AI.
+
+What moved the results, each measured on the situation's own context before adopting it: one instruction for
+every moment of another player's turn made Jev pass at end of turn (0 of 6); naming the moment (end of turn,
+attacked, responding) made it play (5 of 5 on the token spell). Forks can't show the crack-back, since the
+others pass in them, so a line states it: "the others' creatures could attack you for Bo 6" held Jev back 5 of
+5 where "others' creature power: Bo 6" did 0 of 5. Lines also had to stop at the same point (the engine ends a
+fork at the seat's next first main phase; before, a line with nothing to decide ran on for turns) and name what
+each player lost (a block line didn't say the attacker died).
+
+**A four-Jev table** (the example decks and plans, no people): Jev 2 (Assimilation) won in round 13, 31 minutes,
+431 model calls, $0.15; 1,998 forks, 57 failed: an Incubator token's transform on the stack after another had
+resolved (the copy described the entry from the token as it is now), and a goaded creature Dack Fayden gave
+away (the copy dropped goad), both fixed since. Two plays it showed: an all-out attack that left Jev 1 open to
+a 30-point crack-back (now stated in the lines), and the same token transformed six times in a row.
+A second four-Jev table after those fixes, stopped in round 7: 994 forks, none failed or refused, Dack Fayden
+cast. One of Jev 3's turns took about 40 minutes for 17 decisions and 51 forks: its forks never ended, because a
+goaded creature's controller that declared no attack was asked again forever (Forge re-asks until the attack is
+legal). Fixed since, and a fork that neither asks nor ends within 15 s is now recorded as stalled.
+
+**Blocks left to Forge's AI, and token copies fixed** (2026-11-04, Forge `e7020aa1-da26829a`): fourteen
+situations, two runs each, 26 of 28 right, Forge's AI 26 of 28. Blocks, now Forge's AI's at table seats, 10 of 10
+(deathtouch included). A token copied without its paper card couldn't transform, so Jev's lines showed an
+Incubator's transform doing nothing and the second activation looked as good as passing; with the fix, Jev
+passes instead of activating it again (2 of 2). Jev still holds a flash creature at the end of the turn before its
+own (0 of 2); Forge's AI still doesn't attack the open player. Saying "ends the same as pass, with 2 less mana"
+on the line raised confidence in passing from 0.59 to 0.70 offline (5 contexts, 2 runs each); not adopted, as a
+small gain that would also change goldfish. Copy benches on that build: 210 of 210 table copies (median 15 ms) and
+48 of 48 goldfish copies landed in the same game.
+
+**A four-Jev table to the end** (Forge `e7020aa1-d34a479b`): the first try froze in round 9, when Jev 3 lost: Forge
+keeps a departed player's effects working from another player's command zone, the copier couldn't place them,
+and the crash stopped Forge's game thread while the table waited. Fixed in the copier; a failed copy now costs
+only that stop's lookahead, and a dead game thread ends the table. The rerun went to the end: Jev 2 (Assimilation)
+won in round 17, three players knocked out on the way, 24 minutes, 735 model calls, $0.24. 3,184 forks, 15
+failed: 14 when Dack Fayden's reveal put cards on the bottom in random order (the table's random sequence is
+shared by every seat, so a fork's order can differ; the fingerprint check caught each), and one Forge AI block
+search stalled. No refused attacks. One play it showed: Jev 1 chose Recon Craft Theta's crew nine times in a round
+when it couldn't be paid, each one failing.
+
+## Current-list piloting audit (2026-11-21)
+
+Fresh ManaBox exports, not the older example fixtures: Living Worlds `4fa7041f`, Assimilation
+`5815cfea`, both 100 cards. Python advisors and current-list scratch guides were supplied with
+Jev 1.13 outcomes lookahead. Batch b226 kept a one-land and a seven-land nature opening despite
+the guide; it is exploratory evidence, not a representative development baseline. Batches b231
+and b233 used explicit opening-hand checks (decisions recorded as pilot). London bottom choices
+were still model-made and can discard needed commander colors.
+
+The records still show material strategy errors despite useful candidate rollouts: Marath spent
+counters on incidental player damage instead of building tokens, a Commune with Lava was cast
+with X=0, an ordinary noncreature Cornucopia entered with zero charges in a list with no independent
+charge seeder, fetches took redundant basics while Atraxa colors were missing, and b231 cast Sunfall
+on its own board against passive opponents. Repeated crew/activation attempts also recur. b233
+reported 26/1511 failed forks, six decisions without lookahead and one turn handed to the loop guard.
+These are piloting/protocol limits, not reasons to cut the cards or claim deck power from aggregate
+board totals. A good opening filter is not sufficient strategic validation; inspect actual decisions
+and record any manual intervention separately.
+
+### Piloting repair and exact reconstruction (2026-11-21)
+
+Replayed the original current-list hashes/seeds in an isolated runtime, with every prior parked
+choice matching: g90764's actual T7 Sunfall choice after 58 decisions, g90761's first T4 Marath
+mode after 17, and g92576's T6 Commune X choice after 33. Both b226 extreme opening hands also
+reproduced. Captured states, choices and fresh forks live in `bench/situations/eternities-audit-*`.
+These reconstruct the position, not the original random model sample: historical request bodies
+and fork results were not retained, and Forge's AI continuation can vary.
+
+Concrete protocol defects repaired in the shared goldfish/table decider:
+- A hard-coded "win fast" goal competed with the supplied engine-development plan. Goldfish now
+  follows the plan and names the absence of opposing nonland targets; tables keep their own goal.
+- London cards are already bottomed when Forge asks keep, despite its "then bottom" prompt.
+  Keep advice now evaluates the actual remaining hand. The existing two-to-four-land opening
+  rule is enforced above four cards, with an explicit four-card floor. These deterministic
+  choices record `by: policy`, not model or forced. All London subsets (at most 35) are model
+  choices, rather than silently giving multi-card bottoms to Forge's AI. They are not rolled
+  out, which would reveal the next draw.
+- Failed actions were omitted by the successful-play turn digest. They now reach the model.
+  Independently of model obedience, an engine-rejected play is excluded while its observed
+  position is identical; any state change permits retry. This is failure feedback, not another
+  implementation of card legality or a card-specific ban.
+- Outcome boards now show counters, including counter-bearing lands, and explicitly attribute
+  lost own engines. Wide X samples retain zero, one and both bounds. Exile counts are visible,
+  explicitly *not* claimed to be playable cards: permissions may outlast the one-turn horizon.
+
+On the exact reconstructed Sunfall position, three fresh Jev 1.13 calls per presentation moved
+from sacrificing Cankerbloom 3/3 to passing 3/3; Sunfall probability fell from 15–16% to 3–4%.
+This is a small offline presentation check, not a deck-performance result. Both extreme b226
+hands were still kept 3/3 under either presentation, motivating deterministic opening policy
+rather than another wording-only fix. A native regression verifies the actual London sequence
+of kept-hand sizes 7, 7, 6, 5, 4 and the final logged policy keep.
+
+**Not solved:** the reconstructed Marath mode still preferred returning counters to itself over
+making a token (3/3 old and new); Commune still chose X=0 (3/3 each), including when the exile
+count was shown. Its X=0 fork builds more immediate mana, whereas larger X retains cards in
+exile for the following turn, beyond the evaluation horizon. Fetch colour selection, conditional
+engine assembly and longer-range strategy remain model limitations. Fresh current-list guides
+were supplied to these games, so stale example guides are not their cause; the example guides
+must not be assumed to describe later ManaBox edits. No deck or provider/model changes were made.
+
+Verification: 118 tests passed in an isolated HOME/socket, including native London ordering;
+the final model-only suite passed 28 tests after the additional impulse-outcome and captured-hand regressions.
+Shared goldfish and table servers were not restarted by this repair.
+
+## Interactive table latency — 2026-11-22
+
+Read-only investigation of the live four-player bridge game (parents g260–g262). No live pilot, game state, or mode was changed. Across the observed parent fork records there were zero stalled-fork failures; six earlier failures were Tempt with Discovery replay drift. One TimeoutException in the accumulated table log belonged to the previous evening, not this game. A recent 97-fork snapshot had a median file lifetime of 12.31s and maximum 50.38s (filesystem birth-to-modification times, not pure compute timings). The current Marath board was the outlier: its 282 observed fork files summed to about 1,228s, versus about 80s for 395 Atraxa forks and 66s for 194 other-Marath forks. Parallel work means these sums are not game wall time. A live JVM sample caught a fork inside Forge combat prediction and mana-source evaluation.
+
+The table pilot unconditionally uses outcomes mode, evaluating candidate continuations through the next turn before requesting a Jev pick. Every eligible response/activation can repeat that work; there is a per-engine-wait timeout, but no overall decision wall-time budget. Thus a succession of successful slow simulations can stall the visible board for minutes without recording a timeout. Three independent current-provider probes with retries disabled succeeded in 0.96s, 0.47s, and 0.59s. These are small prompts, not proof that historical real-game calls never retried. Those retries were not separately counted. Added api_retries, api_timeouts, and api_wall_seconds telemetry to close that gap for newly loaded pilots, plus a browser bridge diagnostics endpoint. Do not restart a human game just to load diagnostics.

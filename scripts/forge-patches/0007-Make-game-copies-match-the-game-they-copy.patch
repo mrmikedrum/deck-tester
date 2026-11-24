@@ -1,0 +1,652 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mrmikedrum <mrmikedrum@gmail.com>
+Date: Tue, 3 Nov 2026 19:26:13 -0700
+Subject: [PATCH] Make game copies match the game they copy
+
+GameCopier left out much of a game in progress, so a copy resumed from a
+priority stop could play differently from the original. On 4-player
+Commander games, a copy taken at each AI priority matched the original
+(every zone in order, permanents' state, the stack and its targets,
+priority) about 76-87% of the time, and 0.6-3.8% of copies failed.
+
+- The stack: triggered and activated abilities are copied too, not only
+  spells, with their triggering objects, targets, X and chosen modes; a
+  variant the card doesn't list is copied from the ability itself. Cast
+  and targeting triggers are suppressed while the stack is built.
+- The turn: who has priority and had it first, the phase counters, and
+  the spells cast this turn and last turn.
+- Dungeons keep their piece type and room; effect cards (player
+  keywords, the monarch) are copied whole; Radiation's effect card is
+  not made twice.
+- Commanders, effect cards and remembered cards are also found by id,
+  as a card that changed zones is a new object with the same id.
+- Players who have left the game are out of the copy, and combat drops
+  defenders the copy doesn't have.
+
+On the same probe afterwards: 5596 of 5600 copies match, none fail.
+-Dforge.copier.trace=true reports stack entries left out of a copy.
+
+Goldfish-Upstream: offer
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../java/forge/ai/simulation/GameCopier.java  | 309 ++++++++++++++++--
+ .../java/forge/game/card/token/TokenInfo.java |  13 +-
+ .../main/java/forge/game/combat/Combat.java   |  20 +-
+ .../java/forge/game/phase/PhaseHandler.java   |  20 ++
+ .../SpellAbilityStackInstance.java            |   5 +
+ .../main/java/forge/game/zone/MagicStack.java |   8 +
+ .../src/main/java/forge/game/zone/Zone.java   |  19 ++
+ 7 files changed, 358 insertions(+), 36 deletions(-)
+
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index bbca851bda2..37e370dbaa4 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -21,7 +21,14 @@ import forge.game.player.RegisteredPlayer;
+ import forge.game.spellability.SpellAbility;
+ import forge.game.spellability.SpellAbilityStackInstance;
+ import forge.game.staticability.StaticAbility;
++import forge.game.trigger.Trigger;
+ import forge.game.trigger.TriggerType;
++import forge.game.trigger.WrappedAbility;
++import forge.game.ability.AbilityKey;
++import forge.game.ability.ApiType;
++import forge.game.ability.effects.CharmEffect;
++import forge.game.spellability.AbilitySub;
++import java.util.Objects;
+ import forge.game.zone.PlayerZoneBattlefield;
+ import forge.game.zone.ZoneType;
+ import forge.item.PaperCard;
+@@ -113,6 +120,14 @@ public class GameCopier {
+         newGame.markAsSimulationCopy();
+         newGame.setNoGUIUser();
+         newGame.dangerouslySetTimestamp(origGame.getTimestamp());
++        // a player who has left the game is out of the copy too
++        for (int i = 0; i < origGame.getRegisteredPlayers().size(); i++) {
++            if (!origGame.getPlayers().contains(origGame.getRegisteredPlayers().get(i))) {
++                final Player gone = newGame.getRegisteredPlayers().get(i);
++                newGame.onPlayerLost(gone);
++                gone.getStats().setOutcome(origGame.getRegisteredPlayers().get(i).getOutcome());
++            }
++        }
+ 
+         for (int i = 0; i < origGame.getPlayers().size(); i++) {
+             Player origPlayer = origGame.getPlayers().get(i);
+@@ -128,6 +143,8 @@ public class GameCopier {
+             newPlayer.setDamageReceivedThisTurn(origPlayer.getDamageReceivedThisTurn());
+             newPlayer.setLandsPlayedThisTurn(origPlayer.getLandsPlayedThisTurn());
+             newPlayer.setCounters(HashMultiset.create(origPlayer.getCounters()));
++            // setting rad counters makes a Radiation effect card; the original's is copied with the command zone
++            newPlayer.removeRadiationEffect();
+             newPlayer.setSpeed(origPlayer.getSpeed());
+             // Blessing state travels with the copied command-zone effect card
+             // (wired via copyEffectCardsToSnapshot below); calling setBlessing
+@@ -158,16 +175,45 @@ public class GameCopier {
+ 
+         copyGameState(newGame, aiPlayer);
+ 
++        // by id as well: a commander that just changed zones is a new object with the same id
++        final IEntityMap commanderMap = lenientMap(newGame);
+         for (Player origPlayer : playerMap.keySet()) {
+             Player newPlayer = playerMap.get(origPlayer);
+-            origPlayer.copyCommandersToSnapshot(newPlayer, gameObjectMap::map);
+-            origPlayer.copyEffectCardsToSnapshot(newPlayer, gameObjectMap::map);
++            origPlayer.copyCommandersToSnapshot(newPlayer, c -> (Card) commanderMap.map(c));
++            origPlayer.copyEffectCardsToSnapshot(newPlayer, c -> (Card) commanderMap.map(c));
+             ((PlayerZoneBattlefield) newPlayer.getZone(ZoneType.Battlefield)).setTriggers(true);
+         }
+         newGame.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
+ 
+         for (Card c : newGame.getCardsInGame()) {
+             Card origCard = (Card) reverseFind(c);
++            // what a card holds on to other cards with: an imprint (Chrome Mox's colors), cards exiled with it (cast
++            // from exile, returned when it leaves), encoded and chosen cards
++            c.addImprintedCards(mapCards(origCard.getImprintedCards(), commanderMap));
++            c.addEncodedCards(mapCards(origCard.getEncodedCards(), commanderMap));
++            c.addUntilLeavesBattlefield(mapCards(origCard.getUntilLeavesBattlefield(), commanderMap));
++            if (!origCard.getChosenCards().isEmpty()) {
++                c.setChosenCards(mapCards(origCard.getChosenCards(), commanderMap));
++            }
++            if (origCard.getExiledWith() != null) {
++                final GameObject with = commanderMap.map(origCard.getExiledWith());
++                if (with != null) {
++                    c.setExiledWith((Card) with);
++                }
++            }
++            if (origCard.getExiledBy() != null) {
++                c.setExiledBy(playerMap.get(origCard.getExiledBy()));
++            }
++            // when it entered its zone ("this turn", "a later turn")
++            c.setTurnInZone(origCard.getTurnInZone());
++            // what exiled it decides whether it may be cast from exile later (warp)
++            c.setExiledSA(origCard.getExiledSA());
++            c.setClassLevel(origCard.getClassLevel());
++            if (origCard.isPlotted()) {
++                newGame.getTriggerHandler().setSuppressAllTriggers(true);
++                c.setPlotted(true); // becoming plotted already triggered in the original game
++                newGame.getTriggerHandler().setSuppressAllTriggers(false);
++            }
+             if (origCard.hasRemembered()) {
+                 for (Object o : origCard.getRemembered()) {
+                     if (o instanceof GameObject) {
+@@ -182,7 +228,11 @@ public class GameCopier {
+                         if (o instanceof SpellAbility) {
+                             continue;
+                         }
+-                        c.addRemembered(find((GameObject) o));
++                        // by id as well: a remembered card that changed zones is a new object with the same id
++                        final GameObject remembered = commanderMap.map((GameObject) o);
++                        if (remembered != null) {
++                            c.addRemembered(remembered);
++                        }
+                     } else {
+                         System.err.println(c + " Remembered: " + o + "/" + o.getClass());
+                         c.addRemembered(o);
+@@ -192,7 +242,9 @@ public class GameCopier {
+             for (SpellAbility sa : c.getSpellAbilities()) {
+                 Player activatingPlayer = sa.getActivatingPlayer();
+                 if (activatingPlayer != null && activatingPlayer.getGame() != newGame) {
+-                    sa.setActivatingPlayer(gameObjectMap.map(activatingPlayer));
++                    // a player who has left the game is in no copy of it: the card's controller stands in
++                    final Player mapped = playerMap.get(activatingPlayer);
++                    sa.setActivatingPlayer(mapped != null ? mapped : c.getController());
+                 }
+             }
+         }
+@@ -213,11 +265,26 @@ public class GameCopier {
+             newGame.getPhaseHandler().setCombat(new Combat(origPhaseHandler.getCombat(), gameObjectMap));
+         }
+ 
+-        newGame.getAction().checkStateEffects(true); //ensure state based effects and triggers are updated
+-        newGame.getTriggerHandler().resetActiveTriggers();
++        newGame.getAction().checkStaticAbilities(); // abilities statics grant, for the stack's entries to be found
+ 
+         if (copyStack)
+             copyStack(origGame, newGame, gameObjectMap);
++        // after the stack: a Saga or dungeon whose last chapter or room is still on it stays
++        newGame.getAction().checkStateEffects(true); //ensure state based effects and triggers are updated
++        newGame.getTriggerHandler().resetActiveTriggers();
++        // which cards entered each zone this turn: copying put every card into its zone just now
++        final IEntityMap entered = lenientMap(newGame);
++        for (Player origPlayer : playerMap.keySet()) {
++            for (ZoneType zone : ZONES) {
++                if (zone != ZoneType.Stack) {
++                    playerMap.get(origPlayer).getZone(zone).copyCardsAddedFrom(origPlayer.getZone(zone), c -> (Card) entered.map(c));
++                }
++            }
++        }
++        newGame.getStackZone().copyCardsAddedFrom(origGame.getStackZone(), c -> (Card) entered.map(c));
++        // after the stack, which puts its spells on the stack as if cast and passes priority to their casters
++        newGame.getPhaseHandler().copyTurnStateFrom(origPhaseHandler, playerMap::get);
++        newGame.getStack().copySpellsCastFrom(origGame.getStack());
+ 
+         // TODO update thisTurnCast
+ 
+@@ -236,32 +303,189 @@ public class GameCopier {
+             entries.add(origEntry);
+         }
+         Collections.reverse(entries);
+-        for (SpellAbilityStackInstance origEntry : entries) {
+-            SpellAbility origSa = origEntry.getSpellAbility();
+-            Card origHostCard = origSa.getHostCard();
+-            Card newCard = map.map(origHostCard);
+-            SpellAbility newSa = null;
+-            if (origSa.isSpell()) {
+-                newSa = findSAInCard(origSa, newCard);
+-            }
+-            if (newSa != null) {
+-                newSa.setActivatingPlayer(map.map(origSa.getActivatingPlayer()));
+-                if (origSa.usesTargeting()) {
+-                    try {
+-                        for (GameObject o : origSa.getTargets()) {
+-                            newSa.getTargets().add(map.map(o));
+-                        }
+-                    } catch (final RuntimeException e) {
+-                        // a target that is not in the copy (it left the game meanwhile): leave this entry out rather
+-                        // than lose the whole copy
+-                        newSa.resetTargets();
+-                        continue;
++        final IEntityMap lenient = lenientMap(newGame);
++        // Putting an entry on the copy's stack must not set off cast or targeting triggers again: what they
++        // triggered in the original game is on its stack already, and is copied with the rest.
++        newGame.getTriggerHandler().setSuppressAllTriggers(true);
++        try {
++            for (SpellAbilityStackInstance origEntry : entries) {
++                SpellAbility newSa;
++                try {
++                    newSa = copyStackEntry(origEntry.getSpellAbility(), lenient);
++                } catch (final RuntimeException e) {
++                    // something it refers to is not in the copy (it left the game meanwhile): leave this entry out
++                    // rather than lose the whole copy
++                    if (Boolean.getBoolean("forge.copier.trace")) {
++                        System.err.println("[copier] stack entry left out: " + origEntry.getSpellAbility() + ": " + e);
+                     }
++                    continue;
++                }
++                if (newSa == null && Boolean.getBoolean("forge.copier.trace")) {
++                    System.err.println("[copier] stack entry not found in the copy: " + origEntry.getSpellAbility());
++                }
++                if (newSa != null) {
++                    newGame.getStack().add(newSa, origEntry.getId());
++                    // the entry's text as it was put on the stack, with its modes and its source's name then (an
++                    // activated ability would describe itself anew, from its source as it is now)
++                    newGame.getStack().peek().setStackDescription(origEntry.getStackDescription());
++                    stackMap.put(origEntry.getSpellAbility(), newSa);
+                 }
+-                newGame.getStack().add(newSa);
+-                stackMap.put(origSa, newSa);
+             }
+-        } 
++        } finally {
++            newGame.getTriggerHandler().setSuppressAllTriggers(false);
++        }
++    }
++
++    /** A spell, an activated ability or a triggered ability on the stack, as it is in the copy, with its choices. */
++    private SpellAbility copyStackEntry(SpellAbility origSa, IEntityMap lenient) {
++        Card newHost = (Card) lenient.map(origSa.getHostCard());
++        if (newHost == null) {
++            // the source left the game paying for it (a token sacrificed for its own ability): the ability still
++            // resolves, from the source as it last was, like the last-known copy the original game uses
++            final Card gone = origSa.getHostCard();
++            newHost = new CardCopyService(gone, lenient.getGame()).copyCard(false, playerMap.get(gone.getOwner()));
++            newHost.dangerouslySetGame(lenient.getGame());
++        }
++        final Player activator = playerMap.get(origSa.getActivatingPlayer());
++        if (origSa instanceof WrappedAbility wrapped) {
++            final SpellAbility inner = wrapped.getWrappedAbility();
++            final SpellAbility newInner = inner.copy(newHost, activator, false, true);
++            SpellAbilityChoiceCopier.copyTargets(inner, newInner, o -> mapStackReference(o, lenient));
++            newInner.setTriggeringObjects(mapTriggeringObjects(inner.getTriggeringObjects(), lenient));
++            final Player decider = wrapped.getDecider() == null ? null : playerMap.get(wrapped.getDecider());
++            final WrappedAbility newWrapped = new WrappedAbility(copyTrigger(wrapped.getTrigger(), newHost), newInner, decider);
++            newWrapped.setActivatingPlayer(activator);
++            return newWrapped;
++        }
++        SpellAbility newSa = findSAInCard(origSa, newHost);
++        if (newSa == null) {
++            // a variant the card doesn't list (cast without paying its mana cost, for an alternative cost, a token's
++            // ability made by an effect): copy the ability itself, with what was chosen for it
++            newSa = origSa.copy(newHost, activator, false, true);
++            SpellAbilityChoiceCopier.copyTargets(origSa, newSa, o -> mapStackReference(o, lenient));
++            return newSa;
++        }
++        newSa.setActivatingPlayer(activator);
++        if (origSa.isSpell()) {
++            newSa = SpellAbilityChoiceCopier.copyCastChoices(origSa, newSa, activator);
++            if (newSa == null) {
++                return null;
++            }
++            chainChosenModes(origSa, newSa);
++        } else {
++            newSa.setXManaCostPaid(origSa.getXManaCostPaid());
++            chainChosenModes(origSa, newSa);
++        }
++        copyPaid(origSa, newSa, lenient);
++        SpellAbilityChoiceCopier.copyTargets(origSa, newSa, o -> mapStackReference(o, lenient));
++        return newSa;
++    }
++
++    /**
++     * A modal spell on the stack carries its chosen modes as its sub abilities (the chosen list is only kept while
++     * casting): chain the copy's own modes the same way, matched by their text.
++     */
++    private static void chainChosenModes(SpellAbility origSa, SpellAbility newSa) {
++        if (origSa.getApi() != ApiType.Charm || newSa.getSubAbility() != null) {
++            return;
++        }
++        List<AbilitySub> chosen = newSa.getChosenList();
++        if (chosen == null) {
++            chosen = new ArrayList<>();
++            final List<AbilitySub> choices = newSa.getAdditionalAbilityList("Choices");
++            for (SpellAbility mode = origSa.getSubAbility(); mode != null; mode = mode.getSubAbility()) {
++                for (AbilitySub choice : choices) {
++                    if (Objects.equals(choice.getParam("SpellDescription"), mode.getParam("SpellDescription"))) {
++                        chosen.add(choice);
++                        break;
++                    }
++                }
++            }
++        }
++        if (!chosen.isEmpty()) {
++            CharmEffect.chainAbilities(newSa, chosen);
++        }
++    }
++
++    private static CardCollection mapCards(Iterable<Card> cards, IEntityMap lenient) {
++        final CardCollection out = new CardCollection();
++        for (Card card : cards) {
++            final GameObject found = lenient.map(card);
++            if (found != null) {
++                out.add((Card) found);
++            }
++        }
++        return out;
++    }
++
++    /**
++     * What was paid for an ability on the stack (the creature tapped to station, the cards sacrificed or discarded):
++     * its effect may count it. A card the copy doesn't have (it left the battlefield) stays as it was paid.
++     */
++    private static void copyPaid(SpellAbility origSa, SpellAbility newSa, IEntityMap lenient) {
++        final com.google.common.collect.TreeBasedTable<String, Boolean, CardCollection> paid = com.google.common.collect.TreeBasedTable.create();
++        for (com.google.common.collect.Table.Cell<String, Boolean, CardCollection> cell : origSa.getPaidHash().cellSet()) {
++            final CardCollection cards = new CardCollection();
++            for (Card c : cell.getValue()) {
++                final GameObject found = lenient.map(c);
++                cards.add(found != null ? (Card) found : c);
++            }
++            paid.put(cell.getRowKey(), cell.getColumnKey(), cards);
++        }
++        newSa.setPaidHash(paid);
++    }
++
++    /** The trigger of the copied card that a triggered ability on the stack came from; a copy of it if the card has none. */
++    private static Trigger copyTrigger(Trigger trigger, Card newHost) {
++        for (Trigger t : newHost.getTriggers()) {
++            if (t.getMapParams().equals(trigger.getMapParams())) {
++                return t;
++            }
++        }
++        return trigger.copy(newHost, false);
++    }
++
++    private GameObject mapStackReference(GameObject o, IEntityMap lenient) {
++        if (o instanceof SpellAbility) {
++            final SpellAbility found = stackMap.get(o);
++            if (found == null) {
++                throw new RuntimeException("Couldn't map " + o);
++            }
++            return found;
++        }
++        final GameObject found = lenient.map(o);
++        if (found == null) {
++            throw new RuntimeException("Couldn't map " + o);
++        }
++        return found;
++    }
++
++    /** What set off a triggered ability, as the copy has it; what the copy lacks stays as it was. */
++    private Map<AbilityKey, Object> mapTriggeringObjects(Map<AbilityKey, Object> objects, IEntityMap lenient) {
++        final Map<AbilityKey, Object> out = AbilityKey.newMap();
++        for (Map.Entry<AbilityKey, Object> e : objects.entrySet()) {
++            out.put(e.getKey(), mapTriggeringObject(e.getValue(), lenient));
++        }
++        return out;
++    }
++
++    private Object mapTriggeringObject(Object o, IEntityMap lenient) {
++        if (o instanceof SpellAbility && stackMap.containsKey(o)) {
++            return stackMap.get(o);
++        }
++        if (o instanceof Card || o instanceof Player) {
++            final GameObject found = lenient.map((GameObject) o);
++            return found != null ? found : o;
++        }
++        if (o instanceof CardCollectionView cards) {
++            final CardCollection out = new CardCollection();
++            for (Card c : cards) {
++                final GameObject found = lenient.map(c);
++                out.add(found != null ? (Card) found : c);
++            }
++            return out;
++        }
++        return o;
+     }
+ 
+     private RegisteredPlayer clonePlayer(RegisteredPlayer p) {
+@@ -316,6 +540,7 @@ public class GameCopier {
+             otherCard.setGameTimestamp(card.getGameTimestamp());
+             otherCard.setLayerTimestamp(card.getLayerTimestamp());
+             otherCard.setSickness(card.hasSickness());
++            otherCard.setBackSide(card.isBackSide()); // a two-faced card played as its back (a land, say)
+             otherCard.setState(card.getCurrentStateName(), false);
+             if (card.isAttachedToEntity()) {
+                 GameEntity ge = gameObjectMap.map(card.getEntityAttachedTo());
+@@ -396,7 +621,8 @@ public class GameCopier {
+     private static final boolean USE_FROM_PAPER_CARD = true;
+     private Card createCardCopy(Game newGame, Player newOwner, Card c, Player aiPlayer) {
+         if (c.isToken() && !c.isImmutable()) {
+-            Card result = new TokenInfo(c).makeOneToken(newOwner, c.getId());
++            // with the original's paper card: its rules are what let a transforming token (an Incubator) transform
++            Card result = new TokenInfo(c).makeOneToken(newOwner, c.getId(), c.getPaperCard());
+             new CardCopyService(c).copyCopiableCharacteristics(result, null, null);
+             // a token copy of a transforming (or otherwise multi-faced) permanent has its other faces too, and may be
+             // showing one of them: without them it cannot be put back in the state it is in
+@@ -418,6 +644,8 @@ public class GameCopier {
+             } else {
+                 newCard = CardFactory.getCard(c.getPaperCard(), newOwner, c.getId(), newGame);
+             }
++            // a dungeon is made from a token script: without its piece type the copy is a token outside the battlefield
++            newCard.setGamePieceType(c.getGamePieceType());
+             newCard.setCommander(c.isCommander());
+             return newCard;
+         }
+@@ -426,6 +654,13 @@ public class GameCopier {
+         // The issue is that it requires parsing the original card from scratch from the paper card. We should
+         // improve the copier to accurately copy the card from its actual state, so that the paper card shouldn't
+         // be needed. Once the below code accurately copies the card, remove the USE_FROM_PAPER_CARD code path.
++        if (c.isImmutable() && !(c instanceof DetachedCardEffect)) {
++            // an effect card (keywords a player has, the monarch, a blessing): copied whole, as a snapshot does, since
++            // what it does can be changed keywords and other state the paper card doesn't have
++            final Card effect = new CardCopyService(c, newGame).copyCard(false, newOwner);
++            effect.dangerouslySetGame(newGame);
++            return effect;
++        }
+         Card newCard;
+         if (c instanceof DetachedCardEffect)
+             newCard = new DetachedCardEffect((DetachedCardEffect) c, newGame, false);
+@@ -452,13 +687,17 @@ public class GameCopier {
+     }
+ 
+     private void addCard(Game newGame, ZoneType zone, Card c, Player aiPlayer) {
+-        final Player owner = playerMap.get(c.getOwner());
++        // an effect owned by a player who left the game works on from another player's command zone
++        final Player owner = playerMap.containsKey(c.getOwner()) ? playerMap.get(c.getOwner()) : newGame.getPlayer(c.getOwner().getId());
+         final Card newCard = createCardCopy(newGame, owner, c, aiPlayer);
+         cardMap.put(c, newCard);
++        if (c.getCurrentRoom() != null) {
++            newCard.setCurrentRoom(c.getCurrentRoom());
++        }
+ 
+         // TODO ExiledWith
+ 
+-        Player zoneOwner = owner;
++        Player zoneOwner = c.getZone() != null && playerMap.containsKey(c.getZone().getPlayer()) ? playerMap.get(c.getZone().getPlayer()) : owner;
+         // everything the CreatureEvaluator checks must be set here
+         if (zone == ZoneType.Battlefield) {
+             // TODO: Controllers' list with timestamps should be copied.
+@@ -509,6 +748,12 @@ public class GameCopier {
+             if (c.isSuspected()) {
+                 newCard.setSuspected(true);
+             }
++            for (Map.Entry<Long, Player> goad : c.getGoadMap().entrySet()) {
++                final Player goader = playerMap.get(goad.getValue());
++                if (goader != null) { // a goad by a player who has left the game ends with them
++                    newCard.addGoad(goad.getKey(), goader);
++                }
++            }
+             if (c.isPlaneswalker()) {
+                 for (SpellAbility sa : c.getAllSpellAbilities()) {
+                     int active = sa.getActivationsThisTurn();
+diff --git a/forge-game/src/main/java/forge/game/card/token/TokenInfo.java b/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
+index 6b774f54c1f..6bbdb0fff02 100644
+--- a/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
++++ b/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
+@@ -18,6 +18,7 @@ import forge.game.card.CardFactoryUtil;
+ import forge.game.keyword.KeywordInterface;
+ import forge.game.player.Player;
+ import forge.game.spellability.SpellAbility;
++import forge.item.IPaperCard;
+ import forge.item.PaperToken;
+ import org.apache.commons.lang3.StringUtils;
+ 
+@@ -122,7 +123,11 @@ public class TokenInfo {
+     }
+ 
+     private Card toCard(Game game, int id) {
+-        final Card c = new Card(id, game);
++        return toCard(game, id, null);
++    }
++
++    private Card toCard(Game game, int id, IPaperCard paper) {
++        final Card c = new Card(id, paper, game);
+         c.setName(name);
+         c.setImageKey(ImageKeys.getTokenKey(imageName));
+ 
+@@ -156,8 +161,12 @@ public class TokenInfo {
+         return makeOneToken(controller, controller.getGame().nextCardId());
+     }
+     public Card makeOneToken(final Player controller, int id) {
++        return makeOneToken(controller, id, null);
++    }
++    /** A token with the paper card it is made from, whose rules give it its other faces (an Incubator transforms). */
++    public Card makeOneToken(final Player controller, int id, IPaperCard paper) {
+         final Game game = controller.getGame();
+-        final Card c = toCard(game, id);
++        final Card c = toCard(game, id, paper);
+ 
+         c.setOwner(controller);
+         c.setGamePieceType(GamePieceType.TOKEN);
+diff --git a/forge-game/src/main/java/forge/game/combat/Combat.java b/forge-game/src/main/java/forge/game/combat/Combat.java
+index 302c6deabc5..e7ca71c2c43 100644
+--- a/forge-game/src/main/java/forge/game/combat/Combat.java
++++ b/forge-game/src/main/java/forge/game/combat/Combat.java
+@@ -82,7 +82,14 @@ public class Combat {
+     public Combat(Combat combat, IEntityMap map) {
+         playerWhoAttacks = map.map(combat.playerWhoAttacks);
+         for (GameEntity entry : combat.attackableEntries.get()) {
+-            attackableEntries.get().add(map.map(entry));
++            if (entry instanceof Player p && p.hasLost()) {
++                continue; // a player who has left the game is in no copy of it
++            }
++            try {
++                attackableEntries.get().add(map.map(entry));
++            } catch (final RuntimeException e) {
++                // a planeswalker or battle the copy doesn't have: it left the battlefield, so it can't be attacked
++            }
+         }
+ 
+         HashMap<AttackingBand, AttackingBand> bandsMap = new HashMap<>();
+@@ -99,6 +106,9 @@ public class Combat {
+             }
+             bandsMap.put(origBand, newBand);
+             final GameEntity defender = entry.getKey();
++            if (defender instanceof Player p && p.hasLost()) {
++                continue; // creatures attacking a player who has left the game are no longer attacking (rule 506.4)
++            }
+             if (defender instanceof Card && ((Card) defender).getId() == -1) {
+                 // the stand-in for a planeswalker or battle that left combat (rule 506.4c, see removeFromCombat): it is
+                 // in no zone, so it cannot be mapped, but the creatures attacking it stay in combat in the copy too
+@@ -107,7 +117,13 @@ public class Combat {
+                 fake.setController(map.map(((Card) defender).getController()), 0);
+                 attackedByBands.get().put(fake, newBand);
+             } else {
+-                attackedByBands.get().put(map.map(defender), newBand);
++                final GameEntity mappedDefender;
++                try {
++                    mappedDefender = map.map(defender);
++                } catch (final RuntimeException e) {
++                    continue; // a defender the copy doesn't have (it left the battlefield): its band is out of combat
++                }
++                attackedByBands.get().put(mappedDefender, newBand);
+             }
+         }
+         for (Entry<AttackingBand, Card> entry : combat.blockedBands.get().entries()) {
+diff --git a/forge-game/src/main/java/forge/game/phase/PhaseHandler.java b/forge-game/src/main/java/forge/game/phase/PhaseHandler.java
+index 26cdb56821b..3352d3c011e 100644
+--- a/forge-game/src/main/java/forge/game/phase/PhaseHandler.java
++++ b/forge-game/src/main/java/forge/game/phase/PhaseHandler.java
+@@ -1269,6 +1269,26 @@ public class PhaseHandler implements java.io.Serializable, IHasForgeLog {
+ 
+     // this is a hack for the setup game state mode, do not use outside of devSetupGameState code
+     // as it avoids calling any of the phase effects that may be necessary in a less enforced context
++    /**
++     * Copies the turn's progress from another game's phase handler, for a copy of that game resumed where it stood:
++     * who has priority and who had it first, and what this turn has counted so far. Phase, turn and active player
++     * are set by {@link #devModeSet}.
++     */
++    public final void copyTurnStateFrom(final PhaseHandler from, final java.util.function.Function<Player, Player> map) {
++        playerPreviousTurn = from.playerPreviousTurn == null ? null : map.apply(from.playerPreviousTurn);
++        pPlayerPriority = from.pPlayerPriority == null ? null : map.apply(from.pPlayerPriority);
++        pFirstPriority = from.pFirstPriority == null ? null : map.apply(from.pFirstPriority);
++        givePriorityToPlayer = from.givePriorityToPlayer;
++        nUpkeepsThisTurn = from.nUpkeepsThisTurn;
++        nUpkeepsThisGame = from.nUpkeepsThisGame;
++        nCombatsThisTurn = from.nCombatsThisTurn;
++        nMainsThisTurn = from.nMainsThisTurn;
++        nEndOfTurnsThisTurn = from.nEndOfTurnsThisTurn;
++        planarDiceSpecialActionThisTurn = from.planarDiceSpecialActionThisTurn;
++        skipDamageSteps = from.skipDamageSteps;
++        bRepeatCleanup = from.bRepeatCleanup;
++    }
++
+     public final void devModeSet(final PhaseType phase0, final Player player0, boolean endCombat, int cturn) {
+         if (phase0 != null) {
+             setPhase(phase0);
+diff --git a/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java b/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
+index 1c31223683d..6ae649e622c 100644
+--- a/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
++++ b/forge-game/src/main/java/forge/game/spellability/SpellAbilityStackInstance.java
+@@ -92,6 +92,11 @@ public class SpellAbilityStackInstance implements IIdentifiable, IHasCardView {
+         return ability;
+     }
+ 
++    /** For a copy of a game: the text the original entry got when it was put on the stack. */
++    public final void setStackDescription(final String text) {
++        stackDescription = text;
++    }
++
+     // A bit of SA shared abilities to restrict conflicts
+     public final String getStackDescription() {
+         return stackDescription.replaceAll("\\\\r\\\\n", "").replaceAll("\\.\u2022", ";").replaceAll("\u2022", "");
+diff --git a/forge-game/src/main/java/forge/game/zone/MagicStack.java b/forge-game/src/main/java/forge/game/zone/MagicStack.java
+index 03c543700e3..a102361af70 100644
+--- a/forge-game/src/main/java/forge/game/zone/MagicStack.java
++++ b/forge-game/src/main/java/forge/game/zone/MagicStack.java
+@@ -1017,6 +1017,14 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
+         return false;
+     }
+ 
++    /** For a copy of another game: the spells cast this turn and last turn, as that game recorded them. */
++    public final void copySpellsCastFrom(final MagicStack from) {
++        thisTurnCast.clear();
++        thisTurnCast.addAll(from.thisTurnCast);
++        lastTurnCast.clear();
++        lastTurnCast.addAll(from.lastTurnCast);
++    }
++
+     public final List<SpellAbility> getSpellsCastThisTurn() {
+         return thisTurnCast;
+     }
+diff --git a/forge-game/src/main/java/forge/game/zone/Zone.java b/forge-game/src/main/java/forge/game/zone/Zone.java
+index 574dac41d2a..85787fd14e5 100644
+--- a/forge-game/src/main/java/forge/game/zone/Zone.java
++++ b/forge-game/src/main/java/forge/game/zone/Zone.java
+@@ -246,6 +246,25 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+         return Lists.newArrayList(cardsAdded.values());
+     }
+ 
++    /** For a copy of another game: which cards entered this zone this turn and last turn, and from where. */
++    public final void copyCardsAddedFrom(final Zone from, final java.util.function.Function<Card, Card> map) {
++        cardsAddedThisTurn.clear();
++        cardsAddedLastTurn.clear();
++        enteredFromThisTurn.clear();
++        for (final Map.Entry<ZoneType, Card> e : from.cardsAddedThisTurn.entries()) {
++            final Card mapped = map.apply(e.getValue());
++            cardsAddedThisTurn.put(e.getKey(), mapped != null ? mapped : e.getValue());
++        }
++        for (final Map.Entry<ZoneType, Card> e : from.cardsAddedLastTurn.entries()) {
++            final Card mapped = map.apply(e.getValue());
++            cardsAddedLastTurn.put(e.getKey(), mapped != null ? mapped : e.getValue());
++        }
++        for (final Map.Entry<Card, ZoneType> e : from.enteredFromThisTurn.entrySet()) {
++            final Card mapped = map.apply(e.getKey());
++            enteredFromThisTurn.put(mapped != null ? mapped : e.getKey(), e.getValue());
++        }
++    }
++
+     public final void resetCardsAddedThisTurn() {
+         cardsAddedLastTurn.clear();
+         cardsAddedLastTurn.putAll(cardsAddedThisTurn);

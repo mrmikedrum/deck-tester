@@ -15,7 +15,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/forge-ai/src/main/java/forge/ai/AiCache.java b/forge-ai/src/main/java/forge/ai/AiCache.java
-index b98f7def..b6f343c8 100644
+index b98f7defca0..b6f343c8369 100644
 --- a/forge-ai/src/main/java/forge/ai/AiCache.java
 +++ b/forge-ai/src/main/java/forge/ai/AiCache.java
 @@ -3,7 +3,6 @@ package forge.ai;
