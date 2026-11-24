@@ -9,7 +9,7 @@ on:
 
 jobs:
   engine:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Python 3.9 has no build for newer Ubuntu
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
