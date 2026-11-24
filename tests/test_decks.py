@@ -1,6 +1,8 @@
 """The deck database: decks from the decks repository and imports, with immutable revisions."""
 import json
 import os
+import stat
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -73,6 +75,20 @@ class DecksTest(unittest.TestCase):
         self.manifest(advisor="gone.py")
         with self.assertRaisesRegex(decks.DeckError, "no advisor"):
             decks.sync(str(self.root))
+
+    def test_bin_deckmaster_dispatches_configured_local_plugins(self):
+        plugin = self.root / "demo-plugin.sh"
+        plugin.write_text("#!/bin/sh\nprintf '%s|%s\\n' \"$DECKMASTER_ROOT\" \"$*\"\n")
+        plugin.chmod(plugin.stat().st_mode | stat.S_IXUSR)
+        cfg = self.root / "config.json"
+        cfg.write_text(json.dumps({"plugins": {"demo": str(plugin)}}))
+        repo_root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            [str(repo_root / "bin" / "deckmaster"), "demo", "--flag", "arg one"],
+            env={**os.environ, "DECKMASTER_CONFIG": str(cfg)},
+            text=True, capture_output=True, check=True,
+        )
+        self.assertEqual(result.stdout.strip(), f"{repo_root}|--flag arg one")
 
 
 if __name__ == "__main__":

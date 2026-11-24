@@ -18,7 +18,8 @@ browser ──HTTP──▶ deckmaster game (Python) ──same socket──▶ 
 | `vendor/forge/` | Java, Forge | Upstream Forge at the pin, with our patch series; its card data is the card pool |
 | `scripts/` | sh | Fetching, patching and building Forge; building the engine |
 | `bench/` | Python | Fork fidelity, scenarios and model-reading experiments ([measurements](measurements.md)) |
-| deck, plan and pilot (outside) | text + Python | The decklist, and optionally a deck plan and a pilot file, passed by path |
+| `agent/` | Markdown, Python | The deck partner: its guidance and skills, Scryfall search/cache, the deck audit, Drummer's adapter |
+| the decks repository (outside) | text + Python | Each deck's list, plan and advisor, read by `deck sync` ([Decks](#decks)) |
 
 Decisions have to be intercepted inside Forge, so the engine is Java. Everything an agent writes or reads
 (pilots, metrics, reports) is Python, so it changes without rebuilding the JVM.

@@ -35,7 +35,7 @@ README; load further detail only when the task needs it. For development or diag
 | `vendor/forge` | Pinned Forge checkout with the patch series on its `goldfish` branch, gitignored; card scripts in `forge-gui/res/cardsfolder` |
 | `game/client/` | The game client: `live.html` and `live.js` (the page and its prompt, hand and panels), `h.js` (the 3D table), `world.js` and `fx.js` (textures and effects); `offline.html` shows the board on fixtures for the tools |
 | `game/tools/` | Recording and judging the client: `reel.js` (frame-exact clips), `packet.js` (review packets and the layout audit), `clips.js`, `boards.js` and `plays.js` (fixtures), the look loop (`look.sh`, `look/`); see [game/LOOK.md](game/LOOK.md) |
-| `agent/skills/` | Agent skills; `forge-cards/` is the procedure for the card scripts our series adds to Forge |
+| `agent/` | The deck partner: its guidance (`AGENTS.md`), skills (`skills/deckmaster/` routes to the rest; `forge-cards/` is the procedure for the card scripts our series adds to Forge), docs, templates, labs, the deck audit (`tools/deck-audit/`), and Drummer's adapter (`openclaw/deckmaster/`) |
 | `bench/` | Fork fidelity (goldfish and tables), scenarios and decision-model experiments |
 | `deckmaster/decks.py` | The deck database: decks from the decks repository (`deck sync`) and imports, with immutable revisions; see the README |
 | `tests/` | `unittest` suites; `test_engine.py` plays a real game and skips without Forge; `fixtures/` holds frozen decklists and advisors |
@@ -53,6 +53,10 @@ bin/deckmaster game                       # serve the game on this machine's net
 bin/deckmaster game --fill-cache          # once on a fresh checkout: the client's fixture card images
 (cd game/tools && npm ci)                 # once: the client tools' Playwright
 ```
+
+Drummer's `deckmaster` skill is installed from `agent/openclaw/deckmaster`: after changing it, run
+`openclaw skills install agent/openclaw/deckmaster --agent main --force` and check
+`openclaw skills info deckmaster --agent main --json`; the skills it routes to are read in place.
 
 Using the CLI is in the [README](README.md). When something misbehaves, `.deckmaster/engine.log` has Forge's
 output and stack traces.

@@ -7,7 +7,7 @@ A new revision is added only when one of those changes, so every record points a
 The decks repository is loosely coupled: any folder in it may hold a `deckmaster/` folder with one manifest per deck,
 `<slug>.json`, whose paths are relative to it:
 
-    {"name": "Living Worlds III", "list": "../../../decks/manabox/<id>/deck.txt", "plan": "living-worlds-iii.plan.md",
+    {"name": "Living Worlds III", "list": "deck.txt", "plan": "living-worlds-iii.plan.md",
      "advisor": "living-worlds-iii.py"}
 
 `list` is a text decklist or a Forge .dck; `plan` and `advisor` are optional. Everything else in the repository is the

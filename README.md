@@ -30,7 +30,8 @@ manifest per deck, `<slug>.json`: its name and, relative to the manifest, its `l
 (`~/.local/share/deckmaster/`); a change to a list, plan or advisor adds a revision, and every game records the
 revision it played. `deck import FILE` adds a decklist or a `.dck` on its own, `deck list` shows them, and every
 command that takes a deck takes its slug or a decklist file. The decks repository is `../mtg-decks` unless
-`~/.config/deckmaster/config.json` names another (`{"decks": PATH}`).
+`~/.config/deckmaster/config.json` names another (`{"decks": PATH}`). Local CLI plugins can also be registered there
+under `"plugins": {"<name>": "/path/to/executable"}` so `bin/deckmaster <name>` dispatches to them.
 
 ## Manual mode
 

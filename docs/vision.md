@@ -10,7 +10,7 @@ test decks, and people play them. Four parts, by what they do rather than where 
   with their reasons, are in [game/tools/look/intent.md](../game/tools/look/intent.md); how it looks is in
   [game/LOOK.md](../game/LOOK.md).
 - **Agent.** The skills an agent (Drummer, Claude or Codex sessions) uses to work on decks: curation, card search,
-  ManaBox as an integration, and testing through the tester.
+  and testing through the tester.
 
 Decks are state, not part of Deckmaster: each deck's vision, notes, list, plan and advisor live in the decks
 repository, and Deckmaster reads them.

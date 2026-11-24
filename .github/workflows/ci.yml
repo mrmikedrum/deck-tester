@@ -40,3 +40,14 @@ jobs:
             for (const m of fs.readFileSync("game/client/" + h, "utf8").matchAll(/(?:src|href)="([^"]+)"/g))
               if (!/^https?:/.test(m[1]) && !fs.existsSync(path.join("game/client", m[1]))) { console.log(h + ": missing " + m[1]); bad++; }
           process.exit(bad ? 1 : 0);'
+
+  agent:
+    # The deck partner's Python tools: Scryfall search/cache and the deck audit.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - run: python -m unittest discover -s agent/skills/commander-search/scripts -p 'test_*.py'
+      - run: python -m unittest discover -s agent/tools/deck-audit/test

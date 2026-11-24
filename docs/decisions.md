@@ -55,13 +55,17 @@ One line of reasoning per decision. Replace an entry when it changes; don't appe
   in one repository because the client reads the engine's view directly, so one change can cover both sides.
   The game client joined with its own history (the look loop's rounds), less Scryfall's images, which are
   Wizards' and this repository is public: card images are a runtime cache the game server fills.
+- **The agent lives in Deckmaster; decks and private integrations don't.** The deck partner's guidance, skills and
+  generic tools are Deckmaster's agent part, so they change with the engine and tester they drive; the decks repository
+  keeps only state (Mike's taste included), and private/external-app integrations stay out of this public repo behind
+  the local plugin hook in `~/.config/deckmaster/config.json`.
 - **Decks are state, not part of Deckmaster.** Each deck's vision, notes, list, plan and advisor live in the decks
   repository (loosely coupled: a documented folder format), and Deckmaster reads them into a deck database of its
   own, so decks from elsewhere (players at a table) fit the same way. A deck's advisor and plan come with it, so
   there is no `--guide`; Deckmaster's tests use frozen fixture decks, not the live ones.
 - **The game client moves to TypeScript and Vite.** Agents write nearly all of it, and a type checker catches the
-  mistakes they make; three.js comes from npm rather than a CDN. Python stays stdlib-only; the client and its
-  tools are the repository's only Node.
+  mistakes they make; three.js comes from npm rather than a CDN. Python stays stdlib-only; Node is for the client and its
+  tools.
 - **GPL-3.0.** Forge is GPL-3.0, the engine links it, and the patch series and card scripts derive from it.
 
 ## Real-deck pilot mode

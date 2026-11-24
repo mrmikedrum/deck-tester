@@ -1,3 +1,24 @@
 #!/bin/sh
+# Deckmaster's CLI. Built-in commands run in the Python package; local plugins declared in
+# ~/.config/deckmaster/config.json ({"plugins": {"<name>": "/path/to/executable"}}) dispatch directly.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CONFIG="${DECKMASTER_CONFIG:-$HOME/.config/deckmaster/config.json}"
+if [ -n "${1:-}" ] && [ -f "$CONFIG" ]; then
+  plugin="$(python3 -c '
+import json, sys
+from pathlib import Path
+try:
+    cfg = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    cfg = {}
+plugins = cfg.get("plugins") if isinstance(cfg, dict) else None
+target = plugins.get(sys.argv[2]) if isinstance(plugins, dict) else None
+if isinstance(target, str) and target:
+    print(Path(target).expanduser().resolve())
+' "$CONFIG" "$1" 2>/dev/null || true)"
+  if [ -n "$plugin" ]; then
+    shift
+    DECKMASTER_ROOT="$ROOT" exec "$plugin" "$@"
+  fi
+fi
 PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m deckmaster.cli "$@"
