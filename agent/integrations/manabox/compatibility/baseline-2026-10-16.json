@@ -1,0 +1,199 @@
+{
+  "observed_at": "2026-10-16T16:39:07.669Z",
+  "evidence_scope": "Android 4.2.1 build 2715 static analysis; catalog observations and prior live acceptance dated 2026-10-16. Not a future compatibility guarantee.",
+  "source_hashes": {
+    "base_apk": "bf44f42cc5f119d86158e29a01e9ca6a2bb592baaff3ef3529b5b672cb96a7c7",
+    "arm64_libapp": "c066e1818f8329699c09e7a9640a238553ddf0b6c3191d47f19e08010d811af4"
+  },
+  "catalog": {
+    "schema": 12,
+    "embedded_data_version": 1790147028,
+    "observed_current_data_version": 1792071886,
+    "embedded_provenance": {
+      "source": "APK 4.2.1 bundled assets/cards.db",
+      "encrypted_sha256": "b2135d06c1fdcfbebda7d1a6e5feb1dc7787336e0186e9e4c9496e23195473de",
+      "readable_sha256": "76ab2c64f484fcf0bfad937259bb026b2ab4dfa6d50bd763d97ae605c82c9ded",
+      "integrity": "quick_check ok",
+      "counts": {
+        "cards": 36124,
+        "card_versions": 115988,
+        "sets": 976
+      },
+      "metadata": [
+        [
+          1790147028
+        ]
+      ]
+    },
+    "current_provenance": {
+      "source": "ManaBox schema 12 update manifest",
+      "encrypted_sha256": "abd6331a580fca80e0fc4196a62bfd039464a85846e439cf2dd67d1a21f66c53",
+      "readable_sha256": "8e31f049bf1cf63f6f7e62b172515f0e4ca12d3c4eef508a5eb5648ec85d1376",
+      "integrity": "quick_check ok",
+      "counts": {
+        "cards": 36184,
+        "card_versions": 116334,
+        "sets": 982
+      },
+      "metadata": [
+        [
+          1792071886
+        ]
+      ]
+    },
+    "correction_rows": 1365,
+    "exported_pragma_user_version": 0,
+    "advertised_schemas": [
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6
+    ],
+    "observed_patch_count": 40,
+    "inspected_transition": {
+      "added_card_versions": 346,
+      "removed_card_versions": 0,
+      "changed_identity_tuples": 1,
+      "changed_name_rows": 2,
+      "affected_saved_deck_references": 0,
+      "example": {
+        "cv_id": 117191,
+        "scryfall_id_unchanged": "53c05e53-84c7-4796-ae02-d778faa5afa6",
+        "before": {
+          "cv_oracle_id": 1149,
+          "name": "Germ"
+        },
+        "after": {
+          "cv_oracle_id": 23043,
+          "name": "Phyrexian Germ"
+        }
+      }
+    }
+  },
+  "sync_columns": {
+    "decks": [
+      "d_id",
+      "owner_id",
+      "d_name",
+      "d_format",
+      "d_timestamp",
+      "d_edit_date",
+      "d_locked",
+      "d_cv_id_image",
+      "d_notes",
+      "d_parent_folder",
+      "d_cv_face_index_image",
+      "d_last_shared_timestamp",
+      "d_config"
+    ],
+    "deck_cards": [
+      "dc_d_id",
+      "dc_cv_id",
+      "dc_foil",
+      "dc_board_category",
+      "dc_quantity",
+      "dc_proxy_qty"
+    ],
+    "decks_folders": [
+      "df_id",
+      "owner_id",
+      "df_name",
+      "df_parent_folder",
+      "df_cv_id_image_1",
+      "df_cv_id_image_2",
+      "df_cv_face_index_image_1",
+      "df_cv_face_index_image_2"
+    ],
+    "deck_card_tags": [
+      "dct_id",
+      "dct_name",
+      "owner_id"
+    ],
+    "deck_card_tags_rel": [
+      "owner_id",
+      "dctr_dct_id",
+      "dctr_dc_d_id",
+      "dctr_dc_cv_id",
+      "dctr_dc_foil",
+      "dctr_dc_board_category"
+    ],
+    "binders": [
+      "b_id",
+      "owner_id",
+      "b_name",
+      "b_type",
+      "b_linked_deck_id"
+    ],
+    "inventory_cards": [
+      "ic_id",
+      "ic_binder_id",
+      "ic_cv_id",
+      "ic_quantity"
+    ],
+    "archived_decks": [],
+    "filters": [],
+    "collection_metadata": []
+  },
+  "endpoints": {
+    "manifest": "https://files2.manabox.app/update_assets_metadata.json",
+    "files_fallback": "https://cloud-alt.manabox.app/files/",
+    "upload": "https://cloud.manabox.app/sync/upload",
+    "registration": "https://cloud.manabox.app/sync/connect",
+    "powersync": "https://67b5eed2ee50386f3168b252.powersync.journeyapps.com"
+  },
+  "versions": {
+    "cli_package": "0.1.0",
+    "powersync_node": "1.1.1",
+    "better_sqlite3": "12.4.1",
+    "catalog_schema": 12,
+    "snapshot_schema_version": 2,
+    "plan_version": 1,
+    "deck_document_schema": "mtg-decks/manabox-v1"
+  },
+  "app_static_evidence": {
+    "strings": {
+      "pp+0xf4d8": "String: \"The version of the db we support (12) was not found in the assets metadata\"",
+      "pp+0x12200": "String: \"Applying cards patch from version \"",
+      "pp+0x12218": "String: \"Invalid patch version in patch file (\"",
+      "pp+0x12240": "String: \"Cards DB is out of date, don\\'t migrate inconsistencies\"",
+      "pp+0x123f8": "String: \"WARNING: migration not found for card \"",
+      "pp+0x12428": "String: \"SELECT * FROM card_versions WHERE cv_id = \\?\"",
+      "pp+0x12478": "String: \"Picking first available variant, please take a look here.\"",
+      "pp+0x12488": "String: \"SELECT * FROM card_inconsistencies_migrations\"",
+      "pp+0x12b10": "String: \"Unsupported schema version in patches: \"",
+      "pp+0x12b20": "String: \"Couldn\\'t find any patches to apply from the current db version \"",
+      "pp+0x12b28": "String: \"Unexpected patches chain: last data version is \"",
+      "pp+0x13520": "String: \"UPDATE _manabox_migrations SET version = \\?;\"",
+      "pp+0x13540": "String: \"SELECT version FROM _manabox_migrations;\"",
+      "pp+0x13528": "String: \"PRAGMA foreign_key_check\""
+    },
+    "addresses": {
+      "manifest_fetch": "0x1122fc8",
+      "catalog_schema_selection": "0x11100e4",
+      "reference_correction_gate": "0x1112724; branch 0x1112918; correction call 0x1112a34",
+      "reference_correction_map_query": "0x1114258; SQL load 0x1114294",
+      "reference_correction_startup_call": "0x119c52c",
+      "personal_migrations_read": "0x112ee74; SQL load 0x112eeb0",
+      "personal_migrations_write": "SQL load 0x112ecd4",
+      "patch_schema_mismatch": "0x112246c",
+      "patch_chain_terminal_mismatch": "0x1122548",
+      "patch_file_version_mismatch": "0x1121ba4"
+    }
+  },
+  "live_acceptance": {
+    "independently_verified_writes": 28,
+    "http_200_with_partial_application_observed": true,
+    "tag_assignment_requires_owner_id": true,
+    "registration_sent": false,
+    "iphone_confirmed_new_deck": true
+  },
+  "limits": [
+    "No full model of server-side migrations or API compatibility lifetime.",
+    "Android static evidence is not inspection of the iOS binary.",
+    "Exported SQLite PRAGMA user_version is not the catalog schema identifier.",
+    "Card correction rows are evidence, not automatic migration instructions."
+  ]
+}

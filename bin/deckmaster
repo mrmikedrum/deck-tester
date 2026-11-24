@@ -1,3 +1,20 @@
 #!/bin/sh
+# Deckmaster's CLI. `manabox` runs the ManaBox integration (Node), on the decks repository with its private state in
+# ~/.local/share/deckmaster/manabox; everything else is the Python package.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [ "${1:-}" = manabox ]; then
+  shift
+  pkg="$ROOT/agent/integrations/manabox"
+  if ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)'; then
+    echo 'The ManaBox integration needs Node.js 22 or newer.' >&2
+    exit 1
+  fi
+  if [ ! -d "$pkg/node_modules/@powersync/node" ]; then
+    echo 'Installing the ManaBox integration'"'"'s pinned dependencies...' >&2
+    npm ci --prefix "$pkg" >&2 || exit 1
+  fi
+  decks="${MTG_DECKS_REPO:-$(PYTHONPATH="$ROOT" python3 -c 'from deckmaster import decks; print(decks.decks_root())')}"
+  MTG_DECKS_REPO="$decks" MANABOX_STATE_DIR="${MANABOX_STATE_DIR:-$HOME/.local/share/deckmaster/manabox}" \
+    exec node "$pkg/bin/deckmaster.mjs" "$@"
+fi
 PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m deckmaster.cli "$@"

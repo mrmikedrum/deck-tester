@@ -1,0 +1,32 @@
+{
+  "before_data_version": 1790147028,
+  "after_data_version": 1792071886,
+  "tables_changed": [],
+  "card_versions_added": 346,
+  "removed_ids": {
+    "count": 0,
+    "sample": []
+  },
+  "identity_changes": {
+    "count": 1,
+    "sample": [
+      117191
+    ]
+  },
+  "name_changes": {
+    "count": 2,
+    "sample": [
+      113002,
+      117191
+    ]
+  },
+  "correction_rows": 1365,
+  "referenced_rows_checked": 2536,
+  "affected_references": {
+    "count": 0,
+    "sample": []
+  },
+  "sample_limit": 25,
+  "status": "no_review_findings_in_checked_references",
+  "scope": "Compares local read-only catalogs and supplied references. Correction matches are candidates, not instructions to remap. Does not prove cloud/API semantics or unobserved account coverage."
+}

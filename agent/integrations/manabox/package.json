@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "@powersync/node": "1.1.1",
+    "better-sqlite3": "12.4.1"
+  },
+  "name": "@mtg-decks/manabox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check bin/deckmaster.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "version": "0.1.0",
+  "description": "Local Commander workshop and personal ManaBox cloud CLI",
+  "bin": {
+    "deckmaster": "bin/deckmaster.mjs"
+  }
+}

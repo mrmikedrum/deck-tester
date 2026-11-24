@@ -3,11 +3,10 @@
 Each milestone ends with something an agent can use. Delete a milestone when it ships. What has shipped is
 described in [architecture](architecture.md).
 
-## The agent
+## Players' own decks
 
-The agent skills and the ManaBox CLI (Node, run as `deckmaster manabox`) move in from the decks repository, which
-keeps only deck state; ManaBox's login and catalog state move to `~/.local/share/deckmaster/`, and Drummer's skill
-is reinstalled from here. Importing a player's deck from the game client comes later, with multiplayer.
+Importing a person's deck at a table from the game client (a pasted list or a `.dck`), into the deck database, with
+multiplayer.
 
 ## The game client on TypeScript
 

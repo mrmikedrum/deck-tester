@@ -1,0 +1,141 @@
+// COMMANDER
+1 Romana II (WHO) 27
+1 The Twelfth Doctor (WHO) 1040 *F*
+
+1 Adarkar Wastes (EOC) 147
+1 Appa, Steadfast Guardian (TLA) 10
+1 Arcane Signet (WHO) 239
+1 Arid Mesa (MH2) 244
+1 Auton Soldier (WHO) 36
+1 Avatar's Wrath (TLA) 12
+1 Battlefield Forge (SOC) 362
+1 Behold the Multiverse (KHM) 46
+1 Blazing Firesinger // Seething Song (SOS) 109
+1 Bohn, Beguiling Balladeer (SLX) 30
+1 Cadric, Soul Kindler (DMC) 10
+1 Cascade Bluffs (SOC) 364
+1 Chaos Warp (SOC) 239
+1 Command Beacon (TDC) 352
+1 Command Tower (SOC) 129
+1 Curse of Echoes (DKA) 34
+1 Curse of Opulence (C17) 24
+1 Cursed Mirror (C21) 50
+1 Depart the Realm (KHM) 53
+1 Deserted Beach (INR) 276
+1 Diluvian Primordial (OTC) 96
+1 Echocasting Symposium (SOS) 44
+1 Eiganjo, Seat of the Empire (NEO) 268
+1 Everybody Lives! (WHO) 18
+1 Exotic Orchard (SOC) 369
+1 Fblthp, Lost on the Range (OTJ) 48
+1 Fellwar Stone (SOC) 347
+1 Flooded Strand (MH3) 220
+1 Fractured Identity (C17) 37
+1 Glasspool Mimic (ZNR) 60
+1 Guff Rewrites History (CMM) 737
+1 Hallowed Fountain (ECL) 265
+1 Hengegate Pathway (KHM) 260
+1 Hive Mind (M10) 54
+1 Ian Malcolm, Chaotician (REX) 13
+1 Illusionist's Gambit (BLC) 166
+4 Island (SOS) 274
+1 Izzet Signet (C20) 243
+1 Kwain, Itinerant Meddler (BLC) 90
+1 Long River's Pull (BLB) 58
+1 Mikokoro, Center of the Sea (DMC) 217
+1 Mind's Dilation (SLD) 1180
+1 Misleading Signpost (WOC) 11
+1 Mnemonic Deluge (CMR) 82
+1 Mockingbird (BLB) 61
+1 Mountain (SOS) 278
+1 Mystic Monastery (EOC) 170
+1 Mystic Reflection (KHM) 69
+1 Nalfeshnee (CLB) 678
+1 Narset's Reversal (SLC) 14
+1 Needleverge Pathway (ZNR) 263
+1 Otawara, Soaring City (NEO) 271
+1 Path to Exile (LTC) 175
+1 Pia Nalaar, Consul of Revival (MAT) 42
+1 Plains (SOS) 272
+1 Portal Mage (CMM) 112
+1 Portal Manipulator (CLU) 40
+1 Quantum Misalignment (WHO) 52
+1 Rainbow Vale (FEM) 99
+1 Raugrin Triome (IKO) 251
+1 Relic of Legends (DMU) 236
+1 Return the Favor (OTJ) 142
+1 River Song's Diary (WHO) 182
+1 Riverglide Pathway (ZNR) 264
+1 Rod of Absorption (AFC) 19
+1 Sacred Foundry (EOE) 256
+1 Sage of the Beyond (OTC) 111
+1 Scalding Tarn (MH2) 254
+1 Sea of Clouds (CLB) 360
+1 Share the Spoils (AFC) 34
+1 Shivan Reef (SOC) 404
+1 Silverquill Lecturer (M3C) 96
+1 Skycloud Expanse (EOC) 181
+1 Sokenzan, Crucible of Defiance (NEO) 276
+1 Sol Ring (WHO) 245
+1 Spectator Seating (CMM) 427
+1 Spelltwine (C17) 94
+1 Split Decision (CNS) 25
+1 Steam Vents (ECL) 267
+1 Stormcarved Coast (SOS) 263
+1 Sundown Pass (SOS) 264
+1 Surge of Brilliance (WHO) 57
+1 Swords to Plowshares (EOC) 45
+1 Talisman of Creativity (SOC) 357
+1 Talisman of Progress (TDC) 333
+1 Tempt with Mayhem (M3C) 114
+1 Theoretical Duplication (WOC) 112
+1 Tidal Barracuda (C20) 39
+1 Training Center (CMM) 434
+1 Trenzalore Clocktower (WHO) 190
+1 Vega, the Watcher (KHM) 233
+1 Victory Chimes (C21) 274
+1 Wand of Wonder (CLB) 204
+1 Wedding Ring (VOC) 32
+1 You Find Some Prisoners (AFR) 169
+
+// SIDEBOARD
+1 Azorius Signet (TDC) 312
+1 Boros Signet (CMD) 243
+1 Clifftop Retreat (SOC) 366
+1 Comeuppance (MKC) 58
+1 Galvanic Iteration (MID) 224
+1 Glacial Fortress (EOC) 160
+1 Inspiring Vantage (OTJ) 269
+1 Prairie Stream (TDC) 384
+1 Replication Technique (SOC) 200
+1 Rugged Prairie (SOC) 401
+1 Seachrome Coast (BLC) 328
+1 Spirebluff Canal (OTJ) 270
+1 Sulfur Falls (SOC) 408
+1 TARDIS (WHO) 187
+1 Talisman of Conviction (TDC) 329
+1 Teferi's Protection (2X2) 32
+1 Thought Vessel (DSC) 256
+1 Twinning Staff (C20) 70
+
+// MAYBEBOARD
+1 Aboleth Spawn (CLB) 662
+1 An Offer You Can't Refuse (FDN) 160
+1 Brazen Borrower (ELD) 39
+1 Dire Fleet Daredevil (OTC) 162
+1 Elminster's Simulacrum (CLB) 68
+1 Exchange of Words (UNF) 45
+1 Faerie Artisans (CMM) 92
+1 Goblin Glasswright // Craft with Pride (SOS) 117
+1 Heliod, the Radiant Dawn (MOM) 17
+1 Humble Defector (OTC) 170
+1 Imposter Mech (NEC) 13
+1 Improvisation Capstone (SOS) 120
+1 Knowledge Pool (PLST) MBS-111
+1 Passionate Archaeologist (CLB) 656 *F*
+1 Perplexing Test (SOC) 197
+1 Role Reversal (WAR) 214
+1 Scrambleverse (M12) 153
+1 Shared Fate (MRD) 49
+1 The Reality Chip (NEO) 74
+1 Wandering Archaic (STX) 6

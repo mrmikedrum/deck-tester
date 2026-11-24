@@ -346,6 +346,7 @@ def main(argv=None) -> int:
     importing.set_defaults(run=deck_import)
     deck.add_parser("list", help="the decks in the deck database").set_defaults(run=deck_list)
 
+    commands.add_parser("manabox", help="the ManaBox integration (Node): bin/deckmaster manabox --help")
     begin = commands.add_parser("start", help="start a manual game and show the first decision")
     begin.add_argument("deck", help="a deck in the deck database (deck list), or a decklist file")
     begin.add_argument("--seed", type=int)
