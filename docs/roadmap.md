@@ -16,7 +16,8 @@ multiplayer.
 ## The game client on TypeScript
 
 Strict TypeScript and Vite, three.js from npm, split by concern out of `h.js` and `live.js`, with the seat layout
-as a pure module of its own. Each step keeps recordings equivalent (identical telemetry). Its own plan comes first.
+as a pure module of its own. Each step keeps recordings equivalent. Its own plan comes first; the
+[handoff](game-client-migration.md) holds what is decided, what is open, and how to check a step.
 
 ## The game's protocol
 
