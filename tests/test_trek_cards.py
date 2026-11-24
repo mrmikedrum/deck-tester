@@ -2,6 +2,7 @@
 import unittest
 from deckmaster import engine, decklist
 
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class TrekCardRules(unittest.TestCase):
     def setUp(self):
         d=decklist.load(engine.ROOT/'examples/decks/eternities-living-worlds-iii.txt')

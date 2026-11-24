@@ -5,6 +5,7 @@ from deckmaster import engine
 from tests import test_exploratory_mission as mission_rules
 
 
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class LivingWorldsDrawRules(unittest.TestCase):
     setUp = mission_rules.ExploratoryMissionRules.setUp
     tearDown = mission_rules.ExploratoryMissionRules.tearDown

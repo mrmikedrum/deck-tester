@@ -3,6 +3,7 @@ import unittest
 from deckmaster import engine
 
 
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class AssimilationImports(unittest.TestCase):
     def setUp(self):
         self.r = engine.request(dict(cmd='start', commanders=['Marath, Will of the Wild'],
