@@ -123,7 +123,9 @@ function plan(input: SeatInput): SeatPlan {
   const scoreOf = (k: string | null): number => (k && byKey.get(k)?.score) || 0;
 
   // ---- the line: kept between tidies; at its owner's untap step, re-dealt with a margin ------------------------------
-  const places = pressure >= 2 ? 2 : RANKS.line;
+  // The line is dealt and remembered at its full places; at pressure a line of two is shown (its weakest steps back for
+  // this plan only, so the place is still its when the pressure goes).
+  const places = RANKS.line;
   // A page tidies at its owner's untap step: when its turn has come since the last tidy, or a whole round has gone by
   // (its untap step passed while the table looked elsewhere).
   const turn = input.clock?.turn ?? prev?.turn ?? 0;
@@ -167,9 +169,17 @@ function plan(input: SeatInput): SeatPlan {
       if (gap >= 0 && c.score > RANKS.margin * Math.min(...line.filter(Boolean).map(scoreOf), Infinity)) line[gap] = c.key;
       else if (w >= 0 && c.score > RANKS.margin * scoreOf(line[w]!)) line[w] = c.key;
     }
-    if (!onLine().size) for (let i = 0; i < places; i++) if (line[i] === null) line[i] = best(onLine())[0]?.key ?? null;
+    // A place left empty (its card died, or the page was first dealt before the cards' data came) closes at once by
+    // promotion: one card hops forward rather than a hole waiting for the next tidy.
+    for (let i = 0; i < places; i++) if (line[i] === null) line[i] = best(onLine())[0]?.key ?? null;
+  }
+  const full = [...line];
+  if (pressure >= 2) {
+    const w = weakest();
+    line.splice(w >= 0 ? w : line.length - 1, 1);
   }
   const lineSet = onLine();
+  const shownPlaces = line.length;
 
   // ---- the ranks: kept in the order they had, newcomers after; what has no place lies in the tail ----------------------
   const width = r.w - 2 * SIDE;
@@ -224,7 +234,7 @@ function plan(input: SeatInput): SeatPlan {
   const lineScale = (a: number): number => {
     const want = scaleAt(a, (side ? RANKS.linePx.side : RANKS.linePx.across) / Math.cos(TAP_LEAN));
     const floor = scaleAt(a, FLOOR.theirs / Math.cos(TAP_LEAN));
-    return Math.max(floor, Math.min(want, width / (places * (CH + 0.06))));
+    return Math.max(floor, Math.min(want, width / (shownPlaces * (CH + 0.06))));
   };
   // The line's forward feet stop where the read's top edge is on screen: a card stepping forward never stands on its words.
   const readTop = groundBehind(g, r, readA, readD, RANKS.readTilt);
@@ -343,7 +353,7 @@ function plan(input: SeatInput): SeatPlan {
   line.forEach((k, i) => {
     const c = k ? byKey.get(k) : undefined;
     if (!c) return;
-    creatureUnit(c, aLine, (i - (places - 1) / 2) * per, sL, true);
+    creatureUnit(c, aLine, (i - (shownPlaces - 1) / 2) * per, sL, true);
   });
   // The second row, from the page's middle side outward (`toward`): own places, the tail, walkers, the columns, the well.
   const toward = side ? zoneSide(false, r.x) : 1;
@@ -421,11 +431,11 @@ function plan(input: SeatInput): SeatPlan {
     it.put(su - (toward * it.w) / 2);
     su -= toward * it.w;
   }
-  for (const [key, i] of actorLine) creatureUnit(byKey.get(key)!, aLine, (i - (places - 1) / 2) * per, sL, true);
+  for (const [key, i] of actorLine) creatureUnit(byKey.get(key)!, aLine, (i - (shownPlaces - 1) / 2) * per, sL, true);
   for (const c of fighters) {
     const home = out.find((x) => x.id === idOf(c.from!)), slot = line.indexOf(c.from!);
     if (home) creatureUnit(c, 0, 0, home.placement.scale, false, home.placement.pos);
-    else if (slot >= 0) creatureUnit(c, aLine, (slot - (places - 1) / 2) * per, sL, true);
+    else if (slot >= 0) creatureUnit(c, aLine, (slot - (shownPlaces - 1) / 2) * per, sL, true);
     else creatureUnit(c, aRanks, (-toward * rowW) / 2, sR, false);
   }
 
@@ -452,7 +462,7 @@ function plan(input: SeatInput): SeatPlan {
 
 
   // ---- fixtures: the page, the read, the plaque, the zones, the commander ---------------------------------------------
-  const W = Math.min(r.w, Math.max(2 * SIDE + Math.max(places * per, rowW), backW, 6));
+  const W = Math.min(r.w, Math.max(2 * SIDE + Math.max(shownPlaces * per, rowW), backW, 6));
   const plate: Placement = { pos: at(c0, plateA), scale: PLATE_S, posture: "stand" };
   const zones: Fixtures["zones"][number][] = [];
   (["graveyard", "exile"] as const)
@@ -486,7 +496,7 @@ function plan(input: SeatInput): SeatPlan {
     ...(read ? { read } : {}),
   };
   const mem: Mem = {
-    line: line.map((k) => (k && byKey.has(k) ? k : null)),
+    line: full.map((k) => (k && byKey.has(k) ? k : null)),
     ranks: order,
     turn: tidy ? turn : prev!.turn,
     seen: turn,
