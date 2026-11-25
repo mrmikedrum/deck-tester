@@ -484,8 +484,8 @@ function unitPiece(
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
   const { copies, tapNote } = copiesOf(model, u);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
-  // (A regiment's count is on its die: its tab, where it has one, is its tag alone.)
-  const title = u.tag ? tagWords(u.tag) : u.look === "regiment" ? null : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
+  // (A fold's tab, where it has one, is its tag alone: a regiment's count is on its die, and a tail is never one card's name.)
+  const title = u.tag ? tagWords(u.tag) : u.look === "regiment" || u.look === "tail" || u.look === "column" ? null : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
   const lit = new Set(u.lit ?? []);
   const fan =
     u.fan && (u.look === "tail" || u.look === "column")
