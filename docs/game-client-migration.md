@@ -33,7 +33,7 @@ seven competing designs and a stack evaluation. How we get there, reviewed adver
 | Prove it first | One **vertical slice** (cast a spell from the hand, choose its target on the table, watch it resolve) through every layer before the rest is ported | Settles the seams, the frame loop and recorder repeatability where they are cheapest to change |
 | Packages | One `game/package.json` and lockfile for the client and its tools; Node pinned (`.nvmrc`, `engines`); the tools stay CommonJS until ported deliberately | One `npm ci`; tools that `require()` fixtures keep working |
 | Serving | `deckmaster game` serves the built client; it builds only when the build's stamp (a hash of the sources, the lockfile and the Node version) is stale, into a staging directory published on success. A current build is served without Node. In development Vite's dev server proxies `/api` and `/cache` | One command for the player; a failed build never replaces a working one |
-| CI | `tsc --noEmit`, ESLint, Vitest, `vite build`, the built pages smoke-tested through the Python server, the behaviour suite on Chromium and WebKit | Seconds, not minutes; recordings stay local |
+| CI | GitHub runs `tsc --noEmit`, ESLint, Vitest, `vite build` and the tools' tests; `npm run check` in `game/` runs those and the behaviour suite on both entries (Chromium, and the `@cast` subset on WebKit), locally before every merge | GitHub's runners render in software, too slowly for the browser suite; the client's targets are iPad and desktop browsers |
 
 ## Phases
 

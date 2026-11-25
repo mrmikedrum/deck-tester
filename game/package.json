@@ -12,6 +12,7 @@
     "lint": "eslint client/src client/test",
     "test": "vitest run",
     "behaviour": "playwright test -c tools/behaviour",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && node --test 'tools/*.test.js' && npm run behaviour && BEHAVIOUR_CLIENT=new npm run behaviour && BEHAVIOUR_CLIENT=new BEHAVIOUR_BROWSERS=webkit npx playwright test -c tools/behaviour --grep @cast",
     "knip": "knip"
   },
   "dependencies": {

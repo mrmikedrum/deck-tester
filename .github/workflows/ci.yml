@@ -24,7 +24,7 @@ jobs:
       - run: python -m unittest discover -s tests -v
 
   client:
-    runs-on: ubuntu-24.04   # Playwright 1.48 installs browser dependencies for 24.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -53,14 +53,8 @@ jobs:
             for (const m of fs.readFileSync("client/" + h, "utf8").matchAll(/(?:src|href)="([^"]+)"/g))
               if (!/^https?:/.test(m[1]) && !fs.existsSync(path.join("client", m[1]))) { console.log(h + ": missing " + m[1]); bad++; }
           process.exit(bad ? 1 : 0);'
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run behaviour
-      - name: The new entry's cast subset, on Chromium and WebKit
-        # The built entry (npm run build above) on the same specs, through window.__deckmaster: the tests tagged @cast.
-        run: npx playwright test -c tools/behaviour --grep @cast
-        env:
-          BEHAVIOUR_CLIENT: new
-          BEHAVIOUR_BROWSERS: chromium,webkit
+      # The browser behaviour suite runs locally (`npm run check` in game/): GitHub's runners render in software,
+      # too slowly for it, and the client's targets are iPad and desktop browsers.
 
   agent:
     # The deck partner's Python tools: Scryfall search/cache and the deck audit.
