@@ -123,3 +123,13 @@ export function handOrder(a: Card, b: Card): number {
   const land = (c: Card) => Number(/Land/.test(c.face.type) && !/Creature/.test(c.face.type));
   return land(b) - land(a) || manaValue(a) - manaValue(b) || a.name.localeCompare(b.name, "en");
 }
+
+/**
+ * Whether a permanent's text reaches other players ("table": Rule of Law, Thorn of Amethyst, Smothering Tithe) or only
+ * its controller's own game ("self"). A presentation heuristic over its rules text, reminder text left out: it ranks and
+ * sorts a card, never decides what is legal. (From the by-relevance exploration.)
+ */
+export function tableReach(c: Card): "table" | "self" {
+  const text = c.face.text.replace(/\([^)]*\)/g, "");
+  return /\beach player\b|\beach spell\b|\bopponents?\b|\bspells?\s[^.]*\bcosts?\s+\{|\bcosts? \{[^}]+\} more\b|\bcan't\b/i.test(text) ? "table" : "self";
+}
