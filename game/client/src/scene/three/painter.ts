@@ -14,7 +14,9 @@ import {
   paintPageShade,
   paintPlate,
   paintShade,
+  paintPrinted,
   paintSign,
+  paintSlip,
   paintTable,
   paintTag,
   paintVellumTile,
@@ -34,6 +36,17 @@ export class Painter {
   /** The face for `spec` if it is already painted (its art need not still be decoded); null otherwise. */
   paintedFace(spec: FaceSpec): Lease | null {
     return this.cache.leaseCached("face|" + faceKey(spec));
+  }
+  /** The printed card image at `url`, once it is decoded (null until then: the painted face stands in). */
+  printed(url: string): Lease | null {
+    const img = this.env.art(url);
+    const cached = this.cache.leaseCached("printed|" + url);
+    if (cached || !img) return cached;
+    return this.cache.lease("printed|" + url, (c) => paintPrinted(c, img));
+  }
+  /** An ability's slip: its effect in ink. */
+  slip(text: string): Lease {
+    return this.cache.lease("slip|" + text, (c) => void paintSlip(c, text, this.env.surfaces));
   }
   back(): Lease {
     return this.cache.lease("back", (c) => paintBack(c, this.env));

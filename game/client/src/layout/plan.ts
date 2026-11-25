@@ -279,7 +279,7 @@ export function planTable(input: TableInput): TablePlan {
     if (s.spilled) v = [...v, { rule: "no-room", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
   const hits = hitGroups(final, shapes, stack);
-  const stackUp = stackFocus(input, tpl, projector, final, shapes, reserve.safe);
+  const stackUp = stackFocus(input, tpl, projector, final, shapes, reserve, reserve.safe);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
@@ -378,103 +378,108 @@ const boxOf = (q: Quad, u: number): Box => {
 };
 const meets = (a: Box, b: Box): boolean => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
 
+/** The stack as the focus: its card's height as a share of the screen's, and never under this (design px), about life
+ * size so its rules read. Shingled, each card under the top shows this share of its width. */
+export const STACK_FOCUS = { share: 0.52, floor: 360, shingle: 0.3, top: 46, margin: 8, clear: 10 } as const;
+
 /**
- * The stack as the table's focus (old h.js `buildStack` with the layer up): the top spell comes forward over the open
- * middle, centred, as large as it can be (a card up to 290 design px tall) without covering what any of the stack aims
- * at or a plaque (plaques draw over everything and would hide its name); it tries the middle, then just above each
- * thing aimed at, then either side. Where nothing is clear, or clear only at about a card's size over someone's page
- * (where it would pass for one of their permanents), it stands centred in the open middle as large as that gap holds
- * clear of what it touches; failing that, as small as the stack set aside. The spells under the top step toward what
- * they aim at (or whose they are), so each arc runs to its own target and two plays from opposite sides never cross.
- * Top first, each square to the camera at the focus height.
+ * The stack as the table's focus: the printed card held up large (0.52 of the screen's height, never under 360), centred
+ * between the hand's right edge and the prompt's left edge with its middle at 46% of the height. It may cover pages and
+ * cards it does not involve, never a target, a plaque it targets, the prompt or the hand: where one is in the way it
+ * moves first (centre, right, left, up) and shrinks only after, to its floor. Several items stand in a row while all
+ * fit at the floor or more; past that the top stands at full size and the ones under it shingle to the side they step
+ * toward (what they aim at, else whose they are), each showing a strip. Where nothing at the floor is clear (a crowded
+ * table), it stands centred in the open middle as large as that gap holds clear of what it touches. Top first, each
+ * square to the camera at the focus height.
  */
-function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], shapes: readonly Shape[], safe: Rect): StackAtRest[] {
+function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], shapes: readonly Shape[], reserve: Reservations, safe: Rect): StackAtRest[] {
   const items = [...input.stack].reverse();
   if (!items.length) return [];
   const u = designUnit(input.viewport), n = items.length;
-  const M = openMiddle(tpl, proj, plans, u);
+  const vw = input.viewport.w / u, vh = input.viewport.h / u;
   const step = items.some((s) => s.answers) ? 1.12 : 0.9;
-  const span = CW * (step * n + 0.1);
-  const fitW = (M.r - M.l - 16) / span, least = (FLOOR.any * 1.1) / CW;
-  const mid = Math.max(least, Math.min(240, M.b - M.t, fitW));
-  // What it points at, where the board stands (a card's face, a plaque), with a margin; and every plaque.
+  // What it points at, where the board stands (a card's face, a plaque), with a margin; the chrome it keeps off.
   const unitOf = new Map<CardId, Shape>();
   for (const p of plans) for (const un of p.units) for (const id of [...un.members, ...un.dressing]) {
     const sh = shapes.find((x) => x.group === un.id);
     if (sh) unitOf.set(id, sh);
   }
   const plateOf = (seat: SeatId): Shape | undefined => shapes.find((x) => x.group === `plate:${seat}`);
-  const aimed: Box[] = [], seen = new Set<string>();
+  const aimed: Box[] = [], seen = new Set<string>(), c = STACK_FOCUS.clear;
   for (const s of items)
-    for (const sh of [...(s.targets ?? []).map((c) => unitOf.get(c)), ...(s.seats ?? []).map(plateOf)]) {
+    for (const sh of [...(s.targets ?? []).map((id) => unitOf.get(id)), ...(s.seats ?? []).map(plateOf)]) {
       if (!sh || seen.has(sh.group)) continue;
       seen.add(sh.group);
       const b = boxOf(sh.face, u);
-      aimed.push({ l: b.l - 10, r: b.r + 10, t: b.t - 10, b: b.b + 10 });
+      aimed.push({ l: b.l - c, r: b.r + c, t: b.t - c, b: b.b + c });
     }
-  const plaques = plans.map((p) => plateOf(p.seat)).filter((x): x is Shape => !!x).map((x) => boxOf(x.face, u));
-  const row = (h: number, x: number, y: number): Box => {
-    const w = span * h, l = x - w / 2;
-    return { l, r: l + w, t: y - h / 2, b: y + h / 2 + 12 };
-  };
-  const hits = (b: Box): boolean => aimed.some((a) => meets(a, b)) || plaques.some((a) => meets(a, b));
-  const most = Math.min(290, (M.r - M.l + 120) / span), xm = (M.l + M.r) / 2;
-  let hPx = mid, cy = (M.t + M.b) / 2, x0 = M.l + 16 + (hPx * CW) / 2, raise: number = STACK_POSE.up, dir = 1, clear = false;
-  const ways = (h: number): [number, number][] => [[xm, cy], ...aimed.map((a): [number, number] => [xm, a.t - h / 2 - 14]), [M.l + (span * h) / 2, cy], [M.r - (span * h) / 2, cy]];
-  find: for (let h = most; h > mid; h -= 10)
-    for (const [x, y] of ways(h)) {
-      const b = row(h, x, y);
-      if (b.t < 46 || b.l < M.l - 60 || b.r > M.r + 60 || hits(b)) continue;
-      hPx = h;
-      x0 = b.l + (h * CW) / 2;
-      cy = y;
-      clear = true;
-      break find;
-    }
-  if ((!clear || hPx < mid * 1.3) && aimed.length) {
-    // (Against the cards' own outlines, not the margin kept round them elsewhere: the gap is a narrow one.)
-    const ym = (M.t + M.b) / 2 - 4;
-    const bare = (b: Box): boolean => aimed.some((a) => a.l + 10 < b.r && a.r - 10 > b.l && a.t + 10 < b.b && a.b - 10 > b.t) || plaques.some((a) => meets(a, b));
-    let h = Math.min(fitW, M.b - M.t + 12);
-    for (; h > least; h -= 4) {
-      const b = row(h, xm, ym);
-      if (!bare(b) && b.t >= 46) break;
-    }
-    if (h > least) {
-      hPx = h;
-      x0 = row(h, xm, ym).l + (h * CW) / 2;
-      cy = ym;
-      clear = true;
-    } else if (!clear) {
-      hPx = Math.max(least, mid * 0.75);
-      x0 = M.l + 16 + (hPx * CW) / 2;
-      raise = STACK_POSE.raise;
-    }
-  }
+  const chrome = reserve.items.map((i) => ({ l: i.rect.left / u, r: i.rect.right / u, t: i.rect.top / u, b: i.rect.bottom / u }));
+  const hand = reserve.items.find((i) => i.kind === "hand")?.rect, prompt = reserve.items.find((i) => i.kind === "prompt")?.rect;
+  const xm = ((hand ? hand.right / u : 0) + (prompt ? prompt.left / u : vw)) / 2, ym = vh * 0.46;
+  const m = STACK_FOCUS.margin, sl = safe.left / u + m, sr = safe.right / u - m, st = Math.max(safe.top / u, STACK_FOCUS.top), sb = safe.bottom / u - m;
   // The spells under the top step toward what they aim at, else toward whose they are; the top toward whose it is.
   const sx = (sh: Shape | undefined): number | null => (sh ? (bounds(sh.face).l + bounds(sh.face).r) / 2 / u : null);
   const whose = (seat: SeatId | null | undefined): number | null => (seat ? sx(plateOf(seat)) : null);
-  const ctrl = (s: StackEntry): SeatId | null => s.controller ?? null;
   const pull = items
     .slice(1)
     .flatMap((s) => {
-      const at = (s.targets ?? []).map((c) => sx(unitOf.get(c)));
-      return at.some((x) => x !== null) ? at : [whose(ctrl(s))];
+      const at = (s.targets ?? []).map((id) => sx(unitOf.get(id)));
+      return at.some((x) => x !== null) ? at : [whose(s.controller ?? null)];
     })
     .filter((x): x is number => x !== null);
-  const top = whose(ctrl(items[0]!));
-  if (clear && pull.length && top !== null && pull.reduce((t, x) => t + x, 0) / pull.length < top) {
-    dir = -1;
-    x0 += (n - 1) * step * CW * hPx;
+  const own = whose(items[0]!.controller ?? null);
+  const dir = pull.length && own !== null && pull.reduce((t, x) => t + x, 0) / pull.length < own ? -1 : 1;
+  // A card h tall: its width, and the room under it its tag (or an ability's slip) takes.
+  const below = items[0]!.ability ? 92 : 28;
+  /** The group's offsets from the top card's middle, per card (in card widths), and its box, for a height. */
+  const shape = (h: number, row: boolean) => {
+    const w = CW * h, k = (i: number) => (i === 0 ? 1 : row ? 0.8 : 1);
+    const at = items.map((_, i) => (row ? i * step : i * STACK_FOCUS.shingle) * dir);
+    const ls = at.map((o, i) => (o * w) - (k(i) * w) / 2), rs = at.map((o, i) => o * w + (k(i) * w) / 2);
+    return { at, k, l: Math.min(...ls), r: Math.max(...rs), w };
+  };
+  const boxAt = (h: number, row: boolean, x: number, y: number): Box => {
+    const g = shape(h, row), mid = (g.l + g.r) / 2;
+    return { l: x - mid + g.l, r: x - mid + g.r, t: y - h / 2, b: y + h / 2 + below };
+  };
+  const fits = (b: Box): boolean =>
+    b.l >= sl && b.r <= sr && b.t >= st && b.b <= sb && !aimed.some((a) => meets(a, b)) && !chrome.some((a) => meets(a, b));
+  /** Where a group h tall may stand: the middle, then to the right, the left, then up. */
+  const ways = (h: number, row: boolean): [number, number][] => {
+    const g = shape(h, row), w = g.r - g.l, out: [number, number][] = [[xm, ym]];
+    for (const k of [0.5, 1, 1.5]) out.push([xm + w * k, ym]);
+    for (const k of [0.5, 1, 1.5]) out.push([xm - w * k, ym]);
+    for (const k of [0.15, 0.3]) out.push([xm, ym - h * k]);
+    return out;
+  };
+  const most = Math.max(STACK_FOCUS.floor, STACK_FOCUS.share * vh);
+  let found: { h: number; row: boolean; x: number; y: number } | null = null;
+  find: for (const row of n > 1 ? [true, false] : [true])
+    for (let h = most; h >= STACK_FOCUS.floor - 0.01; h -= 10)
+      for (const [x, y] of ways(h, row))
+        if (fits(boxAt(h, row, x, y))) {
+          found = { h, row, x, y };
+          break find;
+        }
+  // A crowded table: the open middle, as large as it holds clear of what the stack aims at (the old search's last way).
+  if (!found) {
+    const M = openMiddle(tpl, proj, plans, u), least = (FLOOR.any * 1.1) / CW;
+    let h = Math.min(STACK_FOCUS.floor, M.b - M.t + 12);
+    for (; h > least; h -= 4) if (!aimed.some((a) => meets(a, boxAt(h, false, (M.l + M.r) / 2, (M.t + M.b) / 2)))) break;
+    found = { h: Math.max(least, h), row: false, x: (M.l + M.r) / 2, y: (M.t + M.b) / 2 };
   }
+  const g = shape(found.h, found.row), box = boxAt(found.h, found.row, found.x, found.y);
+  const x0 = box.l - g.l, cy = found.y;
   const along = (p: V3, d: V3, t: number): V3 => ({ x: p.x + d.x * t, y: p.y + d.y * t, z: p.z + d.z * t });
-  const at0 = proj.onTable(x0 * u, cy * u, raise);
+  const at0 = proj.onTable(x0 * u, cy * u, STACK_POSE.up);
   const per = Math.abs(proj.project(along(at0, proj.up, 0.5)).y - proj.project(along(at0, proj.up, -0.5)).y) / u;
-  const sc0 = hPx / per;
+  const sc0 = found.h / per;
   return items.map((s, i) => {
-    const sc = sc0 * (i === 0 ? 1 : 0.8) * (s.ability ? 0.72 : 1);
-    const c = along(along({ ...at0, z: at0.z - 0.5 * i }, proj.right, dir * i * step * CW * sc0), proj.up, i * 0.1 * sc0);
-    const pt = (a: number, b: number): Point => proj.project(along(along(c, proj.right, a * sc), proj.up, b * sc));
+    const sc = sc0 * g.k(i);
+    // Laid out on screen at the top's depth (the scene stands each under it further back along its ray, the same
+    // pixels); a smaller one in a row stands on the same foot line.
+    const ctr = along(along(at0, proj.right, (g.at[i] ?? 0) * CW * sc0), proj.up, ((sc - sc0) * CH) / 2);
+    const pt = (a: number, b: number): Point => proj.project(along(along(ctr, proj.right, a * sc), proj.up, b * sc));
     const quad: Quad = [pt(-CW / 2, -CH / 2), pt(CW / 2, -CH / 2), pt(CW / 2, CH / 2), pt(-CW / 2, CH / 2)];
     const b = bounds(quad);
     return { key: s.key, card: s.card, quad, reachable: b.l >= safe.left && b.t >= safe.top && b.r <= safe.right && b.b <= safe.bottom };

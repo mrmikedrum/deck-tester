@@ -4,7 +4,7 @@
 import { describe as group, expect, it } from "vitest";
 import { bounds } from "../../src/layout/shape";
 import type { Point, Quad } from "../../src/layout";
-import { NO_FOCUS, Stage, chipsOf, describe, pickDrawn, poseQuad, siftRoll } from "../../src/scene/stage";
+import { NO_FOCUS, SCRIM, Stage, chipsOf, describe, pickDrawn, poseQuad, siftRoll } from "../../src/scene/stage";
 import type { FocusTop, StageView } from "../../src/scene/stage";
 import { NO_CUES, corpusSteps, frameOf } from "./corpus";
 import type { Step } from "./corpus";
@@ -27,7 +27,7 @@ function rest(step: Step, focus: FocusTop): StageView {
 }
 
 group("the stack as the table's focus", () => {
-  it("stands on layout's stackUp quad, keeps where the plan set it aside as its base, and dims the table", () => {
+  it("stands on layout's stackUp quad, keeps where the plan set it aside as its base, and lays one scrim over the table", () => {
     const d = describe({ model: bolt.model, plan: bolt.plan, cues: NO_CUES, focus: at({ layer: "stack" }), hover: null });
     const key = bolt.plan.stack[0]!.key;
     const p = d.pieces.get(`stack:${key}`)!;
@@ -36,11 +36,29 @@ group("the stack as the table's focus", () => {
       want = bounds(bolt.plan.stackUp[0]!.quad);
     for (const k of ["l", "r", "t", "b"] as const) expect(Math.abs(q[k] - want[k]), k).toBeLessThan(1);
     expect(p.base).toBeDefined();
-    expect(d.tableTone).toBeLessThan(1);
+    // One scrim, no second dim: the table keeps its tone, nothing fades, and the stack and what it aims at stand above.
+    expect(d.scrim).toBe(SCRIM.alpha);
+    expect(d.tableTone).toBe(1);
+    const plain = describe({ model: bolt.model, plan: bolt.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null }).pieces;
+    for (const piece of d.pieces.values()) if (piece.kind === "page") expect(piece.look.fade, piece.id).toBe(plain.get(piece.id)!.look.fade);
+    else expect(piece.look.fade, piece.id).toBe(0);
+    expect(d.above.has(`stack:${key}`)).toBe(true);
     // Set aside, it stands where the plan set it, small.
     const aside = describe({ model: bolt.model, plan: bolt.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null }).pieces.get(`stack:${key}`)!;
     expect(aside.base).toBeUndefined();
     expect(aside.draw).toMatchObject({ up: false, tagScale: 1 });
+  });
+  it("its scrim eases in over 250 ms as it comes up and out over 180 ms as it is set aside", () => {
+    const stage = new Stage();
+    const up = at({ layer: "stack" });
+    stage.show(frameOf(bolt, [bolt.set], { mode: "cut", focus: NO_FOCUS }), 1000);
+    expect(stage.show(frameOf(bolt, [], { focus: up }), 1016).view.scrim).toBe(0);
+    const mid = stage.show(frameOf(bolt, [], { focus: up }), 1016 + SCRIM.inMs / 2).view.scrim;
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(SCRIM.alpha);
+    expect(stage.show(frameOf(bolt, [], { focus: up }), 1016 + SCRIM.inMs).view.scrim).toBe(SCRIM.alpha);
+    expect(stage.show(frameOf(bolt, [], { focus: NO_FOCUS }), 2000).view.scrim).toBe(SCRIM.alpha);
+    expect(stage.show(frameOf(bolt, [], { focus: NO_FOCUS }), 2000 + SCRIM.outMs).view.scrim).toBe(0);
   });
   it("a tap on the large card reaches the stack's group", () => {
     const view = rest(bolt, at({ layer: "stack" }));

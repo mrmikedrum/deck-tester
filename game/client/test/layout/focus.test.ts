@@ -20,17 +20,28 @@ const meets = (a: Quad, b: Quad): boolean => {
 };
 
 describe("the stack as the table's focus", () => {
-  it("025: the Bolt stands large in the middle, clear of Princess's plate it aims at and of every plaque", () => {
+  it("025: the Bolt stands large between the hand and the prompt, clear of Princess's plate it aims at", () => {
     const { plan } = planOf("025-play-stack-targets-player.json");
     expect(plan.stackUp).toHaveLength(1);
     const up = plan.stackUp[0]!, rest = plan.stack[0]!;
     const b = bounds(up.quad), r = bounds(rest.quad);
     // Much larger than set aside, and near the middle of the screen.
     expect(b.b - b.t).toBeGreaterThan(2.5 * (r.b - r.t));
-    expect(b.b - b.t).toBeGreaterThan(200);
-    expect(Math.abs((b.l + b.r) / 2 - VP.w / 2)).toBeLessThan(200);
+    // About life size: 0.52 of the screen's height, never under 360 design px.
+    expect(b.b - b.t).toBeGreaterThan(360 * designUnit(VP) - 1);
+    expect(Math.abs((b.l + b.r) / 2 - (470 + 838) / 2)).toBeLessThan(200);
     expect(up.reachable).toBe(true);
-    for (const g of plan.hits.groups.filter((x) => x.kind === "plate")) expect(meets(up.quad, g.quad), g.id).toBe(false);
+    // It may cover a plaque it does not aim at (the scrim is over it), never the one it aims at.
+    const plate = plan.hits.groups.find((x) => x.id === "plate:Princess")!;
+    expect(meets(up.quad, plate.quad)).toBe(false);
+  });
+  it("stands 0.52 of the screen's height, its middle at 46%, and never under 360 design px", () => {
+    for (const vp of [VP, { w: 1366, h: 1024 }, { w: 1180, h: 640 }]) {
+      const model = modelOf(corpusSnapshot("013-play-stack.json"), catalog, viewerOf())!;
+      const plan = planTable(tableInputOf(model, { viewport: vp }));
+      const b = bounds(plan.stackUp[0]!.quad), u = designUnit(vp);
+      expect(b.b - b.t, `${vp.w}x${vp.h}`).toBeGreaterThanOrEqual(Math.max(360 * u, 0.52 * vp.h) - 1);
+    }
   });
   it("every corpus stack: the focus never covers what the stack aims at", () => {
     for (const name of ["013-play-stack.json", "014-play-opponent-spell-targets-me-stack-targets-card.json", "025-play-stack-targets-player.json"]) {

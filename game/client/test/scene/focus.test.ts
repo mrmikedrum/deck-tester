@@ -5,7 +5,7 @@ import { describe as group, expect, it } from "vitest";
 import { leanOf } from "../../src/layout";
 import { leanedUnitAt } from "../../src/layout/focus";
 import { bounds, unitShape } from "../../src/layout/shape";
-import { DIM, DURATION, NO_FOCUS, Stage, describe, paced, poseQuad } from "../../src/scene/stage";
+import { DURATION, NO_FOCUS, SCRIM, Stage, describe, paced, poseQuad } from "../../src/scene/stage";
 import type { FocusTop } from "../../src/scene/stage";
 import type { BoardCues } from "../../src/play";
 import { NO_CUES, corpusSteps, frameOf } from "./corpus";
@@ -16,16 +16,16 @@ const carded = steps.find((s) => s.plan.hits.groups.some((g) => g.kind === "card
 const FRAME = 16;
 
 const top = (layer: FocusTop["layer"], table?: FocusTop["table"]): FocusTop => ({ ...NO_FOCUS, layer, ...(table ? { table } : {}) });
-const tone = (focus: FocusTop) => describe({ model: stacked.model, plan: stacked.plan, cues: NO_CUES, focus, hover: null }).tableTone;
+const scrim = (focus: FocusTop) => describe({ model: stacked.model, plan: stacked.plan, cues: NO_CUES, focus, hover: null }).scrim;
 
 group("focus below the top", () => {
-  it("the stack's dimming holds while a chrome layer sits over it", () => {
-    expect(tone(top("stack"))).toBe(DIM.table);
-    expect(tone(top("sheet", [{ layer: "stack", seat: null, group: null }]))).toBe(DIM.table);
-    expect(tone(top("inspector", [{ layer: "stack", seat: null, group: null }]))).toBe(DIM.table);
+  it("the stack's scrim holds while a chrome layer sits over it", () => {
+    expect(scrim(top("stack"))).toBe(SCRIM.alpha);
+    expect(scrim(top("sheet", [{ layer: "stack", seat: null, group: null }]))).toBe(SCRIM.alpha);
+    expect(scrim(top("inspector", [{ layer: "stack", seat: null, group: null }]))).toBe(SCRIM.alpha);
     // Only the top is known (an app that sends no table layers): a chrome layer over it is all there is.
-    expect(tone(top("sheet"))).toBe(1);
-    expect(tone(NO_FOCUS)).toBe(1);
+    expect(scrim(top("sheet"))).toBe(0);
+    expect(scrim(NO_FOCUS)).toBe(0);
   });
   it("the topmost table layer decides (a lean-in over the stack)", () => {
     const seat = [...stacked.plan.seats.keys()].find((s) => s !== stacked.model.viewer.perspective)!;
@@ -39,7 +39,9 @@ group("focus below the top", () => {
     const stage = new Stage();
     const under = top("stack", [{ layer: "stack", seat: null, group: null }]);
     stage.show(frameOf(stacked, [stacked.set], { focus: under, mode: "cut" }), FRAME);
-    const { report } = stage.show(frameOf(stacked, [], { focus: top("sheet", [{ layer: "stack", seat: null, group: null }]) }), 2 * FRAME);
+    // (The scrim and the printed card come up over their first 250 ms.)
+    stage.show(frameOf(stacked, [], { focus: under }), 30 * FRAME);
+    const { report } = stage.show(frameOf(stacked, [], { focus: top("sheet", [{ layer: "stack", seat: null, group: null }]) }), 31 * FRAME);
     expect(report.active).toBe(false);
   });
 });

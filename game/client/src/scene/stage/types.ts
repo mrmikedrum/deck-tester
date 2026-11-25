@@ -224,6 +224,10 @@ export type Draw =
       readonly up: boolean;
       /** Its owner's tag's scale: 1 set aside; as the focus, the size it was set aside. */
       readonly tagScale: number;
+      /** The printed card (its source's, for an ability): shown as the focus, over the painted face. */
+      readonly img: string | null;
+      /** An ability's effect, on a slip under the card as the focus (the card alone does not say which ability). */
+      readonly slip: string | null;
     }
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
   | { readonly t: "hidden" }
@@ -297,8 +301,12 @@ export interface Description {
   readonly home: ReadonlyMap<CardId, string>;
   readonly lanes: readonly Lane[];
   readonly aims: readonly Aim[];
-  /** The table's light: 1, or dimmed under the stack. */
+  /** The table's light: 1, or dimmed under a sift. */
   readonly tableTone: number;
+  /** The scrim over the table while the stack is the focus (its alpha), 0 for none. */
+  readonly scrim: number;
+  /** The pieces drawn above the scrim, in their own places: the stack's cards and what they aim at. */
+  readonly above: ReadonlySet<string>;
   readonly perspective: SeatId;
 }
 
@@ -420,6 +428,9 @@ export interface StageView {
   readonly strikes: readonly StrikeView[];
   readonly aims: readonly AimView[];
   readonly tableTone: number;
+  /** The scrim's alpha this frame (it eases in and out), and the pieces drawn above it (with the aims). */
+  readonly scrim: number;
+  readonly above: ReadonlySet<string>;
   /** The frame's time, ms (the effects' clock), and whether motion is reduced (effects hold still, particles go). */
   readonly now: Ms;
   readonly still: boolean;

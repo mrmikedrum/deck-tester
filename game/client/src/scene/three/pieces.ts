@@ -132,6 +132,7 @@ export function artWanted(v: ActorView): readonly string[] {
   if (v.face?.art) urls.push(v.face.art);
   if (v.draw.t === "plate" && v.draw.spec.art) urls.push(v.draw.spec.art);
   if (v.draw.t === "unit") for (const d of v.draw.dressed) if (d.face.art) urls.push(d.face.art);
+  if (v.draw.t === "stack" && v.draw.img) urls.push(v.draw.img);
   return urls;
 }
 
@@ -207,9 +208,13 @@ class Decal {
  * A group lying on the page at a card's foot, its axes the world's (+y up off the page, +z toward me), however the card
  * stands: where ash, shadows, brands, pools and a well's sign lie. Re-aimed every frame against the card's pitch.
  */
+/** Marks a ground: what lies on the page stays under the stack's scrim when its piece stands above it. */
+export const GROUND = "ground";
+
 class Ground {
   readonly group = new Group();
   constructor(parent: Group) {
+    this.group.userData[GROUND] = true;
     this.group.position.set(0, -CH / 2, 0);
     parent.add(this.group);
   }
@@ -641,6 +646,13 @@ class PlateView implements PieceView {
  * tag under it (the size it was set aside, however large the card stands as the focus), its mana crackling off its rim
  * (an ability's half as strong), igniting as it comes. As the table's focus it draws over everything on the table.
  */
+/** How long the printed card takes to come up over the painted face as the stack rises (and back as it is set aside). */
+const PRINT_FADE_S = motion.stackPrint / 1000;
+/** Set aside, a stack card is edged in its controller's seat ink (about 3 px at that size) instead of its tag. */
+const STACK_EDGE = 0.06;
+/** The tag's least scale under a card held up (about 22 px tall at the focus's size). */
+const STACK_TAG_MIN = 0.26;
+
 class StackView implements PieceView {
   readonly group = new Group();
   private readonly card: CardPart;
@@ -650,6 +662,19 @@ class StackView implements PieceView {
   private burst: Effect | null = null;
   private born: number | null = null;
   private up = false;
+  /** The printed card over the painted face, and the seat's edge round it set aside. */
+  private readonly print: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private printLease: Lease | null = null;
+  private printUrl: string | null = null;
+  private readonly edge: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private slip: Decal | null = null;
+  private slipText: string | null = null;
+  /** When `up` last changed (the clock's seconds; null: not yet drawn), and how far the print had come then. */
+  private turned: number | null = null;
+  private fadeFrom = 0;
+  private fade = 0;
+  private wanted = 0;
+  private tagScale = 1;
   constructor(
     private readonly env: PieceEnv,
     v: ActorView,
@@ -662,10 +687,17 @@ class StackView implements PieceView {
     this.drop = new Decal(host.painter.drop(), CW * 1.62 * SIZE.drop.s, CH * 1.46 * SIZE.drop.s, { renderOrder: 4, covers: false });
     this.drop.mesh.position.set(SIZE.drop.x, SIZE.drop.y, SIZE.drop.z);
     (this.drop.mesh.material as MeshBasicMaterial).opacity = materials.surface.drop.opacity;
+    this.print = new Mesh(new PlaneGeometry(CW, CH), new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+    this.print.position.z = this.card.obj.front.position.z + 0.002;
+    this.print.visible = false;
+    covers(this.print);
+    this.edge = new Mesh(new PlaneGeometry(CW + STACK_EDGE, CH + STACK_EDGE * (CW / CH) * 1.4), new MeshBasicMaterial({ color: new Color(d.colour), toneMapped: false }));
+    this.edge.position.z = -0.001;
     const seed = typeof v.id === "string" ? [...v.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) : 7;
     this.crackle = spellFx(env.fx, d.colours, seed, d.ability ? 0.5 : 1, CW);
     this.burst = burstFx(env.fx, d.colours, seed, Number.NaN);
-    this.group.add(this.drop.mesh, this.card.obj.group, this.tag.mesh, this.crackle.object, this.burst.object);
+    this.group.add(this.drop.mesh, this.edge, this.card.obj.group, this.print, this.tag.mesh, this.crackle.object, this.burst.object);
+    this.dress(d);
     this.raise(d.up);
     this.sizeTag(d.tagScale);
   }
@@ -674,8 +706,39 @@ class StackView implements PieceView {
     this.up = up;
     this.group.traverse((o) => {
       if (o === this.crackle.object || o.parent === this.crackle.object || o === this.burst?.object) return;
-      if ((o as Mesh).isMesh) o.renderOrder = up ? 11 : o === this.drop.mesh ? 4 : o === this.tag.mesh ? 6 : 0;
+      if ((o as Mesh).isMesh) o.renderOrder = up ? (o === this.print ? 12 : o === this.tag.mesh || o === this.slip?.mesh ? 13 : 11) : o === this.drop.mesh ? 4 : o === this.tag.mesh ? 6 : o === this.print ? 1 : 0;
     });
+  }
+  /** The printed image (leased once it is decoded) and an ability's slip. */
+  private dress(d: Extract<Draw, { t: "stack" }>): void {
+    if (d.img !== this.printUrl || !this.printLease) {
+      const next = d.img ? this.env.host.painter.printed(d.img) : null;
+      if (next && next.key === this.printLease?.key) next.release();
+      else {
+        this.printLease?.release();
+        this.printLease = next;
+        this.print.material.map = next ? next.texture : null;
+        this.print.material.needsUpdate = true;
+      }
+      this.printUrl = d.img;
+    }
+    if (d.slip !== this.slipText) {
+      if (this.slip) {
+        this.group.remove(this.slip.mesh);
+        this.slip.dispose();
+        this.slip = null;
+      }
+      if (d.slip) {
+        const lease = this.env.host.painter.slip(d.slip);
+        const w = CW * 1.15, h = (w * lease.height) / lease.width;
+        this.slip = new Decal(lease, w, h, { renderOrder: 6 });
+        this.slip.mesh.position.set(0, SIZE.tag.y - SIZE.tag.h / 2 - 0.015 - h / 2, 0.02);
+        this.group.add(this.slip.mesh);
+        if (this.up) this.raise(true);
+        this.sizeTag(this.tagScale);
+      }
+      this.slipText = d.slip;
+    }
   }
   front(): Mesh | null {
     return this.card.obj.front;
@@ -684,13 +747,22 @@ class StackView implements PieceView {
     const d = v.draw as Extract<Draw, { t: "stack" }>;
     this.card.face(v.face);
     this.tag.set(this.env.host.painter.tag(d.tag, d.colour));
+    this.edge.material.color.set(d.colour);
+    this.dress(d);
     if (d.up !== this.up) this.raise(d.up);
     this.sizeTag(d.tagScale);
   }
-  /** The owner's tag stays the size it was (h.js: `mid / hPx`, tucked up onto the card's foot). */
+  /** Held up as the focus the controller's tag hangs under the printed card, about the size it reads at set aside (h.js:
+   * `mid / hPx`) but never smaller than a readable share; an ability's slip hangs under it. */
   private sizeTag(k: number): void {
-    this.tag.mesh.scale.setScalar(k);
-    this.tag.mesh.position.y = k < 1 ? -CH / 2 + 0.08 - 0.1 * k : SIZE.tag.y;
+    this.tagScale = k;
+    const s = this.up ? Math.max(STACK_TAG_MIN, k) : k;
+    this.tag.mesh.scale.setScalar(s);
+    this.tag.mesh.position.y = this.up ? -CH / 2 - 0.01 - (SIZE.tag.h * s) / 2 : SIZE.tag.y;
+    if (this.slip) {
+      const h = (this.slip.mesh.geometry as PlaneGeometry).parameters.height;
+      this.slip.mesh.position.y = this.tag.mesh.position.y - (SIZE.tag.h * s) / 2 - 0.012 - h / 2;
+    }
   }
   look(v: ActorView, clock: Clock): void {
     this.card.look(0, v.sample.fade, v.mark, v.sample.glow);
@@ -703,6 +775,25 @@ class StackView implements PieceView {
       }
       this.burst = burstFx(this.env.fx, (v.draw as Extract<Draw, { t: "stack" }>).colours, 11, clock.t);
       this.group.add(this.burst.object);
+      if (this.up) this.raise(true);
+    }
+    // The printed card comes up over the painted face as it rises, and goes as it is set aside (no motion of its own).
+    const want = this.up ? 1 : 0;
+    if (this.turned === null || want !== this.wanted) {
+      this.turned = clock.t;
+      this.fadeFrom = this.fade;
+      this.wanted = want;
+    }
+    const k = clock.still ? 1 : Math.min(1, Math.max(0, (clock.t - this.turned) / PRINT_FADE_S));
+    this.fade = this.fadeFrom + (want - this.fadeFrom) * k;
+    const shown = this.printLease ? this.fade : 0;
+    this.print.material.opacity = shown;
+    this.print.visible = shown > 0.001;
+    this.tag.mesh.visible = this.up;
+    this.edge.visible = !this.up;
+    if (this.slip) {
+      (this.slip.mesh.material as MeshBasicMaterial).opacity = this.fade;
+      this.slip.mesh.visible = this.fade > 0.001;
     }
     const level = fxLevel(v.sample.fade);
     this.crackle.tick(clock.t, level, clock.still);
@@ -714,6 +805,12 @@ class StackView implements PieceView {
     this.drop.dispose();
     this.crackle.dispose();
     this.burst?.dispose();
+    this.printLease?.release();
+    this.print.geometry.dispose();
+    this.print.material.dispose();
+    this.edge.geometry.dispose();
+    this.edge.material.dispose();
+    this.slip?.dispose();
   }
 }
 

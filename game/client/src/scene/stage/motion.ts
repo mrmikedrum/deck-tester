@@ -112,11 +112,9 @@ export const DIM = {
   /** Another seat while I lean in on one (`0.55`); my own things then (`0.45`). */
   leanOther: 0.55,
   leanMine: 0.45,
-  /** Everything the stack does not touch while the stack is the focus (`layer() ? 0.8`). */
-  stack: 0.8,
   /** The others' things on another player's turn (`soft`: `0.4`). */
   soft: 0.4,
-  /** The table itself under the stack (`tableMesh` colour 0.42). */
+  /** The table itself under a sift (`tableMesh` colour 0.42). */
   table: 0.42,
   /** In a fight, what doesn't fight: creatures (`0.45`), everything else on the pages (`0.7`) (h.js `targets`). */
   fightCreature: 0.45,
@@ -124,6 +122,12 @@ export const DIM = {
   /** A chosen card lifts off its page (`t.lift = 0.1`). */
   selectedLift: 0.1,
 } as const;
+
+/**
+ * The stack as the focus: one warm near-black scrim over the whole table (the sift's mechanism), in over 250 ms and out
+ * over 180. Its alpha is the look's (as a scrim over the finished picture); the host applies it before tone mapping.
+ */
+export const SCRIM = { alpha: 0.55, inMs: 250, outMs: 180 } as const;
 
 /** The bounded backlog (docs: "The backlog is bounded"); ages from the theme's motion timings. */
 export const BACKLOG = {

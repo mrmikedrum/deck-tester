@@ -5,14 +5,14 @@
 // the plan put them (keeping that pose as `base`, which taps are measured from): the stack as the focus stands large in
 // the middle (the plan's `stackUp`), a lean-in carries one seat's page up over the middle (layout `leanOf`), and a sift
 // fans a pile's cards out in front of the camera (layout `siftOf`).
-import { entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
+import { abilityText, entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
 import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
-import { DIM } from "./motion";
+import { DIM, SCRIM } from "./motion";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
 import { pagePose, platePose, screenPose, stackPose, unitPose, zonePose } from "./poses";
 import { LOOK, tableFocus } from "./types";
@@ -52,12 +52,6 @@ export function describe(input: DescribeInput): Description {
     for (const id of p.members) if (!home.has(id)) home.set(id, p.id);
   };
 
-  // What the stack touches keeps its light while the stack is the focus (h.js `stackTouches`: its source, its targets).
-  const touched = new Set<CardId>();
-  for (const it of model.stack) {
-    if (it.source !== null) touched.add(it.source);
-    for (const t of it.targets) if ("card" in t) touched.add(t.card);
-  }
   // The table follows its topmost open layer, even under a chrome layer (a sheet over the stack keeps it dimmed).
   const table = tableFocus(focus);
   const stackUp = table?.layer === "stack" && model.stack.length > 0;
@@ -77,10 +71,10 @@ export function describe(input: DescribeInput): Description {
     const l = leaned(seat, p, yawed);
     return l ? { pose: l, base: p } : { pose: p };
   };
-  /** How far a seat's things dim (h.js `dimTo`), or 0. */
-  const dimOf = (seat: SeatId, cards: readonly CardId[]): number => {
+  /** How far a seat's things dim (h.js `dimTo`), or 0. Under the stack's scrim nothing dims again. */
+  const dimOf = (seat: SeatId): number => {
     if (leanSeat) return seat === me ? DIM.leanMine : seat === leanSeat ? 0 : DIM.leanOther;
-    if (stackUp) return cards.some((c) => touched.has(c)) ? 0 : DIM.stack;
+    if (stackUp) return 0;
     if (softSeat && seat !== softSeat && seat !== me) return DIM.soft;
     return 0;
   };
@@ -101,7 +95,7 @@ export function describe(input: DescribeInput): Description {
     // The page (h.js floors): lit on its turn or focus, in shadow out of it, dimmer under the stack.
     const page = sp.fixtures.page;
     const lit = leanSeat ? leanSeat === seat : softSeat ? softSeat === seat : mine && model.active === me;
-    const tone = (lit ? 1.1 : 1) * (leanSeat && leanSeat !== seat && !mine ? 0.72 : 1) * (stackUp ? 0.5 : 1);
+    const tone = (lit ? 1.1 : 1) * (leanSeat && leanSeat !== seat && !mine ? 0.72 : 1);
     const pageDraw: Draw = { t: "page", place, mine, seed: 7 + seat.length * 131 + seat.charCodeAt(0), turn: model.active === seat };
     put({
       id: `page:${seat}`,
@@ -120,7 +114,7 @@ export function describe(input: DescribeInput): Description {
 
     const rows = mine ? wellRows(sp.units) : new Map<string, { alt: boolean; small: boolean }>();
     for (const u of sp.units) {
-      const dim = dimOf(seat, [...u.members, ...u.dressing]);
+      const dim = dimOf(seat);
       const off = fighting && !u.fighting ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
       const piece = unitPiece(input, seat, u, mine, Math.max(dim, off), lookOf, markOf, rows.get(u.id));
       // Leaned in, a card grows where it stands (about its foot) as well as with its page; taps are still measured from
@@ -140,7 +134,7 @@ export function describe(input: DescribeInput): Description {
         members,
         face: members[members.length - 1] ?? null,
         ...placed(seat, zonePose(z.placement)),
-        look: lookOf(dimOf(seat, members), mark, false, false),
+        look: lookOf(dimOf(seat), mark, false, false),
         form: `zone|${z.zone}|${mine}`,
         mods: `${mark ?? ""}`,
         mark,
@@ -164,7 +158,7 @@ export function describe(input: DescribeInput): Description {
         members: [cmd.card],
         face: cmd.card,
         ...placed(seat, unitPose(plan.projector, cmd.placement, false)),
-        look: lookOf(Math.max(dimOf(seat, [cmd.card]), fighting ? DIM.fightOther : 0), mark, input.hover === id, false),
+        look: lookOf(Math.max(dimOf(seat), fighting ? DIM.fightOther : 0), mark, input.hover === id, false),
         form: `command|${cmd.card}`,
         mods: faceKey(face) + (mark ?? ""),
         mark,
@@ -262,6 +256,8 @@ export function describe(input: DescribeInput): Description {
         up,
         // (Set aside a card stands 0.75 of the middle's size: as the focus its tag stays the middle's.)
         tagScale: upQuad ? Math.min(1, quadHeight(entry.quad) / 0.75 / quadHeight(upQuad)) : 1,
+        img: src && !src.faceDown ? src.face.img : null,
+        slip: !item.spell && src ? abilityText(item.text, src.face.name) || null : null,
       },
       needsMembers: members.length > 0,
     });
@@ -271,8 +267,24 @@ export function describe(input: DescribeInput): Description {
   if (sifting) for (const p of siftPieces(model, plan, sifting, table?.page ?? 0)) pieces.set(p.id, p);
 
   // While I lean in on a seat the stack is set aside, and its arcs with it.
-  const aims = lean ? [] : aimsOf(model, pieces, home);
-  return { pieces, home, lanes: lean ? [] : lanesOf(model, plan, cues, pieces), aims, tableTone: stackUp ? DIM.table : sifting ? DIM.table : 1, perspective: me };
+  const aims = lean ? [] : aimsOf(model, pieces, home, stackUp);
+  // The stack as the focus lays one scrim over the table; the stack's cards, what they aim at and the arcs stand above it,
+  // each in its own place (one dim, never a second one per piece).
+  const above = new Set<string>();
+  if (stackUp) {
+    for (const id of pieces.keys()) if (id.startsWith("stack:")) above.add(id);
+    for (const a of aims) above.add(a.to);
+  }
+  return {
+    pieces,
+    home,
+    lanes: lean ? [] : lanesOf(model, plan, cues, pieces),
+    aims,
+    tableTone: sifting ? DIM.table : 1,
+    scrim: stackUp ? SCRIM.alpha : 0,
+    above,
+    perspective: me,
+  };
 }
 
 const quadHeight = (q: readonly { readonly y: number }[]): number => Math.max(...q.map((p) => p.y)) - Math.min(...q.map((p) => p.y));
@@ -360,8 +372,9 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
   return out;
 }
 
-/** Each stack item's aim at each thing it targets that is drawn: a card's piece, a seat's plaque, a spell on the stack. */
-function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: ReadonlyMap<CardId, string>): Aim[] {
+/** Each stack item's aim at each thing it targets that is drawn: a card's piece, a seat's plaque, a spell on the stack.
+ * Faint under the top, and every one while the stack is set aside. */
+function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: ReadonlyMap<CardId, string>, up: boolean): Aim[] {
   const out: Aim[] = [];
   const top = model.stack[model.stack.length - 1];
   for (const it of model.stack) {
@@ -383,7 +396,7 @@ function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: Rea
         } else to = home.get(t.card);
       }
       if (!to || !pieces.has(to) || pieces.get(to)!.kind === "hidden") return;
-      out.push({ id: `aim:${it.id}:${j}`, from, to, onto, colours, faint: it !== top });
+      out.push({ id: `aim:${it.id}:${j}`, from, to, onto, colours, faint: it !== top || !up });
     });
   }
   return out;

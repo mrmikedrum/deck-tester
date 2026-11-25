@@ -25,11 +25,12 @@ vi.mock("../../src/scene/three/pieces", async () => {
     placeGroup() {},
     artWanted: () => [],
     GhostPiece: class {},
+    GROUND: "ground",
   };
 });
 
 const VP = { w: 1180, h: 820 };
-const host = { scene: { add() {}, remove() {} }, setTableTone() {}, painter: { fx: () => null }, renderer: { getPixelRatio: () => 1 } } as unknown as Host;
+const host = { scene: { add() {}, remove() {} }, setTableTone() {}, setScrim() {}, painter: { fx: () => null }, renderer: { getPixelRatio: () => 1 } } as unknown as Host;
 
 /** Dack's 30 Elementals (5 tapped), 20 Beasts (`beasts` of them tapped) and 12 Spirits: folded into one pile of unlike
  * creatures, its top an untapped Elemental whatever the Beasts do. */

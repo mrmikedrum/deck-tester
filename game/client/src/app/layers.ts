@@ -3,7 +3,7 @@
 // stack's rules (`openStackRules`), the chips of set-aside layers and the Game menu's decks. Pure.
 import type { CardAction, Controls } from "../play";
 import type { CardId } from "../protocol";
-import { handOrder, isCreature } from "../model";
+import { abilityText, handOrder, isCreature } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, SiftView, StackRow } from "../chrome";
 import { SIFT_PAGE, siftOf, siftPages } from "../layout";
@@ -108,12 +108,6 @@ export function handSheetOf(model: TableModel, playable: ReadonlySet<CardId>, fr
     .sort(handOrder);
   return { cards: cards.map((c) => ({ id: c.id, name: c.face.name, cost: c.face.cost || null, playable: playable.has(c.id), fresh: fresh.includes(c.id) })) };
 }
-
-/** live.js `abilityText`, in full: the engine's words for an ability without its card's name in front. */
-const abilityText = (text: string, name: string): string => {
-  const t = text.trim(), prefix = `${name} - `;
-  return t.startsWith(prefix) ? t.slice(prefix.length) : t;
-};
 
 /** The stack, top first: whose each item is, what an ability does, the card's rules. */
 export function stackRowsOf(model: TableModel): StackRow[] {

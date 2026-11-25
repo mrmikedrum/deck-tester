@@ -8,7 +8,8 @@ import type { PieceKind, StageView } from "../stage/types";
 import { Arc, FxKit, Ribbon, strikeFx } from "./fx";
 import type { Effect } from "./fx";
 import type { Host } from "./host";
-import { COVERS, GhostPiece, artWanted, createPiece, placeGroup } from "./pieces";
+import { ABOVE } from "./focus-pass";
+import { COVERS, GROUND, GhostPiece, artWanted, createPiece, placeGroup } from "./pieces";
 import type { Clock, PieceEnv, PieceView } from "./pieces";
 
 /** An object's place on screen (CSS px): its bounding box, and for a page the quad of its outline. */
@@ -43,6 +44,19 @@ interface Entry {
   readonly view: PieceView | null;
   /** A stack card standing up as the table's focus (the audit sets it aside). */
   up: boolean;
+  /** Drawn above the stack's scrim. */
+  above: boolean;
+}
+
+/**
+ * Put an object on the layer drawn above the stack's scrim, or back on the table's. What lies on the page under it (its
+ * ground: the sigil, ash and shadow) stays under the scrim.
+ */
+function setAbove(o: Object3D, above: boolean): void {
+  if (o.userData[GROUND]) return;
+  if (above) o.layers.set(ABOVE);
+  else o.layers.set(0);
+  for (const c of o.children) setAbove(c, above);
 }
 
 export class StageRenderer {
@@ -97,7 +111,7 @@ export class StageRenderer {
       }
       if (!e) {
         const pv = createPiece(this.env(), v);
-        e = { kind: v.kind, form: v.form, mods: v.mods, view: pv, up: false };
+        e = { kind: v.kind, form: v.form, mods: v.mods, view: pv, up: false, above: false };
         if (pv) this.root.add(pv.group);
         this.pieces.set(v.id, e);
       } else if (e.mods !== v.mods || (this.arrived.size > 0 && artWanted(v).some((u) => this.arrived.has(u)))) {
@@ -109,6 +123,10 @@ export class StageRenderer {
       placeGroup(e.view.group, v.sample);
       e.view.group.visible = v.visible;
       e.view.look(v, clock);
+      // Above the stack's scrim, or back on the table (its effects are made as it goes, so every frame while above).
+      const above = view.scrim > 0 && view.above.has(v.id);
+      if (above || e.above) setAbove(e.view.group, above);
+      e.above = above;
     }
     for (const [id, e] of [...this.pieces]) if (!seen.has(id)) this.drop(id, e);
 
@@ -190,6 +208,8 @@ export class StageRenderer {
       arc.tick(clock.t, 1, clock.still);
     }
     for (const [id, arc] of [...this.arcs]) if (!aimed.has(id)) this.dropArc(id, arc);
+    setAbove(this.arcGroup, view.scrim > 0);
+    this.host.setScrim(view.scrim);
     this.host.setTableTone(view.tableTone);
     this.arrived.clear();
   }
@@ -309,6 +329,7 @@ export class StageRenderer {
     for (const [id, e] of this.pieces) if (e.view) owner.set(e.view.group, id);
     for (const [id, g] of this.ghosts) owner.set(g.group, id);
     const ray = new Raycaster();
+    ray.layers.enableAll(); // what stands above the stack's scrim is still on the table
     ray.setFromCamera(new Vector2((x / w) * 2 - 1, -(y / h) * 2 + 1), camera);
     this.root.updateWorldMatrix(true, true);
     let near: { id: string; order: number } | null = null, flat: { id: string; order: number } | null = null;

@@ -56,6 +56,7 @@ function rig(budget: number) {
     scene: new Scene(),
     art: (u: string) => arts.get(u),
     setTableTone: () => undefined,
+    setScrim: () => undefined,
   } as unknown as Host;
   const view = new StageRenderer(host, () => 0);
   arrived.to = (url) => view.artArrived(url);
@@ -105,6 +106,8 @@ const board: StageView = {
   strikes: [],
   aims: [],
   tableTone: 1,
+  scrim: 0,
+  above: new Set(),
   drawn: new Map(),
   now: 0,
   still: false,
