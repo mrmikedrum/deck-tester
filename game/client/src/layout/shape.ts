@@ -37,6 +37,8 @@ export interface Shape {
   readonly tailed?: boolean;
   /** Its file's front (rank 0, standing on the line): the card a tail borrows from. */
   readonly front?: boolean;
+  /** Pulled up out of its file while it acts (aimed at): like a focus, it may stand over what is behind it until then. */
+  readonly raised?: boolean;
 }
 
 const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
@@ -114,6 +116,7 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     ...(u.file ? { file: u.file.id } : {}),
     ...(u.file && u.file.rank > 0 && !u.raised && !u.fighting ? { tailed: true } : {}),
     ...(u.file && u.file.rank === 0 && !u.fighting ? { front: true } : {}),
+    ...(u.raised && !u.fighting ? { raised: true } : {}),
   };
 }
 
@@ -291,7 +294,7 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     const near = sorted.filter((o) => o !== s && o.group !== s.group && o.order >= s.order && overlaps(box.get(o)!, bb));
     // What covers it: items drawn on top of it. The same pile never covers itself, nor does a file (a shingled column or
     // heap is one pile whose cards overlap on purpose), and a tail is a tap target, not a thing drawn.
-    const over = near.filter((o) => o.kind !== "tail" && (!s.file || o.file !== s.file));
+    const over = near.filter((o) => o.kind !== "tail" && !o.raised && (!s.file || o.file !== s.file));
     const covered = (q: Quad, n: number, m: number): number => {
       let hit = 0, all = 0;
       for (let i = 0; i < n; i++)

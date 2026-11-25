@@ -59,6 +59,8 @@ interface Memory {
   few: boolean;
   /** Each card's unit id, so a run that loses its first card keeps its id. */
   uid: Record<string, string>;
+  /** Theirs: how deep the support row stood, so it holds its place when what is in front of it goes (a wipe). */
+  supA?: number;
   /** My support and wells are mat's: its memory. */
   mat: LayoutMemory | null;
 }
@@ -217,7 +219,7 @@ function plan(input: SeatInput): SeatPlan {
     units.push(...matPlan.units.filter((u) => u.role !== "creature"));
     const hi = theirs.length ? Math.min(...theirs.map((u) => regionOf(r, u.placement.pos).a)) : clearOfHand(g, r) + 0.6;
     aLine = Math.max(clearOfHand(g, r) + 0.1, hi);
-  } else aLine = 0.45;
+  } else aLine = r.position === "across" ? 0.5 : 0.7; // (clear of the page's border, so the line reads as its own rule)
 
   // ---- the ready line and its files ----------------------------------------------------------------------------------
   const px = me ? FLOOR.mine : FLOOR.theirs;
@@ -394,6 +396,7 @@ function plan(input: SeatInput): SeatPlan {
 
   // ---- theirs: the spent row, the support row, the back band --------------------------------------------------------
   let fixtures: Fixtures;
+  let supA: number | undefined;
   if (!me && back) {
     let a = files.back + 0.1;
     const whole = bandSpan(g, r, false, a + 0.5);
@@ -411,7 +414,13 @@ function plan(input: SeatInput): SeatPlan {
         layoutSpent(a, spentGeo(a).sS);
         a = spentGeo(a).far + 0.15;
       }
-      if (sup.length) layoutSupport(supportGeo(a), undefined, back.slipY + 2);
+      // (Where it stood before, while that still fits: a wipe leaves the support where it was, behind empty lines.)
+      const held = mem?.supA;
+      if (held !== undefined && held > a && supportGeo(held).top >= back.slipY + 2) a = held;
+      if (sup.length) {
+        supA = a;
+        layoutSupport(supportGeo(a), undefined, back.slipY + 2);
+      }
     }
     back.heap();
     fixtures = back.fixtures;
@@ -429,7 +438,7 @@ function plan(input: SeatInput): SeatPlan {
   for (const run of spent) for (const id of run.ids) if (mem?.col[String(id)] !== undefined && col[String(id)] === undefined) col[String(id)] = mem.col[String(id)]!;
   const uid: Record<string, string> = {};
   for (const u of units) for (const id of u.members) uid[String(id)] = u.id;
-  const memory: LayoutMemory = { v: 1, paradigm: "lines", fit: { col, k: K, few, uid, mat: matPlan?.memory ?? null } satisfies Memory };
+  const memory: LayoutMemory = { v: 1, paradigm: "lines", fit: { col, k: K, few, uid, mat: matPlan?.memory ?? null, ...(supA !== undefined ? { supA } : {}) } satisfies Memory };
   return new Ledger(board.cards.map((c) => c.id)).seal({
     seat: board.seat,
     units,

@@ -989,8 +989,8 @@ class PageView implements PieceView {
     const l = d.line;
     if (l) {
       const len = Math.hypot(l.x1 - l.x0, l.z1 - l.z0);
-      const geo = new PlaneGeometry(len, 0.06);
-      const mat = new MeshBasicMaterial({ color: new Color(seatInk[d.place]), transparent: true, opacity: 0.85, depthWrite: false });
+      const geo = new PlaneGeometry(len, 0.09);
+      const mat = new MeshBasicMaterial({ color: new Color(seatInk[d.place]), transparent: true, opacity: 0.95, depthWrite: false });
       const m = new Mesh(geo, mat);
       m.rotation.order = "YXZ";
       m.rotation.set(-Math.PI / 2, -Math.atan2(l.z1 - l.z0, l.x1 - l.x0), 0);
