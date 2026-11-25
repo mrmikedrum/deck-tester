@@ -19,9 +19,9 @@ export interface NameFit {
  * A name is never smaller than `min` px on the face (52; 72 on the far pages, where a card is small on screen): one line
  * if it fits, else two; a word too long even then is drawn narrower (fillText's maxWidth), never smaller.
  */
-export function nameLines(x: Ctx, text: string, maxW: number, min = 52): NameFit {
+export function nameLines(x: Ctx, text: string, maxW: number, min = 52, family: string = NUM): NameFit {
   for (let s = min + 10; s >= min; s -= 2) {
-    x.font = `700 ${s}px ${NUM}`;
+    x.font = `700 ${s}px ${family}`;
     if (x.measureText(text).width <= maxW) return { size: s, lines: [text] };
   }
   const words = text.split(" ");
@@ -40,11 +40,11 @@ export function nameLines(x: Ctx, text: string, maxW: number, min = 52): NameFit
     return lines;
   };
   for (let s = min + 4; s >= min; s -= 2) {
-    x.font = `700 ${s}px ${NUM}`;
+    x.font = `700 ${s}px ${family}`;
     const lines = wrap();
     if (lines.length <= 2 && lines.every((l) => x.measureText(l).width <= maxW)) return { size: s, lines };
   }
-  x.font = `700 ${min}px ${NUM}`;
+  x.font = `700 ${min}px ${family}`;
   const lines = wrap();
   return { size: min, lines: lines.length <= 2 ? lines : [lines[0] ?? "", lines.slice(1).join(" ")] };
 }

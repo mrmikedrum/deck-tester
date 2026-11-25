@@ -22,7 +22,7 @@
   function typeLine(c) {
     if (c.faceDown) return "Creature";
     if (c.becameLand) return c.landName ? "Legendary Land" : "Land";
-    return face(c).type;
+    return c._type || face(c).type;
   }
   function art(c) { return c.faceDown ? null : c.landName ? printed(c).art : face(c).art; }
   function image(c) { return c.faceDown ? null : face(c).img; }

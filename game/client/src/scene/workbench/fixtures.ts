@@ -26,6 +26,13 @@ export interface Entry {
   readonly tags?: readonly string[];
   readonly typeLine?: string;
   readonly text?: string;
+  /** What it is also made of (an artifact creature, a land creature), its whole face if it has one, a basic land. */
+  readonly made?: FaceSpec["made"];
+  readonly whole?: FaceSpec["whole"];
+  readonly basic?: boolean;
+  /** Figures it has but is not a creature now (a vehicle). */
+  readonly hollow?: boolean;
+  readonly defense?: string;
 }
 
 const slug = (name: string): string =>
@@ -49,19 +56,39 @@ export function faceOf(e: Entry, far: boolean, ready: (url: string) => boolean):
   const url = e.art === undefined ? slug(e.name) : e.art;
   const art = url && ready(artUrl(url)) ? artUrl(url) : null;
   const foot: FaceSpec["foot"] =
-    e.kind === "creature"
+    e.kind === "creature" || e.hollow
       ? {
           kind: "creature",
           power: e.power ?? 1,
           toughness: e.toughness ?? 1,
           basePower: e.basePower ?? e.power ?? 1,
           baseToughness: e.baseToughness ?? e.toughness ?? 1,
+          ...(e.hollow ? { hollow: true } : {}),
         }
       : e.kind === "walker"
         ? { kind: "walker", loyalty: e.loyalty ?? "4" }
-        : e.kind === "land"
-          ? { kind: "land", mana: e.mana ?? [] }
-          : { kind: "type", typeLine: e.typeLine ?? (e.kind === "enchantment" ? "Enchantment" : "Artifact") };
+        : e.defense !== undefined
+          ? { kind: "battle", defense: e.defense }
+          : e.kind === "land"
+            ? { kind: "land", mana: e.mana ?? [] }
+            : { kind: "type", typeLine: e.typeLine ?? (e.kind === "enchantment" ? "Enchantment" : "Artifact") };
+  const mana = e.mana ?? [];
+  const made: FaceSpec["made"] =
+    e.made ?? (e.kind === "artifact" || e.kind === "rock" ? ["artifact"] : e.kind === "enchantment" ? ["enchantment"] : e.kind === "land" ? ["land"] : []);
+  const whole: FaceSpec["whole"] =
+    e.whole !== undefined
+      ? e.whole
+      : e.kind === "walker"
+        ? "walker"
+        : e.kind !== "land"
+          ? null
+          : e.basic
+            ? "basic"
+            : mana.length >= 4
+              ? "any"
+              : mana.length >= 2
+                ? "dual"
+                : "utility";
   return faceSpec({
     name: e.name,
     frame: e.frame,
@@ -75,6 +102,9 @@ export function faceOf(e: Entry, far: boolean, ready: (url: string) => boolean):
     commander: e.commander ?? false,
     gem: e.gem ?? "none",
     tags: e.tags ?? [],
+    made,
+    whole,
+    mana,
   });
 }
 

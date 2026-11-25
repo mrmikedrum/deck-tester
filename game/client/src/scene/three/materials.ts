@@ -4,7 +4,7 @@ import { Color, MeshBasicMaterial, MeshStandardMaterial } from "three";
 import type { Texture } from "three";
 import { materials, motion, signal } from "../../theme";
 
-const { rim: rimParams, faceTone } = materials;
+const { rim: rimParams, faceTone, slab } = materials;
 
 export type Signal = "option" | "selected" | "danger";
 
@@ -47,6 +47,8 @@ interface FaceUniforms {
   tap: Uniform<number>;
   rim: Uniform<Color>;
   rimW: Uniform<number>;
+  /** How far the card is turned (0 square, 1 a quarter): which edge is nearest me, for the lamp's line. */
+  turn: Uniform<number>;
 }
 
 const FACE_UNIFORMS = new WeakMap<MeshBasicMaterial, FaceUniforms>();
@@ -62,19 +64,23 @@ export function faceMaterial(map: Texture, rim: Rim, dim = false): MeshBasicMate
     tap: { value: 0 },
     rim: { value: new Color(0, 0, 0) },
     rimW: { value: rimParams.idle },
+    turn: { value: 0 },
   };
   FACE_UNIFORMS.set(m, u);
   m.toneMapped = false;
   const t = faceTone;
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, { dim: u.dim, tap: u.tap, rim: u.rim, rimW: u.rimW, uTime: rim.time });
+    Object.assign(sh.uniforms, { dim: u.dim, tap: u.tap, rim: u.rim, rimW: u.rimW, uTime: rim.time, turn: u.turn });
     sh.fragmentShader =
-      "uniform float dim;\nuniform float tap;\nuniform vec3 rim;\nuniform float rimW;\nuniform float uTime;\n" +
+      "uniform float dim;\nuniform float tap;\nuniform vec3 rim;\nuniform float rimW;\nuniform float uTime;\nuniform float turn;\n" +
       sh.fragmentShader.replace(
         "#include <map_fragment>",
         "#include <map_fragment>\nfloat g_ = dot(diffuseColor.rgb, vec3(.299,.587,.114));\n" +
           `diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(g_), diffuseColor.rgb, ${t.tap.mix.toFixed(2)}) * vec3(${t.tap.tint.map((n) => n.toFixed(2)).join(",")}), tap);\n` +
           `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(g_) * ${t.dim.grey.toFixed(2)}, dim * ${t.dim.amount.toFixed(2)});\n` +
+          // The lamp's line along the face's near edge: its foot, or its right side when it lies turned.
+          `float near_ = mix(vMapUv.y, 1.0 - vMapUv.x, step(0.5, turn));\n` +
+          `diffuseColor.rgb += ${slab.highlight.k.toFixed(3)} * (1.0 - dim) * smoothstep(${slab.highlight.w.toFixed(3)}, 0.0, near_);\n` +
           "float e_ = min(min(vMapUv.x, 1.0 - vMapUv.x) * 1.4, min(vMapUv.y, 1.0 - vMapUv.y));\n" +
           "float flick_ = 0.85 + 0.15 * sin(uTime * 7.0 + vMapUv.y * 20.0) * sin(uTime * 3.1 + vMapUv.x * 17.0);\n" +
           `float sel_ = step(${rimParams.hardAbove.toFixed(3)}, rimW);\n` +
@@ -104,9 +110,10 @@ export function setSignal(m: MeshBasicMaterial, rim: Rim, kind: Signal | null): 
 const ZERO = new Color(0, 0, 0);
 
 /** A face material's look uniforms. */
-export function setLook(m: MeshBasicMaterial, look: { readonly tap?: number; readonly dim?: number }): void {
+export function setLook(m: MeshBasicMaterial, look: { readonly tap?: number; readonly dim?: number; readonly turn?: number }): void {
   const u = FACE_UNIFORMS.get(m);
   if (!u) return;
+  if (look.turn !== undefined) u.turn.value = look.turn;
   if (look.tap !== undefined) u.tap.value = look.tap;
   if (look.dim !== undefined) u.dim.value = look.dim;
 }
@@ -114,6 +121,9 @@ export function setLook(m: MeshBasicMaterial, look: { readonly tap?: number; rea
 /** What every card shares: its edge, the invisible side faces, and the metals of chips and mounts. */
 export class SharedMaterials {
   readonly hidden = new MeshBasicMaterial({ visible: false });
+  /** A card's stock, lit by the lamp: its near edge catches the light, its sides and far edge fall into shade. */
+  readonly stock = new MeshStandardMaterial({ color: materials.slab.stock, roughness: materials.slab.roughness });
+  readonly stockToken = new MeshStandardMaterial({ color: materials.slab.tokenStock, roughness: materials.slab.roughness });
   readonly edge = new MeshStandardMaterial({ color: 0x2a1f14, roughness: materials.surface.edge.roughness });
   readonly edgeDark = new MeshStandardMaterial({ color: 0x2a1f14, roughness: materials.surface.edgeDark.roughness });
 
@@ -129,6 +139,8 @@ export class SharedMaterials {
   dispose(): void {
     this.rear.dispose();
     this.hidden.dispose();
+    this.stock.dispose();
+    this.stockToken.dispose();
     this.edge.dispose();
     this.edgeDark.dispose();
   }

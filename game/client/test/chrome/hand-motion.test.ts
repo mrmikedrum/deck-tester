@@ -77,16 +77,16 @@ describe("taps", () => {
     tap(id(6));
     expect(acts).toEqual([{ a: "tap", card: id(6), at: t }]);
   });
-  it("tapping another card turns the fan to it, sends nothing, and the spring settles there", () => {
+  it("tapping another card turns the fan to it and taps it (the hand's focus holds it up); the spring settles there", () => {
     tap(id(2));
-    expect(acts).toEqual([]);
+    expect(acts).toEqual([{ a: "tap", card: id(2), at: t }]);
     expect(wakes).toBeGreaterThan(0);
     const moving = step();
     expect(moving.active).toBe(true);
     expect(moving.focus).toBe(id(2));
     expect(settle().active).toBe(false);
     tap(id(2));
-    expect(acts.map((a) => a.a)).toEqual(["tap"]);
+    expect(acts.map((a) => a.a)).toEqual(["tap", "tap"]);
   });
 });
 
@@ -218,6 +218,7 @@ describe("paging", () => {
   beforeEach(() => {
     tap(id(3));
     settle();
+    acts.length = 0; // (the tap that turned the fan to it also tapped it)
   });
   it("a sideways drag past 30 u + 10 px turns one card against it, once however far it goes", () => {
     side(id(3), -45);

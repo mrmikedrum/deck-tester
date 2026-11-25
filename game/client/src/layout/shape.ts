@@ -42,7 +42,14 @@ export interface Shape {
 /** What a tap reaches on an item: its place where it has one, else its face. */
 export const hitQuad = (s: Shape): Quad => s.hit ?? s.face;
 
-const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
+/**
+ * The posture rules, in one place: the hit quads here and the scene's poses (scene/stage/poses.ts) both read them, so
+ * what is drawn and what a tap reaches cannot drift apart. `TILT`: how far a posture is propped toward the camera, as
+ * a share of the way to facing it (a lean lies flat on the vellum). `STAND_OFF`: a standing card's foot stands this far
+ * off the page (its stock's back corner then meets it).
+ */
+export const TILT = { prop: 0.85, lean: 0, flat: 0 } as const;
+export const STAND_OFF = 0.02;
 
 /** Plates draw last and without a depth test: over everything. */
 const PLATE_ORDER = 1e6;
@@ -66,7 +73,7 @@ const frameOf = (proj: Projector, pos: V3, posture: Posture, tapped: boolean, ow
   if (own) return { base: pos, up: own.up };
   if (posture === "stand") {
     const th = proj.pitch + (tapped ? TAP_LEAN : 0);
-    return { base: { x: pos.x, y: pos.y + 0.02, z: pos.z }, up: { x: 0, y: Math.cos(th), z: -Math.sin(th) } };
+    return { base: { x: pos.x, y: pos.y + STAND_OFF, z: pos.z }, up: { x: 0, y: Math.cos(th), z: -Math.sin(th) } };
   }
   const el = Math.atan2(proj.eye.y - pos.y, Math.max(1, proj.eye.z - pos.z));
   const delta = (Math.PI / 2 - el) * TILT[posture];

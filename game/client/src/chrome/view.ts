@@ -50,7 +50,64 @@ export interface CardLook {
 }
 
 /** The focus layers (the app's focus stack): the table's own (the stack, a lean-in, a sift) and the chrome's. */
-export type ChromeLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses";
+export type ChromeLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses" | "seat";
+
+/** A plate's icons, in a fixed order: total power on the table, open mana, cards in hand (and fliers in a focus). */
+export type IconKind = "power" | "creatures" | "wing" | "shield" | "mana" | "hand";
+
+export interface IconView {
+  readonly kind: IconKind;
+  /** Its figure ("34", "10"); struck through when the absence is the answer. */
+  readonly figure: string;
+  readonly none?: boolean;
+}
+
+/** A seat's nameplate: chrome, square to the screen, always lit. Opponents' at the top over their leaves, mine at the
+ * bottom. A tap on it is the tap on its plate's hit group (a target, or the nameplate focus). */
+export interface PlateView {
+  readonly seat: string;
+  /** Its hit group ("plate:<seat>"): the tap it sends. */
+  readonly group: string;
+  readonly name: string;
+  readonly life: number;
+  readonly place: SeatPlace;
+  readonly mine: boolean;
+  /** Its turn: a gilt edge. */
+  readonly active: boolean;
+  /** What a decision makes of it: an option (ember), chosen (gold). */
+  readonly ring: "option" | "selected" | null;
+  readonly out: boolean;
+  /** Its anchor, CSS px: an opponent's plate's top left corner (the top row bends round the table's cards: app/seats.ts
+   * `placeTop`); the middle of my plate's bottom edge. */
+  readonly x: number;
+  readonly y: number;
+  readonly icons: readonly IconView[];
+}
+
+/** A card picked up in a nameplate focus: its printed picture, or a back. */
+export interface PickedCard {
+  readonly id: CardId | null;
+  readonly name: string;
+  readonly image: string | null;
+}
+
+/** The nameplate focus: the seat in words, one line per icon, and its zones picked up. */
+export interface SeatFocusView {
+  readonly seat: string;
+  readonly name: string;
+  readonly life: number;
+  readonly place: SeatPlace;
+  readonly mine: boolean;
+  readonly lines: readonly { readonly icon: IconKind; readonly head: string; readonly sub: string | null; readonly none?: boolean }[];
+  readonly graveyard: readonly PickedCard[];
+  readonly exile: readonly PickedCard[];
+  /** An opponent's hand: backs (and any card shown face up); mine: the cards. */
+  readonly hand: readonly PickedCard[];
+  readonly handCount: number;
+  readonly library: number;
+  /** "Commander damage to you: 0 · Poison 2 · The monarch". */
+  readonly also: string | null;
+}
 
 /** An open layer, bottom first: where keyboard focus returns when it goes (a control's `data-fk`). */
 export interface LayerView {
@@ -74,6 +131,8 @@ export interface CardTile {
 /** Everything about one card (common.js `inspect`), with what I can do with it now as buttons. */
 export interface InspectorView {
   readonly card: CardId;
+  /** A card in my hand: the hand's focus, the card held up at reading size beside the fan, the fan live under it. */
+  readonly held?: boolean;
   readonly name: string;
   /** The whole card's picture; null face down or while it loads. */
   readonly image: string | null;
@@ -197,6 +256,10 @@ export interface ChromeView {
   readonly restore: RestoreView | null;
   /** Offer "New game" beside the prompt's words: no game yet, it could not start, or it is over. */
   readonly newGame: boolean;
+  /** Every seat's nameplate. */
+  readonly plates: readonly PlateView[];
+  /** A nameplate opened. */
+  readonly seatFocus: SeatFocusView | null;
 }
 
 /** What the chrome asks of the app itself rather than of play: the focus stack's moves and the Game menu's. */
@@ -205,6 +268,10 @@ export type Order =
   | { readonly t: "restore"; readonly layer: ChromeLayer }
   | { readonly t: "open"; readonly layer: "inspector" | "menu" | "hand" | "log" | "losses"; readonly card: CardId | null }
   | { readonly t: "dismissRecap" }
+  /** From a nameplate focus: that seat's board, brought nearer. */
+  | { readonly t: "board"; readonly seat: string }
+  /** From a nameplate focus: one of that seat's zones, opened in full (its sift). */
+  | { readonly t: "zone"; readonly seat: string; readonly zone: "graveyard" | "exile" }
   /** Another page of the sift up: `delta` pages on (negative: back). */
   | { readonly t: "siftPage"; readonly group: string; readonly delta: number }
   | { readonly t: "newGame"; readonly req: GameRequest };

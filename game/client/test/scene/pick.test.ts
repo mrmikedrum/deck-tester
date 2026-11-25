@@ -2,6 +2,10 @@
 // `hitTest` exactly (over the whole corpus, on a grid of taps); through a reflow a tap reaches the card where it is seen.
 import { describe, expect, it } from "vitest";
 import { hitTest } from "../../src/layout";
+import type { TablePlan } from "../../src/layout";
+
+/** Layout's hitTest on the table under the chrome: the seats' plates are the chrome's own (chrome/plates.tsx). */
+const tableHit = (plan: TablePlan, p: Point) => hitTest({ ...plan, hits: { ...plan.hits, groups: plan.hits.groups.filter((g) => g.kind !== "plate") } }, p);
 import type { Point, Quad } from "../../src/layout";
 import { LOOK, Stage, movedQuad, pickDrawn } from "../../src/scene/stage";
 import type { DrawnPiece, StageView } from "../../src/scene/stage";
@@ -34,7 +38,7 @@ describe("picking what was drawn", () => {
     for (const step of run) {
       const r = rest(stage, step, t);
       t = r.t;
-      for (const p of grid(step)) expect(pickDrawn(step.plan, r.view.drawn, p)?.id ?? null, `${step.name} at ${p.x},${p.y}`).toBe(hitTest(step.plan, p)?.id ?? null);
+      for (const p of grid(step)) expect(pickDrawn(step.plan, r.view.drawn, p)?.id ?? null, `${step.name} at ${p.x},${p.y}`).toBe(tableHit(step.plan, p)?.id ?? null);
     }
   });
 
@@ -48,14 +52,14 @@ describe("picking what was drawn", () => {
         for (let k = 0; k < 300 && report.active; k++) {
           for (const g of step.plan.hits.groups) {
             const d = view.drawn.get(g.id);
-            if (!d?.pickable) continue;
+            if (!d?.pickable || g.kind === "plate") continue;
             const q = movedQuad(step.plan.projector, g.quad, d);
             const c = centre(q), home = centre(g.quad);
             if (Math.hypot(c.x - home.x, c.y - home.y) < 40) continue;
             const got = pickDrawn(step.plan, view.drawn, c);
             // Where it is seen, it (or a group drawn over it) is reached; at rest, layout would have reached something else.
             expect(got, `${step.name}: ${g.id}`).not.toBeNull();
-            if (got!.id === g.id && hitTest(step.plan, c)?.id !== g.id) reached++;
+            if (got!.id === g.id && tableHit(step.plan, c)?.id !== g.id) reached++;
             else expect(got!.order, `${step.name}: ${g.id} under ${got!.id}`).toBeGreaterThanOrEqual(g.order);
           }
           ({ view, report } = stage.show(frameOf(step, []), (t += FRAME)));
@@ -72,7 +76,7 @@ describe("picking what was drawn", () => {
     const at = { ...LOOK, pos: { x: 1, y: 0.5, z: 2 }, rx: 0, ry: 0, s: 0.8 };
     const still: DrawnPiece = { now: at, rest: at, pickable: true };
     expect(movedQuad(step.plan.projector, g.quad, still)).toBe(g.quad);
-    expect(pickDrawn(step.plan, new Map([[g.id, still]]), centre(g.quad))?.id).toBe(hitTest(step.plan, centre(g.quad))?.id);
+    expect(pickDrawn(step.plan, new Map([[g.id, still]]), centre(g.quad))?.id).toBe(tableHit(step.plan, centre(g.quad))?.id);
     const away: DrawnPiece = { ...still, pickable: false };
     expect(pickDrawn(step.plan, new Map([[g.id, away]]), centre(g.quad))?.id ?? null).not.toBe(g.id);
   });

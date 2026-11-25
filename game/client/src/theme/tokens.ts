@@ -134,6 +134,12 @@ export const fx = {
   wellStain: "#3a2a1c",
   /** The pool of light under what you chose. */
   pool: "#f1c86a",
+  /** The pale pool a presented card stands lifted on; news and answers are this pale light too. */
+  pale: "#fff1d2",
+  /** The mist at the foot of what is not yet awake (summoning sick). */
+  mist: "#b9c4cc",
+  /** The low red of something that can hurt me: banked, never a flare. */
+  threat: "#c8321e",
   /** Ink ribbon of an attack: the core of a spell's line. */
   spellCore: "#fff0c0",
 } as const;

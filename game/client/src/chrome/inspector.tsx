@@ -24,6 +24,7 @@ export function Inspector({
   hold?: Button | null;
   fill?: number | null;
 }): JSX.Element {
+  if (v.held) return <Held view={v} send={send} {...(style ? { style } : {})} hold={hold} fill={fill} />;
   return (
     <div class="scrim" data-layer="inspector" data-scrim="" style={style} onClick={onScrim(send)}>
       <div class="inspector" style={`--seat:var(--seat-${v.place})`} role="dialog" aria-modal="true" aria-label={v.name} tabIndex={-1}>
@@ -101,6 +102,67 @@ export function Inspector({
           ) : null}
           <Close send={send} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The hand as a focus: the card I touched held up at reading size, to the right of the fan so it covers as little of my
+ * board as it can, the table under a light shade. The fan stays live over the shade: another card swaps up, and playing
+ * is a drag as ever. What I can do with the card now sits under it. Its words (name, facts, rules) are its description,
+ * and are shown in its place where its picture has not loaded.
+ */
+function Held({
+  view: v,
+  send,
+  style,
+  hold,
+  fill,
+}: {
+  view: InspectorView;
+  send: Send;
+  style?: string;
+  hold: Button | null;
+  fill: number | null;
+}): JSX.Element {
+  return (
+    <div class="scrim from-hand" data-layer="inspector" data-scrim="" style={style} onClick={onScrim(send)}>
+      <div class="inspector from-hand" role="dialog" aria-modal="true" aria-label={v.name} aria-describedby="l-held-text" tabIndex={-1} data-focus="">
+        <div class={v.faceDown ? "big back" : "big"} style={v.image ? `background-image:url("${v.image}")` : undefined}>
+          {/* What the card says, in words: read out always, and shown where its picture is missing. */}
+          <div id="l-held-text" class={v.image || v.faceDown ? "held-text sr" : "held-text"}>
+            <h3>{v.name}</h3>
+            {v.chips.length ? <div class="chips">{v.chips.join(" · ")}</div> : null}
+            {v.rules ? (
+              <div class="oracle">
+                <Pips text={v.rules} />
+              </div>
+            ) : null}
+          </div>
+        </div>
+        {hold || v.actions.length ? (
+          <div class="info">
+            {hold ? <AutoPass hold={hold} fill={fill} send={send} /> : null}
+            {v.actions.length ? (
+              <div class="l-actions">
+                {v.actions.map((a) => (
+                  <button key={a.option} type="button" class="l-opt" data-option={a.option} onClick={() => send({ a: "pick", option: a.option, card: v.card })}>
+                    <b>
+                      <Pips text={a.label} />
+                    </b>
+                    {a.cost ? (
+                      <span class="cost">
+                        <Pips text={a.cost} />
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <Close send={send} />
       </div>
     </div>
   );

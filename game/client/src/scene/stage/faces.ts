@@ -1,10 +1,10 @@
 // What the painters are given for the model's cards and seats: a card's FaceSpec (theme/grimoire/face.ts), a seat's
 // plate, its counter chips and its place's colours. The mapping the workbench fixtures stood in for. Pure.
-import { hasAbilities, isCreature, isLand, isPlaneswalker } from "../../model";
+import { hasAbilities, isArtifact, isBasic, isEnchantment, isLand, isManaSource, isPlaneswalker } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { Mark } from "../../play";
-import { counterChip, counterKind, faceSpec, frameKeyOf, seat as seatColour, seatInk } from "../../theme";
-import type { ChipSpec, FaceSpec, PlateSpec, SeatPlace } from "../../theme";
+import { counterChip, counterKind, faceSpec, seat as seatColour, seatInk } from "../../theme";
+import type { ChipSpec, FaceSpec, FrameKey, PlateSpec, SeatPlace } from "../../theme";
 
 /** The table's places in viewer-relative order (layout's template slots: near first, then clockwise). */
 const PLACES: readonly SeatPlace[] = ["near", "left", "across", "right"];
@@ -18,27 +18,71 @@ export function placeOf(model: TableModel, seat: SeatId | null): SeatPlace {
 export const colourOf = (model: TableModel, seat: SeatId | null): string => seatColour[placeOf(model, seat)];
 export const inkOf = (model: TableModel, seat: SeatId | null): string => seatInk[placeOf(model, seat)];
 
-/** The face a card wears on the table. `mark` lights its ability gem when it is an option. */
-export function faceOfCard(model: TableModel, c: Card, mark: Mark | null = null): FaceSpec {
-  const land = isLand(c);
-  const foot: FaceSpec["foot"] = isCreature(c)
-    ? {
-        kind: "creature",
-        power: c.power ?? c.face.basePower,
-        toughness: c.toughness ?? c.face.baseToughness,
-        basePower: c.face.basePower,
-        baseToughness: c.face.baseToughness,
-      }
-    : isPlaneswalker(c)
-      ? { kind: "walker", loyalty: String(c.loyalty ?? c.counters["LOYALTY"] ?? "") }
-      : land
-        ? { kind: "land", mana: c.face.produces }
-        : { kind: "type", typeLine: c.face.type };
+/** The mana colours a card makes, in WUBRG order, each once ("any colour" is all five). */
+function colouredMana(c: Card): string[] {
+  const made = new Set(c.face.produces.filter((m) => "WUBRG".includes(m)));
+  return ["W", "U", "B", "R", "G"].filter((m) => made.has(m));
+}
+
+/**
+ * The face a card wears on the table, composed from what it is now (its type line is the engine's, so a crewed
+ * vehicle, an animated land or a stationed spacecraft wears what it has become). `mark` lights its ability gem when it
+ * is an option; `small`: it is at the 44 px floor on screen, and wears the small form.
+ */
+export function faceOfCard(model: TableModel, c: Card, mark: Mark | null = null, small = false): FaceSpec {
+  const type = c.face.type;
+  const land = isLand(c),
+    body = c.faceDown || /\bCreature\b/.test(type),
+    walker = isPlaneswalker(c),
+    battle = /\bBattle\b/.test(type);
+  const made: FaceSpec["made"] = [
+    ...(isArtifact(c) ? (["artifact"] as const) : []),
+    ...(isEnchantment(c) ? (["enchantment"] as const) : []),
+    ...(land ? (["land"] as const) : []),
+  ];
+  const colours = colouredMana(c);
+  const printed = c.face.basePower !== 0 || c.face.baseToughness !== 0 || /\b(Vehicle|Spacecraft)\b/.test(type);
+  const foot: FaceSpec["foot"] =
+    body || printed
+      ? {
+          kind: "creature",
+          power: c.power ?? c.face.basePower,
+          toughness: c.toughness ?? c.face.baseToughness,
+          basePower: c.face.basePower,
+          baseToughness: c.face.baseToughness,
+          ...(body ? {} : { hollow: true }),
+        }
+      : walker
+        ? { kind: "walker", loyalty: String(c.loyalty ?? c.counters["LOYALTY"] ?? "") }
+        : battle
+          ? { kind: "battle", defense: String(c.counters["DEFENSE"] ?? "") }
+          : { kind: "type", typeLine: type };
+  // A whole face, where what it is is all there is to say; a body takes the creature composition, marks added.
+  const whole: FaceSpec["whole"] = body
+    ? null
+    : walker
+      ? "walker"
+      : battle
+        ? "battle"
+        : !land
+          ? null
+          : isBasic(c) && colours.length === 1
+            ? "basic"
+            : colours.length >= 4
+              ? "any"
+              : colours.length >= 2
+                ? "dual"
+                : "utility";
+  // Stock is the card's colour; a land's is the colour it makes (earth when it makes none or many).
+  const stockOf = (cs: readonly string[]): FrameKey =>
+    cs.length > 1 ? "M" : cs[0] === "W" || cs[0] === "U" || cs[0] === "B" || cs[0] === "R" || cs[0] === "G" ? cs[0] : "C";
+  const frame: FrameKey = land && !body ? (whole === "basic" || whole === "dual" ? stockOf(colours.slice(0, 1)) : "L") : stockOf(c.face.colors);
+  const makes = land || isManaSource(c) ? (whole === "any" ? ["W", "U", "B", "R", "G"] : c.face.produces.slice(0, 3)) : [];
   const owner = c.owner !== c.controller ? { label: String(c.owner), colour: colourOf(model, c.owner) } : null;
   return faceSpec({
     down: c.faceDown,
     name: c.face.name,
-    frame: frameKeyOf({ token: c.token, land, colours: c.face.colors }),
+    frame,
     token: c.token,
     commander: c.commander,
     tapped: c.tapped,
@@ -50,6 +94,10 @@ export function faceOfCard(model: TableModel, c: Card, mark: Mark | null = null)
     gem: hasAbilities(c) ? (mark === "option" ? "lit" : "idle") : "none",
     tags: c.copy ? ["Copy"] : [],
     owner,
+    made,
+    whole,
+    mana: whole === "basic" || whole === "dual" ? colours : makes,
+    small,
   });
 }
 

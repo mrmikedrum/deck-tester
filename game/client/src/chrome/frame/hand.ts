@@ -2,8 +2,8 @@
 // state that outlives a view. Gestures arrive between commits and change where things are going; `step` moves them
 // there at the commit's time and says what to draw. Nothing here reads a clock or schedules anything.
 //
-//   tap the open card      -> a `tap` act on it (play opens its plays or the inspector)
-//   tap another card       -> turn the fan to it
+//   tap a card             -> turn the fan to it, and a `tap` act on it (play takes it, or the hand's focus holds it
+//                             up: tapping one of my cards is how I look at my hand)
 //   drag sideways          -> the fan gives a little, then turns one card (once per drag, however far); a flick turns one
 //   drag up (play mode)    -> the card follows the finger, lifted; let go -> a `release` act with how far it rose and
 //                             where it was (play's 90 px rule decides); the card is held there until the next commit
@@ -211,8 +211,8 @@ export class HandMotion {
       case "tap": {
         const i = this.index(g.on);
         if (i < 0 || g.on === null) return;
-        if (g.on === this.focus) this.acts.tap(g.on, g.at);
-        else this.turnTo(i);
+        if (g.on !== this.focus) this.turnTo(i);
+        this.acts.tap(g.on, g.at);
         return;
       }
       case "hold":

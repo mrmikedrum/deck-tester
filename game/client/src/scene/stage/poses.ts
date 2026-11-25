@@ -3,21 +3,20 @@
 // Ported from old h.js `layout` (standees lean back by the camera's pitch, a tapped one further; flat cards are propped
 // up a little), `zoneLean` (a pile propped from its near edge), `buildStack` (cards facing the camera) and `restOf`/
 // `onPile` (where a card lands on a pile). Pure.
-import { STACK_POSE } from "../../layout";
+import { STACK_POSE, STAND_OFF, TILT } from "../../layout";
 import type { Placement, Point, Posture, Projector, Quad, Rect, V3 } from "../../layout";
-import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { CH, CW, PILE_LEAN, TAP_LEAN } from "../../layout/seat/geometry";
 import type { ScreenPose } from "../../play";
+import { materials } from "../../theme";
 import { PATH, add, scaled, v3 } from "./motion";
 import type { Pose } from "./types";
 
-// Layout's posture rules (layout/shape.ts `frameOf`): a prop stands nearly upright, a lean is propped up a little.
-const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
-/** A standee's foot stands just off the page (`base.y + 0.02`). */
-const STAND_OFF = 0.02;
+// Layout's posture rules (layout/shape.ts `TILT`, `STAND_OFF`), shared so what is drawn is what a tap reaches.
+const { slab } = materials;
 /** A stack card's foot stands at least this far over the table. */
 const STACK_CLEAR = 0.02;
-/** A zone pile's height per card (`zoneLean`: `n * 0.0075`). */
-export const PILE_STEP = 0.0075;
+/** A zone pile's block under its top card: its height by its count (a library of 67 the tallest thing on its leaf). */
+export const pileHeight = (n: number): number => Math.min(slab.zoneCap, Math.max(0, n - 1) * slab.zoneStep);
 
 /** The pose of a card standing in `posture` with its foot at `pos`: its middle half a card up its face. */
 export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
@@ -30,6 +29,7 @@ export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
     return { pos: add(p.pos, scaled(up, 0.5 * s)), rx, ry, s };
   }
   if (p.posture === "stand") {
+    // It stands from the vellum: leaning back, the stock behind its face is lowest, and that corner rests on the page.
     const th = proj.pitch + (tapped ? TAP_LEAN : 0);
     const up = v3(0, Math.cos(th), -Math.sin(th));
     return { pos: add(v3(p.pos.x, p.pos.y + STAND_OFF, p.pos.z), scaled(up, 0.5 * s)), rx: -th, ry: 0, s };
@@ -37,6 +37,8 @@ export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
   const el = Math.atan2(proj.eye.y - p.pos.y, Math.max(1, proj.eye.z - p.pos.z));
   const delta = (Math.PI / 2 - el) * TILT[p.posture as Exclude<Posture, "stand">];
   const up = v3(0, Math.sin(delta), -Math.cos(delta));
+  // (Its stock runs down from its face, into the vellum: the face is where layout measured it, and the page, which
+  // writes no depth, never hides the stock.)
   return { pos: add(p.pos, scaled(up, 0.5 * s)), rx: delta - Math.PI / 2, ry: 0, s };
 }
 
@@ -49,7 +51,7 @@ export function zonePose(p: Placement): Pose {
 export function onPile(pile: Pose, n: number, mine: boolean): Pose {
   const lean = mine ? 0 : PILE_LEAN,
     s = pile.s;
-  const h = s * (n * PILE_STEP + TH),
+  const h = s * (pileHeight(n + 1) + slab.depth),
     half = (s * CH) / 2,
     c = Math.cos(lean),
     sn = Math.sin(lean);

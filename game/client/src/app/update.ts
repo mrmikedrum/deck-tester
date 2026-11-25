@@ -145,6 +145,8 @@ function route(s: AppState, m: Msg): Step {
     case "newGame":
     case "listDecks":
     case "dismissRecap":
+    case "board":
+    case "zone":
     case "siftPage":
     case "hover":
       return input(s, m);
@@ -272,8 +274,8 @@ function sifts(s: AppState, g: HitGroup): boolean {
 /**
  * A tap play left: the app's default (live.js `H.tap`, h.js's tap). A card (a hand card, a sifted card) opens the
  * inspector. On the table: a tap on the stack, set aside, brings it back, and held up opens its inspector; a pile (or a graveyard or exile with cards in
- * it) opens its sift, the stack set aside first, unless a sift is on top; another seat's plate leans in on that seat, or
- * sits back from it (not while sifting); with a layer of the table's own on top, any other tap is the tap outside that
+ * it) opens its sift, the stack set aside first, unless a sift is on top; a seat's plate opens its nameplate focus, or
+ * closes it (not while sifting); with a layer of the table's own on top, any other tap is the tap outside that
  * takes it down; a card alone opens the inspector.
  */
 function tapDefault(tx: Tx, on: play.Target): void {
@@ -293,10 +295,10 @@ function tapDefault(tx: Tx, on: play.Target): void {
     tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null })) };
     return;
   }
-  const me = tx.s.model?.viewer.perspective;
-  if (g?.kind === "plate" && g.seat !== null && g.seat !== me && !isOpen(f, "sift")) {
-    const leaning = f.layers.find((e) => e.layer === "lean")?.seat === g.seat;
-    tx.s = { ...tx.s, focus: leaning ? close(f, "lean") : open(f, entry("lean", { seat: g.seat, restore: tx.origin ?? null })) };
+  if (g?.kind === "plate" && g.seat !== null && !isOpen(f, "sift")) {
+    // A nameplate opens that seat in words, its zones picked up; a tap on the plate that opened it closes it.
+    const opened = f.layers.find((e) => e.layer === "seat")?.seat === g.seat;
+    tx.s = { ...tx.s, focus: opened ? close(f, "seat") : open(close(f, "seat"), entry("seat", { seat: g.seat, restore: tx.origin ?? null })) };
     return;
   }
   if (t && TABLE_LAYERS.has(t.layer)) {
@@ -576,6 +578,24 @@ function input(s: AppState, m: InputMsg): Step {
       return { state: s, effects: [{ kind: "decks", epoch: s.epoch }] };
     case "dismissRecap":
       return { state: { ...s, narrative: narrative.dismissRecap(s.narrative) }, effects: [] };
+    case "zone": {
+      // A zone of a nameplate opened in full: its sift, as a tap on its pile at the far strip opens it (the stack set
+      // aside first). The nameplate closes under it; when the sift goes, keyboard focus goes back to the seat's plate.
+      const group = `zone:${m.zone}:${m.seat}`;
+      const g = s.plan ? groupById(s.plan.hits, group) : undefined;
+      if (!g || !sifts(s, g)) return done(tx);
+      const f = close(s.focus, "seat");
+      const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
+      tx.s = { ...s, focus: open(under, entry("sift", { group, restore: `plate:${m.seat}` })) };
+      return done(tx);
+    }
+    case "board": {
+      // The nameplate's "See … board": the nameplate closes and the table leans in on that seat (not my own).
+      const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;
+      if (!seat || seat === s.model?.viewer.perspective) return done(tx);
+      tx.s = { ...s, focus: open(close(s.focus, "seat"), entry("lean", { seat, restore: tx.origin ?? null })) };
+      return done(tx);
+    }
     case "siftPage": {
       // A big pile is sifted a page at a time (layout `SIFT_PAGE`): the page turns, never past either end. Only the sift
       // the table shows (a spell that took the table since leaves it be), and only the one whose pager was pressed.
