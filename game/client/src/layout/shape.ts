@@ -107,7 +107,8 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     seat,
     ...q,
     // (A card lying turned reaches only half its width toward me from its middle: that is its near edge.)
-    order: p.posture === "flat" && u.tapped ? p.pos.z - ((CH - CW) / 2) * p.scale : p.pos.z,
+    // (One raised out of its file stands nearer the camera by its height, as the stack does.)
+    order: p.posture === "flat" && u.tapped ? p.pos.z - ((CH - CW) / 2) * p.scale : depthOrder(proj, p.pos),
     floor: creature ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
     members: u.members,
     ...(u.file ? { file: u.file.id } : {}),

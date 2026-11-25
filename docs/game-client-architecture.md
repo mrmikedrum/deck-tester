@@ -462,6 +462,14 @@ false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
 today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
 cards, needs `planTable` work too.
 
+A design direction, `lines` (battle lines, `?layout=lines`, `LAYOUT=lines` for the recorder), is a second adapter: each
+seat's ready creatures stand on one ruled line, filing behind fronts past its room (a head is a standee further back,
+`Unit.file`, its face's plate head), tapped ones lie turned behind, and the page is the whole slot. For it the audit
+treats a file as one pile (its cards overlap on purpose) and a file's heads as one tap target, its tail
+(`tail:<file>`), whose patch is measured instead of each head's; `tools/reel.js` measures the drawn table the same way.
+Under it the open middle is bounded by the side seats' cards rather than their vellum, and a seat whose cards are drawn
+over another's folds too.
+
 ## play: the decision controller
 
 A pure reducer. It owns the current decision and its `StopId`, the player's draft, what lights up, the prompt and its

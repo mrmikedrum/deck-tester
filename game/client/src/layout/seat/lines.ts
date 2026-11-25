@@ -293,7 +293,8 @@ function plan(input: SeatInput): SeatPlan {
         const all: Run = { ids: c.flatMap((x) => x.ids), rep: c[0]!.rep, w: c[0]!.w, acting: false };
         return { f: fileOf(g, r, uOf(i), aLine, sFront, [all], px), rearguard: null, closed: c };
       }
-      const shown = c.slice(0, S + 1), rest = c.slice(S + 1);
+      // (What acts never folds: a card aimed at stands in its file, pulled up, however deep.)
+      const shown = [...c.slice(0, S + 1), ...c.slice(S + 1).filter((x) => x.acting)], rest = c.slice(S + 1).filter((x) => !x.acting);
       // (Past S heads the lightest fold into one rearguard behind the last; one alone is just a head.)
       const rear: Run | null = rest.length > 1 ? { ids: rest.flatMap((x) => x.ids), rep: rest[0]!.rep, w: 0, acting: false } : (rest[0] ?? null);
       return { f: fileOf(g, r, uOf(i), aLine, sFront, rear ? [...shown, rear] : shown, px), rearguard: rest.length > 1 ? rest : null, closed: null };
