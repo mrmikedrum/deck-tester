@@ -7,7 +7,9 @@ import type { ChromeMode } from "../layout";
 import { SEAT_LAYOUTS, planTable, reservations, tableInputOf } from "../layout";
 import type { TableModel } from "../model";
 import type { BoardCues } from "../play";
-import type { CardId } from "../protocol";
+import type { CardId, Decision } from "../protocol";
+import type { Ask } from "../layout";
+import { seatId } from "../model";
 import type { AppState } from "./state";
 
 /** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sift too. */
@@ -30,9 +32,17 @@ function pairsKey(cues: BoardCues): string {
   return [...d.attacks.map((a) => `${a.attacker}>${to(a.defender)}`), ...d.blocks.map((b) => `${b.blocker}|${b.attacker}`)].join(",");
 }
 
+/** What the decision on screen asks the table to answer in red (told/answers.ts), for the player who may answer it. */
+export function askOf(d: Decision | null, mayAnswer: boolean): Ask | null {
+  if (!d || !mayAnswer) return null;
+  if (d.kind === "attack") return { kind: "attack", defenders: [...new Set(d.refs.flatMap((r) => (typeof r.to === "string" ? [seatId(r.to)] : [])))] };
+  if (d.kind === "block") return { kind: "block", pairs: d.refs.map((r) => ({ blocker: r.card, attacker: r.blocks })) };
+  return null;
+}
+
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
-  const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
+  const { w, h, safe } = s.viewport, d = s.session.decision;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${d ? `${d.kind}:${d.id}` : ""}|${settling ? "settling" : ""}`;
 }
 
 export interface Replanned {
@@ -67,6 +77,8 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         involved: new Set(involved),
         combat: cues.combat,
         layout: SEAT_LAYOUTS[s.layout],
+        // (Only the told table writes answers: the base page says nothing new.)
+        ...(s.layout === "told" ? { ask: askOf(s.session.decision, model.viewer.mayAnswer) } : {}),
       }),
     );
     return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };

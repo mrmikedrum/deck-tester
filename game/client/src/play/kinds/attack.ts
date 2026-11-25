@@ -12,6 +12,20 @@ import type { Btn, Kind } from "./kind";
 
 const defenderOf = (to: string | number): ModelTarget => (typeof to === "number" ? { card: to as CardId } : { seat: seatId(to) });
 
+/** My picks' sums: the power at each defender, and how many of them fly ("12 power at Marath · 9 fly"). */
+function attackSum(c: { d: AttackDecision; f: Parameters<typeof cardOf>[0]; draft: { sel: readonly number[] } }): string {
+  const at = new Map<string, number>();
+  let fly = 0;
+  for (const o of c.draft.sel) {
+    const r = c.d.refs[o - 1];
+    if (!r) continue;
+    const card = cardOf(c.f, r.card), to = typeof r.to === "number" ? shortCard(cardOf(c.f, r.to as CardId)?.display ?? "") : r.to;
+    at.set(to, (at.get(to) ?? 0) + Math.max(0, card?.power ?? 0));
+    if (card?.keywords.includes("Flying")) fly++;
+  }
+  return [...[...at].map(([to, p]) => `${p} power at ${to}`), ...(fly ? [`${fly} fly`] : [])].join(" · ");
+}
+
 export const attack: Kind<AttackDecision> = {
   ...base<AttackDecision>(),
   start: (d, f) => ({
@@ -25,7 +39,7 @@ export const attack: Kind<AttackDecision> = {
   words(c) {
     const to = c.draft.attackTo;
     const name = typeof to === "number" ? shortCard(cardOf(c.f, to as CardId)?.display ?? "") : (to ?? "");
-    return { headline: "Declare attackers", ...(c.draft.sel.length ? {} : { hint: `Tap: ${name} · drag: another player` }) };
+    return { headline: "Declare attackers", ...(c.draft.sel.length ? { sum: attackSum(c) } : { hint: `Tap: ${name} · drag: another player` }) };
   },
   buttons(c) {
     const { d, draft } = c, n = draft.sel.length;

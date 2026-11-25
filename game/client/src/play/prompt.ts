@@ -34,6 +34,7 @@ export function promptOf(s: S): PromptOf | null {
     headline: "",
     hint: null,
     context: null,
+    sum: null,
     floating: floatingOf(f.floating),
     tone: "normal",
     style: "bar",
@@ -69,6 +70,7 @@ export function promptOf(s: S): PromptOf | null {
     ...ask,
     headline: words.headline,
     hint: words.hint ?? null,
+    sum: words.sum ?? null,
     context: context(c.d, f) || null, // the chrome shows the stack summary in its place while the stack layer is up
     buttons: bs,
     countdown: s.auto ? { from: s.auto.from, ms: s.auto.ms } : null,

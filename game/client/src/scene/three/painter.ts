@@ -9,6 +9,7 @@ import {
   paintDrop,
   paintFace,
   paintAccount,
+  paintAnswer,
   paintFxSprite,
   paintHalo,
   paintPage,
@@ -22,7 +23,7 @@ import {
   paintTag,
   paintVellumTile,
 } from "../../theme";
-import type { InkSpec, ChipSpec, FaceEnv, FaceSpec, FxSprite, HaloKind, PageSpec, PlateSpec, SignSpec } from "../../theme";
+import type { AnswerSpec, InkSpec, ChipSpec, FaceEnv, FaceSpec, FxSprite, HaloKind, PageSpec, PlateSpec, SignSpec } from "../../theme";
 import type { Lease, TextureCache } from "./textures";
 
 export class Painter {
@@ -52,6 +53,10 @@ export class Painter {
   /** A page's account: its lines in ink, lettered for the block it lies in. */
   account(spec: InkSpec): Lease {
     return this.cache.lease("ink|" + canonical(spec), (c) => paintAccount(c, spec));
+  }
+  /** An answer in red: a slip, a landing numeral, a note. */
+  answer(spec: AnswerSpec): Lease {
+    return this.cache.lease("answer|" + canonical(spec), (c) => paintAnswer(c, spec, this.env.surfaces.vellum));
   }
   back(): Lease {
     return this.cache.lease("back", (c) => paintBack(c, this.env));

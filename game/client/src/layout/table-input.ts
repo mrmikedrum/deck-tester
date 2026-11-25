@@ -10,6 +10,8 @@ import type { CardId, Insets, SeatId, Viewport } from "./types";
 import { engineCombat, fighters, mergeCombat } from "./combat";
 import type { CombatPairs } from "./combat";
 import type { TableModel } from "../model";
+import { entryText, sweepHarms, sweeps } from "../model";
+import type { Ask } from "./told/answers";
 
 export interface TableInputOptions {
   readonly viewport: Viewport;
@@ -25,6 +27,11 @@ export interface TableInputOptions {
   readonly combat?: CombatPairs | null;
   /** How the seats' pages are laid out (`mat` if absent). */
   readonly layout?: SeatLayout;
+  /**
+   * The decision on screen, as the answers need it: whom I may attack, the legal blocks; null for none (a sweep on the
+   * stack is read here). Absent: the table writes no answers (the base page).
+   */
+  readonly ask?: Ask | null;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -40,6 +47,15 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
   for (const id of fighters(combat)) involved.add(id);
   for (const it of model.stack) for (const t of it.targets) if ("card" in t) involved.add(t.card);
   const spells = new Set(model.stack.filter((s) => s.spell && s.source !== null).map((s) => s.source));
+  // A sweep on the stack asks what each page would lose (the reading the scene already lights in danger).
+  const sweepers = o.ask === undefined ? [] : model.stack.filter((it) => sweepHarms(entryText(it, model), it.controller) !== null);
+  const hits = sweepers.length
+    ? model.seats.flatMap((s) => model.zone(s.id, "battlefield")).filter((id) => {
+        const c = model.cards.get(id);
+        return !!c && sweepers.some((it) => sweeps(it, model, c));
+      })
+    : [];
+  const ask: Ask | null = o.ask ?? (hits.length ? { kind: "sweep", hits } : null);
   const stack: StackEntry[] = model.stack.map((s) => ({
     key: String(s.id),
     card: (s.source ?? s.id) as CardId,
@@ -60,5 +76,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     stack,
     combat,
     ...(o.layout ? { layout: o.layout } : {}),
+    ...(o.ask !== undefined ? { ask } : {}),
   };
 }

@@ -166,6 +166,8 @@ export interface PromptView {
   readonly hint: string | null;
   /** What the choice is about: the spell on top, the source's text. */
   readonly context: string | null;
+  /** My own sums for the decision, said in red under the headline; null for none. */
+  readonly sum: string | null;
   /** "Floating mana: 2 {G}". */
   readonly floating: string | null;
   readonly tone: "normal" | "threat";

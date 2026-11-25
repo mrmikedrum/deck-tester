@@ -146,6 +146,7 @@ export function Prompt(props: PromptProps): JSX.Element {
           <Pips text={headline} />
         </div>
       ) : null}
+      {p.sum && !watch && !restore ? <div class="l-sum">{p.sum}</div> : null}
       <StackSummary rows={summary} />
       {ctx ? (
         <div class="l-ctx">

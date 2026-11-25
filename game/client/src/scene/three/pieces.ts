@@ -1023,6 +1023,49 @@ class AccountView implements PieceView {
   }
 }
 
+/** An answer in red, lying on the table: a slip tucked under its page's edge (drawn before the page, which covers the
+ *  tucked part), a landing numeral or a note (over the pages, under every card). */
+class AnswerView implements PieceView {
+  readonly group = new Group();
+  private readonly geo = new PlaneGeometry(1, 1);
+  private readonly mat: MeshStandardMaterial;
+  private readonly mesh: Mesh;
+  private lease: Lease;
+  constructor(
+    private readonly host: Host,
+    v: ActorView,
+  ) {
+    const d = v.draw as Extract<Draw, { t: "answer" }>;
+    this.lease = host.painter.answer(d.spec);
+    this.mat = new MeshStandardMaterial({ map: this.lease.texture, transparent: true, depthWrite: false, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2 });
+    this.mesh = new Mesh(this.geo, this.mat);
+    this.mesh.scale.set(d.spec.w, d.spec.d, 1);
+    this.mesh.renderOrder = d.spec.kind === "slip" ? -4 : -1;
+    this.group.add(this.mesh);
+  }
+  patch(v: ActorView): void {
+    const d = v.draw as Extract<Draw, { t: "answer" }>;
+    const next = this.host.painter.answer(d.spec);
+    if (next.key === this.lease.key) next.release();
+    else {
+      this.lease.release();
+      this.lease = next;
+      this.mat.map = next.texture;
+      this.mat.needsUpdate = true;
+    }
+    this.mesh.scale.set(d.spec.w, d.spec.d, 1);
+  }
+  look(v: ActorView): void {
+    this.mat.color.setScalar(Math.max(0, 1 - v.sample.fade));
+    this.mat.opacity = v.sample.alpha;
+  }
+  dispose(): void {
+    this.lease.release();
+    this.geo.dispose();
+    this.mat.dispose();
+  }
+}
+
 // ---- a sift ---------------------------------------------------------------------------------------------------------
 
 /** A pile's card fanned out in front of the camera: a tapped one turned 15° and shaded, as it lies on the table. */
@@ -1105,6 +1148,8 @@ export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
       return new PageView(env.host, v);
     case "account":
       return new AccountView(env.host, v);
+    case "answer":
+      return new AnswerView(env.host, v);
     case "sift":
       return new SiftView(env.host, v);
     case "scrim":

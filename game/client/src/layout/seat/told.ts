@@ -19,6 +19,8 @@ import { mat } from "./mat";
 
 /** A page opens again only once it is this many places clear of the eight it writes at, so it does not flicker. */
 const OPEN_AT = { write: 8, open: 6 } as const;
+/** The ink keeps this far inside the page's rules (they lie about SIDE in from its edge). */
+const INK_MARGIN = 0.35;
 /** The gap between standing cards in the front row, in card heights at their scale. */
 const ROW_GAP = 0.1;
 
@@ -151,7 +153,7 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null): { pl
   // The account: every creature not standing and every work, in ink from just behind the row toward the plaque.
   const standing = new Set(stand.map((c) => c.id));
   const writtenIds = new Set<CardId>([...creatures.filter((c) => !standing.has(c.id)), ...works].map((c) => c.id));
-  const lo = -r.w / 2 + SIDE, hi = (mana.length || walkers.length ? colLo : colHi) - 0.2;
+  const lo = -r.w / 2 + SIDE + INK_MARGIN, hi = (mana.length || walkers.length ? colLo : colHi) - 0.2;
   // (It ends short of the plaque, and of the zone piles' near edges: a propped pile reaches half a card toward me.)
   const fit0 = open.memory.fit as Fit;
   const zoneNear = open.fixtures.zones.length ? plateA + (fit0.zoneBack || 0) - (CH / 2) * Math.max(...open.fixtures.zones.map((z) => z.placement.scale)) - 0.2 : Infinity;

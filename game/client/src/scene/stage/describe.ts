@@ -12,7 +12,7 @@ import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftO
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
-import type { FaceSpec, InkSpec } from "../../theme";
+import type { AnswerSpec, FaceSpec, InkSpec } from "../../theme";
 import { ROW, TALLY_EM, inkLines, inkRows } from "../../layout/told/ink";
 import { DIM, SCRIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
@@ -275,6 +275,25 @@ export function describe(input: DescribeInput): Description {
       needsMembers: members.length > 0,
     });
   });
+
+  // The answers the moment asks, in red on the table: words only (a slip's tap reaches its cards through its hit group).
+  for (const a of plan.answers) {
+    const spec: AnswerSpec = { kind: a.kind, lines: a.lines, w: a.w, d: a.d, em: a.em, stretch: a.stretch, row: ROW.line };
+    pieces.set(a.id, {
+      id: a.id,
+      kind: "ink",
+      seat: a.seat,
+      members: [],
+      face: null,
+      ...(a.seat ? placed(a.seat, { pos: a.pos, rx: -Math.PI / 2, ry: a.yaw, s: 1 }) : { pose: { pos: a.pos, rx: -Math.PI / 2, ry: a.yaw, s: 1 } }),
+      look: { ...LOOK, alpha: lean ? 0 : 1 },
+      form: `answer|${a.kind}`,
+      mods: canonical(spec),
+      mark: null,
+      draw: { t: "answer", spec },
+      needsMembers: false,
+    });
+  }
 
   // A sift: the pile's cards fanned out in front of the camera over a shade, each flying out of the pile.
   if (sifting) for (const p of siftPieces(model, plan, sifting, table?.page ?? 0)) pieces.set(p.id, p);

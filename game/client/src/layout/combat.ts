@@ -169,6 +169,9 @@ export function combatRow(input: RowInput): SeatPlan[][] {
     const placed = new Map<string, { pos: V3; s: number }>();
     const put = (un: Unit, pos: V3) => placed.set(un.id, { pos, s: s(un) });
     let x = (gl + gr0) / 2 - width / 2, tail = false;
+    // A row wider than its gap still keeps on the screen: slid in from whichever edge it would cross.
+    const L = proj.onTable(16 * u, M.b * u).x, R = proj.onTable((W - 16) * u, M.b * u).x;
+    x = width <= R - L ? Math.max(L, Math.min(x, R - width)) : (L + R) / 2 - width / 2;
     for (const gr of gs) {
       // In one row, each blocker stands on the side of its attacker it comes from, so it steps up without crossing it;
       // but never beside the last pair's blocker, where two blockers between two attackers wouldn't say whose is whose.

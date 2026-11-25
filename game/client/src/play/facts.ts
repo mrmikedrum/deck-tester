@@ -19,6 +19,9 @@ export interface CardFact {
   readonly cost: string;
   readonly text: string;
   readonly catalogued: boolean;
+  /** For the prompt's sums (attack, block): its power now and the engine's keywords. */
+  readonly power: number | null;
+  readonly keywords: readonly string[];
 }
 
 export interface ItemFact {
@@ -82,6 +85,8 @@ export function factsOf(m: TableModel): Facts {
       cost: c.face.cost,
       text: c.face.text,
       catalogued: c.face.catalogued,
+      power: c.power,
+      keywords: c.keywords,
     };
     if (commander === null && c.commander && c.owner === me) commander = c.id;
   }

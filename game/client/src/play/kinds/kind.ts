@@ -38,6 +38,8 @@ export interface Btn extends Button {
 export interface Words {
   readonly headline: string;
   readonly hint?: string;
+  /** My own sums for this decision, in red ("12 power at Marath · 9 fly", "Take 11"). */
+  readonly sum?: string;
 }
 
 export interface MarkSink {

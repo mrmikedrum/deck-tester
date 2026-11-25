@@ -5,7 +5,7 @@ import type { ChangeSet, MomentKind, ReadingId, SeatId, TableModel } from "../..
 import type { CardId } from "../../protocol";
 import type { Point, Rect, TablePlan, V3 } from "../../layout";
 import type { BoardCues, CommitId, Mark, Ms, ScreenPose } from "../../play";
-import type { ChipSpec, FaceSpec, InkSpec, PlateSpec, SeatPlace } from "../../theme";
+import type { AnswerSpec, ChipSpec, FaceSpec, InkSpec, PlateSpec, SeatPlace } from "../../theme";
 import type { DrawnPiece } from "./pick";
 
 // ---- the frame in, the report out -------------------------------------------------------------------------------------
@@ -161,7 +161,7 @@ export const LOOK: Look = { fade: 0, lift: 0, tap: 0, glow: 0, alpha: 1, w: 0, d
  * What a piece is: a layout unit, a zone pile, a plate, a stack entry, a page, a hidden count (a hand), or a sifted card
  * (a pile's card fanned out in front of the camera, and the scrim behind them).
  */
-export type PieceKind = "unit" | "zone" | "plate" | "stack" | "page" | "hidden" | "sift";
+export type PieceKind = "unit" | "zone" | "plate" | "stack" | "page" | "hidden" | "sift" | "ink";
 
 /** A mana well's sign and light (old h.js `well`): what it says, its colours, and whether every land in it is spent. */
 export interface WellLook {
@@ -223,6 +223,8 @@ export type Draw =
     }
   /** A page's account (layout `Unit.account`): its written cards in ink, lying in the page's plane. */
   | { readonly t: "account"; readonly ink: InkSpec; readonly w: number; readonly d: number }
+  /** An answer in red (layout `TablePlan.answers`): a slip under a page's edge, where an attack lands, a note. */
+  | { readonly t: "answer"; readonly spec: AnswerSpec }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }
   | {

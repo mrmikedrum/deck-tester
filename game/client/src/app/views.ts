@@ -142,7 +142,8 @@ export function chromeView(s: AppState, scene: SceneReport | null = null): Chrom
     commit: s.commit,
     viewport: s.viewport,
     reserve: s.reserve,
-    controls,
+    // (The sums are the told table's: the base page's prompt says nothing new.)
+    controls: s.layout === "told" || !controls.prompt?.sum ? controls : { ...controls, prompt: { ...controls.prompt, sum: null } },
     hand: model ? handOf(s, model, scene) : { cards: [], away: true, respond: false, carried: [], fresh: [] },
     looks: looksOf(s, model),
     named: namedOf(s),

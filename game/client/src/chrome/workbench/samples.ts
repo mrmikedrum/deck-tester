@@ -68,6 +68,7 @@ const prompt = (more: Partial<PromptView>): PromptView => ({
   headline: "",
   hint: null,
   context: null,
+  sum: null,
   floating: null,
   tone: "normal",
   style: "bar",

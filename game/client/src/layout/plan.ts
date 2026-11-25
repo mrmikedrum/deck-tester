@@ -13,6 +13,9 @@ import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry"
 import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
 import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
+import { answersAtRest } from "./told/at-rest";
+import type { InkAtRest } from "./told/at-rest";
+import type { Ask } from "./told/answers";
 import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
@@ -156,6 +159,9 @@ export interface TableInput {
   readonly layout?: SeatLayout;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
+  /** What the moment asks (told/answers.ts): its answers are written on the table in red. Null asks nothing but still
+   *  writes where an attack lands; absent writes no answers at all. */
+  readonly ask?: Ask | null;
 }
 
 export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack";
@@ -205,6 +211,8 @@ export interface TablePlan {
   readonly violations: readonly Violation[];
   /** The combat it stood in the open middle (`Unit.fighting`), or null. */
   readonly combat: CombatPairs | null;
+  /** The answers written on the table (slips, the landing, notes): only while the moment asks. */
+  readonly answers: readonly InkAtRest[];
 }
 
 function fnv(s: string): number {
@@ -278,12 +286,20 @@ export function planTable(input: TableInput): TablePlan {
   for (const s of c.stack)
     if (s.spilled) v = [...v, { rule: "no-room", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
-  const hits = hitGroups(final, shapes, stack);
+  // The answers lie on the table at rest; they are audited (their letters' floor, nothing over their words, a slip's
+  // patch) but never fold a seat. A slip without a patch of its own has no hit group: its words still stand.
+  const answers = input.ask !== undefined && (input.ask || combat) ? answersAtRest({ ask: input.ask ?? null, combat, boards: input.seats.map((x) => x.board), plans: final, perspective: input.seats[0]!.seat, projector, shapes }) : [];
+  const inkV = answers.length ? audit([...shapes, ...answers.map((a) => a.shape)], vp, { area, only: (x) => x.group.includes(":") && answers.some((a) => a.shape === x) }) : [];
+  const unreachable = new Set(inkV.filter((x) => x.rule === "tap-patch").map((x) => x.group));
+  // (A slip is words, not a card or a pile: without a patch it is no shortcut, which is no limit broken.)
+  v = [...v, ...inkV.filter((x) => x.rule !== "tap-patch")];
+  const hits = hitGroups(final, shapes, stack, answers.filter((a) => a.kind === "slip" && a.ids.length && !unreachable.has(a.id)));
   const stackUp = stackFocus(input, tpl, projector, final, shapes, reserve, reserve.safe);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat };
+  const said = answers.map((a) => `${a.id}:${a.lines.join("/")}:${a.pos.x.toFixed(3)},${a.pos.z.toFixed(3)}`).join(";");
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${said}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, answers };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle
@@ -508,7 +524,7 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };
 }
 
-function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"]): HitGroups {
+function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"], slips: readonly InkAtRest[] = []): HitGroups {
   const groups: HitGroup[] = [];
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
@@ -525,6 +541,8 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   }
   // The stack, top first, by its depth like any card; under the plates.
   for (const s of stack) if (s.reachable) groups.push({ id: `stack:${s.key}`, kind: "stack", seat: null, members: [s.card], quad: s.quad, order: shape(`stack:${s.key}`).order });
+  // A slip opens the cards it speaks of, as a summary does.
+  for (const a of slips) groups.push({ id: a.id, kind: "summary", seat: a.seat, members: a.ids, quad: a.shape.face, order: a.shape.order });
   const rev = fnv(groups.map((x) => `${x.id}:${x.members.join(",")}`).join(";"));
   return { rev, groups };
 }
