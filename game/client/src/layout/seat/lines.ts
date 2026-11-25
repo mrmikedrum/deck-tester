@@ -33,6 +33,8 @@ const PREF = { me: 1.45, them: 1.3 } as const;
 const SHINGLE_PX = 50;
 /** Sharing a row with the support, the heap is compact: each card shows this much of its left end. */
 const COMPACT_PX = 24;
+/** A support card behind another shows its name strip: this share of it. */
+const SUPPORT_SHOW = 0.3;
 /** The land heap's scale floor (lying). */
 const HEAP_S = 1.0;
 
@@ -128,20 +130,20 @@ interface Placed {
  * over the one in front, its scale holding the floor's width there. A run that acts is raised until its foot clears the
  * top of the card in front of it.
  */
-function fileOf(g: Geo, r: Region, u: number, a0: number, s0: number, runs: readonly Run[], px: number): Placed[] {
+function fileOf(g: Geo, r: Region, u: number, a0: number, s0: number, runs: readonly Run[], px: number, posture: "stand" | "lean" = "stand", show = HEAD_SHOW): Placed[] {
   const out: Placed[] = [];
   let a = a0, s = s0;
   runs.forEach((run, i) => {
     if (i > 0) {
       const prev = out[i - 1]!, pp = at(g, r, u, prev.a);
-      const top = topY(g, pp, prev.s, tallOf(prev.run.ids.length));
-      const h = footY(g, pp) - topY(g, pp, prev.s);
-      const want = top + h * (1 - HEAD_SHOW) - h;
-      // (want: the top of this card, so HEAD_SHOW of it shows above the edges of the one in front)
+      const top = topY(g, pp, prev.s, tallOf(prev.run.ids.length), posture);
+      const h = footY(g, pp) - topY(g, pp, prev.s, CH, posture);
+      const want = top - h * show;
+      // (want: the top of this card, so `show` of it shows above the edges of the one in front)
       let lo = prev.a, hi = prev.a + 6;
       for (let it = 0; it < 22; it++) {
         const m = (lo + hi) / 2, pm = at(g, r, u, m), sm = scaleAt(g, pm, px, false, prev.s);
-        if (topY(g, pm, sm) > want) lo = m;
+        if (topY(g, pm, sm, CH, posture) > want) lo = m;
         else hi = m;
       }
       a = hi;
@@ -315,7 +317,8 @@ function plan(input: SeatInput): SeatPlan {
   const sup = me ? [] : support();
   // Ways to fit, loosest first: the spent heap and the support in rows of their own, or sharing one row (the heap at the
   // outer end, compact), each with as many heads as fit.
-  const S0 = Math.max(-1, Math.min(depth0, Math.max(0, ...cols.map((c) => c.length - 1))) - input.pressure);
+  // (The first notch of pressure folds the support's title columns; heads give way from the second.)
+  const S0 = Math.max(-1, Math.min(depth0, Math.max(0, ...cols.map((c) => c.length - 1))) - Math.max(0, input.pressure - 1));
   const ways: { S: number; shared: boolean }[] = [];
   for (let k = S0; k >= Math.min(0, S0); k--) ways.push({ S: k, shared: false }, { S: k, shared: true });
   const fitsBack = (w: { S: number; shared: boolean }, f: ReturnType<typeof fits>): boolean => {
@@ -396,13 +399,13 @@ function plan(input: SeatInput): SeatPlan {
       const heap = side > 0 ? { lo: whole.lo, hi: whole.lo + wS } : { lo: whole.hi - wS, hi: whole.hi };
       const rest = side > 0 ? { lo: whole.lo + wS + 0.25, hi: whole.hi } : { lo: whole.lo, hi: whole.hi - wS - 0.25 };
       layoutSpent(a, sS, { ...heap, w: wS, uc: (heap.lo + heap.hi) / 2 }, true);
-      layoutSupport(supportGeo(a), { ...rest, w: rest.hi - rest.lo, uc: (rest.lo + rest.hi) / 2 });
+      layoutSupport(supportGeo(a), { ...rest, w: rest.hi - rest.lo, uc: (rest.lo + rest.hi) / 2 }, back.slipY + 2);
     } else {
       if (spent.length) {
         layoutSpent(a, spentGeo(a).sS);
         a = spentGeo(a).far + 0.15;
       }
-      if (sup.length) layoutSupport(supportGeo(a));
+      if (sup.length) layoutSupport(supportGeo(a), undefined, back.slipY + 2);
     }
     back.heap();
     fixtures = back.fixtures;
@@ -499,7 +502,7 @@ function plan(input: SeatInput): SeatPlan {
   function support(): BoardCard[] {
     return bf.filter((c) => !c.creature && !isMana(c)).sort((x, y) => Number(y.planeswalker) - Number(x.planeswalker) || arrived(x, y));
   }
-  function layoutSupport(geo: { foot: number; s: number }, within?: { lo: number; hi: number; w: number; uc: number }): void {
+  function layoutSupport(geo: { foot: number; s: number }, within?: { lo: number; hi: number; w: number; uc: number }, limitY: number | null = null): void {
     const list = sup, { foot, s } = geo;
     const sp = within ?? bandSpan(g, r, false, foot);
     const per = s * CW * 1.1;
@@ -519,11 +522,27 @@ function plan(input: SeatInput): SeatPlan {
     const likeS: Like[] = [(u) => cards.need(u.rep).name, (u) => (cards.need(u.rep).token ? "Tokens" : null), (u) => kindWord(cards.need(u.rep))];
     const named = (us: Draft[], title: string): Draft => ({ key: us[0]!.key, ids: us.flatMap((x) => x.ids), rep: us[0]!.rep, role: us[0]!.role, title });
     const keep = (u: Draft): boolean => cards.need(u.rep).planeswalker || cards.need(u.rep).legendary;
-    const row = fold(cards, drafts, cap, likeS, keep, named, "Others");
-    const step = Math.min(per, sp.w / Math.max(1, row.length));
-    const u0 = sp.uc - ((row.length - 1) * step) / 2;
-    row.forEach((d, i) => {
+    // Past its room the support stands in columns of title bars (the front whole, the ones behind showing their names),
+    // as deep as the page has room under the slip; what is left folds by kind.
+    const asRun = (d: Draft): Run => ({ ids: d.ids, rep: cards.need(d.rep), w: 0, acting: false });
+    const colsOf = (D: number) => {
+      const row = fold(cards, drafts, cap * (1 + D), likeS, keep, named, "Others");
+      const k = Math.min(cap, row.length), cs: Draft[][] = Array.from({ length: k }, () => []);
+      row.forEach((d, i) => cs[i % k]!.push(d));
+      const step = Math.min(per, sp.w / Math.max(1, k)), u0 = sp.uc - ((k - 1) * step) / 2;
+      const placed = cs.map((c, i) => ({ u: u0 + i * step, f: fileOf(g, r, u0 + i * step, foot, s, c.map(asRun), FLOOR.any, "lean", SUPPORT_SHOW), c }));
+      const top = Math.min(...placed.map(({ u, f }) => { const l = f[f.length - 1]!; return topY(g, at(g, r, u, l.a), l.s, CH, "lean"); }));
+      return { placed, top };
+    };
+    // (Only two deep: one name strip behind a front is too short a tail to tap at the floor's size. Under the table's
+    // pressure the columns go first.)
+    const D = drafts.length >= 3 * cap && input.pressure === 0 ? 2 : 0;
+    let layout = colsOf(D);
+    if (D > 0 && limitY !== null && layout.top < limitY) layout = colsOf(0);
+    layout.placed.forEach(({ u, f, c }, ci) => f.forEach((p, i) => {
+      const d = c[i]!;
       const top = d.ids.length > 1 && d.title ? d.ids[Math.min(d.ids.length, 8) - 1]! : d.rep;
+      const fileId = `${board.seat}:sup${ci}`;
       units.push({
         id: ids.take(d.role === "walker" ? "w" : "s", d.ids),
         role: d.role,
@@ -536,9 +555,10 @@ function plan(input: SeatInput): SeatPlan {
         acting: false,
         tapped: cards.need(top).tapped,
         // (Propped a little, as my own support is: it lies back out of the way, its name still facing me.)
-        placement: { pos: at(g, r, u0 + i * step, foot), scale: s, posture: "lean" },
+        placement: { pos: at(g, r, u, p.a), scale: p.s, posture: "lean" },
+        ...(c.length > 1 ? { file: { id: fileId, rank: i } } : {}),
       });
-    });
+    }));
   }
 
   // ---- their back band: the plaque at the back of the page, its zones on one side and the land heap on the other ------
@@ -551,7 +571,9 @@ function plan(input: SeatInput): SeatPlan {
       const m = (lo + hi) / 2, p = at(g, r, 0, m);
       // (Across, the page's back edge is the screen's top: there the plaque may take the screen's top margin.)
       const limit = r.position === "across" ? Math.max(g.proj.project(at(g, r, 0, r.d)).y - 30 * g.u, 6 * g.u) : edgeY + 10 * g.u;
-      if (g.proj.project({ x: p.x, y: 0.84 * Math.cos(g.pitch) * PLATE_S, z: p.z - 0.84 * Math.sin(g.pitch) * PLATE_S }).y > limit) lo = m;
+      // (Across, the commander standing beside it stays on screen too.)
+      const beside = r.position !== "across" ? true : (!fx.commandZone || topY(g, p, 1.05) > 6 * g.u);
+      if (g.proj.project({ x: p.x, y: 0.84 * Math.cos(g.pitch) * PLATE_S, z: p.z - 0.84 * Math.sin(g.pitch) * PLATE_S }).y > limit && beside) lo = m;
       else hi = m;
     }
     // (A side page has open table behind it: there the plaque stands on its back edge, its top over the margin.)
