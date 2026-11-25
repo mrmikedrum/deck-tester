@@ -176,9 +176,10 @@ const lerpQuad = (q: Quad, u: number, v: number): Point => {
 
 /**
  * off-screen: a stack card at rest not wholly in the safe area; no-room: a stack card the open middle had no room for,
- * lying under the last that fitted. Layout leaves either out of the hit groups (a sheet offers it).
+ * lying under the last that fitted. Layout leaves either out of the hit groups (a sheet offers it). focus-covers: the
+ * stack as the focus found no place at its floor clear of what it aims at and of the chrome.
  */
-export type Rule = "floor" | "tap-patch" | "covers-name" | "covers-foot" | "covers-face" | "off-screen" | "no-room";
+export type Rule = "floor" | "tap-patch" | "covers-name" | "covers-foot" | "covers-face" | "off-screen" | "no-room" | "focus-covers";
 
 export interface Violation {
   readonly rule: Rule;

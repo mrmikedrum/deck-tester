@@ -7,6 +7,7 @@ import { chromeRenderer } from "../../src/chrome";
 import type { ChromeIntent, ChromeRenderer, ChromeView } from "../../src/chrome";
 import { LOG, LOG_SHEET, LOSSES, MAIN, NO_LOG, RECAP, THREAT, controls, view } from "../../src/chrome/workbench/samples";
 import type { Button, PromptView } from "../../src/play";
+import type { StackId } from "../../src/protocol";
 
 let root: HTMLElement, r: ChromeRenderer, sent: ChromeIntent[];
 
@@ -79,27 +80,34 @@ describe("the prompt", () => {
     click($(".l-recap .g-close"));
     expect(orders()).toEqual([{ t: "open", layer: "losses", card: null }, { t: "dismissRecap" }]);
   });
-  it("the stack summary after the headline while the stack layer is up, in the context's place", () => {
-    show({ controls: controls(THREAT), stackOpen: true });
+  // Two on the stack: Arcane Denial over the Swords.
+  const TWO = withPrompt({
+    context: "Draw a card.",
+    stack: [
+      { item: 2 as StackId, n: 1, title: "Arcane Denial", at: "Swords to Plowshares", aimed: false },
+      { item: 1 as StackId, n: 2, title: "Swords to Plowshares", at: "your Herd Baloth", aimed: true },
+    ],
+  });
+  it("two or more on the stack: one numbered line each after the headline while the stack layer is up, in the context's place", () => {
+    show({ controls: TWO, stackOpen: true });
     expect($(".l-what")?.nextElementSibling?.classList.contains("l-stackinfo")).toBe(true);
-    expect(texts(".l-stackinfo li")).toEqual([
-      "Next if all pass Swords to Plowshares · DackExile your Herd Baloth. Its controller gains life equal to its power.",
-    ]);
+    expect(texts(".l-stackinfo li")).toEqual(["1 Arcane Denial → Swords to Plowshares", "2 Swords to Plowshares → your Herd Baloth"]);
+    expect([...document.querySelectorAll(".l-stackinfo li")].map((li) => li.classList.contains("aimed"))).toEqual([false, true]);
     expect($(".l-ctx")).toBeNull();
   });
   it("the stack layer set aside: no summary, and the context shows again", () => {
-    show({ controls: controls(THREAT), stackOpen: false });
+    show({ controls: TWO, stackOpen: false });
     expect($(".l-stackinfo")).toBeNull();
-    expect($(".l-ctx")?.textContent).toBe("Exile target creature. Its controller gains life equal to its power.");
+    expect($(".l-ctx")?.textContent).toBe("Draw a card.");
   });
   it("on the way to the stack: its headline, the item arriving, no Choose a play, not asking, never red", () => {
-    const choice: Button = { id: "choice", label: "Choose a play (2)", tone: "primary", role: "choice", enabled: true, detail: null, cost: null, countdown: false };
+    const choice: Button = { id: "choice", label: "All plays (2)", tone: "primary", role: "choice", enabled: true, detail: null, cost: null, countdown: false };
     const c = withPrompt({ buttons: [choice, ...THREAT.buttons], hint: "Highlights mark available plays." });
-    show({ controls: c, stackOpen: true, watch: { headline: "On the way to the stack", arriving: [THREAT.stack[0]!.item], toStack: true, sweeping: true } });
+    show({ controls: c, stackOpen: true, watch: { headline: "", arriving: [1 as StackId], toStack: true, sweeping: true } });
     const p = $(".l-prompt")!;
-    expect($(".l-what")?.textContent).toBe("On the way to the stack");
-    expect($(".l-order")?.textContent).toBe("Arriving");
-    expect(texts(".l-buttons button")).not.toContain("Choose a play (2)");
+    // The line it will ask with, so the words do not change as it lands.
+    expect($(".l-what")?.textContent).toBe(THREAT.headline);
+    expect(texts(".l-buttons button")).not.toContain("All plays (2)");
     expect(p.classList.contains("moving")).toBe(true);
     expect(p.classList.contains("asking")).toBe(false);
     expect(p.classList.contains("threat")).toBe(false);
@@ -107,10 +115,10 @@ describe("the prompt", () => {
     expect(chrome()?.classList.contains("watching")).toBe(true);
   });
   it("while the table moves with the stack empty: the motion's headline, no hint or context; red while Sunfall sweeps", () => {
-    const c = withPrompt({ tone: "normal", hint: "Highlights mark available plays.", context: "Draw a card.", floating: "Floating mana: 1 {G}", stack: [] }, MAIN);
-    show({ controls: c, watch: { headline: "Cards are leaving the stack", arriving: [], toStack: false, sweeping: true } });
-    expect($(".l-what")?.textContent).toBe("Cards are leaving the stack");
-    expect($(".l-ctx")?.textContent).toBe("Floating mana: 1 G");
+    const c = withPrompt({ tone: "normal", hint: "Highlights mark available plays.", context: "Draw a card.", floating: "Floating {G}", stack: [] }, MAIN);
+    show({ controls: c, watch: { headline: "Doom Blade resolves", arriving: [], toStack: false, sweeping: true } });
+    expect($(".l-what")?.textContent).toBe("Doom Blade resolves");
+    expect($(".l-ctx")?.textContent).toBe("Floating G");
     expect($(".l-prompt")?.classList.contains("threat")).toBe(true);
     show({ controls: c, watch: null });
     expect($(".l-prompt")?.classList.contains("threat")).toBe(false);

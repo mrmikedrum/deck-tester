@@ -40,3 +40,28 @@ test("the verdict names what it counted", () => {
   assert.equal(verdict({ gated: 0, measured: 0, fails: 0 }), "**LAYOUT: NOT MEASURED** (no beat was held to the limits: this is not a pass)");
   assert.equal(verdict({ gated: 3, measured: 3, fails: 0 }), "**LAYOUT: PASS** (3 beats measured)");
 });
+
+test("labels: a label meeting another, or another unit's name strip, by more than 2 px, or under 11 px, breaks the limits", () => {
+  const { labelRows } = require("./packet.js");
+  const pieces = { a: { names: ["Beast"] }, b: { names: ["Elemental"] } };
+  const ok = { pieces, labels: [{ id: "a", box: [0, 0, 50, 20], px: 13, name: "Beast" }, { id: "b", box: [49, 0, 99, 20], px: 12, name: "Elemental" }], strips: [{ id: "b", part: "name", box: [52, 21, 99, 30] }] };
+  assert.equal(labelRows(ok).fails, 0);
+  assert.equal(labelRows({ ...ok, labels: [ok.labels[0], { ...ok.labels[1], box: [40, 0, 90, 20] }] }).fails, 1);
+  assert.equal(labelRows({ ...ok, strips: [{ id: "b", part: "name", box: [30, 10, 99, 30] }] }).fails, 1);
+  assert.equal(labelRows({ ...ok, labels: [ok.labels[0], { ...ok.labels[1], px: 9 }] }).fails, 1);
+  assert.equal(labelRows({ pieces }).measured, false);
+});
+
+test("labels: a labelled board whose labels were not measured is INCOMPLETE, never a pass; text is held to 11 px unrounded", async () => {
+  const { labelRows } = require("./packet.js");
+  const beat = { frame: 9, label: "the stack up", gate: true, objects, pieces: { a: piece("you"), b: piece("ana") }, stackUp: true, strips: [] };
+  // The pieces were measured, but the board's labels were not: not a pass.
+  assert.match(await last([{ ...beat, labelled: true }]), /LAYOUT: INCOMPLETE\*\* \(labels measured on 0 of 1 labelled beats/);
+  // Measured on that board, they count; a board with no labels asks for none.
+  const label = { id: "a", box: [0, 0, 50, 20], px: 12, name: "Meloku" };
+  assert.match(await last([{ ...beat, labelled: true, labels: [label] }]), /LAYOUT: PASS/);
+  assert.match(await last([{ ...beat, labelled: false, labels: [] }]), /LAYOUT: PASS/);
+  // 10.96 px is under the floor, though it rounds to 11.0.
+  assert.equal(labelRows({ pieces: {}, labels: [{ ...label, px: 10.96 }], strips: [] }).fails, 1);
+  assert.match(await last([{ ...beat, labelled: true, labels: [{ ...label, px: 10.96 }] }]), /LAYOUT: FAIL/);
+});

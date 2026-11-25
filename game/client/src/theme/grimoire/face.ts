@@ -102,6 +102,19 @@ export function paintFace(canvas: Canvas, spec: FaceSpec, env: FaceEnv): void {
   drawFace(begin(canvas, FACE_W, FACE_H), spec, env);
 }
 
+/** The printed card at this size (twice the painted face's, so it reads held up large). */
+export const PRINTED = { w: FACE_W * 2, h: FACE_H * 2, radius: 0.0475 } as const;
+
+/** Paint a printed card image into a canvas, with the card's rounded corners. */
+export function paintPrinted(canvas: Canvas, img: NonNullable<ReturnType<ArtOf>>): void {
+  const x = begin(canvas, PRINTED.w, PRINTED.h);
+  x.save();
+  rr(x, 0, 0, PRINTED.w, PRINTED.h, PRINTED.w * PRINTED.radius);
+  x.clip();
+  x.drawImage(img as CanvasImageSource, 0, 0, PRINTED.w, PRINTED.h);
+  x.restore();
+}
+
 /** Paint a card back into a canvas. */
 export function paintBack(canvas: Canvas, env: Pick<FaceEnv, "surfaces">): void {
   drawBack(begin(canvas, FACE_W, FACE_H), env.surfaces);

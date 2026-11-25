@@ -3,7 +3,6 @@
 // moves, the prompt's watching headline (`status`). Pure; only settled lines and losses are told.
 import type { CardId, StackId } from "../protocol";
 import type { TableModel } from "../model";
-import { phaseName } from "../model";
 import type {
   Arrival,
   Entry,
@@ -16,6 +15,7 @@ import type {
   State,
   WatchView,
 } from "./types";
+import { spoken } from "./read";
 import { handArrivalHeadline, lossFate, lossSummary, seatName } from "./words";
 
 const settledEntries = (s: State): Entry[] => s.entries.filter((e) => e.wait === null);
@@ -82,12 +82,12 @@ export function recapView(s: State): RecapView | null {
   const settled = s.losses.filter((l) => ids.has(l.id) && l.wait === null);
   if (!settled.length) return null;
   const one = settled.length === 1 ? settled[0]! : null;
-  if (one)
-    return {
-      title: "Your loss",
-      summary: `${one.name} · ${one.where === "away" ? (one.token ? "Token left play" : "Destination unknown") : one.where}`,
-    };
-  return { title: `${settled.length} of your cards left play`, summary: lossSummary(settled) };
+  // One line, and the line is the button: "Lost: Meloku (exile) ›", "Lost 3: Meloku, Thopter, Thopter ›".
+  if (one) {
+    const where = one.where === "away" ? (one.token ? "token" : "") : one.where.replace(/^to (?:the )?/, "");
+    return { title: `Lost: ${one.name}${where ? ` (${where})` : ""} ›`, summary: "" };
+  }
+  return { title: `Lost ${settled.length}: ${settled.map((l) => l.name).join(", ")} ›`, summary: "" };
 }
 
 /** live.js `lostSheet` ("What you lost"): every settled loss this game, newest first. */
@@ -122,14 +122,11 @@ export function watching(s: State, model: TableModel | null, flying = true): Wat
   const motion = [...s.notices].reverse().find((n) => n.motion)?.motion ?? "";
   const sweeping = s.notices.some((n) => n.sweeping);
   const stackOpen = model.stack.length > 0;
-  if (stackOpen && arriving.length) return { headline: "On the way to the stack", arriving, toStack: true, sweeping };
+  // On the way to the stack: the prompt says the line it will ask with (play's), unlit until it lands.
+  if (stackOpen && arriving.length) return { headline: "", arriving, toStack: true, sweeping };
   if (stackOpen || (!motion && !hand.length)) return null;
   const settling = !flying && !!motion && ([...s.notices].reverse().find((n) => n.motion)?.sweeping ?? false);
-  const headline = hand.length
-    ? handArrivalHeadline(hand, () => "", false)
-    : settling
-      ? "Survivors are settling"
-      : motion;
+  const headline = hand.length ? handArrivalHeadline(hand, () => "", false) : settling ? "" : spoken(motion);
   return { headline, arriving: [], toStack: false, sweeping };
 }
 
@@ -142,7 +139,7 @@ export function restoreView(s: State, model: TableModel | null): RestoreView | n
   if (!model || s.restore === null) return null;
   return {
     cue: s.restore,
-    headline: `Your decision · ${phaseName(model.phase).toLowerCase()}`,
+    headline: "",
     restoring: s.restoring,
   };
 }

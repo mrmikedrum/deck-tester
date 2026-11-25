@@ -13,8 +13,9 @@
 //   cancel (second finger, pointercancel, lost capture) -> nothing is sent; a lifted card eases back
 import type { Gesture } from "../../input";
 import type { CardId } from "../../protocol";
+import { HAND_PLAY_DY } from "../../play";
 import type { CommitId, Ms, ScreenPose } from "../../play";
-import { cardSize, fan, labelFit } from "../fan";
+import { CARD_ASPECT, cardSize, fan, labelFit } from "../fan";
 import type { FanPose, LabelFit } from "../fan";
 import type { HandView } from "../view";
 import { clamp01, easeOut, lerp } from "./ease";
@@ -36,11 +37,14 @@ export const SETTLE_MS = 520;
 /** Wheel: a sideways burst turns one card; a burst ends after this quiet (ms), and a nudge under this many px is noise. */
 const WHEEL_BURST_MS = 280;
 const WHEEL_MIN = 4;
-/** An opened card shows its rules when its name strip is at least this share of a card wide. */
+/** An opened card shows its rules (on the stand-in face, where its printed image has not loaded) when its strip is at
+ * least this share of a card wide. */
 const READING_SHARE = 0.8;
-/** The peek (g.css `.g-peek`, h.js `peek`): this wide, this far left of and above the press, kept this far from the
- * edges. */
-export const PEEK = { w: 260, dx: -130, dy: -400, margin: 10, right: 270 } as const;
+/** The peek: the printed card about life size on an 11-inch iPad (at least 260 px, 300 design px wide), centred over
+ * the press and this far above it, kept this far from the edges. */
+export const PEEK = { w: 260, wu: 300, above: 38, margin: 10 } as const;
+/** The peek's width at a design unit. */
+export const peekWidth = (u: number): number => Math.max(PEEK.w, PEEK.wu * u);
 
 /** Where a card is drawn, relative to the fan's origin (its element pivots on its bottom middle). */
 export interface Pose {
@@ -70,6 +74,8 @@ export interface CardDraw extends Pose {
   readonly fit: LabelFit;
   readonly reading: boolean;
   readonly dragging: boolean;
+  /** Let go here, it would be offered to play: a card play may play now, dragged up past the play line, over the table. */
+  readonly ready: boolean;
 }
 
 export interface HandFrame {
@@ -77,7 +83,7 @@ export interface HandFrame {
   readonly cards: readonly CardDraw[];
   /** Released cards held where they were let go (screen poses). */
   readonly loose: readonly { readonly id: CardId; readonly pose: ScreenPose }[];
-  readonly peek: { readonly id: CardId; readonly left: number; readonly top: number } | null;
+  readonly peek: { readonly id: CardId; readonly left: number; readonly top: number; readonly width: number } | null;
   /** The card the focus is on (the open card). */
   readonly focus: CardId | null;
   /** Anything moving: keep the frames coming. */
@@ -97,6 +103,9 @@ interface Drag {
   readonly f0: number;
   dx: number;
   dy: number;
+  /** Where the pointer is now. */
+  x: number;
+  y: number;
   turned: boolean;
 }
 
@@ -164,6 +173,8 @@ export class HandMotion {
   constructor(
     private readonly acts: HandActs,
     private readonly wake: () => void,
+    /** Whether a card let go at (x, y) is over the table: the same test its release is sent with. */
+    private readonly overTable: (x: number, y: number) => boolean,
   ) {}
 
   /** Forget all motion (after a renderer fault, the next commit is a cut). */
@@ -215,7 +226,7 @@ export class HandMotion {
       case "dragStart":
         this.peek = null;
         if (this.index(g.on) < 0 || g.on === null) return;
-        this.drag = { card: g.on, mode: g.dir === "up" ? "play" : "page", f0: Math.round(this.to), dx: 0, dy: 0, turned: false };
+        this.drag = { card: g.on, mode: g.dir === "up" ? "play" : "page", f0: Math.round(this.to), dx: 0, dy: 0, x: g.x, y: g.y, turned: false };
         this.wake();
         return;
       case "drag": {
@@ -223,6 +234,8 @@ export class HandMotion {
         if (!d) return;
         d.dx = g.dx;
         d.dy = g.dy;
+        d.x = g.x;
+        d.y = g.y;
         if (d.mode === "page" && !d.turned && this.layout) {
           const u = this.layout.u, w = cardSize(u).w;
           if (Math.abs(g.dx) > TURN_U * u + TURN_PX) {
@@ -331,7 +344,6 @@ export class HandMotion {
       thumbing: this.thumbing,
       respond: view.respond,
       u: layout.u,
-      measure: layout.measure,
     });
     const w = cardSize(layout.u).w;
     const draws: CardDraw[] = cards.map((c, i) => {
@@ -340,13 +352,15 @@ export class HandMotion {
       if (d && d.card === c.id && d.mode === "play") {
         const pose = this.liftedPose(d) ?? { x: q.x, y: q.y, rot: 0, scale: PLAY_SCALE };
         this.shown.set(c.id, pose);
-        return { id: c.id, ...pose, z: PLAY_Z, label: w, fit: labelFit(c.name, w, layout.u, layout.measure), reading: false, dragging: true };
+        // The gilt rim promises only what the release will do (play's `release`): a card it may play, past the line, over the table.
+        const ready = c.playable && d.dy <= HAND_PLAY_DY && this.overTable(d.x, d.y);
+        return { id: c.id, ...pose, z: PLAY_Z, label: w, fit: labelFit(c.name, w, layout.u, layout.measure), reading: false, dragging: true, ready };
       }
       const target: Pose = { x: q.x, y: q.y, rot: q.rot, scale: 1 };
       const pose = this.settled(c.id, target, now);
       this.shown.set(c.id, pose);
       const fit = labelFit(c.name, q.label, layout.u, layout.measure);
-      return { id: c.id, ...pose, z: q.z, label: q.label, fit, reading: q.label >= w * READING_SHARE && c.rules !== null, dragging: false };
+      return { id: c.id, ...pose, z: q.z, label: q.label, fit, reading: q.label >= w * READING_SHARE && c.rules !== null, dragging: false, ready: false };
     });
     for (const id of [...this.shown.keys()]) if (!ids.includes(id)) this.shown.delete(id);
     // Only a card in the fan eases (drawing it is what ends its settling): one that left the hand stops here.
@@ -366,11 +380,13 @@ export class HandMotion {
 
     const pk = this.peek && ids.includes(this.peek.id) ? this.peek : null;
     this.peek = pk;
+    const pw = peekWidth(layout.u), ph = pw * CARD_ASPECT;
     const peek = pk
       ? {
           id: pk.id,
-          left: Math.max(PEEK.margin, Math.min(layout.vw - PEEK.right, pk.x + PEEK.dx)),
-          top: Math.max(PEEK.margin, pk.y + PEEK.dy),
+          left: Math.max(PEEK.margin, Math.min(layout.vw - pw - PEEK.margin, pk.x - pw / 2)),
+          top: Math.max(PEEK.margin, pk.y - ph - PEEK.above),
+          width: pw,
         }
       : null;
     this.lastNow = now;

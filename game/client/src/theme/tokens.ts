@@ -45,6 +45,8 @@ export const colour = {
   standee: 0x3a2a18,
   /** The shade a sift lays over the table (old h.js `sift`: near-black, a little blue). */
   siftShade: 0x05080c,
+  /** The scrim the stack lays over the table while it is the focus: warm near-black. */
+  stackScrim: 0x0c0704,
 } as const;
 
 /** Seat colours say whose things are whose. */
@@ -83,6 +85,8 @@ export const motion = {
   hold: 380,
   /** The turn's edge changing hands on a page: out, then in. */
   turnHandoff: 300,
+  /** The stack's printed card coming up over its painted face as it rises (and going as it is set aside). */
+  stackPrint: 250,
   /** A cut settles at once; a flight to a pile past this is a cut. */
   flightLimit: 2000,
   /** A change set older than this is played compressed. */

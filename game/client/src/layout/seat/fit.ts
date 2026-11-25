@@ -1,4 +1,4 @@
-import { FLOOR } from "../board";
+import { FLOOR, TAB_PX } from "../board";
 import type { CardId } from "../types";
 import { clearBehind, clearOfHand, bandSpan, floorScale, rowPlace, zoneSide, BACK, CH, CW, EDGE, GAP, PLATE_IN, PLATE_S, SIDE, STAGGER, TAB_H, TAP_LEAN } from "./geometry";
 import type { BandKey, BandSpec, Geo, Region, Span } from "./geometry";
@@ -249,7 +249,9 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
   // one does, its row's places widen just enough for an upright neighbour to keep off its name and foot (half a turned
   // card and half an upright one, less the fifth of a name strip the limits allow), and where two may meet, as wide as
   // a creature's.
-  const turned = (): number => S.filter((u) => cards.need(u.top ?? topOf(u, me)).tapped).length;
+  // (A pile with tapped and ready cards draws its tapped ones turned behind the ready, about as wide as a turned card.)
+  const turned = (): number =>
+    S.filter((u) => cards.need(u.top ?? topOf(u, me)).tapped || (u.ids.length > 1 && u.ids.some((id) => cards.need(id).tapped))).length;
   const band = (k: BandKey): BandSpec => {
     if (host && k === "S") return { ...g.band("S", me, cPx), px: FLOOR.theirs, per: g.band("C", me, cPx).per };
     const B = g.band(k, me, cPx), n = k === "S" ? turned() : 0;
@@ -276,12 +278,12 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
       let step = B.step, d = s * (B.first + (rows[k]! - 1) * B.step);
       if (!me) {
         // theirs stand: each row, and the band behind, where it shows whole
-        const tall = CH + TAB_H; // above a folded pile, its title tab
+        // (above a folded pile, its title tab: as tall on screen as the scene draws it, wherever the row stands)
         for (let i = 0; i < rows[k]! - 1; i++) {
           const f = a + s * (B.lead + i * step);
-          step = Math.max(step, (clearBehind(g, r, f, s, tall) - f) / s);
+          step = Math.max(step, (clearBehind(g, r, f, s, CH + TAB_H, TAB_PX) - f) / s);
         }
-        d = Math.max(s * (B.lead + (rows[k]! - 1) * step), clearBehind(g, r, a + s * (B.lead + (rows[k]! - 1) * step), s, tall) - a);
+        d = Math.max(s * (B.lead + (rows[k]! - 1) * step), clearBehind(g, r, a + s * (B.lead + (rows[k]! - 1) * step), s, CH + TAB_H, TAB_PX) - a);
       }
       let span = bandSpan(g, r, me, me ? a : a + d);
       if (lands) {
@@ -309,7 +311,7 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
     // pile in front wears a title tab (a pile of copies, a fold), they stand back far enough that the tab never covers
     // their foot (`zoneBack`).
     const tabbed = B && ([...C, ...S].some((u) => u.ids.length > 1) || B.n > B.cap);
-    b.zoneBack = tabbed ? Math.max(0, clearBehind(g, r, B.a0 + B.s * (B.lead + (B.rows - 1) * B.step), B.s, CH + TAB_H) + 0.45 - b.plateA) : 0;
+    b.zoneBack = tabbed ? Math.max(0, clearBehind(g, r, B.a0 + B.s * (B.lead + (B.rows - 1) * B.step), B.s, CH + TAB_H, TAB_PX) + 0.45 - b.plateA) : 0;
     // The page reaches far enough behind the plaque that its top, leaning back, stays inside the fine rule as I see it.
     const pf = g.toWorld(r, 0, r.d / 2 - b.plateA);
     const ty = g.proj.project({ x: pf.x, y: pf.y + 0.84 * Math.cos(g.pitch) * PLATE_S, z: pf.z - 0.84 * Math.sin(g.pitch) * PLATE_S }).y / g.u;

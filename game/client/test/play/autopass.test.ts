@@ -39,11 +39,11 @@ describe("it passes", () => {
     t.open(THEIRS);
     const p = t.p.controls.prompt!;
     expect(p.countdown).toEqual({ from: 500, ms: 3200 });
-    expect(p.headline).toBe("No responses offered");
-    expect(p.hint).toBe("You can float mana from a marked source.");
-    expect(t.buttons()).toEqual(["Stack rules", "Hold", "Pass priority"]);
-    expect(t.button("Pass priority").countdown).toBe(true);
-    expect(t.buttons()).not.toContain("Let Forge decide");
+    expect(p.headline).toBe("Atraxa's Gideon Jura ability");
+    expect(p.hint).toBeNull();
+    expect(t.buttons()).toEqual(["Hold", "OK"]);
+    expect(t.button("OK").countdown).toBe(true);
+    expect(t.buttons()).not.toContain("Auto");
   });
 });
 
@@ -98,10 +98,10 @@ describe("it does not pass", () => {
     t.advance(1000);
     const fx = t.press("Hold");
     expect(ofKind(fx, "deadline")).toEqual([{ kind: "deadline", id: expect.stringMatching(/^play\/autopass:/), ms: null }]);
-    expect(t.buttons()).toEqual(["Stack rules", "Pass priority"]);
+    expect(t.buttons()).toEqual(["OK"]);
     expect(t.p.controls.prompt?.countdown).toBeNull();
     never(t);
-    t.press("Pass priority");
+    t.press("OK");
     expect(t.answers()).toEqual([[1]]);
   });
 
@@ -129,7 +129,7 @@ describe("it does not pass", () => {
     t.open(THEIRS);
     t.advance(3210);
     expect(t.answers()).toEqual([[1]]);
-    expect(t.buttons()).toEqual(["Stack rules"]);
+    expect(t.buttons()).toEqual([]);
     expect(t.p.controls.prompt?.busy).toBe(true);
   });
 });

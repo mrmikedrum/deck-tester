@@ -2,9 +2,14 @@
 // reaches it there), its arcs run to what it aims at, a lean-in carries one seat up over the middle, a sift fans a
 // pile's cards out (a tap reaching each card), and my wells say what they hold.
 import { describe as group, expect, it } from "vitest";
-import { bounds } from "../../src/layout/shape";
+import { bounds, inQuad } from "../../src/layout/shape";
+import { planTable, tableInputOf } from "../../src/layout";
 import type { Point, Quad } from "../../src/layout";
-import { NO_FOCUS, Stage, chipsOf, describe, pickDrawn, poseQuad, siftRoll } from "../../src/scene/stage";
+import { diff, modelOf } from "../../src/model";
+import { groupsOf } from "../../src/play/reach";
+import { decodeSnapshot } from "../../src/protocol";
+import { catalog, rawCorpus, viewerOf } from "../model/fixtures";
+import { NO_FOCUS, SCRIM, Stage, chipsOf, describe, pickDrawn, poseQuad, siftRoll } from "../../src/scene/stage";
 import type { FocusTop, StageView } from "../../src/scene/stage";
 import { NO_CUES, corpusSteps, frameOf } from "./corpus";
 import type { Step } from "./corpus";
@@ -27,7 +32,7 @@ function rest(step: Step, focus: FocusTop): StageView {
 }
 
 group("the stack as the table's focus", () => {
-  it("stands on layout's stackUp quad, keeps where the plan set it aside as its base, and dims the table", () => {
+  it("stands on layout's stackUp quad, keeps where the plan set it aside as its base, and lays one scrim over the table", () => {
     const d = describe({ model: bolt.model, plan: bolt.plan, cues: NO_CUES, focus: at({ layer: "stack" }), hover: null });
     const key = bolt.plan.stack[0]!.key;
     const p = d.pieces.get(`stack:${key}`)!;
@@ -36,16 +41,60 @@ group("the stack as the table's focus", () => {
       want = bounds(bolt.plan.stackUp[0]!.quad);
     for (const k of ["l", "r", "t", "b"] as const) expect(Math.abs(q[k] - want[k]), k).toBeLessThan(1);
     expect(p.base).toBeDefined();
-    expect(d.tableTone).toBeLessThan(1);
+    // One scrim, no second dim: the table keeps its tone, nothing fades, and the stack and what it aims at stand above.
+    expect(d.scrim).toBe(SCRIM.alpha);
+    expect(d.tableTone).toBe(1);
+    const plain = describe({ model: bolt.model, plan: bolt.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null }).pieces;
+    for (const piece of d.pieces.values()) if (piece.kind === "page") expect(piece.look.fade, piece.id).toBe(plain.get(piece.id)!.look.fade);
+    else expect(piece.look.fade, piece.id).toBe(0);
+    expect(d.above.has(`stack:${key}`)).toBe(true);
     // Set aside, it stands where the plan set it, small.
     const aside = describe({ model: bolt.model, plan: bolt.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null }).pieces.get(`stack:${key}`)!;
     expect(aside.base).toBeUndefined();
     expect(aside.draw).toMatchObject({ up: false, tagScale: 1 });
   });
+  it("its scrim eases in over 250 ms as it comes up and out over 180 ms as it is set aside", () => {
+    const stage = new Stage();
+    const up = at({ layer: "stack" });
+    stage.show(frameOf(bolt, [bolt.set], { mode: "cut", focus: NO_FOCUS }), 1000);
+    expect(stage.show(frameOf(bolt, [], { focus: up }), 1016).view.scrim).toBe(0);
+    const mid = stage.show(frameOf(bolt, [], { focus: up }), 1016 + SCRIM.inMs / 2).view.scrim;
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(SCRIM.alpha);
+    expect(stage.show(frameOf(bolt, [], { focus: up }), 1016 + SCRIM.inMs).view.scrim).toBe(SCRIM.alpha);
+    expect(stage.show(frameOf(bolt, [], { focus: NO_FOCUS }), 2000).view.scrim).toBe(SCRIM.alpha);
+    expect(stage.show(frameOf(bolt, [], { focus: NO_FOCUS }), 2000 + SCRIM.outMs).view.scrim).toBe(0);
+  });
   it("a tap on the large card reaches the stack's group", () => {
     const view = rest(bolt, at({ layer: "stack" }));
     const g = pickDrawn(bolt.plan, view.drawn, centre(bolt.plan.stackUp[0]!.quad));
     expect(g?.id).toBe(`stack:${bolt.plan.stack[0]!.key}`);
+  });
+  it("every card the focus shows is reached, though the open middle had no room for it set aside", () => {
+    // Eight spells on the opponent-spell table: set aside, the eighth lies under the seventh; held up, all eight show.
+    const raw = rawCorpus.get("014-play-opponent-spell-targets-me-stack-targets-card.json")!;
+    const view = raw.view as { stack: { id: number; source: { id: number } }[] };
+    const thorn = view.stack[view.stack.length - 1]!;
+    const stack = Array.from({ length: 8 }, (_, i) => ({ ...thorn, id: 900 + i, source: { ...thorn.source, id: 9000 + i } }));
+    const snap = decodeSnapshot({ ...raw, decision: null, view: { ...view, stack } });
+    if (!snap.ok) throw new Error(snap.error.summary);
+    const model = modelOf(snap.value, catalog, viewerOf())!;
+    const plan = planTable(tableInputOf(model, { viewport: { w: 1180, h: 820 } }));
+    const spilled = plan.stack.findIndex((s) => !s.reachable);
+    expect(spilled).toBeGreaterThan(0);
+    expect(plan.stackUp[spilled]!.reachable).toBe(true);
+    const shown = rest({ name: "eight", model, plan, set: diff(null, model, 1) }, at({ layer: "stack" }));
+    // The strip of it no card nearer the eye covers.
+    const q = plan.stackUp[spilled]!.quad, b = bounds(q);
+    let strip: Point | null = null;
+    for (let x = b.l + 2; x < b.r && !strip; x += 4)
+      for (let y = b.t + 2; y < b.b && !strip; y += 4)
+        if (inQuad(q, x, y) && !plan.stackUp.slice(0, spilled).some((s) => inQuad(s.quad, x, y))) strip = { x, y };
+    expect(strip).not.toBeNull();
+    expect(pickDrawn(plan, shown.drawn, strip!)?.id).toBe(`stack:${plan.stack[spilled]!.key}`);
+    // Play takes a tap on it (its group is one a tap can reach), and every card the focus shows is reached.
+    expect(groupsOf(plan.hits).map((g) => g.id)).toContain(`stack:${plan.stack[spilled]!.key}`);
+    for (const s of plan.stackUp) expect(pickDrawn(plan, shown.drawn, centre(s.quad))?.id).toMatch(/^stack:/);
   });
   it("its arc runs from the spell to Princess's plate, ending at the plate's top", () => {
     const view = rest(bolt, at({ layer: "stack" }));

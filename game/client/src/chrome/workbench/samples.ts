@@ -2,7 +2,7 @@
 // fixtures (tools/shoot.js `STATES.main`: turn 9, my main phase, seven cards in hand), built by hand.
 import type { LogSheetView, LogStripView, LossRow, RecapView } from "../../narrative";
 import type { Button, Controls, PromptView, SheetView, StopId } from "../../play";
-import type { CardId, StackId } from "../../protocol";
+import type { CardId } from "../../protocol";
 import { reservations } from "../../layout";
 import type { CardLook, ChromeView, HandCard, HandSheetView, InspectorView, MenuView, MulliganView, StackRow } from "../view";
 
@@ -80,37 +80,25 @@ const prompt = (more: Partial<PromptView>): PromptView => ({
 
 /** My main phase with plays on offer (the old live-main screenshot). */
 export const MAIN: PromptView = prompt({
-  headline: "Available plays",
-  hint: "Highlights in your hand and on the battlefield mark available plays. Tap the marked “You” life plaque for your commander play.",
   buttons: [
-    button("plays", "Choose a play (6)", { tone: "primary", role: "choice" }),
-    button("defer", "Let Forge decide", { tone: "ghost", role: "defer" }),
-    button("pass", "To combat", { role: "pass" }),
+    button("plays", "All plays (6)", { role: "choice" }),
+    button("defer", "Auto", { role: "defer" }),
+    button("pass", "To combat", { tone: "primary", role: "pass" }),
   ],
 });
 
 /** An opponent's spell aimed at my creature, nothing to answer with: auto-pass counts down, Hold stops it. */
 export const THREAT: PromptView = prompt({
   where: "Turn 9 · Dack's main phase",
-  headline: "Swords to Plowshares threatens Herd Baloth",
-  context: "Exile target creature. Its controller gains life equal to its power.",
+  headline: "Dack's Swords to Plowshares targets your Herd Baloth",
+  context: null,
   tone: "threat",
   buttons: [
     button("hold", "Hold", { role: "hold" }),
-    button("stack-rules", "Stack rules", { tone: "ghost", role: "stack" }),
-    button("pass", "Pass priority", { tone: "primary", role: "pass", countdown: true }),
+    button("pass", "OK", { tone: "primary", role: "pass", countdown: true }),
   ],
   countdown: { from: 0, ms: 3200 },
-  stack: [
-    {
-      item: 1 as StackId,
-      order: "Next if all pass",
-      title: "Swords to Plowshares",
-      who: "Dack",
-      effect: "Exile your Herd Baloth. Its controller gains life equal to its power.",
-      aimed: true,
-    },
-  ],
+  stack: [],
 });
 
 /** The strip before any turn: hidden. */
@@ -134,12 +122,11 @@ export const LOSSES: readonly LossRow[] = [{ name: "Herd Baloth", fate: "went to
 
 /** Targets on the table: one more wanted, Done disabled below the minimum. */
 export const TARGETS: PromptView = prompt({
-  headline: "Choose targets for Ghostly Flicker (0/2)",
-  hint: "Tap the marked permanents you control.",
+  headline: "2 targets for Ghostly Flicker",
   buttons: [
     button("list", "List"),
     button("done", "None", { tone: "primary", role: "done", enabled: false }),
-    button("defer", "Let Forge decide", { tone: "ghost", role: "defer" }),
+    button("defer", "Auto", { role: "defer" }),
   ],
 });
 
@@ -246,7 +233,7 @@ export const WORDS: SheetView = {
   wide: false,
   items: ["Alpha", "Beta", "Gamma"].map((label, i) => ({ option: i + 1, label, cost: null, detail: null, card: null, name: label, picked: i === 2, badge: i === 2 ? 1 : null })),
   stepper: null,
-  buttons: [button("sheet-clear", "Clear", { tone: "ghost", role: "clear" }), button("sheet-done", "Done (1)", { tone: "primary", role: "done", enabled: false })],
+  buttons: [button("sheet-clear", "Clear", { role: "clear" }), button("sheet-done", "Done (1)", { tone: "primary", role: "done", enabled: false })],
   carried: null,
 };
 
@@ -256,7 +243,6 @@ export const controls = (p: PromptView | null, more: Partial<Controls> = {}): Co
   prompt: p,
   sheet: null,
   cardActions: new Map(),
-  stackNote: null,
   ...more,
 });
 

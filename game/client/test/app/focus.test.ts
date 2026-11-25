@@ -191,11 +191,19 @@ describe("the app's focus", () => {
     tapGroup(r, 40); // a tap on the table, not the inspector: the tap outside
     r.frame(1320);
     expect(r.state.focus.layers).toEqual([]);
-    expect(view(r).chips).toEqual([{ layer: "stack", label: "Stack: 1" }]);
+    expect(view(r).chips).toEqual([{ layer: "stack", label: "Stack 1" }]);
     tapGroup(r, 77, "stack");
     r.frame(1330);
     expect(topLayer(r)).toBe("stack");
     expect(view(r).chips).toEqual([]);
+  });
+  it("a tap on the stack held up opens its card's inspector (the card is there to read)", () => {
+    const r = started(table({ v: 1, decision: null, stack: [spell(1)] }));
+    expect(topLayer(r)).toBe("stack");
+    tapGroup(r, 77, "stack");
+    r.frame(1320);
+    expect(topLayer(r)).toBe("inspector");
+    expect(r.state.focus.layers.map((e) => e.layer)).toContain("stack");
   });
   it("Escape sets the stack aside, its chip restores it, a new item brings it up again, and an empty stack ends it", () => {
     const r = started(table({ v: 1, decision: null, stack: [spell(1)] }));
@@ -293,7 +301,7 @@ describe("the Game menu", () => {
     expect(view(r).menu?.decks).toBeNull();
     r.transport.deckList(null, "HTTP 500");
     r.frame(1330);
-    expect(view(r).menu).toEqual({ decks: [], error: "HTTP 500", last: null });
+    expect(view(r).menu).toEqual({ decks: [], error: "HTTP 500", last: null, inProgress: true });
     input(r, { t: "dismiss" });
     input(r, { t: "open", layer: "menu", card: null });
     r.frame(1340);

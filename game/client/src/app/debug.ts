@@ -26,6 +26,8 @@
 //                        recorder's per-frame track
 //   scene.faces()        every card face as last drawn, by piece id: its quad, width on screen, whether a stack card
 //                        stands up as the focus (the layout audit, tools/reel.js)
+//   scene.labels()       every label (a pile's title, a well's or a zone's sign) as last drawn: its piece, box on screen
+//                        and smallest text size there (the layout audit's label checks)
 //   scene.under(x, y, skip?) the piece drawn on top at (x, y) (a card, edge or label), looking through `skip`: the
 //                        layout audit's cover
 //   art.pending()        card art loads out (the scene's)
@@ -151,6 +153,10 @@ export function installDebug(loop: Loop, renderer: PageRenderer, extras: DebugEx
       faces: () => {
         const sc = renderer.scene, h = host();
         return plain(sc?.renderer && h ? sc.renderer.measure(h.camera, h.size.w, h.size.h) : {});
+      },
+      labels: () => {
+        const sc = renderer.scene, h = host();
+        return plain(sc?.renderer && h ? sc.renderer.labels(h.camera, h.size.w, h.size.h) : []);
       },
       under: (x: number, y: number, skip: readonly string[] = []) => {
         const sc = renderer.scene, h = host();

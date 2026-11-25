@@ -24,7 +24,8 @@ import { handOffFlights, planFlights } from "./flights";
 import type { PlanContext } from "./flights";
 import { Flights } from "./inflight";
 import { Membership } from "./membership";
-import { DURATION, PATH, paced } from "./motion";
+import { DURATION, PATH, SCRIM, paced } from "./motion";
+import type { Measure } from "./labels";
 import type { Pace } from "./motion";
 import { retitle } from "./piles";
 import type { DrawnPiece } from "./pick";
@@ -107,6 +108,8 @@ const HISTORY = 64;
 
 export interface StageOptions {
   readonly reducedMotion?: boolean;
+  /** The labels' text widths (labels.ts); an estimate without one. */
+  readonly measure?: Measure;
 }
 
 export class Stage {
@@ -136,6 +139,10 @@ export class Stage {
   /** Each page's turn as last drawn, and until when its edge is still changing hands (the view's 300 ms handover). */
   private readonly pageTurns = new Map<string, boolean>();
   private handoffUntil = -Infinity;
+  /** Each stack card's focus as last drawn (its printed face fades in and out over `motion.stackPrint`). */
+  private readonly stackUps = new Map<string, boolean>();
+  /** The stack's scrim easing toward the description's: where it set off from, when, and to what. */
+  private scrimFade = { from: 0, to: 0, at: 0 as Ms };
 
   constructor(private readonly opts: StageOptions = {}) {}
 
@@ -225,7 +232,7 @@ export class Stage {
     const focus = tableFocusKey(frame.focus);
     const d = this.described;
     if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover) return d.desc;
-    const desc = describe({ model: frame.model, plan: frame.plan, cues: frame.cues, focus: frame.focus, hover: frame.hover });
+    const desc = describe({ model: frame.model, plan: frame.plan, cues: frame.cues, focus: frame.focus, hover: frame.hover, ...(this.opts.measure ? { measure: this.opts.measure } : {}) });
     this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, desc };
     return desc;
   }
@@ -237,6 +244,7 @@ export class Stage {
       this.bolts.length > 0 ||
       this.strikes.length > 0 ||
       this.now < this.handoffUntil ||
+      this.scrimAt(this.now) !== this.scrimFade.to ||
       [...this.actors.values()].some((a) => a.actor.moving() || a.into !== null)
     );
   }
@@ -607,15 +615,24 @@ export class Stage {
       if (p.kind === "hidden") continue;
       // A piece showing none of its cards (on their way to it, or still the chrome's) is not there to be tapped.
       const target = st.actor.target();
-      const rest = p.base ? { ...target, ...p.base } : target;
+      // Where its hit group was measured: the plan's place for it (a lean-in draws it elsewhere), or, for the stack as the
+      // focus, where it stands up (its focus group's quad).
+      const up = p.draw.t === "stack" && p.draw.up;
+      const rest = p.base && !up ? { ...target, ...p.base } : target;
       if (p.draw.t === "page") {
         // The turn's edge moving to another page: the view fades it over its handover, so the frames keep coming.
         const was = this.pageTurns.get(st.id);
         if (was !== undefined && was !== p.draw.turn && !this.reduced) this.handoffUntil = t + motion.turnHandoff;
         this.pageTurns.set(st.id, p.draw.turn);
       }
+      if (p.draw.t === "stack") {
+        // The printed card crossing over the painted face as it rises or is set aside: the view fades it on the clock.
+        const was = this.stackUps.get(st.id);
+        if (was !== p.draw.up && !this.reduced) this.handoffUntil = Math.max(this.handoffUntil, t + motion.stackPrint);
+        this.stackUps.set(st.id, p.draw.up);
+      }
       const sift = p.draw.t === "sift" ? { sift: { card: p.draw.card, seat: p.seat, roll: siftRoll(p.draw.tapped, sample.alpha) } } : {};
-      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...sift });
+      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...(up ? { up } : {}), ...sift });
       const faceCard = p.kind === "zone" ? (st.shown[st.shown.length - 1] ?? null) : p.kind === "unit" ? (st.shown.includes(p.face!) ? p.face : (st.shown[0] ?? p.face)) : p.face;
       const fm = this.faceOf(st, faceCard, p.mark);
       const face = fm?.face ?? null;
@@ -670,10 +687,27 @@ export class Stage {
       strikes,
       aims,
       tableTone: this.desc?.tableTone ?? 1,
+      scrim: this.scrimTo(this.desc?.scrim ?? 0, t),
+      above: this.desc?.above ?? new Set(),
       drawn,
       now: t,
       still: this.reduced,
     };
+  }
+
+  /** The scrim's alpha at `t`: eased toward the description's (in over SCRIM.inMs, out over SCRIM.outMs; reduced motion
+   * cuts). */
+  private scrimAt(t: Ms): number {
+    const f = this.scrimFade;
+    const ms = f.to > f.from ? SCRIM.inMs : SCRIM.outMs;
+    if (this.reduced || f.from === f.to || t - f.at >= ms) return f.to;
+    const k = Math.max(0, (t - f.at) / ms);
+    return f.from + (f.to - f.from) * (1 - (1 - k) * (1 - k));
+  }
+
+  private scrimTo(target: number, t: Ms): number {
+    if (target !== this.scrimFade.to) this.scrimFade = { from: this.scrimAt(t), to: target, at: t };
+    return this.scrimAt(t);
   }
 
   /** Fallback faces live only while a flight or a remnant still shows a card the model no longer has. */

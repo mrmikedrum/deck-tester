@@ -12,7 +12,6 @@ const input = (more: Partial<FanInput> = {}): FanInput => ({
   thumbing: false,
   respond: false,
   u: 1,
-  measure: (word) => word.length * 7,
   ...more,
 });
 
@@ -23,27 +22,33 @@ describe("fan", () => {
     expect(fanLeft(1)).toBeCloseTo(18 + (150 * 2.9) / 2);
     expect(labelFont(0.5)).toBe('700 12px "Barlow Condensed", sans-serif');
   });
-  it("one card stands upright at the origin with a full name strip", () => {
-    expect(fan(input({ names: ["Island"], f: 0 }))).toEqual([{ x: 0, y: 0, rot: 0, z: 10, label: 146 }]);
+  it("one card stands at the origin, leaning 1.5 degrees left as a hand is held, with a full strip", () => {
+    expect(fan(input({ names: ["Island"], f: 0 }))).toEqual([{ x: 0, y: 0, rot: -1.5, z: 10, label: 146 }]);
   });
   it("none is empty", () => {
     expect(fan(input({ names: [] }))).toEqual([]);
   });
-  it("bunched cards show their name's longest word plus 11 px, spread over 1.9 card widths when there is room", () => {
+  it("bunched cards show a strip of 0.3 of a card, spread over 1.9 card widths when there is room", () => {
     const poses = fan(input({ names: ["Island", "Snap", "Brainstorm"], f: 2 }));
-    // shoulders 11 + 42, 11 + 28; needed 92 < span 285: each gap gets its shoulder plus an even share of the rest,
-    // never more than an opened card (141)
-    const gap0 = Math.min(141, 53 + (285 - 92) / 2), gap1 = 39 + (285 - 92) / 2;
-    expect(poses[1]!.x - poses[0]!.x).toBeCloseTo(gap0);
-    expect(poses[2]!.x - poses[1]!.x).toBeCloseTo(gap1);
-    expect(poses[0]!.label).toBeCloseTo(gap0 - 4);
+    // strips of 45; needed 90 < span 285: each gap gets its strip plus an even share of the rest, never more than an
+    // opened card (141)
+    const gap = Math.min(141, 45 + (285 - 90) / 2);
+    expect(poses[1]!.x - poses[0]!.x).toBeCloseTo(gap);
+    expect(poses[2]!.x - poses[1]!.x).toBeCloseTo(gap);
+    expect(poses[0]!.label).toBeCloseTo(gap - 4);
   });
-  it("arcs: the end cards drop 0.025 of a card and tilt 1.5 degrees outward; z rises along the fan", () => {
+  it("past the span every strip shrinks evenly, to no less than 0.1 of a card", () => {
+    const ten = fan(input({ names: Array.from({ length: 10 }, (_, i) => `Card ${i}`), f: 9 }));
+    for (let i = 1; i < ten.length; i++) expect(ten[i]!.x - ten[i - 1]!.x).toBeCloseTo(285 / 9);
+    const forty = fan(input({ names: Array.from({ length: 40 }, (_, i) => `Card ${i}`), f: 39 }));
+    for (let i = 1; i < forty.length; i++) expect(forty[i]!.x - forty[i - 1]!.x).toBeCloseTo(15);
+  });
+  it("arcs: the end cards drop 0.05 of a card and tilt 4 degrees outward, all leaning 1.5 left; z rises along the fan", () => {
     const poses = fan(input());
     const first = poses[0]!, last = poses.at(-1)!;
-    expect(first.y).toBeCloseTo(150 * 0.025);
-    expect(first.rot).toBeCloseTo(-1.5);
-    expect(last.rot).toBeCloseTo(1.5);
+    expect(first.y).toBeCloseTo(150 * 0.05);
+    expect(first.rot).toBeCloseTo(-4 - 1.5);
+    expect(last.rot).toBeCloseTo(4 - 1.5);
     expect(poses.map((p) => p.z)).toEqual([10, 11, 12, 13, 14, 15, 16]);
     expect(Math.abs(first.x + last.x)).toBeLessThan(1e-9);
   });
@@ -68,7 +73,7 @@ describe("fan", () => {
     expect(pushed[3]!.x).toBeCloseTo(still[3]!.x - 150 * 0.05);
     expect(pushed[3]!.rot).toBeLessThan(still[3]!.rot);
   });
-  it("responding, the playable cards open and the rest close to their shoulders", () => {
+  it("responding, the playable cards open and the rest close to their strips", () => {
     const playable = NAMES.map((_, i) => i === 3);
     const plain = fan(input({ playable })), opened = fan(input({ playable, respond: true }));
     const gap = (p: typeof plain, i: number): number => p[i + 1]!.x - p[i]!.x;

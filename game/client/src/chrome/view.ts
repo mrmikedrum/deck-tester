@@ -88,6 +88,8 @@ export interface InspectorView {
   readonly chips: readonly string[];
   readonly related: readonly { readonly label: string; readonly cards: readonly CardTile[] }[];
   readonly rules: string | null;
+  /** What it has on the stack, a line each: "Spell · Dack", "Ability · Controller unrecorded: create an X/X Elemental". */
+  readonly stack?: readonly string[];
   /** play's `cardActions` for this card: each a pick of its option. */
   readonly actions: readonly CardAction[];
 }
@@ -105,6 +107,8 @@ export interface MenuView {
   readonly error: string | null;
   /** What the last game was started with, preselected. */
   readonly last: GameRequest | null;
+  /** A game is in progress: starting one ends it (the start button is enamelled oxblood). */
+  readonly inProgress?: boolean;
 }
 
 /** A new game as the chrome asks for it (transport's NewGameRequest). */

@@ -3,7 +3,7 @@
 // my hand (`trackHandArrivals`) and what of mine left the battlefield (`gone`). The change set gives what the old client
 // worked out by comparing views; the fresh log lines are Forge's record, and only they say why.
 import type { CardId, LogEntry } from "../protocol";
-import type { Card, Change, ChangeSet, StackItem, TableModel } from "../model";
+import type { Card, Change, ChangeSet, PopKind, StackItem, TableModel } from "../model";
 import {
   departureIn,
   drewCards,
@@ -14,6 +14,14 @@ import {
   makesElemental,
 } from "../model";
 import type { Arrival } from "./types";
+
+/** Motion the prompt does not narrate (the loss notice names what left): a notice still waits on it. */
+export const QUIET = { combatOver: "Combatants return", leaving: "Cards leave the battlefield" } as const;
+const QUIETS: ReadonlySet<string> = new Set(Object.values(QUIET));
+/** A spell gone from the stack, in the game's words for how it went; with no word from Forge, only that it went. */
+const LEFT: Readonly<Record<PopKind, string>> = { resolved: "resolves", fizzled: "fizzles", countered: "is countered", unknown: "leaves the stack" };
+/** The prompt's words for a motion: none for a quiet one. */
+export const spoken = (motion: string): string => (QUIETS.has(motion) ? "" : motion);
 import { destination, handArrivalHeadline, listNames, seatName, shortCard, whoName } from "./words";
 
 type Moved = Extract<Change, { t: "moved" }>;
@@ -72,6 +80,8 @@ export function readSet(set: ChangeSet, model: TableModel, fresh: readonly LogEn
   const texts = fresh.map((e) => logText(e.text));
 
   const departed = set.changes.flatMap((c) => (c.t === "popped" && c.item.source !== null ? [c.item] : []));
+  // How each left, as the model read it from Forge's log: only "resolved" is told as resolving.
+  const how = new Map(set.changes.flatMap((c) => (c.t === "popped" ? [[c.item, c.how] as const] : [])));
   const pushed = new Set(set.changes.flatMap((c) => (c.t === "pushed" ? [c.item.id] : [])));
   const added = [...model.stack].reverse().filter((st) => pushed.has(st.id));
 
@@ -105,7 +115,7 @@ export function readSet(set: ChangeSet, model: TableModel, fresh: readonly LogEn
     const group = `${one.power}/${one.toughness} Elemental and ${beasts}`;
     return {
       log,
-      moving: `${group} arriving on ${pid === me ? "your" : whoName(model, pid)} side`,
+      moving: `${group} enter`,
       summary: [
         `${pid === me ? "You" : who} got a ${one.power}/${one.toughness} Elemental`,
         `${beasts[0]!.toUpperCase() + beasts.slice(1)} · source unrecorded`,
@@ -271,29 +281,37 @@ export function readSet(set: ChangeSet, model: TableModel, fresh: readonly LogEn
     (c) =>
       c.t === "attacks" && c.attack.defender !== null && "seat" in c.attack.defender && c.attack.defender.seat === me,
   );
+  // What the table is doing, in the game's words, the same line the prompt will ask with where it asks one.
   let motion = "";
   if (added.length) {
     const st = added[0]!,
-      name = displayOf(st.source);
-    motion = `${st.spell ? name : `${shortCard(name)}'s ability`} is going on the stack`;
+      name = displayOf(st.source),
+      who = st.controller === me ? "You" : seatName(model, st.controller);
+    motion = st.spell ? `${who} ${st.controller === me ? "cast" : "casts"} ${name}` : `${whoName(model, st.controller)} ${shortCard(name)} ability`;
   } else if ((model.phase === "COMBAT_DECLARE_ATTACKERS" || model.phase === "COMBAT_DECLARE_BLOCKERS") && attacksAtMe)
-    motion = `${seatName(model, model.active)}'s attackers are moving in`;
-  else if (model.phase === "COMBAT_DECLARE_BLOCKERS" && set.changes.some((c) => c.t === "blocked"))
-    motion = "Blockers are moving into position";
-  else if (set.changes.some((c) => c.t === "combat-over")) motion = "Combatants are returning to their pages";
+    motion = `${seatName(model, model.active)} attacks`;
+  else if (model.phase === "COMBAT_DECLARE_BLOCKERS" && set.changes.some((c) => c.t === "blocked")) motion = "Blockers declared";
+  else if (set.changes.some((c) => c.t === "combat-over")) motion = QUIET.combatOver;
   else if (departed.length || lost.length || (damage && set.changes.some((c) => c.t === "phase"))) {
+    const spells = departed.filter((st) => st.spell);
     motion = sunfall
-      ? "Sunfall is exiling creatures"
+      ? "Sunfall resolves"
       : entered.length
-        ? `${listNames(entered.map(itemName))} ${entered.length === 1 ? "is" : "are"} entering`
+        ? `${listNames(entered.map(itemName))} ${entered.length === 1 ? "enters" : "enter"}`
         : token?.moving ||
           (damage
-            ? "Combat damage · combatants are moving"
+            ? "Combat damage"
             : countered
-              ? "The counter resolves · spells are leaving the stack"
-              : departed.length
-                ? "Cards are leaving the stack"
-                : "Cards are leaving the battlefield");
+              ? counter
+                ? `${itemName(counter.spell)} is countered`
+                : "Countered"
+              : spells.length === 1
+                ? `${itemName(spells[0]!)} ${LEFT[how.get(spells[0]!) ?? "unknown"]}`
+                : spells.length
+                  ? spells.every((st) => how.get(st) === "resolved")
+                    ? "Resolved"
+                    : "Spells left the stack"
+                  : QUIET.leaving);
   }
   const onStack = (e: LogEntry): boolean =>
     /^(?:turn|stack_add)$/i.test(e.type) ||

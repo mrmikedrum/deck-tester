@@ -15,7 +15,8 @@ export const TH = 0.014; // card thickness
 export const STEP = 1.2;
 // How much further back than upright a tapped standee leans, so tapped reads at a glance.
 export const TAP_LEAN = 0.3;
-// A title tab's greatest height above its card.
+// The least room kept above a standing pile for its title tab; never less than the tab's height on screen (`TAB_PX`,
+// which does not scale with the design unit: on a small screen it is the larger).
 export const TAB_H = 0.24;
 // Between bands; the margin at the page's open edge; the plaque's band; inside the border at the sides; how far a row is
 // set off from the one in front, so its cards show between theirs.
@@ -134,11 +135,13 @@ export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1
 
 // How deep into seat `r`'s page (from its fixed edge) the table first shows above the top of a card of scale `s` standing
 // at depth `foot`, as I see it. Far off I look across the table more than down on it, so a standee there hides more of
-// the page behind it than near me: a row or band behind starts here, or the card in front covers its foot.
-export function clearBehind(g: Geo, r: Region, foot: number, s: number, tall = CH * 1.04): number {
+// the page behind it than near me: a row or band behind starts here, or the card in front covers its foot. `tabPx`: the
+// screen room above the card's top a title tab takes, kept too where the card's own `tall` leaves less.
+export function clearBehind(g: Geo, r: Region, foot: number, s: number, tall = CH * 1.04, tabPx = 0): number {
   const up = { y: Math.cos(g.pitch), z: -Math.sin(g.pitch) };
   const f = g.toWorld(r, 0, r.d / 2 - foot);
-  const top = g.proj.project({ x: f.x, y: f.y + up.y * tall * s, z: f.z + up.z * tall * s }).y / g.u - 2;
+  const at = (t: number): number => g.proj.project({ x: f.x, y: f.y + up.y * t * s, z: f.z + up.z * t * s }).y;
+  const top = Math.min(at(tall), at(CH) - tabPx) / g.u - 2;
   let lo = foot, hi = r.d + 4;
   for (let it = 0; it < 18; it++) {
     const m = (lo + hi) / 2;

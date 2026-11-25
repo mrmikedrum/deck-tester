@@ -18,12 +18,13 @@ import {
   PlaneGeometry,
   RepeatWrapping,
 } from "three";
-import type { Material, Texture } from "three";
+import type { Material, Object3D, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
-import { SIGN_U, TAB_H, colour, faceKey, materials, motion, seatInk } from "../../theme";
+import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
 import { PILE_STEP, siftRoll } from "../stage/poses";
+import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard } from "./card";
 import type { CardObject } from "./card";
@@ -96,6 +97,34 @@ export interface PieceView {
  * labels drawn on or over them (signs, tabs, chips, plates, tags). Effects, shadows and the pages are not.
  */
 export const COVERS = "covers";
+/** Marks a label (a pile's title, a well's or a zone's sign): its lines' font sizes on its canvas, and the canvas's
+ * height, so the layout audit can read its text's size on screen (view.ts `labels`). */
+export const LABEL = "label";
+/**
+ * A label's tag: its lines' fonts and its canvas's height; the text size it keeps on screen (`want`, CSS px: the renderer
+ * scales it each frame, `fitLabels`); and for a tab standing on a card, the card's top edge it stands on and how far it
+ * overlaps it (px).
+ */
+export interface LabelTag {
+  readonly fonts: readonly number[];
+  readonly h: number;
+  readonly want?: number;
+  readonly foot?: number;
+  readonly overlap?: number;
+}
+const LABEL_OVERLAP = 3;
+/**
+ * A sign's lesser forms (a well's, a zone's), on its mesh: hidden until the renderer falls back on one where the sign
+ * would meet another label (view.ts `settleSigns`): the sign on one line (its second dropped, never shrunk under the
+ * floor), then its count as a chip on its card's face, which cannot meet anything.
+ */
+export const SIGN_ALTS = "signAlts";
+export interface SignAlts {
+  readonly line: Mesh | null;
+  readonly chip: Mesh | null;
+}
+const labelled = (d: { mesh: Mesh }, lease: Lease, fonts: readonly number[], want?: number): void =>
+  void (d.mesh.userData[LABEL] = { fonts, h: lease.height, ...(want ? { want } : {}) } satisfies LabelTag);
 const covers = (o: Mesh): Mesh => ((o.userData[COVERS] = true), o);
 
 /** What pieces are made with: the host, its effects kit and the camera's pitch. */
@@ -132,6 +161,7 @@ export function artWanted(v: ActorView): readonly string[] {
   if (v.face?.art) urls.push(v.face.art);
   if (v.draw.t === "plate" && v.draw.spec.art) urls.push(v.draw.spec.art);
   if (v.draw.t === "unit") for (const d of v.draw.dressed) if (d.face.art) urls.push(d.face.art);
+  if (v.draw.t === "stack" && v.draw.img) urls.push(v.draw.img);
   return urls;
 }
 
@@ -207,9 +237,13 @@ class Decal {
  * A group lying on the page at a card's foot, its axes the world's (+y up off the page, +z toward me), however the card
  * stands: where ash, shadows, brands, pools and a well's sign lie. Re-aimed every frame against the card's pitch.
  */
+/** Marks a ground: what lies on the page stays under the stack's scrim when its piece stands above it. */
+export const GROUND = "ground";
+
 class Ground {
   readonly group = new Group();
   constructor(parent: Group) {
+    this.group.userData[GROUND] = true;
     this.group.position.set(0, -CH / 2, 0);
     parent.add(this.group);
   }
@@ -275,6 +309,13 @@ function standeeShadow(env: PieceEnv, tapped: boolean, lean: number): { mesh: Me
   return { mesh: m, lease };
 }
 
+/**
+ * A pile's tapped copy shows this share of a card's height past the front card's right edge (a creature's place is 1.06
+ * card heights: this much still clears a turned neighbour's stats); a well's lies turned 15°.
+ */
+const TAPPED_SHOW = 0.18;
+const WELL_TURN = Math.PI / 12;
+
 class UnitView implements PieceView {
   readonly group = new Group();
   private cards: CardPart[] = [];
@@ -283,12 +324,14 @@ class UnitView implements PieceView {
   private sign: Decal | null = null;
   private chips: Decal[] = [];
   private key = "";
+  private copyKey = "";
   private readonly ground: Ground;
   private readonly marks: MarkFx;
   private ash: Effect | null = null;
   private shadow: { mesh: Mesh; lease: Lease; tapped: boolean } | null = null;
   private well: { effect: Effect; key: string } | null = null;
   private wellSign: Decal | null = null;
+  private wellAlts: Decal[] = [];
 
   constructor(
     private readonly env: PieceEnv,
@@ -316,43 +359,62 @@ class UnitView implements PieceView {
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "unit" }>;
     const well = d.well;
-    const copies = well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown));
-    if (this.cards.length !== copies) {
+    const copies = Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown)));
+    // Each copy stands for members of the pile and wears their state (while members are still arriving, the first).
+    const plan = d.copies.slice(0, copies);
+    const copyKey = plan.map((c) => (c.tapped ? "t" : "r")).join("") + `|${copies}|${d.posture}`;
+    if (this.cards.length !== copies || this.copyKey !== copyKey) {
       for (const c of this.cards) {
         this.group.remove(c.obj.group);
         c.dispose();
       }
       this.cards = [];
+      this.copyKey = copyKey;
+      const mixed = plan.some((c) => c.tapped) && plan.some((c) => !c.tapped);
       for (let i = 0; i < copies; i++) {
-        const c = new CardPart(this.host, v.face, d.token);
+        const cp = plan[i];
+        const c = new CardPart(this.host, cp?.face ?? v.face, d.token);
         if (well) {
-          // A well's lands lie in a short stack, a little proud of the page, the top one first.
+          // A well's lands lie in a short stack, a little proud of the page, the top one first; its tapped ones at the
+          // bottom, turned 15° about the stack's middle (all of them, when every one is spent).
           c.obj.group.position.set(0, 0, SIZE.well.proud + SIZE.well.step * (copies - 1 - i));
+          if (cp?.tapped) c.obj.group.rotation.z = -WELL_TURN;
+        } else if (mixed && cp?.tapped) {
+          // Behind the ready ones, turned as a lone tapped card is, a share of it showing past the front card's right
+          // edge, feet on the front card's foot line (a standee leans back as a tapped one does).
+          const st = SIZE.copyStep, cx = CW / 2 + TAPPED_SHOW * CH - CH / 2, cy = -CH / 2 + CW / 2, z = st.z * i;
+          if (d.posture === "stand") {
+            c.obj.group.rotation.x = -TAP_LEAN;
+            c.obj.group.position.set(cx, cy - (CW / 2) * (1 - Math.cos(TAP_LEAN)), z - (CW / 2) * Math.sin(TAP_LEAN));
+          } else c.obj.group.position.set(cx, cy, z);
         } else {
           const st = SIZE.copyStep;
           c.obj.group.position.set(st.x * i, st.y * i, st.z * i);
         }
+        c.obj.group.userData["tapped"] = !!cp?.tapped && (mixed || !!well);
         this.cards.push(c);
         this.group.add(c.obj.group);
       }
-    } else for (const c of this.cards) c.face(v.face);
+    } else this.cards.forEach((c, i) => c.face(plan[i]?.face ?? v.face));
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
-    const key = `${d.title ?? ""}|${d.sub ?? ""}|${d.mixed}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${d.title === null && v.shown > 1 && !well ? v.shown : ""}|${!!well}`;
+    // A pile whose title gave way (no room on screen) shows its count as a chip on its face.
+    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well;
+    const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
     if (key === this.key) return;
     this.key = key;
     this.sign?.dispose();
     if (this.sign) this.group.remove(this.sign.mesh);
     this.sign = null;
-    if (d.title && !well) this.sign = this.titleTab(d, turned);
+    if (d.title && d.label && !well) this.sign = this.titleTab(d, turned);
     for (const c of this.chips) {
       this.cards[0]!.obj.body.remove(c.mesh);
       c.dispose();
     }
     this.chips = [];
     // (A well's count is on its sign.)
-    const specs = [...d.chips, ...(d.title === null && v.shown > 1 && !well ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
+    const specs = [...d.chips, ...(chip ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
     specs.forEach((spec, i) => {
       const chip = new Decal(this.host.painter.chip(spec), SIZE.chip, SIZE.chip, { renderOrder: 6 });
       chip.mesh.position.set(SIZE.chipAt.x - i * SIZE.chipStep, SIZE.chipAt.y, SIZE.chipAt.z);
@@ -362,33 +424,17 @@ class UnitView implements PieceView {
   }
 
   /**
-   * A pile's title on a tab standing up from its top card's top edge (h.js `titleTab`), so the top card's own name still
-   * shows under it: as wide as the card at most (a mixed pile's may reach 1.45 card widths, over its own fan), at most
-   * TAB_H tall. Its second line under it; where both fit larger on one line they share it; a mixed pile's tapped count
-   * goes up beside its title.
+   * A pile's title on a tab standing up from its top card's top edge, as the ledger placed it (stage labels.ts): one
+   * line, its text kept at its size on screen by the renderer (`fitLabels`), slid along the edge by its share of a card.
    */
   private titleTab(d: Extract<Draw, { t: "unit" }>, turned: boolean): Decal {
-    const painter = this.host.painter;
-    const top = turned ? CW / 2 : CH / 2,
-      wide = (turned ? CH : CW) * (d.mixed ? 1.45 : 1);
-    const fit = (l: Lease): number => Math.min(1.1, (wide * 1.04) / (l.width * SIGN_U), TAB_H / (l.height * SIGN_U));
-    const title = d.title!,
-      sub = d.sub;
-    const tap = d.mixed && sub ? / · \d+ tapped$/.exec(sub) : null;
-    const [t1, s1] = tap ? [title + tap[0], sub!.slice(0, tap.index) || null] : [title, sub];
-    let lease = painter.sign({ text: t1, colour: null, sub: s1 });
-    if (!d.mixed && sub) {
-      const one = painter.sign({ text: `${title} · ${sub}`, colour: null, sub: null });
-      if (fit(one) > fit(lease)) {
-        lease.release();
-        lease = one;
-      } else one.release();
-    }
-    const s = fit(lease),
-      w = lease.width * SIGN_U * s,
-      h = lease.height * SIGN_U * s;
-    const tab = new Decal(lease, w, h);
-    tab.mesh.position.set(d.mixed && !turned ? ((wide - CW) / 2) * 0.6 : 0, top + h / 2 - 0.035, TH / 2 + 0.03);
+    const l = d.label!;
+    const count = /(\d+)$/.exec(d.title ?? "")?.[1] ?? "";
+    const lease = this.host.painter.sign({ text: [l.name, count, d.tapNote].filter(Boolean).join(" "), colour: null, sub: null });
+    const top = turned ? CW / 2 : CH / 2, across = turned ? CH : CW;
+    const tab = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
+    tab.mesh.userData[LABEL] = { fonts: [SIGN_FONT.text], h: lease.height, want: l.px, foot: top, overlap: LABEL_OVERLAP } satisfies LabelTag;
+    tab.mesh.position.set(l.slide * across, top, TH / 2 + 0.03);
     this.group.add(tab.mesh);
     return tab;
   }
@@ -438,19 +484,32 @@ class UnitView implements PieceView {
       this.wellSign.dispose();
       this.wellSign = null;
     }
+    for (const a of this.wellAlts) {
+      a.mesh.removeFromParent();
+      a.dispose();
+    }
+    this.wellAlts = [];
     if (!w) return;
-    const lease = this.host.painter.sign({ text: w.sign, colour: w.theirs ? d.seatColour : null, sub: w.sub });
-    const sign = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
-    const ws = SIZE.wellSign;
-    sign.mesh.rotation.x = -Math.PI / 2 + ws.tilt;
-    // Its size in the world: theirs fits the card's width; mine is a sign's own size, a little smaller in a long row.
-    const fit = w.theirs ? Math.min(1, ws.theirsFit / (lease.width * SIGN_U)) : w.small ? 0.8 : 1;
-    sign.mesh.userData["fit"] = fit;
-    const z = w.theirs ? ws.theirs : ws.mine[w.alt ? 1 : 0];
-    const clear = ((lease.height * SIGN_U * fit) / 2) * Math.sin(ws.tilt) + 0.05;
-    sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear), z);
-    sign.mesh.renderOrder = 6;
-    this.ground.group.add(sign.mesh);
+    const ws = SIZE.wellSign, z = w.theirs ? ws.theirs : ws.mine[w.alt ? 1 : 0];
+    const signOf = (sub: string | null): Decal => {
+      const lease = this.host.painter.sign({ text: w.sign, colour: w.theirs ? d.seatColour : null, sub });
+      const sign = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
+      labelled(sign, lease, sub ? [SIGN_FONT.text, SIGN_FONT.sub] : [SIGN_FONT.text], LABEL_PX.theirs);
+      sign.mesh.rotation.x = -Math.PI / 2 + ws.tilt;
+      // Its size in the world: theirs fits the card's width; mine is a sign's own size, a little smaller in a long row.
+      const fit = w.theirs ? Math.min(1, ws.theirsFit / (lease.width * SIGN_U)) : w.small ? 0.8 : 1;
+      sign.mesh.userData["fit"] = fit;
+      const clear = ((lease.height * SIGN_U * fit) / 2) * Math.sin(ws.tilt) + 0.05;
+      sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear), z);
+      sign.mesh.renderOrder = 6;
+      this.ground.group.add(sign.mesh);
+      return sign;
+    };
+    const sign = signOf(w.sub), line = w.sub ? signOf(null) : null;
+    const chip = this.cards[0] ? countChip(this.host, w.sign, this.cards[0].obj.body) : null;
+    this.wellAlts = [line, chip].filter((x): x is Decal => x !== null);
+    for (const a of this.wellAlts) a.mesh.visible = false;
+    sign.mesh.userData[SIGN_ALTS] = { line: line?.mesh ?? null, chip: chip?.mesh ?? null } satisfies SignAlts;
     this.wellSign = sign;
   }
 
@@ -459,15 +518,19 @@ class UnitView implements PieceView {
     const s = v.sample;
     // A well's card lies square however spent it is: its shade (and its badge) say tapped, never a turn.
     const spent = !!d.well?.spent;
-    for (const c of this.cards) c.look(d.well ? 0 : s.tap, s.fade, v.mark, s.glow, spent);
+    // A copy standing for tapped members is turned (a pile's) or shaded (a well's) on its own; the rest follow the pile.
+    for (const c of this.cards) {
+      const own = c.obj.group.userData["tapped"] === true;
+      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own);
+    }
     for (const c of this.dress) c.look(0, s.fade, null, 0);
     this.sign?.tone(1 - 0.8 * s.fade);
     this.ground.follow(s.rx);
-    if (this.wellSign) {
-      // Mine are a sign's own size in the world, whatever the well's scale; theirs fit the card.
-      const fit = this.wellSign.mesh.userData["fit"] as number;
-      this.wellSign.mesh.scale.setScalar(d.well?.theirs ? fit : fit / Math.max(1e-3, s.s));
-      this.wellSign.tone(1 - 0.8 * s.fade);
+    for (const sign of this.wellSign ? [this.wellSign, ...this.wellAlts] : []) {
+      // Mine are a sign's own size in the world, whatever the well's scale; theirs fit the card. (The chip has no fit.)
+      const fit = sign.mesh.userData["fit"] as number | undefined;
+      if (fit !== undefined) sign.mesh.scale.setScalar(d.well?.theirs ? fit : fit / Math.max(1e-3, s.s));
+      sign.tone(1 - 0.8 * s.fade);
     }
     const level = fxLevel(s.fade);
     this.marks.set(v.mark);
@@ -500,12 +563,22 @@ class UnitView implements PieceView {
     for (const c of this.dress) c.dispose();
     this.sign?.dispose();
     this.wellSign?.dispose();
+    for (const a of this.wellAlts) a.dispose();
     for (const c of this.chips) c.dispose();
     this.marks.clear();
     this.ash?.dispose();
     this.well?.effect.dispose();
     this.dropShadow();
   }
+}
+
+/** A sign's count ("Mountain ×4", "Graveyard 3": its last number) as a chip on its card's face, where the counter chips sit. */
+function countChip(host: Host, sign: string, on: Object3D): Decal {
+  const n = /(\d+)\s*$/.exec(sign)?.[1] ?? "";
+  const chip = new Decal(host.painter.chip({ text: `×${n}`, ink: colour.ink, sub: null }), SIZE.chip, SIZE.chip, { renderOrder: 6 });
+  chip.mesh.position.set(SIZE.chipAt.x, SIZE.chipAt.y, SIZE.chipAt.z);
+  on.add(chip.mesh);
+  return chip;
 }
 
 // ---- a zone pile ----------------------------------------------------------------------------------------------------
@@ -518,6 +591,7 @@ class ZoneView implements PieceView {
   private readonly box: Mesh;
   private top: CardPart | null = null;
   private sign: Decal | null = null;
+  private chip: Decal | null = null;
   private key = "";
 
   constructor(
@@ -561,6 +635,7 @@ class ZoneView implements PieceView {
       this.sign = new Decal(lease, 1, 1, { renderOrder: 6 });
       this.body.add(this.sign.mesh);
     }
+    if (this.sign) labelled(this.sign, lease, [SIGN_FONT.text], LABEL_PX.theirs);
     // Both signs take the size the longer word fits at, so their counts read alike (h.js: "Graveyard 00").
     const ref = this.host.painter.sign({ text: "Graveyard 00", colour: d.colour, sub: null });
     const w = lease.width * SIGN_U,
@@ -570,6 +645,11 @@ class ZoneView implements PieceView {
     this.sign.mesh.scale.set(w * k, hh * k, 1);
     this.sign.mesh.rotation.x = -Math.PI / 2 + SIZE.zoneSignTilt;
     this.sign.mesh.position.set(0, h + 0.06, d.mine ? 0.3 : 0.12);
+    this.chip?.mesh.removeFromParent();
+    this.chip?.dispose();
+    this.chip = countChip(this.host, `${n}`, this.top.obj.body);
+    this.chip.mesh.visible = false;
+    this.sign.mesh.userData[SIGN_ALTS] = { line: null, chip: this.chip.mesh } satisfies SignAlts;
   }
 
   front(): Mesh | null {
@@ -584,6 +664,7 @@ class ZoneView implements PieceView {
   dispose(): void {
     this.top?.dispose();
     this.sign?.dispose();
+    this.chip?.dispose();
     this.boxGeo.dispose();
   }
 }
@@ -641,6 +722,13 @@ class PlateView implements PieceView {
  * tag under it (the size it was set aside, however large the card stands as the focus), its mana crackling off its rim
  * (an ability's half as strong), igniting as it comes. As the table's focus it draws over everything on the table.
  */
+/** How long the printed card takes to come up over the painted face as the stack rises (and back as it is set aside). */
+const PRINT_FADE_S = motion.stackPrint / 1000;
+/** Set aside, a stack card is edged in its controller's seat ink (about 3 px at that size) instead of its tag. */
+const STACK_EDGE = 0.06;
+/** The tag's least scale under a card held up (about 22 px tall at the focus's size). */
+const STACK_TAG_MIN = 0.26;
+
 class StackView implements PieceView {
   readonly group = new Group();
   private readonly card: CardPart;
@@ -650,6 +738,19 @@ class StackView implements PieceView {
   private burst: Effect | null = null;
   private born: number | null = null;
   private up = false;
+  /** The printed card over the painted face, and the seat's edge round it set aside. */
+  private readonly print: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private printLease: Lease | null = null;
+  private printUrl: string | null = null;
+  private readonly edge: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private slip: Decal | null = null;
+  private slipText: string | null = null;
+  /** When `up` last changed (the clock's seconds; null: not yet drawn), and how far the print had come then. */
+  private turned: number | null = null;
+  private fadeFrom = 0;
+  private fade = 0;
+  private wanted = 0;
+  private tagScale = 1;
   constructor(
     private readonly env: PieceEnv,
     v: ActorView,
@@ -662,10 +763,17 @@ class StackView implements PieceView {
     this.drop = new Decal(host.painter.drop(), CW * 1.62 * SIZE.drop.s, CH * 1.46 * SIZE.drop.s, { renderOrder: 4, covers: false });
     this.drop.mesh.position.set(SIZE.drop.x, SIZE.drop.y, SIZE.drop.z);
     (this.drop.mesh.material as MeshBasicMaterial).opacity = materials.surface.drop.opacity;
+    this.print = new Mesh(new PlaneGeometry(CW, CH), new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+    this.print.position.z = this.card.obj.front.position.z + 0.002;
+    this.print.visible = false;
+    covers(this.print);
+    this.edge = new Mesh(new PlaneGeometry(CW + STACK_EDGE, CH + STACK_EDGE * (CW / CH) * 1.4), new MeshBasicMaterial({ color: new Color(d.colour), toneMapped: false }));
+    this.edge.position.z = -0.001;
     const seed = typeof v.id === "string" ? [...v.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) : 7;
     this.crackle = spellFx(env.fx, d.colours, seed, d.ability ? 0.5 : 1, CW);
     this.burst = burstFx(env.fx, d.colours, seed, Number.NaN);
-    this.group.add(this.drop.mesh, this.card.obj.group, this.tag.mesh, this.crackle.object, this.burst.object);
+    this.group.add(this.drop.mesh, this.edge, this.card.obj.group, this.print, this.tag.mesh, this.crackle.object, this.burst.object);
+    this.dress(d);
     this.raise(d.up);
     this.sizeTag(d.tagScale);
   }
@@ -674,8 +782,39 @@ class StackView implements PieceView {
     this.up = up;
     this.group.traverse((o) => {
       if (o === this.crackle.object || o.parent === this.crackle.object || o === this.burst?.object) return;
-      if ((o as Mesh).isMesh) o.renderOrder = up ? 11 : o === this.drop.mesh ? 4 : o === this.tag.mesh ? 6 : 0;
+      if ((o as Mesh).isMesh) o.renderOrder = up ? (o === this.print ? 12 : o === this.tag.mesh || o === this.slip?.mesh ? 13 : 11) : o === this.drop.mesh ? 4 : o === this.tag.mesh ? 6 : o === this.print ? 1 : 0;
     });
+  }
+  /** The printed image (leased once it is decoded) and an ability's slip. */
+  private dress(d: Extract<Draw, { t: "stack" }>): void {
+    if (d.img !== this.printUrl || !this.printLease) {
+      const next = d.img ? this.env.host.painter.printed(d.img) : null;
+      if (next && next.key === this.printLease?.key) next.release();
+      else {
+        this.printLease?.release();
+        this.printLease = next;
+        this.print.material.map = next ? next.texture : null;
+        this.print.material.needsUpdate = true;
+      }
+      this.printUrl = d.img;
+    }
+    if (d.slip !== this.slipText) {
+      if (this.slip) {
+        this.group.remove(this.slip.mesh);
+        this.slip.dispose();
+        this.slip = null;
+      }
+      if (d.slip) {
+        const lease = this.env.host.painter.slip(d.slip);
+        const w = CW * 1.15, h = (w * lease.height) / lease.width;
+        this.slip = new Decal(lease, w, h, { renderOrder: 6 });
+        this.slip.mesh.position.set(0, SIZE.tag.y - SIZE.tag.h / 2 - 0.015 - h / 2, 0.02);
+        this.group.add(this.slip.mesh);
+        if (this.up) this.raise(true);
+        this.sizeTag(this.tagScale);
+      }
+      this.slipText = d.slip;
+    }
   }
   front(): Mesh | null {
     return this.card.obj.front;
@@ -684,13 +823,22 @@ class StackView implements PieceView {
     const d = v.draw as Extract<Draw, { t: "stack" }>;
     this.card.face(v.face);
     this.tag.set(this.env.host.painter.tag(d.tag, d.colour));
+    this.edge.material.color.set(d.colour);
+    this.dress(d);
     if (d.up !== this.up) this.raise(d.up);
     this.sizeTag(d.tagScale);
   }
-  /** The owner's tag stays the size it was (h.js: `mid / hPx`, tucked up onto the card's foot). */
+  /** Held up as the focus the controller's tag hangs under the printed card, about the size it reads at set aside (h.js:
+   * `mid / hPx`) but never smaller than a readable share; an ability's slip hangs under it. */
   private sizeTag(k: number): void {
-    this.tag.mesh.scale.setScalar(k);
-    this.tag.mesh.position.y = k < 1 ? -CH / 2 + 0.08 - 0.1 * k : SIZE.tag.y;
+    this.tagScale = k;
+    const s = this.up ? Math.max(STACK_TAG_MIN, k) : k;
+    this.tag.mesh.scale.setScalar(s);
+    this.tag.mesh.position.y = this.up ? -CH / 2 - 0.01 - (SIZE.tag.h * s) / 2 : SIZE.tag.y;
+    if (this.slip) {
+      const h = (this.slip.mesh.geometry as PlaneGeometry).parameters.height;
+      this.slip.mesh.position.y = this.tag.mesh.position.y - (SIZE.tag.h * s) / 2 - 0.012 - h / 2;
+    }
   }
   look(v: ActorView, clock: Clock): void {
     this.card.look(0, v.sample.fade, v.mark, v.sample.glow);
@@ -703,6 +851,25 @@ class StackView implements PieceView {
       }
       this.burst = burstFx(this.env.fx, (v.draw as Extract<Draw, { t: "stack" }>).colours, 11, clock.t);
       this.group.add(this.burst.object);
+      if (this.up) this.raise(true);
+    }
+    // The printed card comes up over the painted face as it rises, and goes as it is set aside (no motion of its own).
+    const want = this.up ? 1 : 0;
+    if (this.turned === null || want !== this.wanted) {
+      this.turned = clock.t;
+      this.fadeFrom = this.fade;
+      this.wanted = want;
+    }
+    const k = clock.still ? 1 : Math.min(1, Math.max(0, (clock.t - this.turned) / PRINT_FADE_S));
+    this.fade = this.fadeFrom + (want - this.fadeFrom) * k;
+    const shown = this.printLease ? this.fade : 0;
+    this.print.material.opacity = shown;
+    this.print.visible = shown > 0.001;
+    this.tag.mesh.visible = this.up;
+    this.edge.visible = !this.up;
+    if (this.slip) {
+      (this.slip.mesh.material as MeshBasicMaterial).opacity = this.fade;
+      this.slip.mesh.visible = this.fade > 0.001;
     }
     const level = fxLevel(v.sample.fade);
     this.crackle.tick(clock.t, level, clock.still);
@@ -714,6 +881,12 @@ class StackView implements PieceView {
     this.drop.dispose();
     this.crackle.dispose();
     this.burst?.dispose();
+    this.printLease?.release();
+    this.print.geometry.dispose();
+    this.print.material.dispose();
+    this.edge.geometry.dispose();
+    this.edge.material.dispose();
+    this.slip?.dispose();
   }
 }
 

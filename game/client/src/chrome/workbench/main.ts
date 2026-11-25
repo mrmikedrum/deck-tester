@@ -93,13 +93,13 @@ function initial(start: number): Bench {
     case "mulligan":
       return { ...b, prompt: MULLIGAN_PROMPT, hand: { ...hand, away: true }, layers: ["mulligan"] };
     case "aside":
-      return { ...b, prompt: THREAT, aside: [{ layer: "stack", label: "Stack: 2" }] };
+      return { ...b, prompt: THREAT, aside: [{ layer: "stack", label: "Stack 2" }] };
     case "menu":
       return { ...b, layers: ["menu"] };
     case "hand":
       return { ...b, prompt: { ...THREAT, countdown: { from: start, ms: 3200 } }, layers: ["hand"] };
     case "back":
-      return { ...b, layers: ["lean"], back: "Ana's side", aside: [{ layer: "stack", label: "Stack: 1" }] };
+      return { ...b, layers: ["lean"], back: "Ana's side", aside: [{ layer: "stack", label: "Stack 1" }] };
     default:
       return b;
   }
@@ -143,7 +143,7 @@ async function main(): Promise<void> {
       const top = bench.layers[bench.layers.length - 1];
       if (!top) return;
       if (top === "sheet") return act({ a: "dismiss" });
-      bench = { ...bench, layers: without(top), back: top === "lean" ? null : bench.back, aside: top === "stack" ? [...bench.aside, { layer: "stack", label: "Stack: 2" }] : bench.aside };
+      bench = { ...bench, layers: without(top), back: top === "lean" ? null : bench.back, aside: top === "stack" ? [...bench.aside, { layer: "stack", label: "Stack 2" }] : bench.aside };
     } else if (o.t === "restore") {
       bench = { ...bench, aside: bench.aside.filter((c) => c.layer !== o.layer), layers: [o.layer, ...without(o.layer)] };
     } else if (o.t === "open") {

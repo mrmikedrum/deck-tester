@@ -20,17 +20,55 @@ const meets = (a: Quad, b: Quad): boolean => {
 };
 
 describe("the stack as the table's focus", () => {
-  it("025: the Bolt stands large in the middle, clear of Princess's plate it aims at and of every plaque", () => {
+  it("025: the Bolt stands large between the hand and the prompt, clear of Princess's plate it aims at", () => {
     const { plan } = planOf("025-play-stack-targets-player.json");
     expect(plan.stackUp).toHaveLength(1);
     const up = plan.stackUp[0]!, rest = plan.stack[0]!;
     const b = bounds(up.quad), r = bounds(rest.quad);
     // Much larger than set aside, and near the middle of the screen.
     expect(b.b - b.t).toBeGreaterThan(2.5 * (r.b - r.t));
-    expect(b.b - b.t).toBeGreaterThan(200);
-    expect(Math.abs((b.l + b.r) / 2 - VP.w / 2)).toBeLessThan(200);
+    // About life size: 0.52 of the screen's height, never under 360 design px.
+    expect(b.b - b.t).toBeGreaterThan(360 * designUnit(VP) - 1);
+    expect(Math.abs((b.l + b.r) / 2 - (470 + 838) / 2)).toBeLessThan(200);
     expect(up.reachable).toBe(true);
-    for (const g of plan.hits.groups.filter((x) => x.kind === "plate")) expect(meets(up.quad, g.quad), g.id).toBe(false);
+    // It may cover a plaque it does not aim at (the scrim is over it), never the one it aims at.
+    const plate = plan.hits.groups.find((x) => x.id === "plate:Princess")!;
+    expect(meets(up.quad, plate.quad)).toBe(false);
+  });
+  it("stands 0.52 of the screen's height, its middle at 46%, and never under 360 design px", () => {
+    for (const vp of [VP, { w: 1366, h: 1024 }, { w: 1180, h: 640 }]) {
+      const model = modelOf(corpusSnapshot("013-play-stack.json"), catalog, viewerOf())!;
+      const plan = planTable(tableInputOf(model, { viewport: vp }));
+      const b = bounds(plan.stackUp[0]!.quad), u = designUnit(vp);
+      expect(b.b - b.t, `${vp.w}x${vp.h}`).toBeGreaterThanOrEqual(Math.max(360 * u, 0.52 * vp.h) - 1);
+    }
+  });
+  it("a tall stack keeps the top at its floor and overlaps the rest further, clear of what it aims at and the chrome", () => {
+    const model = modelOf(corpusSnapshot("014-play-opponent-spell-targets-me-stack-targets-card.json"), catalog, viewerOf())!;
+    const base = tableInputOf(model, { viewport: VP });
+    const u = designUnit(VP);
+    const rectQuad = (r: { left: number; top: number; right: number; bottom: number }): Quad =>
+      [{ x: r.left, y: r.top }, { x: r.right, y: r.top }, { x: r.right, y: r.bottom }, { x: r.left, y: r.bottom }] as unknown as Quad;
+    for (const n of [5, 8, 12, 20])
+      for (const pick of [[0], [1], [0, 1, 2]]) {
+        const stack = Array.from({ length: n }, (_, i) => ({ ...base.stack[pick[i % pick.length]!]!, key: `k${i}` }));
+        const plan = planTable({ ...base, stack });
+        const why = `${n} of ${pick.join("")}`;
+        const top = bounds(plan.stackUp[0]!.quad);
+        expect(top.b - top.t, why).toBeGreaterThanOrEqual(360 * u - 1);
+        // What it aims at, the hand and the prompt stay clear of every card it shows; each has its own group while it is up.
+        const aimed = new Set(stack.flatMap((s) => s.targets ?? []));
+        const keep = plan.hits.groups.filter((g) => g.kind !== "stack" && g.members.some((m) => aimed.has(m)));
+        const chrome = plan.reserve.items.filter((i) => i.kind === "hand" || i.kind === "prompt");
+        const shown = plan.stackUp.filter((s) => s.reachable);
+        expect(shown.length, why).toBeGreaterThan(0);
+        for (const s of shown) {
+          for (const g of keep) expect(meets(s.quad, g.quad), `${why}: ${s.key} over ${g.id}`).toBe(false);
+          for (const r of chrome) expect(meets(s.quad, rectQuad(r.rect)), `${why}: ${s.key} over the ${r.kind}`).toBe(false);
+          expect((plan.hits.up ?? []).map((g) => g.id), why).toContain(`stack:${s.key}`);
+        }
+        expect(plan.violations.filter((v) => v.rule === "focus-covers"), why).toEqual([]);
+      }
   });
   it("every corpus stack: the focus never covers what the stack aims at", () => {
     for (const name of ["013-play-stack.json", "014-play-opponent-spell-targets-me-stack-targets-card.json", "025-play-stack-targets-player.json"]) {

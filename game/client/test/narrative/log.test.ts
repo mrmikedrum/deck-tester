@@ -119,13 +119,14 @@ describe("the loss notice and report", () => {
       dismissed = 0;
     render(
       h(LossRecap, {
-        view: { title: "Your loss", summary: "Thorn of the Black Rose · to exile" },
+        view: { title: "Lost: Thorn of the Black Rose (exile) ›", summary: "" },
         onOpen: () => opened++,
         onDismiss: () => dismissed++,
       }),
       root,
     );
-    expect(texts(".l-lost > *")).toEqual(["Your loss", "Thorn of the Black Rose · to exile", "View loss report ›"]);
+    // One line, and the line is the button.
+    expect(texts(".l-lost > *")).toEqual(["Lost: Thorn of the Black Rose (exile) ›"]);
     $(".l-lost")!.click();
     $(".l-recap .g-close")!.click();
     expect([opened, dismissed]).toEqual([1, 1]);
@@ -178,25 +179,19 @@ describe("drawn from a real game", () => {
     expect(headings.slice(0, 2)).toEqual(["Turn 3 · Atraxa", "Turn 2 · You"]);
     expect($(".l-history-losses")?.textContent).toBe("Your losses · 1 to exile");
     render(h(LossRecap, { view: narrative.recapView(s)!, onOpen: () => {}, onDismiss: () => {} }), root);
-    expect($(".l-lost small")?.textContent).toBe("Thorn of the Black Rose · to exile");
+    expect($(".l-lost b")?.textContent).toBe("Lost: Thorn of the Black Rose (exile) ›");
   });
 });
 
 describe("the stack summary", () => {
-  it("a stack of three with a spell aimed at my creature, as the old prompt drew it", () => {
+  it("a stack of three with a spell aimed at my creature: a numbered line each, the threat in red", () => {
     const t = new Table();
     t.open("014-play-opponent-spell-targets-me-stack-targets-card.json");
     const rows = promptOf(open(t.state))!.stack;
-    render(h(StackSummary, { rows, arriving: [69] }), root);
-    expect($("ol")?.getAttribute("aria-label")).toBe("Stack in resolution order");
-    expect(texts(".l-stackinfo li")).toEqual([
-      "Arriving Doom Blade · DackAimed at Serra Angel. Destroy target nonblack creature.",
-      "Pending threat Doom Blade · AtraxaAimed at your Grizzly Bears. Destroy target nonblack creature.",
-      "Pending Thorn of the Black Rose · YouDeathtouch",
-    ]);
-    expect($$(".l-order").map((e) => e.classList.contains("aimed"))).toEqual([false, true, false]);
     render(h(StackSummary, { rows }), root);
-    expect($(".l-order")?.textContent).toBe("Next if all pass");
+    expect($("ol")?.getAttribute("aria-label")).toBe("Stack, top first");
+    expect(texts(".l-stackinfo li")).toEqual(["1 Doom Blade → Serra Angel", "2 Doom Blade → your Grizzly Bears", "3 Thorn of the Black Rose"]);
+    expect($$(".l-stackinfo li").map((e) => e.classList.contains("aimed"))).toEqual([false, true, false]);
     render(h(StackSummary, { rows: [] }), root);
     expect($(".l-stackinfo")).toBeNull();
   });

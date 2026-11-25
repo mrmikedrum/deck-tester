@@ -5,7 +5,7 @@ import type { SeatId } from "../model";
 import { kindOf } from "./kinds";
 import type { MarkSink } from "./kinds/kind";
 import { optsFor } from "./kinds/play";
-import { ctxOf, promptOf, sheetOf, stackNoteOf } from "./prompt";
+import { ctxOf, promptOf, sheetOf } from "./prompt";
 import type { PromptOf, SheetOf } from "./prompt";
 import { open } from "./state";
 import type { S } from "./state";
@@ -68,7 +68,6 @@ function build(s: S): Presentation {
       prompt: promptView(promptOf(s)),
       sheet: sheetView(sheetOf(s)),
       cardActions: cardActionsOf(s),
-      stackNote: stackNoteOf(s),
     },
   };
 }

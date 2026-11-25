@@ -86,6 +86,13 @@ export function departureIn(
 
 // ---- Spell and ability text ----------------------------------------------------------------------------------------
 
+/** live.js `abilityText`: the engine's words for an ability without its card's name in front ("<card> - "). */
+export function abilityText(text: string, name: string): string {
+  const t = text.trim(),
+    prefix = `${name} - `;
+  return t.startsWith(prefix) ? t.slice(prefix.length) : t;
+}
+
 /** h.js `entryText`: an item's own text, and a spell's rules text too (not a face-down card's). */
 export function entryText(item: StackItem, model: TableModel): string {
   const c = item.source === null ? undefined : model.cards.get(item.source);

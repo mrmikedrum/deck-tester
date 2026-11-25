@@ -25,11 +25,12 @@ vi.mock("../../src/scene/three/pieces", async () => {
     placeGroup() {},
     artWanted: () => [],
     GhostPiece: class {},
+    GROUND: "ground",
   };
 });
 
 const VP = { w: 1180, h: 820 };
-const host = { scene: { add() {}, remove() {} }, setTableTone() {}, painter: { fx: () => null }, renderer: { getPixelRatio: () => 1 } } as unknown as Host;
+const host = { scene: { add() {}, remove() {} }, setTableTone() {}, setScrim() {}, painter: { fx: () => null }, renderer: { getPixelRatio: () => 1 } } as unknown as Host;
 
 /** Dack's 30 Elementals (5 tapped), 20 Beasts (`beasts` of them tapped) and 12 Spirits: folded into one pile of unlike
  * creatures, its top an untapped Elemental whatever the Beasts do. */
@@ -52,13 +53,13 @@ const tabs = (views: ReadonlyMap<string, ActorView>): Record<string, [string | n
   for (const [id, v] of views) {
     if (v.draw.t !== "unit" || !v.draw.title) continue;
     const d = v.draw as Extract<Draw, { t: "unit" }>;
-    out[id] = [d.title, d.sub, d.mixed];
+    out[id] = [d.title, d.tapNote, d.mixed];
   }
   return out;
 };
 
 describe("a pile's tab through the renderer", () => {
-  it("a mixed pile whose tapped count changes (its top card the same) is repainted with its new second line", () => {
+  it("a mixed pile whose tapped count changes (its top card the same) is repainted with its new tapped count", () => {
     const m0 = crowd(0), m1 = crowd(1);
     const p0 = planTable(tableInputOf(m0, { viewport: VP }));
     const p1 = planTable(tableInputOf(m1, { viewport: VP, memory: p0.memory }));
@@ -76,11 +77,11 @@ describe("a pile's tab through the renderer", () => {
     };
     run(m0, p0, diff(null, m0, 1), 1);
     const before = tabs(shown);
-    expect(Object.values(before).some(([, sub, mixed]) => mixed && / · 5 tapped$/.test(sub ?? "")), JSON.stringify(before)).toBe(true);
+    expect(Object.values(before).some(([, note, mixed]) => mixed && note === "↷5"), JSON.stringify(before)).toBe(true);
     run(m1, p1, diff(m0, m1, 2), 2);
     // What the stage describes now, and what the pieces were last painted with, say the same.
     const described = tabs(new Map(last.map((a) => [a.id, a])));
-    expect(Object.values(described).some(([, sub]) => / · 6 tapped$/.test(sub ?? "")), JSON.stringify(described)).toBe(true);
+    expect(Object.values(described).some(([, note]) => note === "↷6"), JSON.stringify(described)).toBe(true);
     expect(tabs(shown)).toEqual(described);
   });
 });

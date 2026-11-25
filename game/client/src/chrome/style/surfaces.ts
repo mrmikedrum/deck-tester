@@ -60,6 +60,8 @@ export function surfaces(): readonly (readonly [string, string])[] {
       `linear-gradient(180deg, rgba(255,235,190,.28), rgba(255,255,255,0) 45%, rgba(0,0,0,.35)), var(--bronze) center / 300px, ${colour.bronze}`,
     ],
     ["--plaque-shadow", "inset 0 0 0 1.5px rgba(30,18,6,.9), inset 0 0 0 4px rgba(255,230,180,.18), 0 2px 0 #2a1a08, 0 8px 18px rgba(0,0,0,.6)"],
+    // A plate pressed down: its lip under it gone, its rim kept.
+    ["--plaque-press", "inset 0 0 0 1.5px rgba(30,18,6,.9), inset 0 0 0 4px rgba(255,230,180,.18)"],
     [
       "--mounts",
       [
@@ -73,19 +75,24 @@ export function surfaces(): readonly (readonly [string, string])[] {
     ["--ring-ask", `0 0 0 2px color-mix(in srgb, ${signal.option} 90%, transparent), 0 0 34px color-mix(in srgb, ${signal.option} 55%, transparent)`],
     ["--ring-threat", `0 0 0 2px color-mix(in srgb, ${signal.danger} 85%, transparent), 0 0 34px color-mix(in srgb, ${signal.danger} 50%, transparent)`],
     ["--threat-glow", `radial-gradient(ellipse at 50% 120%, color-mix(in srgb, ${signal.dangerInk} 35%, transparent), transparent 60%)`],
-    // Buttons, three tiers (live.css): secondary is a bronze rim round a flat bronze inset carrying the ink label.
+    // Buttons: one family of cast plates. Every plate's edge: a top highlight and a bottom lip, so a wide one still has
+    // thickness.
+    ["--btn-edge", "inset 0 2px 0 rgba(255,220,160,.28), inset 0 -3px 0 rgba(0,0,0,.45)"],
+    ["--btn-pressed", "inset 0 2px 5px rgba(0,0,0,.55)"],
+    // Unlit (disabled, or the table moving): still bronze.
+    ["--btn-off", "saturate(.35) brightness(.8)"],
+    // Secondary: a bronze rim round a flat tan inset carrying the ink label.
     ["--btn-inset", "linear-gradient(180deg, #c09a5e, #a17d47) center / calc(100% - 8px) calc(100% - 8px) no-repeat"],
     ["--btn-ink", "#140b03"],
     ["--btn-ink-lift", "0 1px 0 rgba(255,238,200,.5)"],
-    // Primary (the answer): bronze with an ember lit in it, cream text.
-    ["--btn-act", "linear-gradient(180deg, rgba(255,150,60,.3), rgba(110,35,0,.4) 55%, rgba(20,6,0,.6)), var(--bronze) center / 300px, #4a2a10"],
-    ["--btn-act-glow", "inset 0 0 16px rgba(255,120,30,.5), 0 0 16px rgba(255,140,40,.3)"],
+    // Destructive (a new game over one in progress): the inset enamelled oxblood.
+    ["--btn-danger", "linear-gradient(180deg, #a3262b, #7a171c) center / calc(100% - 8px) calc(100% - 8px) no-repeat"],
+    // Primary (the answer): dark bronze, its ember only a lit inner line; cream type, engraved.
+    ["--btn-act", "linear-gradient(180deg, rgba(255,226,170,.14), transparent 38%, rgba(0,0,0,.45)), var(--bronze) center / 300px, #3a2410"],
+    ["--btn-act-glow", "inset 0 0 0 3px rgba(255,150,60,.22)"],
+    ["--btn-act-glow-pressed", "inset 0 0 0 3px rgba(255,170,80,.6)"],
     ["--btn-act-ink", "#fff4dc"],
-    ["--btn-act-ink-shadow", "0 1px 1px rgba(20,6,0,.95), 0 0 8px rgba(40,12,0,.8)"],
-    // Tertiary (letting Forge decide): an ink-ruled pill in the parchment's own tone.
-    ["--btn-ghost", "#e6d6ae"],
-    ["--btn-ghost-hover", "#ecdfbc"],
-    ["--btn-ghost-rule", "inset 0 0 0 1px rgba(40,25,8,.6), inset 0 0 0 3px rgba(120,85,40,.12)"],
+    ["--btn-act-ink-shadow", "0 -1px 0 rgba(0,0,0,.8), 0 1px 0 rgba(255,220,160,.18)"],
     // A row to choose in a sheet: a slip of lighter parchment ruled in ink; picked, gold leaf.
     ["--opt-paper", "rgba(255,248,228,.42)"],
     ["--opt-shadow", `inset 3px 0 0 ${signal.option}, inset 0 0 0 1px rgba(255,250,230,.45), inset 0 0 14px rgba(120,80,30,.12), 0 1px 0 rgba(60,40,15,.3)`],
@@ -94,8 +101,7 @@ export function surfaces(): readonly (readonly [string, string])[] {
     ["--opt-on-shadow", `inset 0 0 0 1px rgba(255,255,255,.6), 0 0 16px color-mix(in srgb, ${signal.selected} 60%, transparent)`],
     ["--opt-read-shadow", "inset 0 0 0 1px rgba(255,250,230,.45), inset 0 0 14px rgba(120,80,30,.12)"],
     ["--scrim", "rgba(8,5,3,.6)"],
-    // The hand's "View hand" slip, ruled in ember; the menu's fields, light stock.
-    ["--hand-view-rule", "#c67b37"],
+    // The menu's fields, light stock.
     ["--field-ground", "#f8f3e8"],
     ["--scrim-deep", "rgba(8,5,3,.72)"],
     // The close stud set into a sheet.
@@ -112,7 +118,8 @@ export function surfaces(): readonly (readonly [string, string])[] {
       "--card-playable",
       `0 0 0 2px color-mix(in srgb, ${signal.option} 95%, transparent), 0 0 28px rgba(255,120,30,.75), 0 0 8px rgba(255,170,80,.6), -4px 2px 14px rgba(0,0,0,.55)`,
     ],
-    ["--card-playable-label", "#f7dea1"],
+    // A bunched hand card's cost ribbon: vellum, lifted off the card under it.
+    ["--ribbon-shadow", "inset 0 0 0 1px rgba(40,25,8,.55), 0 1px 3px rgba(0,0,0,.45)"],
     ["--card-drawn", "0 0 0 2px rgba(247,225,171,.9), 0 0 24px 4px rgba(226,193,132,.6)"],
     ["--peek-ground", "#111"],
     ["--peek-shadow", "0 20px 50px rgba(0,0,0,.7)"],
@@ -128,13 +135,9 @@ export function surfaces(): readonly (readonly [string, string])[] {
     ["--log-rule", "rgba(22,18,14,.1)"],
     ["--recap-wash", `color-mix(in srgb, ${signal.dangerInk} 12%, transparent)`],
     ["--recap-close-ink", "#6a4b39"],
-    // The stack summary in the prompt: ruled rows, the next to resolve on lighter paper with a bronze edge.
+    // The stack summary in the prompt: ruled rows.
     ["--stackinfo-rule-strong", "rgba(60,40,15,.35)"],
     ["--stackinfo-rule", "rgba(60,40,15,.2)"],
-    ["--stackinfo-next", "rgba(255,248,228,.46)"],
-    ["--stackinfo-next-edge", "#905c28"],
-    // The prompt's buttons while the table moves (live.css `.l-prompt.moving`).
-    ["--moving-rule", "inset 0 0 0 1px rgba(60,40,15,.4)"],
     ["--pip-ground", "#c9ccd2"],
     ["--pip-n", PIP_FILL.C],
     ["--pip-shadow", "0 1px 0 rgba(0,0,0,.45)"],

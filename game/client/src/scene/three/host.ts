@@ -32,6 +32,7 @@ import { Rim, SharedMaterials } from "./materials";
 import { Painter } from "./painter";
 import { TextureCache } from "./textures";
 import type { Lease } from "./textures";
+import { FocusPass } from "./focus-pass";
 import { createWorld } from "./world";
 import type { World } from "./world";
 import type { CardKit } from "./card";
@@ -99,6 +100,7 @@ export class Host {
   readonly rim = new Rim();
   readonly renderer: WebGLRenderer;
   private composer: EffectComposer;
+  private focusPass!: FocusPass;
   private textures: TextureCache;
   private arts: ArtCache;
   private _painter: Painter;
@@ -190,6 +192,11 @@ export class Host {
     this.world.tone(k);
   }
 
+  /** The stack's scrim over the table (its alpha, 0 for none); what is on the ABOVE layer draws over it. */
+  setScrim(alpha: number): void {
+    this.focusPass.alpha = alpha;
+  }
+
   /** The viewport the host was last given. */
   get size(): Viewport {
     return this.viewport;
@@ -272,6 +279,9 @@ export class Host {
     });
     const composer = new EffectComposer(this.renderer, target);
     composer.addPass(new RenderPass(this.scene, this.camera));
+    // The stack's scrim, and what stands above it (focus-pass.ts).
+    this.focusPass = new FocusPass(this.scene, this.camera, colour.stackScrim);
+    composer.addPass(this.focusPass);
     // Light that is brighter than white blooms: the spells and the arcs. Cards and pages never reach it.
     const b = materials.bloom;
     composer.addPass(new UnrealBloomPass(new Vector2(s.width, s.height), b.strength, b.radius, b.threshold));

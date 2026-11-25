@@ -24,7 +24,8 @@ const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 const BANDS: readonly BandKey[] = ["C", "S", "L"];
 const count = (f: Fit): number => BANDS.reduce((t, k) => t + (f[k].units ?? []).length, 0);
 
-/** Cards of one look with nothing attached stack into a group; hosts and commanders stand alone (the old `P.groups`). */
+/** Cards of one look with nothing attached stack into a group; hosts and commanders stand alone (the old `P.groups`).
+ * A group's front card is a ready one where any is: its tapped ones are drawn turned behind it. */
 function groups(list: readonly BoardCard[], hosts: ReadonlySet<CardId>): { rep: BoardCard; ids: CardId[] }[] {
   const out: { rep: BoardCard; ids: CardId[] }[] = [], seen = new Map<string, { rep: BoardCard; ids: CardId[] }>();
   for (const c of list) {
@@ -33,8 +34,10 @@ function groups(list: readonly BoardCard[], hosts: ReadonlySet<CardId>): { rep: 
       continue;
     }
     const s = seen.get(c.sig);
-    if (s) s.ids.push(c.id);
-    else {
+    if (s) {
+      s.ids.push(c.id);
+      if (s.rep.tapped && !c.tapped) s.rep = c;
+    } else {
       const gr = { rep: c, ids: [c.id] };
       seen.set(c.sig, gr);
       out.push(gr);

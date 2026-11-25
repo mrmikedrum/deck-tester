@@ -8,6 +8,8 @@ import type { Ms } from "../../platform";
 import type { ArtLoader } from "../resources";
 import { pickDrawn } from "../stage/pick";
 import { Stage } from "../stage/stage";
+import { estimate } from "../stage/labels";
+import { SIGN_FONT, font } from "../../theme";
 import type { SceneFrame, SceneIntent, SceneReport, SceneSnapshot, StageView } from "../stage/types";
 import { loadAssets } from "./assets";
 import type { Assets } from "./assets";
@@ -57,8 +59,27 @@ export interface SceneHandle extends Scene {
   readonly renderer: StageRenderer | null;
 }
 
+/**
+ * A label's text width (CSS px) at a size, as its sign paints it: measured on a canvas in the sign's font (once fonts
+ * are ready, as everything painted is), at the sign's own size and scaled.
+ */
+function signMeasure(doc: Document | null | undefined): (text: string, px: number) => number {
+  const ctx = doc?.createElement("canvas").getContext("2d");
+  if (!ctx) return estimate;
+  const cache = new Map<string, number>();
+  return (text, px) => {
+    let w = cache.get(text);
+    if (w === undefined) {
+      ctx.font = `700 ${SIGN_FONT.text}px ${font.num}`;
+      w = ctx.measureText(text).width;
+      cache.set(text, w);
+    }
+    return (w * px) / SIGN_FONT.text;
+  };
+}
+
 export function createScene(opts: SceneOptions): SceneHandle {
-  const stage = new Stage(opts.reducedMotion === undefined ? {} : { reducedMotion: opts.reducedMotion });
+  const stage = new Stage({ ...(opts.reducedMotion === undefined ? {} : { reducedMotion: opts.reducedMotion }), measure: signMeasure(opts.canvas.ownerDocument) });
   const out = new Queue<SceneIntent>();
   let host: Host | null = null;
   let renderer: StageRenderer | null = null;

@@ -41,10 +41,11 @@ describe("the prompt", () => {
   it("shows where, the headline and what it is about, with play's buttons in order", () => {
     show(view());
     expect($(".l-where")?.textContent).toBe("Turn 9 · Your main phase");
-    expect($(".l-what")?.textContent).toBe("Available plays");
-    expect($(".l-ctx")?.textContent).toContain("Highlights in your hand");
-    expect(texts(".l-buttons button")).toEqual(["Choose a play (6)", "Let Forge decide", "To combat"]);
-    expect($$(".l-buttons button").map((b) => b.className)).toEqual(["act l-choice", "ghost l-delegate", "l-pass"]);
+    // What can be played is lit: no headline and no instructions.
+    expect($(".l-what")).toBeNull();
+    expect($(".l-ctx")).toBeNull();
+    expect(texts(".l-buttons button")).toEqual(["All plays (6)", "Auto", "To combat"]);
+    expect($$(".l-buttons button").map((b) => b.className)).toEqual(["l-choice", "l-delegate", "act l-pass"]);
     expect($(".l-prompt")?.classList.contains("asking")).toBe(true);
     expect($(".l-prompt")?.classList.contains("play")).toBe(true);
   });
@@ -86,8 +87,8 @@ describe("the prompt", () => {
     expect($(".l-buttons")).toBeNull();
   });
   it("a spectator sees the words and no buttons, and no sheet", () => {
-    show(view({ controls: controls(MAIN, { mayAnswer: false, sheet: OFFER }) }));
-    expect($(".l-what")?.textContent).toBe("Available plays");
+    show(view({ controls: controls(THREAT, { mayAnswer: false, sheet: OFFER }) }));
+    expect($(".l-what")?.textContent).toBe(THREAT.headline);
     expect($(".l-buttons")).toBeNull();
     expect($(".l-sheet")).toBeNull();
     expect($(".l-prompt")?.classList.contains("asking")).toBe(false);
@@ -99,7 +100,7 @@ describe("the prompt", () => {
     expect($(".l-pass")?.className).toBe("act l-pass auto");
     expect($(".l-auto-bar")?.style.transform).toBe("scaleX(0.5)");
     expect(half.active).toBe(true);
-    expect(texts(".l-buttons button")).toEqual(["Hold", "Stack rules", "Pass priority"]);
+    expect(texts(".l-buttons button")).toEqual(["Hold", "OK"]);
     const done = show(v, 3300);
     expect($(".l-auto-bar")?.style.transform).toBe("scaleX(1)");
     expect(done.active).toBe(false);

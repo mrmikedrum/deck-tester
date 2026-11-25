@@ -11,7 +11,7 @@ import { LossRecap, StackSummary } from "./log";
 import { Pips } from "./pips";
 import type { Send } from "./send";
 
-const TONE: Readonly<Record<Button["tone"], string>> = { primary: "act", secondary: "", ghost: "ghost" };
+const TONE: Readonly<Record<Button["tone"], string>> = { primary: "act", secondary: "" };
 const ROLE: Readonly<Record<NonNullable<Button["role"]>, string>> = {
   pass: "l-pass",
   choice: "l-choice",
@@ -120,7 +120,9 @@ export function Prompt(props: PromptProps): JSX.Element {
     p.busy ? "busy" : "",
     restoring ? "restoring" : "",
   ].filter(Boolean);
-  const headline = watch ? watch.headline : restore ? restore.headline : p.headline;
+  // On the way to the stack the prompt already says the line it will ask with (unlit until it lands), so the words do
+  // not change as it lands.
+  const headline = watch ? (watch.toStack ? p.headline : watch.headline) : restore ? restore.headline : p.headline;
   const summary = stackOpen ? p.stack : [];
   const ctx = [watch ? null : p.hint, watch || stackOpen ? null : p.context, p.floating].filter((s): s is string => !!s).join(" · ");
   const fill = p.countdown ? progress(p.countdown, now) : null;
@@ -144,7 +146,7 @@ export function Prompt(props: PromptProps): JSX.Element {
           <Pips text={headline} />
         </div>
       ) : null}
-      <StackSummary rows={summary} arriving={watch?.arriving ?? []} />
+      <StackSummary rows={summary} />
       {ctx ? (
         <div class="l-ctx">
           <Pips text={ctx} />

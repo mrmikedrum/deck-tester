@@ -147,7 +147,7 @@ export type ButtonRole = "pass" | "choice" | "hold" | "defer" | "stack" | "done"
 export interface Button {
   readonly id: ButtonId;
   readonly label: string;
-  readonly tone: "primary" | "secondary" | "ghost";
+  readonly tone: "primary" | "secondary";
   readonly role: ButtonRole | null;
   /** Disabled buttons are shown, not hidden ("Done" below the minimum). */
   readonly enabled: boolean;
@@ -219,8 +219,6 @@ export interface Controls {
   readonly sheet: SheetView | null;
   /** The inspector's buttons for a card: pressing one is a `pick` of its option. */
   readonly cardActions: ReadonlyMap<CardId, readonly CardAction[]>;
-  /** For the stack summary's top row while I choose my own spell's targets. */
-  readonly stackNote: string | null;
 }
 
 export interface Presentation {

@@ -8,7 +8,7 @@
 // `working` event. Play never reads the bridge's status itself. Play's state lives for the page: a new game, a restart
 // or teardown reaches it as a snapshot event, never as a reset to `initial`.
 import { diff, modelOf, playerViewer } from "../model";
-import { siftPages } from "../layout";
+import { groupById, siftPages } from "../layout";
 import type { HitGroup } from "../layout";
 import type { ChangeSet, TableModel } from "../model";
 import * as narrative from "../narrative";
@@ -271,7 +271,7 @@ function sifts(s: AppState, g: HitGroup): boolean {
 
 /**
  * A tap play left: the app's default (live.js `H.tap`, h.js's tap). A card (a hand card, a sifted card) opens the
- * inspector. On the table: a tap on the stack, set aside, brings it back; a pile (or a graveyard or exile with cards in
+ * inspector. On the table: a tap on the stack, set aside, brings it back, and held up opens its inspector; a pile (or a graveyard or exile with cards in
  * it) opens its sift, the stack set aside first, unless a sift is on top; another seat's plate leans in on that seat, or
  * sits back from it (not while sifting); with a layer of the table's own on top, any other tap is the tap outside that
  * takes it down; a card alone opens the inspector.
@@ -279,11 +279,14 @@ function sifts(s: AppState, g: HitGroup): boolean {
 function tapDefault(tx: Tx, on: play.Target): void {
   if ("card" in on) return inspect(tx, on.card);
   const f = tx.s.focus, t = top(f);
-  const g = "group" in on ? tx.s.plan?.hits.groups.find((x) => x.id === on.group) : undefined;
+  const g = "group" in on && tx.s.plan ? groupById(tx.s.plan.hits, on.group) : undefined;
   if (g?.kind === "stack" && isAside(f, "stack")) {
     tx.s = { ...tx.s, focus: restore(f, "stack") };
     return;
   }
+  // The stack held up as the focus: its card is there to read, and a tap on it opens its inspector.
+  const held = g?.kind === "stack" && t?.layer === "stack" ? g.members[0] : undefined;
+  if (held !== undefined) return inspect(tx, held);
   const sifting = t?.layer === "sift";
   if (g && !sifting && sifts(tx.s, g)) {
     const under = isOpen(f, "stack") ? setAside(f, "stack") : f;

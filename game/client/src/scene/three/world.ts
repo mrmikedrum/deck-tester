@@ -1,5 +1,6 @@
 // The world under the cards: the tome the table is, and one lamp over it. Static; pieces are added by the stage.
 // Ported from old h.js `buildScene`.
+import { ABOVE } from "./focus-pass";
 import {
   AmbientLight,
   Color,
@@ -56,7 +57,8 @@ export function createWorld(tome: Lease, normal: Source | null): World {
   table.renderOrder = -4;
   group.add(table);
   // One lamp over the table, warm, and a little of the room: the pages shade by it, the cards never do.
-  group.add(new AmbientLight(lights.ambient.colour, lights.ambient.intensity));
+  const ambient = new AmbientLight(lights.ambient.colour, lights.ambient.intensity);
+  group.add(ambient);
   const lamp = new PointLight(lights.lamp.colour, lights.lamp.intensity, lights.lamp.distance, lights.lamp.decay);
   lamp.position.set(lights.lamp.at.x, lights.lamp.at.y, lights.lamp.at.z);
   group.add(lamp);
@@ -76,6 +78,8 @@ export function createWorld(tome: Lease, normal: Source | null): World {
   sun.shadow.bias = sh.bias;
   sun.shadow.normalBias = sh.normalBias;
   group.add(sun);
+  // The lights reach what the focus draws above its scrim, too.
+  for (const l of [ambient, lamp, sun]) l.layers.enable(ABOVE);
   return {
     group,
     background: new Color(colour.table),

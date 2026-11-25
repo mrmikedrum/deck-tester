@@ -181,6 +181,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
       release: (card, dy, pose, at, x, y) => handAct({ a: "release", card, dy, pose, overTable: overTable(x, y) }, at),
     },
     ports.wake,
+    overTable,
   );
   const binding = bindPointer<CardId>(handHost, {
     pick: pickCard(handHost),

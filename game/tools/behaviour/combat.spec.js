@@ -2,6 +2,7 @@
 //    attack refs: one per (creature, defender), creature-major: option = 3 * creatureIndex + defenderIndex + 1, with the
 //    defenders Marath (plate "ana"), Atraxa ("bo"), Dack ("cy").
 const { test, expect, snapshot, withDecision, find } = require("./harness.js");
+const { label } = require("./labels.js");
 
 const ATTACKERS = ["Meloku the Clouded Mirror", "Master of Waves", "Faerie Mastermind", "Whirler Rogue"];
 const idOf = (s, n) => find(s, "You", n).id;
@@ -10,10 +11,10 @@ test.describe("attack", () => {
   test("tap creatures to toggle them; Attack (n) sends the picked options in order", async ({ table }) => {
     const s = snapshot("attack");
     await table.open(s);
-    expect(await table.buttons()).toEqual(["Everyone attacks", "No attack", "Let Forge decide"]);
+    expect(await table.buttons()).toEqual([label("Everyone attacks"), "No attack", label("Let Forge decide")]);
     await table.tapCard(idOf(s, ATTACKERS[0]));
     await table.tapCard(idOf(s, ATTACKERS[1]));
-    expect(await table.buttons()).toEqual(["Everyone attacks", "Clear", "Attack (2)", "Let Forge decide"]);
+    expect(await table.buttons()).toEqual([label("Everyone attacks"), "Clear", "Attack (2)", label("Let Forge decide")]);
     expect(table.answers()).toEqual([]);
     await table.press("Attack (2)");
     expect((await table.answered(1))[0].answer).toEqual([1, 4]);       // both at Marath, the first opponent
@@ -39,8 +40,8 @@ test.describe("attack", () => {
     const s = snapshot("attack");
     await table.open(s);
     await table.tapPlate("cy");                                        // Dack
-    await table.press("Everyone attacks");
-    expect(await table.buttons()).toEqual(["Clear", "Attack (4)", "Let Forge decide"]);
+    await table.press(label("Everyone attacks"));
+    expect(await table.buttons()).toEqual(["Clear", "Attack (4)", label("Let Forge decide")]);
     await table.press("Attack (4)");
     expect((await table.answered(1))[0].answer).toEqual([3, 6, 9, 12]);
   });
@@ -88,7 +89,7 @@ test.describe("block", () => {
     const s = snapshot("block");
     await table.open(decide(s));
     await table.tapCard(mine(s, "Meloku the Clouded Mirror"));
-    expect(await table.buttons()).toEqual(["Clear", "Block (1)", "Let Forge decide"]);
+    expect(await table.buttons()).toEqual(["Clear", "Block (1)", label("Let Forge decide")]);
     await table.press("Block (1)");
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
@@ -96,8 +97,9 @@ test.describe("block", () => {
     const s = snapshot("block"), [m, h] = attackers(s);
     await table.open(decide(s));
     await table.tapCard(mine(s, "Master of Waves"));
-    expect(await table.buttons()).toEqual(["Clear", "No blocks", "Let Forge decide"]);   // held, nothing picked yet
-    expect(await table.page.locator(".l-what").innerText()).toMatch(/Now tap the attacker for Master of Waves/);
+    expect(await table.buttons()).toEqual(["Clear", "No blocks", label("Let Forge decide")]);   // held, nothing picked yet
+    // (The new entry says it in the hint line, under "Declare blockers".)
+    expect(await table.page.locator(label(".l-what", ".l-ctx")).innerText()).toContain(label("Now tap the attacker for Master of Waves", "Master of Waves: tap an attacker"));
     await table.tapCard(h.id);
     await table.tapCard(mine(s, "Meloku the Clouded Mirror"));
     expect(await table.buttons()).toContain("Block (2)");

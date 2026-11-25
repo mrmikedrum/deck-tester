@@ -435,7 +435,9 @@ export interface TablePlan {
 export interface HitGroups {
   readonly rev: number;                                  // changes when any group's members or their order change
   readonly groups: readonly HitGroup[];                  // id, kind (card, pile, well, summary, plate, zone, stack),
-}                                                        // seat, members in order, quad on screen, draw order
+                                                         // seat, members in order, quad on screen, draw order
+  readonly up?: readonly HitGroup[];                     // the stack as the focus: a group per card it shows, at its
+}                                                        // stackUp quad, over the whole table, top nearest
 // A group's id is stable for as long as the unit lasts (its first card's id and kind, as today's piece keys).
 export function hitTest(plan: TablePlan, p: Point): HitGroup | null;
 ```
@@ -449,7 +451,10 @@ inside the safe area and off visible chrome, nothing covering a card's name, foo
 where seats collide or the stack covers them, down to a last resort that is always reachable: the whole seat as one
 summary that opens a sift. The stack stands in the open middle the pages leave; an entry with no room there
 (`no-room`), off the safe area (`off-screen`) or without a patch of its own is not `reachable`: it has no hit group, a
-sheet offers it, and the plan reports the violation. Portrait viewports, planned with the landscape template, still
+sheet offers it, and the plan reports the violation. As the focus, the top never stands under its floor: past what
+fits, the cards under it overlap further (each keeping a finger's strip), then the deepest lie under the last one shown.
+While the focus is up the stack is reached through `hits.up`, so every card it shows is tappable, even one with no room
+set aside; the focus clears what the stack aims at and the chrome, or reports `focus-covers`. Portrait viewports, planned with the landscape template, still
 break limits on dense boards.
 
 `hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
@@ -512,7 +517,6 @@ export interface Controls {                                   // read by the chr
   readonly prompt: PromptView | null;                         // headline, hint, context, tone, buttons, countdown, busy
   readonly sheet: SheetView | null;                           // choosers, offers, source and colour picks, stepper
   readonly cardActions: ReadonlyMap<CardId, readonly { option: number; label: string }[]>;
-  readonly stackNote: string | null;
 }
 ```
 
@@ -542,7 +546,8 @@ Pure, with no clock, it is part of `AppState`. Each change set the app queues is
 log lines under the turn's heading, a result read from the zones ("Serra Angel went to the graveyard"), and my
 permanents gone on someone else's turn (the losses). What must be seen before it is told (those lines, the losses, the
 cards coming into my hand, a spell on its way to the stack) waits on a **notice** for that set, which also gives the
-prompt its watching headline ("On the way to the stack", "Atraxa's attackers are moving in") while it waits.
+prompt its watching headline in game terms ("Atraxa attacks", "Swords to Plowshares resolves"; on the way to the stack,
+the line the prompt will ask with) while it waits.
 
 The app releases notices by what the scene reports: up to the newest set it has taken once it is idle, or the one
 before while it still moves; everything on a cut it draws (a first snapshot, a new game, a rewind, an overflowing
@@ -552,7 +557,7 @@ rising. The app's own toasts live here as well, each with its `app/notice:<id>` 
 
 The chrome shows the strip at the top left (the turn and at most two lines), the log ("What happened") and the loss
 report ("What you lost") as focus layers, the loss notice in the prompt until the turn ends or it is dismissed, and, from
-play, the stack summary in the context's place while the stack layer is up. Everything is bounded (`LOG_KEPT` and the
+play, the stack summary (two or more items, a numbered line each) in the context's place while the stack layer is up. Everything is bounded (`LOG_KEPT` and the
 other `*_KEPT` limits in `narrative/index.ts`).
 
 ## scene: the table

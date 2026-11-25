@@ -206,6 +206,16 @@ export type Draw =
       readonly colours: readonly string[];
       /** A mana well's sign and light, or null. */
       readonly well: WellLook | null;
+      /**
+       * The copies it draws, front (a well: top) first, each standing for members of the pile and wearing their state: a
+       * tapped copy shows a tapped member's face; null is the top card's face. Ready copies first.
+       */
+      readonly copies: readonly { readonly face: FaceSpec | null; readonly tapped: boolean }[];
+      /** "↷4": how many are tapped, where the copies cannot show it exactly (more members than copies); null else. */
+      readonly tapNote: string | null;
+      /** Its title as placed on screen (labels.ts): the name it says, its text size (CSS px) and its slide along the top
+       * edge (a share of the card's width); null where it gives way to the count chip, or has no title. */
+      readonly label: { readonly name: string; readonly px: number; readonly slide: number } | null;
       /** Its seat's colour (a well's sign notch, a standee's stripe). */
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
@@ -224,6 +234,10 @@ export type Draw =
       readonly up: boolean;
       /** Its owner's tag's scale: 1 set aside; as the focus, the size it was set aside. */
       readonly tagScale: number;
+      /** The printed card (its source's, for an ability): shown as the focus, over the painted face. */
+      readonly img: string | null;
+      /** An ability's effect, on a slip under the card as the focus (the card alone does not say which ability). */
+      readonly slip: string | null;
     }
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
   | { readonly t: "hidden" }
@@ -297,8 +311,12 @@ export interface Description {
   readonly home: ReadonlyMap<CardId, string>;
   readonly lanes: readonly Lane[];
   readonly aims: readonly Aim[];
-  /** The table's light: 1, or dimmed under the stack. */
+  /** The table's light: 1, or dimmed under a sift. */
   readonly tableTone: number;
+  /** The scrim over the table while the stack is the focus (its alpha), 0 for none. */
+  readonly scrim: number;
+  /** The pieces drawn above the scrim, in their own places: the stack's cards and what they aim at. */
+  readonly above: ReadonlySet<string>;
   readonly perspective: SeatId;
 }
 
@@ -420,6 +438,9 @@ export interface StageView {
   readonly strikes: readonly StrikeView[];
   readonly aims: readonly AimView[];
   readonly tableTone: number;
+  /** The scrim's alpha this frame (it eases in and out), and the pieces drawn above it (with the aims). */
+  readonly scrim: number;
+  readonly above: ReadonlySet<string>;
   /** The frame's time, ms (the effects' clock), and whether motion is reduced (effects hold still, particles go). */
   readonly now: Ms;
   readonly still: boolean;

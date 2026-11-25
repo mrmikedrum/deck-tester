@@ -2,7 +2,7 @@
 // log lines are the record; these only say what the zones show (where a card went) and what the old client called it.
 import type { CardId } from "../protocol";
 import type { Card, SeatId, TableModel, Zone } from "../model";
-import { entersDraw, isIncubateSweep, logText } from "../model";
+import { abilityText, entersDraw, isIncubateSweep, logText } from "../model";
 import type { Arrival, Loss } from "./types";
 
 export const listNames = (names: readonly string[]): string => new Intl.ListFormat("en").format(names);
@@ -87,12 +87,6 @@ export function lossSummary(list: readonly Loss[]): string {
 export const lossFate = (l: Loss): string =>
   l.where === "away" ? (l.token ? "(token) left play" : "left play · destination unknown") : `went ${l.where}`;
 
-/** live.js `abilityText(t, name, true)`: an ability's text without its "<card> - " prefix. */
-const abilityText = (t: string, name: string): string => {
-  const text = t.trim(),
-    prefix = name + " - ";
-  return text.startsWith(prefix) ? text.slice(prefix.length) : text;
-};
 
 /**
  * The Elemental token an ability's text makes, as live.js read it through `effectPreview` ("3/3 Elemental" from "Create

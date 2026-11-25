@@ -163,8 +163,7 @@ export function LossRecap({
     <div class="l-recap" data-audit="recap">
       <button type="button" class="l-lost" data-fk="recap" onClick={onOpen}>
         <b>{view.title}</b>
-        <small>{view.summary}</small>
-        <span>View loss report ›</span>
+        {view.summary ? <small>{view.summary}</small> : null}
       </button>
       <button type="button" class="g-close" aria-label="Dismiss loss notice" onClick={onDismiss}>
         <span aria-hidden="true">✕</span>
@@ -174,31 +173,17 @@ export function LossRecap({
 }
 
 /**
- * The stack summary set into the prompt (live.js `stackSummary`): each item, the next to resolve first, `<order>
- * <title> · <who>` over what it will do; an item still on its way there (the narrative's `watching().arriving`) is
- * "Arriving"; what is aimed at me or mine is in the danger ink.
+ * The stack summary set into the prompt while two or more items are up: one line each, top first, numbered ("1 Arcane
+ * Denial → Swords to Plowshares"); what is aimed at me or mine in the danger ink.
  */
-export function StackSummary({
-  rows,
-  arriving = [],
-}: {
-  readonly rows: readonly StackSummaryRow[];
-  readonly arriving?: readonly number[];
-}): JSX.Element | null {
+export function StackSummary({ rows }: { readonly rows: readonly StackSummaryRow[] }): JSX.Element | null {
   if (!rows.length) return null;
   return (
-    <ol class="l-stackinfo" aria-label="Stack in resolution order">
-      {rows.map((r, i) => (
-        <li key={r.item}>
-          <small class={r.aimed ? "l-order aimed" : "l-order"}>
-            {arriving.includes(r.item) ? "Arriving" : r.order}
-          </small>{" "}
-          <b>{r.title}</b> <span>· {r.who}</span>
-          {r.effect ? (
-            <div class={i === 0 && r.aimed ? "aimed" : undefined}>
-              <Pips text={r.effect} />
-            </div>
-          ) : null}
+    <ol class="l-stackinfo" aria-label="Stack, top first">
+      {rows.map((r) => (
+        <li key={r.item} class={r.aimed ? "aimed" : undefined}>
+          <span class="l-order">{r.n}</span> {r.title}
+          {r.at ? ` → ${r.at}` : ""}
         </li>
       ))}
     </ol>

@@ -55,8 +55,7 @@ function tapSources(c: Ctx<PayDecision>, ids: readonly CardId[]): Reaction | nul
 export const pay: Kind<PayDecision> = {
   ...base<PayDecision>(),
   words(c) {
-    const { d, draft } = c;
-    return { headline: promptText(d, c.f) + (draft.sel.length ? ` · ${draft.sel.map((o) => d.options[o - 1]).join(", ")}` : ": tap your mana, or let Forge pay") };
+    return { headline: promptText(c.d, c.f) };
   },
   buttons(c) {
     const { draft } = c;

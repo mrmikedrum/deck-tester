@@ -8,7 +8,11 @@ import type { PieceKind, StageView } from "../stage/types";
 import { Arc, FxKit, Ribbon, strikeFx } from "./fx";
 import type { Effect } from "./fx";
 import type { Host } from "./host";
-import { COVERS, GhostPiece, artWanted, createPiece, placeGroup } from "./pieces";
+import { ABOVE } from "./focus-pass";
+import { COVERS, GROUND, GhostPiece, LABEL, SIGN_ALTS, artWanted, createPiece, placeGroup } from "./pieces";
+import type { LabelTag, SignAlts } from "./pieces";
+import { CW } from "../../layout/seat/geometry";
+import { LABEL_PX } from "../stage/labels";
 import type { Clock, PieceEnv, PieceView } from "./pieces";
 
 /** An object's place on screen (CSS px): its bounding box, and for a page the quad of its outline. */
@@ -25,6 +29,14 @@ export interface ScreenBox {
  * of the card's own face, however it is turned), its width on screen (the mean of its foot and top edges), and, for a
  * stack card, whether it stands up as the table's focus.
  */
+/** A label as last drawn (CSS px): its box on screen and its smallest line's text size there. */
+export interface DrawnLabel {
+  readonly id: string;
+  readonly visible: boolean;
+  readonly box: readonly [number, number, number, number];
+  readonly px: number;
+}
+
 export interface DrawnFace {
   readonly kind: PieceKind | "ghost";
   readonly visible: boolean;
@@ -43,6 +55,19 @@ interface Entry {
   readonly view: PieceView | null;
   /** A stack card standing up as the table's focus (the audit sets it aside). */
   up: boolean;
+  /** Drawn above the stack's scrim. */
+  above: boolean;
+}
+
+/**
+ * Put an object on the layer drawn above the stack's scrim, or back on the table's. What lies on the page under it (its
+ * ground: the sigil, ash and shadow) stays under the scrim.
+ */
+function setAbove(o: Object3D, above: boolean): void {
+  if (o.userData[GROUND]) return;
+  if (above) o.layers.set(ABOVE);
+  else o.layers.set(0);
+  for (const c of o.children) setAbove(c, above);
 }
 
 export class StageRenderer {
@@ -97,7 +122,7 @@ export class StageRenderer {
       }
       if (!e) {
         const pv = createPiece(this.env(), v);
-        e = { kind: v.kind, form: v.form, mods: v.mods, view: pv, up: false };
+        e = { kind: v.kind, form: v.form, mods: v.mods, view: pv, up: false, above: false };
         if (pv) this.root.add(pv.group);
         this.pieces.set(v.id, e);
       } else if (e.mods !== v.mods || (this.arrived.size > 0 && artWanted(v).some((u) => this.arrived.has(u)))) {
@@ -109,8 +134,14 @@ export class StageRenderer {
       placeGroup(e.view.group, v.sample);
       e.view.group.visible = v.visible;
       e.view.look(v, clock);
+      this.fitLabels(e.view.group);
+      // Above the stack's scrim, or back on the table (its effects are made as it goes, so every frame while above).
+      const above = view.scrim > 0 && view.above.has(v.id);
+      if (above || e.above) setAbove(e.view.group, above);
+      e.above = above;
     }
     for (const [id, e] of [...this.pieces]) if (!seen.has(id)) this.drop(id, e);
+    this.settleSigns();
 
     const flying = new Set<string>();
     for (const g of view.ghosts) {
@@ -190,6 +221,8 @@ export class StageRenderer {
       arc.tick(clock.t, 1, clock.still);
     }
     for (const [id, arc] of [...this.arcs]) if (!aimed.has(id)) this.dropArc(id, arc);
+    setAbove(this.arcGroup, view.scrim > 0);
+    this.host.setScrim(view.scrim);
     this.host.setTableTone(view.tableTone);
     this.arrived.clear();
   }
@@ -300,6 +333,174 @@ export class StageRenderer {
   }
 
   /**
+   * Keep every label at its text size on screen (its tag's `want`, CSS px): measured where it is drawn now and scaled
+   * to it, so a label reads the same wherever its card stands; a tab stays standing on its card's top edge, overlapping
+   * it by its tag's few px.
+   */
+  private fitLabels(group: Object3D): void {
+    const cam = this.host.camera, size = this.host.size;
+    if (!cam || !size?.w || !size.h) return;
+    const { w, h } = size;
+    const v = new Vector3();
+    const at = (x: number, y: number, m: Object3D): [number, number] => {
+      v.set(x, y, 0).applyMatrix4(m.matrixWorld).project(cam);
+      return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+    };
+    let updated = false;
+    group.traverse((o) => {
+      const tag = o.userData[LABEL] as LabelTag | undefined;
+      const m = o as Mesh;
+      if (!tag?.want || !m.isMesh) return;
+      if (!updated) {
+        cam.updateMatrixWorld();
+        group.updateWorldMatrix(true, true);
+        updated = true;
+      }
+      const ph = (m.geometry as unknown as { parameters?: { height: number } }).parameters?.height ?? 1;
+      const top = at(0, ph / 2, m), foot = at(0, -ph / 2, m), tall = Math.hypot(top[0] - foot[0], top[1] - foot[1]);
+      if (tall < 1e-3) return;
+      const k = (tag.want * tag.h) / Math.max(...tag.fonts) / tall;
+      m.scale.x *= k;
+      m.scale.y *= k;
+      if (tag.foot !== undefined) {
+        const local = ph * m.scale.y, perPx = local / (tall * k);
+        m.position.y = tag.foot + local / 2 - (tag.overlap ?? 0) * perPx;
+      }
+      m.updateMatrixWorld(true);
+    });
+  }
+
+  /**
+   * The signs that lie on the page (a well's, a zone's) where they are drawn now, kept off every other label and every
+   * other card's name strip and foot: slid along their row by up to a quarter of a card, at their size, then smaller
+   * while every line holds the floor's 11 px; a two-line sign then on one line (its second line would cross the floor
+   * first), at its size and at the floor; and failing all, its count as a chip on its card's face (`SIGN_ALTS`), which
+   * cannot meet anything. Never drawn where it meets another. (A pile's title is placed by the stage's ledger, labels.ts;
+   * these are known only once drawn.)
+   */
+  private settleSigns(): void {
+    const cam = this.host.camera, size = this.host.size;
+    if (!cam || !size?.w || !size.h) return;
+    const { w, h } = size;
+    type Box = [number, number, number, number];
+    const v = new Vector3();
+    const at = (x: number, y: number, z: number, m: Object3D): [number, number] => {
+      v.set(x, y, z).applyMatrix4(m.matrixWorld).project(cam);
+      return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+    };
+    const boxOf = (pts: [number, number][]): Box => [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+    const meets = (a: Box, b: Box): boolean => Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > 2 && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > 2;
+    const planeBox = (m: Mesh): Box => {
+      const g = m.geometry as unknown as { parameters?: { width: number; height: number } };
+      const pw = (g.parameters?.width ?? 1) / 2, ph = (g.parameters?.height ?? 1) / 2;
+      return boxOf([at(-pw, -ph, 0, m), at(pw, -ph, 0, m), at(pw, ph, 0, m), at(-pw, ph, 0, m)]);
+    };
+    const fixed: { id: string; box: Box }[] = [], signs: { id: string; m: Mesh; tag: LabelTag }[] = [];
+    // Each sign starts the frame whole, its lesser forms put away.
+    for (const [, e] of this.pieces)
+      e.view?.group.traverse((o) => {
+        const alts = o.userData[SIGN_ALTS] as SignAlts | undefined;
+        if (!alts) return;
+        o.visible = true;
+        if (alts.line) alts.line.visible = false;
+        if (alts.chip) alts.chip.visible = false;
+      });
+    for (const [id, e] of this.pieces) {
+      if (!e.view || !e.view.group.visible) continue;
+      const front = e.kind === "unit" ? e.view.front?.() : null;
+      if (front) {
+        const g = front.geometry;
+        g.computeBoundingBox();
+        const b = g.boundingBox!, z = (b.min.z + b.max.z) / 2, y0 = b.min.y, y1 = b.max.y, d = (y1 - y0) / 6;
+        fixed.push({ id, box: boxOf([at(b.min.x, y1 - d, z, front), at(b.max.x, y1, z, front)]) });
+        fixed.push({ id, box: boxOf([at(b.min.x, y0, z, front), at(b.max.x, y0 + d, z, front)]) });
+      }
+      e.view.group.traverse((o) => {
+        const tag = o.userData[LABEL] as LabelTag | undefined, m = o as Mesh;
+        if (!tag || !m.isMesh || !m.visible) return;
+        if (tag.foot === undefined && tag.want) signs.push({ id, m, tag });
+        else fixed.push({ id, box: planeBox(m) });
+      });
+    }
+    // Its sizes, largest first, at which its smallest line still holds the floor.
+    const sizes = (tag: LabelTag): number[] => {
+      const want = tag.want ?? LABEL_PX.floor, least = Math.min(...tag.fonts) / Math.max(...tag.fonts);
+      return [...new Set([want, LABEL_PX.floor])].filter((px) => px * least >= LABEL_PX.floor - 1e-6).map((px) => px / want);
+    };
+    // (In its parent's units a card is CW wide: a slide of an eighth of a card a step, a quarter at most.)
+    const step = CW / 8;
+    for (const s of signs) {
+      const alts = s.m.userData[SIGN_ALTS] as SignAlts | undefined;
+      const line = alts?.line ?? null, lineTag = line?.userData[LABEL] as LabelTag | undefined;
+      const forms = [...sizes(s.tag).map((k) => ({ m: s.m, k })), ...(line && lineTag ? sizes(lineTag).map((k) => ({ m: line, k })) : [])];
+      const show = (m: Mesh | null): void => {
+        s.m.visible = m === s.m;
+        if (line) line.visible = m === line;
+      };
+      let done = false;
+      for (const { m, k } of forms) {
+        show(m);
+        const base = (m.userData["baseX"] as number | undefined) ?? m.position.x;
+        m.userData["baseX"] = base;
+        const sx = m.scale.x, sy = m.scale.y;
+        m.scale.x = sx * k;
+        m.scale.y = sy * k;
+        for (const dx of [0, 1, -1, 2, -2]) {
+          m.position.x = base + dx * step;
+          m.updateMatrixWorld(true);
+          const box = planeBox(m);
+          if (fixed.some((f) => f.id !== s.id && meets(f.box, box))) continue;
+          fixed.push({ id: s.id, box });
+          done = true;
+          break;
+        }
+        if (done) break;
+        m.scale.x = sx;
+        m.scale.y = sy;
+        m.position.x = base;
+        m.updateMatrixWorld(true);
+      }
+      if (done) continue;
+      if (alts?.chip) {
+        show(null);
+        alts.chip.visible = true;
+        continue;
+      }
+      // (A sign with no lesser form left: drawn whole where it stands, for the audit to see.)
+      show(s.m);
+      fixed.push({ id: s.id, box: planeBox(s.m) });
+    }
+  }
+
+  /** Every label it holds as last drawn, by its piece (the layout audit's label checks; not per frame in the app). */
+  labels(camera: Camera, w: number, h: number): DrawnLabel[] {
+    const v = new Vector3();
+    const at = (x: number, y: number, m: Object3D): [number, number] => {
+      v.set(x, y, 0).applyMatrix4(m.matrixWorld).project(camera);
+      return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+    };
+    const out: DrawnLabel[] = [];
+    for (const [id, e] of this.pieces) {
+      if (!e.view) continue;
+      e.view.group.updateWorldMatrix(true, true);
+      e.view.group.traverse((o) => {
+        const tag = o.userData[LABEL] as { fonts: readonly number[]; h: number } | undefined;
+        const m = o as Mesh;
+        if (!tag || !m.isMesh) return;
+        const g = m.geometry as unknown as { parameters?: { width: number; height: number } };
+        const pw = g.parameters?.width ?? 1, ph = g.parameters?.height ?? 1;
+        const corners = [at(-pw / 2, -ph / 2, m), at(pw / 2, -ph / 2, m), at(pw / 2, ph / 2, m), at(-pw / 2, ph / 2, m)];
+        const xs = corners.map((c) => c[0]), ys = corners.map((c) => c[1]);
+        const top = at(0, ph / 2, m), foot = at(0, -ph / 2, m), tall = Math.hypot(top[0] - foot[0], top[1] - foot[1]);
+        let visible = true;
+        for (let q: Object3D | null = m; q; q = q.parent) if (!q.visible) visible = false;
+        out.push({ id, visible, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], px: (Math.min(...tag.fonts) / tag.h) * tall });
+      });
+    }
+    return out;
+  }
+
+  /**
    * The piece drawn on top at (x, y) CSS px, by id, or null (the table, a page or an effect): the first card, edge or
    * label a ray from the eye meets, where what is drawn without a depth test (the plates) is over what is drawn before
    * it. Pieces in `skip` are looked through (a focus set aside). The layout audit's cover; not per frame in the app.
@@ -309,6 +510,7 @@ export class StageRenderer {
     for (const [id, e] of this.pieces) if (e.view) owner.set(e.view.group, id);
     for (const [id, g] of this.ghosts) owner.set(g.group, id);
     const ray = new Raycaster();
+    ray.layers.enableAll(); // what stands above the stack's scrim is still on the table
     ray.setFromCamera(new Vector2((x / w) * 2 - 1, -(y / h) * 2 + 1), camera);
     this.root.updateWorldMatrix(true, true);
     let near: { id: string; order: number } | null = null, flat: { id: string; order: number } | null = null;

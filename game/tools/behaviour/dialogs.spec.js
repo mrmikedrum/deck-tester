@@ -1,6 +1,7 @@
 // 9. mulligan / confirm / "Let Forge decide"; 10. refusals; f. new games and reconnects while an answer is pending;
 // g. empty and startup states.
 const { test, expect, NEW, snapshot, withDecision, find, inHand, opponentSpell, keyOf } = require("./harness.js");
+const { label } = require("./labels.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
 const mulligan = s => withDecision(s, { kind: "mulligan", prompt: "Keep this hand?", options: ["Keep", "Mulligan"], min: 1, max: 1 });
@@ -21,12 +22,12 @@ test.describe("mulligan and confirm", () => {
   });
   test("a mulligan is never offered \"Let Forge decide\"", async ({ table }) => {
     await table.open(mulligan(snapshot("main")));
-    expect(await table.page.getByRole("button", { name: "Let Forge decide" }).count()).toBe(0);
+    expect(await table.page.getByRole("button", { name: label("Let Forge decide") }).count()).toBe(0);
   });
   test("confirm: Yes sends [1], No sends [2]", async ({ table }) => {
     const s = snapshot("main");
     await table.open(confirm(s));
-    expect(await table.buttons()).toEqual(["Yes", "No", "Let Forge decide"]);
+    expect(await table.buttons()).toEqual(["Yes", "No", label("Let Forge decide")]);
     await table.press("Yes");
     expect((await table.answered(1))[0].answer).toEqual([1]);
     table.forget();
@@ -37,19 +38,19 @@ test.describe("mulligan and confirm", () => {
   test("\"Let Forge decide\" sends {key, defer: true}", async ({ table }) => {
     const s = confirm(snapshot("main"));
     await table.open(s);
-    await table.press("Let Forge decide");
+    await table.press(label("Let Forge decide"));
     expect(await table.answered(1)).toEqual([{ key: keyOf(s.decision), defer: true }]);
   });
   test("Let Forge decide is offered on play with plays, hidden when a spell is up and nothing can answer", async ({ table }) => {
     await table.open("main");
-    expect(await table.buttons()).toContain("Let Forge decide");
+    expect(await table.buttons()).toContain(label("Let Forge decide"));
     const s = snapshot("main");
     await table.open(withDecision(s, PASS, v => { v.active = "Dack"; opponentSpell(v, "Swords to Plowshares", [find(s, "Marath", "Herd Baloth").id]); }), { animate: false });
-    expect(await table.buttons()).not.toContain("Let Forge decide");
+    expect(await table.buttons()).not.toContain(label("Let Forge decide"));
   });
   test("Let Forge decide on a play sends defer, not [1]", async ({ table }) => {
     await table.open("main");
-    await table.press("Let Forge decide");
+    await table.press(label("Let Forge decide"));
     const a = (await table.answered(1))[0];
     expect(a.defer).toBe(true);
     expect(a.answer).toBeUndefined();
@@ -168,7 +169,7 @@ test.describe("new games and reconnects", () => {
   test("a new gen closes an open sheet", async ({ table }) => {
     const s = snapshot("main");
     await table.open(s);
-    await table.press("Choose a play (6)");
+    await table.press(label("Choose a play (6)"));
     expect(await table.sheet().count()).toBe(1);
     await table.open(snapshot("theirs"));
     expect(await table.sheet().count()).toBe(0);

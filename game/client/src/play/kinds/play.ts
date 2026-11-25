@@ -6,12 +6,13 @@
 import type { CardId, PlayDecision } from "../../protocol";
 import type { Facts } from "../facts";
 import { cardOf, seatName, topItem } from "../facts";
-import { costOf, lists, phaseName, playLabel } from "../text";
+import { costOf, itemLine, phaseName, playLabel } from "../text";
 import type { SheetItem } from "../types";
 import { base, btn } from "./kind";
 import type { Btn, Ctx, Kind, Reaction } from "./kind";
 
-const HAND_PLAY_DY = -90;
+/** A hand card let go this far up (px, negative is up) over the table is played. */
+export const HAND_PLAY_DY = -90;
 
 /** live.js `optsFor`: every option whose ref is this card (mana abilities included). */
 export const optsFor = (d: PlayDecision, id: CardId | null | undefined): number[] =>
@@ -37,13 +38,10 @@ function offer(opts: readonly number[], title: string, carried: Reaction["carrie
   return { sheet: { k: "plays", title, options: opts, carried } };
 }
 
-/** live.js `responseButton`. */
+/** The responses: one is cast by name ("Cast Arcane Denial {1}{U}"); several are "Respond (n)", which lists them. */
 function response(c: Ctx<PlayDecision>, opts: readonly number[]): Btn {
   const { d, f } = c;
-  if (opts.length !== 1) {
-    const detail = opts.map((o) => [d.options[o - 1], costOf(d, o, f)].filter(Boolean).join(" ")).join(" · ");
-    return btn("responses", `Choose a response (${opts.length})`, () => offer(opts, "Choose a response"), { tone: "primary", role: "choice", detail });
-  }
+  if (opts.length !== 1) return btn("responses", `Respond (${opts.length})`, () => offer(opts, "Respond"), { role: "choice" });
   const o = opts[0]!;
   return btn("respond", playLabel(d.options[o - 1] ?? ""), () => ({ answer: { answer: [o] } }), { tone: "primary", role: "choice", cost: costOf(d, o, f) });
 }
@@ -54,60 +52,34 @@ export const play: Kind<PlayDecision> = {
   ...base<PlayDecision>(),
   // live.js `status`: not when a spell is up and nothing can answer it.
   defers: (c) => !(topItem(c.f) && playOptions(c.d).length === 0),
+  // Only what the table does not already say: someone else's item on the stack, attackers at me, blockers declared.
+  // What can be played is lit on the table; my own item on top is on screen.
   words(c) {
-    const { d, f } = c, top = topItem(f), opts = playOptions(d), canFloat = d.refs.some((r) => r.mana);
-    if (top && top.controller !== f.me) {
-      return { headline: opts.length ? "You can respond" : "No responses offered", ...(canFloat && !opts.length ? { hint: "You can float mana from a marked source." } : {}) };
-    }
-    const attacking = f.attackersAtMe.length > 0;
-    const blocking = f.blockerSeats.length
-      ? f.blockerSeats.length === 1 && f.blockerSeats[0] === f.me
-        ? "You declared blockers"
-        : `${lists(f.blockerSeats.map((s) => seatName(f, s)))} declared blockers`
-      : "";
-    const main = !top && f.active === f.me && ["Main phase", "Second main"].includes(phaseName(f.phase));
-    const zones = new Set(opts.map((o) => cardOf(f, d.refs[o - 1]?.card)?.zone));
-    const places = ([["hand", "in your hand"], ["battlefield", "on the battlefield"]] as const).filter(([z]) => zones.has(z)).map(([, p]) => p);
-    const other = ([["graveyard", "the graveyard"], ["exile", "exile"]] as const).filter(([z]) => zones.has(z)).map(([, p]) => p);
-    const unmarked = [...zones].some((z) => !z || !["hand", "battlefield", "command", "graveyard", "exile"].includes(z));
-    const hint = attacking
-      ? "Passing advances toward your chance to block."
-      : [
-          places.length && `Highlights ${lists(places)} mark available plays.`,
-          zones.has("command") && `Tap the marked “${seatName(f, f.me)}” life plaque for your commander play.`,
-          other.length && `Open Choose a play for plays from ${lists(other)}${unmarked ? " and other unmarked options" : ""}.`,
-          !other.length && unmarked && "Open Choose a play for unmarked options.",
-        ]
-          .filter(Boolean)
-          .join(" ");
-    const headline =
-      (attacking ? "Before blocks" : blocking) ||
-      (main ? (opts.length ? "Available plays" : canFloat ? "Tap a marked mana source to float mana" : "You have priority") : "You have priority");
-    return { headline, ...(hint ? { hint } : {}) };
+    const { f } = c, top = topItem(f);
+    if (top && top.controller !== f.me) return { headline: itemLine(f, top) };
+    if (top) return { headline: "" };
+    if (f.attackersAtMe.length) return { headline: `${seatName(f, f.active)} attacks you with ${f.attackersAtMe.length}` };
+    if (f.blockerSeats.length) return { headline: "Blockers declared" };
+    return { headline: "" };
   },
+  // The pass: "OK" with someone else's item up and nothing to answer it with (an acknowledgment), "Resolve" when I could
+  // (a choice) or the item is mine, the destination on an empty stack ("To combat", "To blocks", "End turn"), else
+  // "Pass". One primary: the pass, unless a single response is the answer.
   buttons(c) {
-    const { d, f } = c, top = topItem(f), opts = playOptions(d);
+    const { f } = c, top = topItem(f), opts = playOptions(c.d);
     if (top && top.controller !== f.me) {
-      const out = [pass("Pass priority", opts.length ? "secondary" : "primary")];
-      if (opts.length) out.unshift(response(c, opts));
-      return out;
+      if (!opts.length) return [pass("OK", "primary")];
+      const r = response(c, opts);
+      return [r, pass("Resolve", r.tone === "primary" ? "secondary" : "primary")];
     }
     const attacking = f.attackersAtMe.length > 0, phase = phaseName(f.phase), mine = f.active === f.me;
-    const label = top
-      ? "Pass priority"
-      : attacking
-        ? "Pass toward blocks"
-        : mine && phase === "Main phase"
-          ? "To combat"
-          : mine && phase === "Second main"
-            ? "End turn"
-            : "Pass";
-    const out = [pass(label, opts.length ? "secondary" : "primary")];
+    const label = top ? "Resolve" : attacking ? "To blocks" : mine && phase === "Main phase" ? "To combat" : mine && phase === "Second main" ? "End turn" : "Pass";
+    const out = [pass(label, "primary")];
     if (opts.length)
       out.unshift(
         attacking
-          ? response(c, opts)
-          : btn("plays", `Choose a play (${opts.length})`, () => offer(opts, "Everything you can play", null, false), { tone: "primary", role: "choice" }),
+          ? { ...response(c, opts), tone: "secondary" as const }
+          : btn("plays", `All plays (${opts.length})`, () => offer(opts, "Everything you can play", null, false), { role: "choice" }),
       );
     return out;
   },

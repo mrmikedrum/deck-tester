@@ -69,23 +69,22 @@ describe("the log strip and the stack summary on the slice", () => {
     expect(strip(r)[0]).toBe("You cast Lightning Bolt");
   });
 
-  it('the stack summary says the Bolt is "Aimed at Princess", arriving while it flies, next to resolve once it is there', () => {
+  it("the Bolt on its way to the stack: the prompt watches it, saying the line it will ask with", () => {
     const r = from("023-play-monarch.json");
     played(r, "024-targets-monarch.json");
     r.transport.push(raw("025-play-stack-targets-player.json"));
     r.frame(r.now + 16);
     let v = view(r);
     expect(v.stackOpen).toBe(true);
-    expect(v.controls.prompt?.stack.map((s) => [s.order, s.title, s.who, s.effect])).toEqual([
-      ["Next if all pass", "Lightning Bolt", "You", "Aimed at Princess. Lightning Bolt deals 3 damage to any target."],
-    ]);
-    // On its way: the prompt watches it ("Arriving" in the summary), and "Choose a play" is not offered meanwhile.
-    expect(v.watch).toEqual({ headline: "On the way to the stack", arriving: [v.controls.prompt!.stack[0]!.item], toStack: true, sweeping: false });
+    // A lone item: no summary (the card is held up).
+    expect(v.controls.prompt?.stack).toEqual([]);
+    // On its way: the prompt watches it, and "All plays" is not offered meanwhile.
+    expect(v.watch).toMatchObject({ headline: "", toStack: true, sweeping: false });
     run(r, 4000);
     v = view(r);
     expect(v.watch).toBeNull();
-    expect(v.controls.prompt?.headline).toBe("You have priority");
-    expect(v.controls.prompt?.stack[0]?.effect).toBe("Aimed at Princess. Lightning Bolt deals 3 damage to any target.");
+    expect(v.controls.prompt?.headline).toBe("");
+    expect(v.controls.prompt?.buttons.map((b) => b.label)).toContain("Resolve");
   });
 
   it("the stack layer set aside: the view says so, and the decision's context is there for the prompt (live.js `status`)", () => {
@@ -97,7 +96,7 @@ describe("the log strip and the stack summary on the slice", () => {
     order(r, { t: "dismiss" });
     v = view(r);
     expect(v.stackOpen).toBe(false);
-    expect(v.chips.map((c) => c.label)).toEqual(["Stack: 3"]);
+    expect(v.chips.map((c) => c.label)).toEqual(["Stack 3"]);
   });
 });
 
@@ -148,13 +147,13 @@ describe("the loss notice and the sheets", () => {
     const r = from("032-confirm-watching.json");
     r.transport.push(raw("033-block-attack-on-planeswalker-they-attack.json"));
     r.frame(r.now + 16);
-    expect(view(r).watch?.headline).toBe("Atraxa's attackers are moving in");
+    expect(view(r).watch?.headline).toBe("Atraxa attacks");
     expect(view(r).recap).toBeNull(); // not told before it is seen
     run(r, 4000);
     expect(view(r).watch).toBeNull();
-    expect(view(r).recap).toEqual({ title: "Your loss", summary: "Thorn of the Black Rose · to exile" });
+    expect(view(r).recap).toEqual({ title: "Lost: Thorn of the Black Rose (exile) ›", summary: "" });
     played(r, "034-order-blocked-poison.json");
-    expect(view(r).recap).toEqual({ title: "Your loss", summary: "Thorn of the Black Rose · to exile" });
+    expect(view(r).recap).toEqual({ title: "Lost: Thorn of the Black Rose (exile) ›", summary: "" });
     played(r, "035-play-face-down.json");
     expect(view(r).recap).toBeNull(); // a new turn
   });

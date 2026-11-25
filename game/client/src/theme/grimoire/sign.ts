@@ -8,6 +8,9 @@ import type { Surfaces } from "./surfaces";
 
 const NUM = font.num;
 
+/** A sign's fonts on its canvas (px): its line, and its second line (a well's "2 tapped": 11 px under 12). */
+export const SIGN_FONT = { text: 60, sub: 55 } as const;
+
 /** World units per canvas pixel of a sign. */
 export const SIGN_U = 0.00375;
 /** A title tab's greatest height above its card. */
@@ -31,15 +34,15 @@ export function paintSign(canvas: Canvas, spec: SignSpec, s: Surfaces): Size {
   const { text, colour: col, sub } = spec;
   const probe = canvas.getContext("2d");
   if (!probe) throw new Error("no 2d context");
-  probe.font = `700 60px ${NUM}`;
+  probe.font = `700 ${SIGN_FONT.text}px ${NUM}`;
   let tw = probe.measureText(text).width;
   if (sub) {
-    probe.font = `600 46px ${NUM}`;
+    probe.font = `600 ${SIGN_FONT.sub}px ${NUM}`;
     tw = Math.max(tw, probe.measureText(sub).width);
   }
   const notch = col ? 34 : 0,
     w = Math.min(sub ? 900 : 560, tw + 36 + notch),
-    h = sub ? 130 : 80;
+    h = sub ? 136 : 80;
   const x = begin(canvas, Math.ceil(w + 16), h + 16);
   x.shadowColor = "rgba(0,0,0,.6)";
   x.shadowBlur = 8;
@@ -56,12 +59,12 @@ export function paintSign(canvas: Canvas, spec: SignSpec, s: Surfaces): Size {
   x.fillStyle = colour.ink;
   x.textAlign = "center";
   x.textBaseline = "middle";
-  x.font = `700 60px ${NUM}`;
+  x.font = `700 ${SIGN_FONT.text}px ${NUM}`;
   x.fillText(text, 8 + (w + notch) / 2, 49, w - 28 - notch);
   if (sub) {
-    x.font = `600 46px ${NUM}`;
+    x.font = `600 ${SIGN_FONT.sub}px ${NUM}`;
     x.fillStyle = "#3a2c1a";
-    x.fillText(sub, 8 + (w + notch) / 2, 102, w - 28 - notch);
+    x.fillText(sub, 8 + (w + notch) / 2, 104, w - 28 - notch);
   }
   return { w: canvas.width, h: canvas.height };
 }
@@ -165,4 +168,40 @@ export function counterChip(kind: string, value: number): ChipSpec {
   const k = counterKind(kind);
   const [ink, sub] = COUNTER_INK[k] ?? [colour.ink, k.toLowerCase()];
   return { text: k === "P1P1" ? "+" + value : k === "M1M1" ? "−" + value : String(value), ink, sub };
+}
+
+/** An ability's slip under the stack's focus card: its effect in serif ink on vellum, up to three lines. */
+export const SLIP = { w: 640, line: 44, pad: 20, lines: 3 } as const;
+
+export function paintSlip(canvas: Canvas, text: string, s: Surfaces): Size {
+  const probe = canvas.getContext("2d");
+  if (!probe) throw new Error("no 2d context");
+  const fontOf = `400 34px ${font.serif}`;
+  probe.font = fontOf;
+  const room = SLIP.w - SLIP.pad * 2, words = text.split(/\s+/).filter(Boolean), lines: string[] = [];
+  for (const w of words) {
+    const last = lines[lines.length - 1];
+    if (last !== undefined && probe.measureText(`${last} ${w}`).width <= room) lines[lines.length - 1] = `${last} ${w}`;
+    else lines.push(w);
+  }
+  if (lines.length > SLIP.lines) {
+    lines.length = SLIP.lines;
+    let l = lines[SLIP.lines - 1]!;
+    while (l && probe.measureText(`${l}…`).width > room) l = l.slice(0, -1);
+    lines[SLIP.lines - 1] = `${l.trimEnd()}…`;
+  }
+  const h = SLIP.pad * 2 + Math.max(1, lines.length) * SLIP.line;
+  const x = begin(canvas, SLIP.w, h);
+  rr(x, 3, 3, SLIP.w - 6, h - 6, 8);
+  x.fillStyle = pattern(x, s.vellum, colour.bone);
+  x.fill();
+  x.lineWidth = 3;
+  x.strokeStyle = "rgba(40,22,5,.85)";
+  x.stroke();
+  x.font = fontOf;
+  x.fillStyle = colour.ink;
+  x.textAlign = "center";
+  x.textBaseline = "middle";
+  lines.forEach((l, i) => x.fillText(l, SLIP.w / 2, SLIP.pad + SLIP.line * (i + 0.5), room));
+  return { w: SLIP.w, h };
 }

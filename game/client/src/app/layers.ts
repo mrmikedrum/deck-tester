@@ -3,7 +3,7 @@
 // stack's rules (`openStackRules`), the chips of set-aside layers and the Game menu's decks. Pure.
 import type { CardAction, Controls } from "../play";
 import type { CardId } from "../protocol";
-import { handOrder, isCreature } from "../model";
+import { abilityText, handOrder, isCreature } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, SiftView, StackRow } from "../chrome";
 import { SIFT_PAGE, siftOf, siftPages } from "../layout";
@@ -70,6 +70,14 @@ export function inspectorOf(model: TableModel, id: CardId, actions: readonly Car
   const host = c.attachedTo === null ? undefined : model.cards.get(c.attachedTo);
   if (host) related.push({ label: "Attached to", cards: [tile(host)] });
   const mine = c.controller === model.viewer.perspective;
+  // What it has on the stack: the stack's rules live here, a tap on the card held up away.
+  const stack = model.stack
+    .filter((it) => it.source === id)
+    .map((it) => {
+      const who = it.controller === null ? "Controller unrecorded" : seatName(model, it.controller);
+      const effect = it.spell ? "" : abilityText(it.text, c.face.name);
+      return `${it.spell ? "Spell" : "Ability"} · ${who}${effect ? `: ${effect}` : ""}`;
+    });
   return {
     card: id,
     name: c.faceDown && !mine ? "Face-down card" : c.face.name,
@@ -81,6 +89,7 @@ export function inspectorOf(model: TableModel, id: CardId, actions: readonly Car
     chips: factsOf(c),
     related,
     rules: c.faceDown ? null : c.face.text || null,
+    ...(stack.length ? { stack } : {}),
     actions,
   };
 }
@@ -109,12 +118,6 @@ export function handSheetOf(model: TableModel, playable: ReadonlySet<CardId>, fr
   return { cards: cards.map((c) => ({ id: c.id, name: c.face.name, cost: c.face.cost || null, playable: playable.has(c.id), fresh: fresh.includes(c.id) })) };
 }
 
-/** live.js `abilityText`, in full: the engine's words for an ability without its card's name in front. */
-const abilityText = (text: string, name: string): string => {
-  const t = text.trim(), prefix = `${name} - `;
-  return t.startsWith(prefix) ? t.slice(prefix.length) : t;
-};
-
 /** The stack, top first: whose each item is, what an ability does, the card's rules. */
 export function stackRowsOf(model: TableModel): StackRow[] {
   return [...model.stack].reverse().map((it) => {
@@ -130,7 +133,7 @@ export function stackRowsOf(model: TableModel): StackRow[] {
 /** The chips of the layers set aside. */
 export function chipViewsOf(focus: FocusState, model: TableModel | null): ChipView[] {
   return focus.aside.flatMap((e): ChipView[] => {
-    if (e.layer === "stack") return model && model.stack.length ? [{ layer: "stack", label: `Stack: ${model.stack.length}` }] : [];
+    if (e.layer === "stack") return model && model.stack.length ? [{ layer: "stack", label: `Stack ${model.stack.length}` }] : [];
     if (e.layer === "mulligan") return [{ layer: "mulligan", label: "Your opening hand" }];
     return [];
   });
@@ -139,7 +142,8 @@ export function chipViewsOf(focus: FocusState, model: TableModel | null): ChipVi
 /** The Game menu's decks and what it starts from. */
 export function menuOf(s: AppState): MenuView {
   const d = s.session.decks;
-  return { decks: d ? (d.list ?? (d.error ? [] : null)) : null, error: d?.error ?? null, last: s.session.lastGame };
+  const playing = !!s.model && !s.model.over;
+  return { decks: d ? (d.list ?? (d.error ? [] : null)) : null, error: d?.error ?? null, last: s.session.lastGame, ...(playing ? { inProgress: true } : {}) };
 }
 
 /**

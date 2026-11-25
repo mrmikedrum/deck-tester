@@ -5,14 +5,17 @@
 // the plan put them (keeping that pose as `base`, which taps are measured from): the stack as the focus stands large in
 // the middle (the plan's `stackUp`), a lean-in carries one seat's page up over the middle (layout `leanOf`), and a sift
 // fans a pile's cards out in front of the camera (layout `siftOf`).
-import { entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
+import { abilityText, entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
 import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
-import { DIM } from "./motion";
+import type { FaceSpec } from "../../theme";
+import { DIM, SCRIM } from "./motion";
+import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
+import type { LabelAsk, Measure } from "./labels";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
 import { pagePose, platePose, screenPose, stackPose, unitPose, zonePose } from "./poses";
 import { LOOK, tableFocus } from "./types";
@@ -25,6 +28,8 @@ export interface DescribeInput {
   readonly focus: FocusTop;
   /** The hit group under a mouse pointer. */
   readonly hover: string | null;
+  /** The labels' text widths (the sign's font measured); an estimate without one. */
+  readonly measure?: Measure;
 }
 
 /** The hover lift: a card under the pointer comes up off its page (a guess; the old client peeked in HTML instead). */
@@ -52,12 +57,6 @@ export function describe(input: DescribeInput): Description {
     for (const id of p.members) if (!home.has(id)) home.set(id, p.id);
   };
 
-  // What the stack touches keeps its light while the stack is the focus (h.js `stackTouches`: its source, its targets).
-  const touched = new Set<CardId>();
-  for (const it of model.stack) {
-    if (it.source !== null) touched.add(it.source);
-    for (const t of it.targets) if ("card" in t) touched.add(t.card);
-  }
   // The table follows its topmost open layer, even under a chrome layer (a sheet over the stack keeps it dimmed).
   const table = tableFocus(focus);
   const stackUp = table?.layer === "stack" && model.stack.length > 0;
@@ -77,10 +76,10 @@ export function describe(input: DescribeInput): Description {
     const l = leaned(seat, p, yawed);
     return l ? { pose: l, base: p } : { pose: p };
   };
-  /** How far a seat's things dim (h.js `dimTo`), or 0. */
-  const dimOf = (seat: SeatId, cards: readonly CardId[]): number => {
+  /** How far a seat's things dim (h.js `dimTo`), or 0. Under the stack's scrim nothing dims again. */
+  const dimOf = (seat: SeatId): number => {
     if (leanSeat) return seat === me ? DIM.leanMine : seat === leanSeat ? 0 : DIM.leanOther;
-    if (stackUp) return cards.some((c) => touched.has(c)) ? 0 : DIM.stack;
+    if (stackUp) return 0;
     if (softSeat && seat !== softSeat && seat !== me) return DIM.soft;
     return 0;
   };
@@ -101,7 +100,7 @@ export function describe(input: DescribeInput): Description {
     // The page (h.js floors): lit on its turn or focus, in shadow out of it, dimmer under the stack.
     const page = sp.fixtures.page;
     const lit = leanSeat ? leanSeat === seat : softSeat ? softSeat === seat : mine && model.active === me;
-    const tone = (lit ? 1.1 : 1) * (leanSeat && leanSeat !== seat && !mine ? 0.72 : 1) * (stackUp ? 0.5 : 1);
+    const tone = (lit ? 1.1 : 1) * (leanSeat && leanSeat !== seat && !mine ? 0.72 : 1);
     const pageDraw: Draw = { t: "page", place, mine, seed: 7 + seat.length * 131 + seat.charCodeAt(0), turn: model.active === seat };
     put({
       id: `page:${seat}`,
@@ -120,7 +119,7 @@ export function describe(input: DescribeInput): Description {
 
     const rows = mine ? wellRows(sp.units) : new Map<string, { alt: boolean; small: boolean }>();
     for (const u of sp.units) {
-      const dim = dimOf(seat, [...u.members, ...u.dressing]);
+      const dim = dimOf(seat);
       const off = fighting && !u.fighting ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
       const piece = unitPiece(input, seat, u, mine, Math.max(dim, off), lookOf, markOf, rows.get(u.id));
       // Leaned in, a card grows where it stands (about its foot) as well as with its page; taps are still measured from
@@ -140,7 +139,7 @@ export function describe(input: DescribeInput): Description {
         members,
         face: members[members.length - 1] ?? null,
         ...placed(seat, zonePose(z.placement)),
-        look: lookOf(dimOf(seat, members), mark, false, false),
+        look: lookOf(dimOf(seat), mark, false, false),
         form: `zone|${z.zone}|${mine}`,
         mods: `${mark ?? ""}`,
         mark,
@@ -164,7 +163,7 @@ export function describe(input: DescribeInput): Description {
         members: [cmd.card],
         face: cmd.card,
         ...placed(seat, unitPose(plan.projector, cmd.placement, false)),
-        look: lookOf(Math.max(dimOf(seat, [cmd.card]), fighting ? DIM.fightOther : 0), mark, input.hover === id, false),
+        look: lookOf(Math.max(dimOf(seat), fighting ? DIM.fightOther : 0), mark, input.hover === id, false),
         form: `command|${cmd.card}`,
         mods: faceKey(face) + (mark ?? ""),
         mark,
@@ -182,6 +181,9 @@ export function describe(input: DescribeInput): Description {
           dressed: [],
           colours: cmdCard.face.colors,
           well: null,
+          copies: [{ face: null, tapped: false }],
+          tapNote: null,
+          label: null,
           seatColour: colourOf(model, seat),
           seed: cmd.card,
         },
@@ -262,6 +264,8 @@ export function describe(input: DescribeInput): Description {
         up,
         // (Set aside a card stands 0.75 of the middle's size: as the focus its tag stays the middle's.)
         tagScale: upQuad ? Math.min(1, quadHeight(entry.quad) / 0.75 / quadHeight(upQuad)) : 1,
+        img: src && !src.faceDown ? src.face.img : null,
+        slip: !item.spell && src ? abilityText(item.text, src.face.name) || null : null,
       },
       needsMembers: members.length > 0,
     });
@@ -271,8 +275,38 @@ export function describe(input: DescribeInput): Description {
   if (sifting) for (const p of siftPieces(model, plan, sifting, table?.page ?? 0)) pieces.set(p.id, p);
 
   // While I lean in on a seat the stack is set aside, and its arcs with it.
-  const aims = lean ? [] : aimsOf(model, pieces, home);
-  return { pieces, home, lanes: lean ? [] : lanesOf(model, plan, cues, pieces), aims, tableTone: stackUp ? DIM.table : sifting ? DIM.table : 1, perspective: me };
+  const aims = lean ? [] : aimsOf(model, pieces, home, stackUp);
+  // Every pile's title, sized on screen and placed so none meets another label or another card's name or stats; a title
+  // with no room gives way to the count chip (labels.ts).
+  const asks: LabelAsk[] = [];
+  for (const p of pieces.values()) {
+    if (p.draw.t !== "unit" || !p.draw.title || p.draw.well) continue;
+    const m = /^(.*?)\s*(\d+)$/.exec(p.draw.title);
+    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote });
+  }
+  const labelled = placeLabels(plan, asks, input.measure);
+  for (const a of asks) {
+    const p = pieces.get(a.id)!, d = p.draw as Extract<Draw, { t: "unit" }>, l = labelled.get(a.id) ?? null;
+    pieces.set(a.id, { ...p, draw: { ...d, label: l }, mods: `${p.mods}#${l ? `${l.name}|${l.px}|${l.slide}` : "chip"}` });
+  }
+
+  // The stack as the focus lays one scrim over the table; the stack's cards, what they aim at and the arcs stand above it,
+  // each in its own place (one dim, never a second one per piece).
+  const above = new Set<string>();
+  if (stackUp) {
+    for (const id of pieces.keys()) if (id.startsWith("stack:")) above.add(id);
+    for (const a of aims) above.add(a.to);
+  }
+  return {
+    pieces,
+    home,
+    lanes: lean ? [] : lanesOf(model, plan, cues, pieces),
+    aims,
+    tableTone: sifting ? DIM.table : 1,
+    scrim: stackUp ? SCRIM.alpha : 0,
+    above,
+    perspective: me,
+  };
 }
 
 const quadHeight = (q: readonly { readonly y: number }[]): number => Math.max(...q.map((p) => p.y)) - Math.min(...q.map((p) => p.y));
@@ -360,8 +394,9 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
   return out;
 }
 
-/** Each stack item's aim at each thing it targets that is drawn: a card's piece, a seat's plaque, a spell on the stack. */
-function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: ReadonlyMap<CardId, string>): Aim[] {
+/** Each stack item's aim at each thing it targets that is drawn: a card's piece, a seat's plaque, a spell on the stack.
+ * Faint under the top, and every one while the stack is set aside. */
+function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: ReadonlyMap<CardId, string>, up: boolean): Aim[] {
   const out: Aim[] = [];
   const top = model.stack[model.stack.length - 1];
   for (const it of model.stack) {
@@ -383,7 +418,7 @@ function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: Rea
         } else to = home.get(t.card);
       }
       if (!to || !pieces.has(to) || pieces.get(to)!.kind === "hidden") return;
-      out.push({ id: `aim:${it.id}:${j}`, from, to, onto, colours, faint: it !== top });
+      out.push({ id: `aim:${it.id}:${j}`, from, to, onto, colours, faint: it !== top || !up });
     });
   }
   return out;
@@ -405,11 +440,13 @@ function unitPiece(
   const mark = strongest(u.members.map(markOf));
   const face = top ? faceOfCard(model, top, mark) : null;
   const chips = top ? chipsOf(top) : [];
-  const well = u.kind === "well" ? { ...wellLook(model, u, mine), ...row } : null;
+  const looked = u.kind === "well" ? wellLook(model, u, mine) : null;
+  const well = looked ? { ...looked, sign: looked.theirs ? looked.sign : fitWellSign(plan, u.id, looked.sign, input.measure ?? estimate), ...row } : null;
   const dressed = u.dressing
     .map((id) => model.cards.get(id))
     .filter((c): c is Card => !!c)
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
+  const { copies, tapNote } = copiesOf(model, u);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
   const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
   const draw: Draw = {
@@ -425,6 +462,9 @@ function unitPiece(
     dressed,
     colours: well ? well.colours : top ? top.face.colors : [],
     well,
+    copies,
+    tapNote,
+    label: null,
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
   };
@@ -438,11 +478,35 @@ function unitPiece(
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
     mark,
     draw,
     needsMembers: true,
   };
+}
+
+/** How many copies a pile draws (a well's short stack: four). */
+export const PILE_COPIES = { pile: 3, well: 4 } as const;
+
+/**
+ * Of `k` copies drawn for `n` members with `t` tapped, how many are drawn tapped: none for none, every one for all, else
+ * the share, at least one and leaving one ready. Up to three members this is exact.
+ */
+export function tappedCopies(k: number, n: number, t: number): number {
+  if (t === 0 || n === 0) return 0;
+  return Math.max(1, Math.min(t === n ? k : k - 1, Math.round((k * t) / n)));
+}
+
+/** The copies a unit draws, ready first, each tapped one a tapped member's face; and its tapped count where inexact. */
+function copiesOf(model: TableModel, u: Unit): { copies: { face: FaceSpec | null; tapped: boolean }[]; tapNote: string | null } {
+  const cs = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
+  const n = cs.length, k = Math.max(1, Math.min(n, u.kind === "well" ? PILE_COPIES.well : PILE_COPIES.pile));
+  const tapped = cs.filter((c) => c.tapped), t = tapped.length, kt = tappedCopies(k, n, t);
+  const copies = [
+    ...Array.from({ length: k - kt }, () => ({ face: null, tapped: false })),
+    ...tapped.slice(0, kt).map((c) => ({ face: faceOfCard(model, c), tapped: true })),
+  ];
+  return { copies, tapNote: t > 0 && n > k && u.kind !== "well" ? `↷${t}` : null };
 }
 
 /**
@@ -468,7 +532,9 @@ function pileSub(model: TableModel, u: Unit, title: string): string | null {
   if (title) for (const c of cs) by.set(c.face.name, [...(by.get(c.face.name) ?? []), c]);
   const groups = [...by.values()].filter((g) => g.length > 1).sort((a, b) => b.length - a.length).slice(0, 2).map((g) => `${shortName(g[0]!.face.name)} ${g.length}`);
   const kinds = by.size > 1 ? (groups.length ? groups.join(" · ") : `${by.size} kinds`) : null;
-  return [kinds, tapped && tapped < cs.length ? `${tapped} tapped` : null].filter(Boolean).join(" · ") || null;
+  // (How many are tapped the copies show, and the title's ↷ where they cannot.)
+  void tapped;
+  return kinds;
 }
 
 /** The mana a source makes (h.js `manaOf`): the catalog's `produces`, else its own colours. */
@@ -511,6 +577,24 @@ function wellLook(model: TableModel, u: Unit, mine: boolean): Omit<WellLook, "al
   const rep = model.cards.get(u.top);
   const sign = u.title ?? `${shortName(rep?.face.name ?? "")}${n > 1 ? ` ×${n}` : ""}`;
   return { sign, sub: tapped ? (n > 1 ? `${tapped} tapped` : "tapped") : null, colours, spent, shown, theirs: false };
+}
+
+/**
+ * My well's sign, said short enough to stop short of its neighbours' cards at 12 px: no wider than twice the row's pitch
+ * less a card and 8 px; its name shortened (labels.ts `shorter`), never its count.
+ */
+function fitWellSign(plan: TablePlan, id: string, sign: string, measure: Measure): string {
+  const g = plan.hits.groups.find((x) => x.id === id);
+  if (!g) return sign;
+  const box = (q: typeof g.quad) => ({ l: Math.min(...q.map((p) => p.x)), r: Math.max(...q.map((p) => p.x)), t: Math.min(...q.map((p) => p.y)), b: Math.max(...q.map((p) => p.y)) });
+  const me = box(g.quad), w = me.r - me.l, cx = (me.l + me.r) / 2;
+  const row = plan.hits.groups.filter((x) => x.id !== id && x.seat === g.seat && x.kind === "well").map((x) => box(x.quad)).filter((b) => b.t < me.b && b.b > me.t);
+  if (!row.length) return sign;
+  const pitch = Math.min(...row.map((b) => Math.abs((b.l + b.r) / 2 - cx)));
+  const room = 2 * pitch - w - 8;
+  const m = /^(.*?)( ×\d+)?$/.exec(sign)!, count = m[2] ?? "";
+  for (const name of shorter(m[1]!)) if (measure(name + count, LABEL_PX.theirs) + LABEL_PX.pad * LABEL_PX.theirs <= room) return name + count;
+  return (shorter(m[1]!).at(-1) ?? m[1]!) + count;
 }
 
 /** My wells by row (h.js `rowsOf(plan.L)`): neighbours' signs alternate near and far; a row of more than 5, smaller. */

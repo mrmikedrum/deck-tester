@@ -42,9 +42,9 @@ describe("going back to an earlier position", () => {
 
   it("says where it went back to, and what it set aside, in the log and as the strip's summary", () => {
     const s = narrated([later, earlier]);
-    expect(s.restore).toBe("Back to your earlier second main");
+    expect(s.restore).toBe("Back to your second main");
     const newest = s.entries.find((e) => e.id === s.latest[0])!;
-    expect(newest.said).toBe("Back to your earlier second main. Set aside Lightning Bolt → Grizzly Bears.");
+    expect(newest.said).toBe("Back to your second main. Set aside Lightning Bolt → Grizzly Bears.");
     expect(narrative.logStripView(s, earlier)).toMatchObject({
       lines: [{ text: "Set aside Lightning Bolt → Grizzly Bears" }],
       tone: "summary",
@@ -65,15 +65,15 @@ describe("going back to an earlier position", () => {
       log: [{ i: 25, type: "LAND", text: "Dack played Swamp (8)", card: 8 }],
     });
     const s = narrated([calm, back]);
-    expect(s.restore).toBe("Back to Dack's earlier upkeep");
+    expect(s.restore).toBe("Back to Dack's upkeep");
     expect(narrative.logStripView(s, back).lines.map((l) => l.text)).toEqual(["Position restored"]);
   });
 
   it("the prompt's cue is up until the cut has been seen, then the decision is asked again; the next set forgets it", () => {
     let s = narrated([later, earlier]);
     expect(narrative.restoreView(s, earlier)).toEqual({
-      cue: "Back to your earlier second main",
-      headline: "Your decision · second main",
+      cue: "Back to your second main",
+      headline: "",
       restoring: true,
     });
     s = narrative.restored(s);
@@ -132,17 +132,17 @@ describe("the strip's words for Marath's Elemental", () => {
 });
 
 describe("Sunfall's survivors", () => {
-  it("once the exiles have landed and only the survivors' re-fit is left, the prompt says they are settling", () => {
+  it("once the exiles have landed and only the survivors' re-fit is left, the prompt says nothing more (the loss notice names what left)", () => {
     const m = tableOf({ seats: {} });
     const s: State = {
       ...narrative.initial,
       notices: [
-        { id: 1, seq: 1, motion: "Sunfall is exiling creatures", line: null, arriving: [], hand: [], sweeping: true },
+        { id: 1, seq: 1, motion: "Sunfall resolves", line: null, arriving: [], hand: [], sweeping: true },
       ],
     };
-    expect(narrative.watching(s, m, true)?.headline).toBe("Sunfall is exiling creatures");
+    expect(narrative.watching(s, m, true)?.headline).toBe("Sunfall resolves");
     expect(narrative.watching(s, m, false)).toEqual({
-      headline: "Survivors are settling",
+      headline: "",
       arriving: [],
       toStack: false,
       sweeping: true,

@@ -12,12 +12,13 @@ describe("pay", () => {
   it("tap sources, then Pay sends them in the order tapped (corpus 011)", () => {
     const t = new Table();
     t.open(PAY);
-    expect(t.buttons()).toEqual(["Auto-pay", "Let Forge decide"]);
-    expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose: tap your mana, or let Forge pay");
+    expect(t.buttons()).toEqual(["Auto-pay", "Auto"]);
+    // What to pay and for what; the lit sources say where (no list of what has been picked).
+    expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose");
     t.tapCard(806);
     t.tapCard(805);
-    expect(t.buttons()).toEqual(["Undo", "Pay", "Let Forge decide"]);
-    expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose · Swamp (B), Plains (W)");
+    expect(t.buttons()).toEqual(["Undo", "Pay", "Auto"]);
+    expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose");
     expect(t.p.board.marks.cards.get(806 as CardId)).toBe("selected");
     expect(t.p.board.marks.cards.get(809 as CardId)).toBe("option");
     expect(t.answers()).toEqual([]);
@@ -50,7 +51,7 @@ describe("pay", () => {
     t.pile([[807, 808]]);
     t.tapGroupOf(807);
     t.tapGroupOf(807);
-    expect(t.p.controls.prompt?.headline).toMatch(/· Mountain \(R\), Mountain \(R\)$/);
+    expect(t.p.controls.prompt?.headline).not.toMatch(/Mountain/);
     t.tapGroupOf(807); // both picked: never the same source twice
     t.press("Pay");
     expect(t.answers()).toEqual([[3]]);
@@ -142,7 +143,7 @@ describe("pay", () => {
     t.pick(2);
     t.tapCard(809);
     t.pick(5);
-    expect(t.p.controls.prompt?.headline).toMatch(/· Crystalline Crawler \(W\), Crystalline Crawler \(R\)$/);
+    expect(t.p.controls.prompt?.headline).not.toMatch(/Crystalline Crawler \(/);
     t.press("Pay");
     expect(t.answers()).toEqual([[2, 5]]);
   });
@@ -203,7 +204,7 @@ describe("targets and choices on the table", () => {
     const t = new Table();
     t.open("021-targets-monarch.json");
     expect(t.p.controls.sheet).toBeNull();
-    expect(t.buttons()).toEqual(["List", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["List", "Auto"]);
     expect(t.p.board.marks.cards.get(856 as CardId)).toBe("option");
     t.tapCard(856);
     expect(t.answers()).toEqual([[2]]);
@@ -223,7 +224,7 @@ describe("targets and choices on the table", () => {
   it("more than one wanted: taps pick, Done is disabled below min and sends the picks (024, bounds edited)", () => {
     const t = new Table();
     t.open(several(2, 3));
-    expect(t.buttons()).toEqual(["List", "None", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["List", "None", "Auto"]);
     expect(t.button("None").enabled).toBe(false);
     t.tapCard(856);
     expect(t.answers()).toEqual([]);
@@ -278,7 +279,7 @@ describe("targets and choices on the table", () => {
   it("an option inside a pile of unlike cards is chosen from a sheet (021, Princess's creatures piled)", () => {
     const t = new Table();
     t.open("021-targets-monarch.json", { piles: [[856, 855]] });
-    expect(t.buttons()).toEqual(["Choose…", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["Choose…", "Auto"]);
     expect(t.p.controls.sheet?.kind).toBe("chooser");
     expect(t.p.board.marks.cards.size).toBe(0);
     t.pick(3);
