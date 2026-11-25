@@ -240,6 +240,26 @@ describe("a counterspell resolves", () => {
   });
 });
 
+describe("a spell that leaves the stack without resolving", () => {
+  const blade = spell(842, "Doom Blade", "Atraxa", "Destroy target nonblack creature.");
+  const item = { id: 900, source: blade, targets: [103], text: "Doom Blade (842) - Destroy Soldier Token (103)." };
+  const cast = { i: 10, type: "STACK_ADD", text: "Atraxa cast Doom Blade targeting [Soldier Token (103)]", card: 842 };
+  const base: TableSpec = { active: "Atraxa", seats: {} };
+  const before = tableOf({ ...base, stack: [item], log: [cast] });
+  const gone = (log: NonNullable<TableSpec["log"]>) => tableOf({ ...base, seats: { Atraxa: { graveyard: [blade] } }, stack: [], log });
+
+  it("fizzles: the prompt says so, as Forge did, never that it resolves", () => {
+    const st = new Story().see(before).played().see(gone([cast, { i: 11, type: "STACK_RESOLVE", text: "Doom Blade (842) fizzles.", card: 842 }]));
+    expect(st.last!.changes.find((c) => c.t === "popped")).toMatchObject({ how: "fizzled" });
+    expect(st.watch?.headline).toBe("Doom Blade fizzles");
+  });
+  it("gone with no word from Forge on how: the prompt says only that it left the stack", () => {
+    const st = new Story().see(before).played().see(gone([cast]));
+    expect(st.last!.changes.find((c) => c.t === "popped")).toMatchObject({ how: "unknown" });
+    expect(st.watch?.headline).toBe("Doom Blade leaves the stack");
+  });
+});
+
 describe("Sunfall resolves on Atraxa's turn", () => {
   const sunfall = spell(
     951,

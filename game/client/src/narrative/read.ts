@@ -3,7 +3,7 @@
 // my hand (`trackHandArrivals`) and what of mine left the battlefield (`gone`). The change set gives what the old client
 // worked out by comparing views; the fresh log lines are Forge's record, and only they say why.
 import type { CardId, LogEntry } from "../protocol";
-import type { Card, Change, ChangeSet, StackItem, TableModel } from "../model";
+import type { Card, Change, ChangeSet, PopKind, StackItem, TableModel } from "../model";
 import {
   departureIn,
   drewCards,
@@ -18,6 +18,8 @@ import type { Arrival } from "./types";
 /** Motion the prompt does not narrate (the loss notice names what left): a notice still waits on it. */
 export const QUIET = { combatOver: "Combatants return", leaving: "Cards leave the battlefield" } as const;
 const QUIETS: ReadonlySet<string> = new Set(Object.values(QUIET));
+/** A spell gone from the stack, in the game's words for how it went; with no word from Forge, only that it went. */
+const LEFT: Readonly<Record<PopKind, string>> = { resolved: "resolves", fizzled: "fizzles", countered: "is countered", unknown: "leaves the stack" };
 /** The prompt's words for a motion: none for a quiet one. */
 export const spoken = (motion: string): string => (QUIETS.has(motion) ? "" : motion);
 import { destination, handArrivalHeadline, listNames, seatName, shortCard, whoName } from "./words";
@@ -78,6 +80,8 @@ export function readSet(set: ChangeSet, model: TableModel, fresh: readonly LogEn
   const texts = fresh.map((e) => logText(e.text));
 
   const departed = set.changes.flatMap((c) => (c.t === "popped" && c.item.source !== null ? [c.item] : []));
+  // How each left, as the model read it from Forge's log: only "resolved" is told as resolving.
+  const how = new Map(set.changes.flatMap((c) => (c.t === "popped" ? [[c.item, c.how] as const] : [])));
   const pushed = new Set(set.changes.flatMap((c) => (c.t === "pushed" ? [c.item.id] : [])));
   const added = [...model.stack].reverse().filter((st) => pushed.has(st.id));
 
@@ -302,9 +306,11 @@ export function readSet(set: ChangeSet, model: TableModel, fresh: readonly LogEn
                 ? `${itemName(counter.spell)} is countered`
                 : "Countered"
               : spells.length === 1
-                ? `${itemName(spells[0]!)} resolves`
+                ? `${itemName(spells[0]!)} ${LEFT[how.get(spells[0]!) ?? "unknown"]}`
                 : spells.length
-                  ? "Resolved"
+                  ? spells.every((st) => how.get(st) === "resolved")
+                    ? "Resolved"
+                    : "Spells left the stack"
                   : QUIET.leaving);
   }
   const onStack = (e: LogEntry): boolean =>
