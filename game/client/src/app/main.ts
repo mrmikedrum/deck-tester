@@ -106,7 +106,9 @@ async function main(): Promise<void> {
   const reduced = reducedMotionSource(globalThis.window);
   const motion = new Queue<MotionReading>(true);
   reduced.subscribe((r) => motion.push({ at: now(), reduced: r }));
-  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read() }), {
+  // The table: focus-first's leaves, or today's mats with `?layout=mat`.
+  const paradigm = new URLSearchParams(globalThis.location?.search ?? "").get("layout") === "mat" ? "mat" : "front";
+  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read(), paradigm }), {
     transport,
     // A scripted page reports to no bridge.
     log: script ? null : clientLogSender(),

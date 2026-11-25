@@ -26,7 +26,14 @@ export interface TableTemplate {
   readonly slots: readonly SeatSlot[];
   /** On their turn a page comes forward this much in place, from its fixed edge (slots never overlap even so). */
   readonly growOnTurn: number;
+  /**
+   * Focus-first: the opponents' slots are leaves of fixed size in a band across the far side, and the open middle below
+   * them is the floor, from their slips' near edge to my creatures' tops.
+   */
+  readonly leaves?: boolean;
 }
+
+export type Paradigm = "mat" | "front";
 
 export class NotTunedError extends Error {
   constructor(seats: number, form: Form) {
@@ -50,9 +57,22 @@ const LANDSCAPE_4: readonly SeatSlot[] = [
   { position: "right", x: 8.68, z: -7.42, w: 7.8, d: 11.4, yaw: -0.16 },
 ];
 
+// Focus-first's leaves: three pages of one fixed size in a band across the far side, their near edges in a line (about
+// 300u down the screen), so the floor below them is open; mine as today.
+const LEAF_W = { side: 7.9, across: 8.3 } as const;
+const LEAF_D = 9.7;
+const LEAF_Z = -4.95 - LEAF_D / 2;
+const LEAVES_4: readonly SeatSlot[] = [
+  LANDSCAPE_4[0]!,
+  { position: "left", x: -8.62, z: LEAF_Z, w: LEAF_W.side, d: LEAF_D, yaw: 0.1 },
+  { position: "across", x: 0, z: LEAF_Z, w: LEAF_W.across, d: LEAF_D, yaw: 0 },
+  { position: "right", x: 8.62, z: LEAF_Z, w: LEAF_W.side, d: LEAF_D, yaw: -0.1 },
+];
+
 /** The template for `seats` seats in `form`, or a `NotTunedError`: other counts and portrait are not tuned yet. */
-export function tableTemplate(seats: number, form: Form = "landscape"): TableTemplate {
+export function tableTemplate(seats: number, form: Form = "landscape", paradigm: Paradigm = "mat"): TableTemplate {
   if (seats === 4 && form === "landscape") {
+    if (paradigm === "front") return { form, seats, camera: CAMERA, slots: LEAVES_4, growOnTurn: 1, leaves: true };
     return { form, seats, camera: CAMERA, slots: LANDSCAPE_4, growOnTurn: 1.1 };
   }
   throw new NotTunedError(seats, form);

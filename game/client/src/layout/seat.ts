@@ -58,6 +58,8 @@ export interface Fixtures {
   readonly page: { readonly pos: V3; readonly w: number; readonly d: number; readonly yaw: number };
   readonly plate: Placement;
   readonly zones: readonly { readonly zone: "graveyard" | "exile"; readonly placement: Placement }[];
+  /** A strip of vellum on the floor under a leaf's near edge, for the words about that seat (focus-first's slip). */
+  readonly slip?: { readonly pos: V3; readonly w: number; readonly d: number; readonly yaw: number };
   /** The commander standing beside the plaque while it is in the command zone (h.js `banner`). */
   readonly commander?: { readonly card: CardId; readonly placement: Placement };
 }

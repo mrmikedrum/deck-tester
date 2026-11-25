@@ -5,6 +5,7 @@
 import { boards } from "./board";
 import type { StackEntry, TableInput } from "./plan";
 import type { ChromeMode } from "./reservations";
+import type { Paradigm } from "./template";
 import type { LayoutMemory } from "./seat";
 import type { CardId, Insets, SeatId, Viewport } from "./types";
 import { engineCombat, fighters, mergeCombat } from "./combat";
@@ -23,6 +24,8 @@ export interface TableInputOptions {
   readonly involved?: ReadonlySet<CardId>;
   /** A combat draft (play's `cues.combat`, as plain pairs): drawn over the engine's combat, its fighters in the row. */
   readonly combat?: CombatPairs | null;
+  /** Today's mats or focus-first's leaves. */
+  readonly paradigm?: Paradigm;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -57,5 +60,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     memory: o.memory ?? null,
     stack,
     combat,
+    ...(o.paradigm ? { paradigm: o.paradigm } : {}),
   };
 }

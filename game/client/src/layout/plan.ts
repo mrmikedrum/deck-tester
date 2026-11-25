@@ -13,7 +13,8 @@ import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry"
 import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
 import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
-import type { TableTemplate } from "./template";
+import type { Paradigm, TableTemplate } from "./template";
+import { front } from "./seat/front";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 
@@ -154,6 +155,8 @@ export interface TableInput {
   readonly stack: readonly StackEntry[];
   readonly template?: TableTemplate;
   readonly layout?: SeatLayout;
+  /** Which table: today's mats, or focus-first's leaves (`front` for the opponents; my page stays a mat). */
+  readonly paradigm?: Paradigm;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
 }
@@ -217,8 +220,10 @@ function fnv(s: string): number {
 }
 
 export function planTable(input: TableInput): TablePlan {
-  const tpl = input.template ?? tableTemplate(input.seats.length);
-  const layout = input.layout ?? mat;
+  const paradigm = input.paradigm ?? "mat";
+  const tpl = input.template ?? tableTemplate(input.seats.length, "landscape", paradigm);
+  const leaf = input.layout ?? (paradigm === "front" ? front : mat);
+  const layoutOf = (i: number): SeatLayout => (paradigm === "front" && tpl.slots[i]?.position === "near" ? mat : leaf);
   const vp = input.viewport, projector = pinhole(tpl.camera, vp), reserve = reservations(vp, input.mode, input.safe);
   const mk = (i: number): Omit<SeatInput, "pressure"> => {
     const { seat, board } = input.seats[i]!, slot = tpl.slots[i]!;
@@ -226,7 +231,7 @@ export function planTable(input: TableInput): TablePlan {
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);
-  const plans: SeatPlan[] = inputs.map((i) => planSeat(layout, i, { fighting: fight }));
+  const plans: SeatPlan[] = inputs.map((x, i) => planSeat(layoutOf(i), x, { fighting: fight }));
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
   const geo = makeGeo(projector, reserve, FLOOR.mine);
@@ -261,7 +266,7 @@ export function planTable(input: TableInput): TablePlan {
       if (!bad.has(p.seat) || p.report.lastResort) return;
       floor[i] = Math.max(floor[i]!, p.report.pressure) + 1;
       // A seat already at the last notch (it passed its own audit there) has nothing harder to fold to but its last resort.
-      plans[i] = floor[i]! > MAX_PRESSURE ? lastResort(inputs[i]!, p, fight) : planSeat(layout, inputs[i]!, { minPressure: floor[i]!, fighting: fight });
+      plans[i] = floor[i]! > MAX_PRESSURE ? lastResort(inputs[i]!, p, fight) : planSeat(layoutOf(i), inputs[i]!, { minPressure: floor[i]!, fighting: fight });
       moved = true;
     });
     if (!moved) break;
@@ -499,12 +504,21 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   const at = (pos: string) => plans.find((_, i) => tpl.slots[i]!.position === pos);
   const across = at("across"), left = at("left"), right = at("right"), near = at("near");
   let t = across ? Math.max(...pageBox(across).ys) : 60, b = near ? Math.min(...pageBox(near).ys) : 600;
+  if (tpl.leaves) {
+    // The floor: under every leaf's slip, the whole width of the table.
+    const slips = plans.flatMap((p) => {
+      const s = p.fixtures.slip;
+      return s ? [proj.project({ x: s.pos.x, y: 0, z: s.pos.z + s.d / 2 }).y / u] : [];
+    });
+    t = Math.max(t, ...plans.filter((p) => p !== near).map((p) => Math.max(...pageBox(p).ys)), ...slips);
+  }
   for (const un of near?.units ?? [])
     if (un.role === "creature" && !un.fighting) {
       const p = un.placement;
       b = Math.min(b, proj.project({ x: p.pos.x, y: p.pos.y + Math.cos(proj.pitch) * CH * p.scale, z: p.pos.z - Math.sin(proj.pitch) * CH * p.scale }).y / u);
     }
   t = t || 60;
+  if (tpl.leaves) return { l: 60, r: 1120, t: t + 6, b: b - 10 };
   return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };
 }
 

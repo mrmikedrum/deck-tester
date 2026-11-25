@@ -71,6 +71,8 @@ export interface BoardCard {
   readonly tapped: boolean;
   readonly power: number | null;
   readonly toughness: number | null;
+  /** A planeswalker's loyalty (what `front` weighs it by); absent in hand-written boards. */
+  readonly loyalty?: number | null;
   readonly keywords: readonly string[];
   /** The permanent this one is attached to (an Aura, Equipment). A host not on this board makes it a card of its own. */
   readonly attachedTo: CardId | null;
@@ -128,6 +130,7 @@ export function boardCard(c: Card): BoardCard {
     tapped: c.tapped,
     power: c.power,
     toughness: c.toughness,
+    loyalty: c.loyalty,
     keywords: c.keywords,
     attachedTo: c.attachedTo,
   };

@@ -4,7 +4,7 @@ import type { Insets, Ms } from "../platform";
 import { NO_INSETS } from "../platform";
 import type { CardCatalog, ChangeSet, SeatId, TableModel, Viewer } from "../model";
 import { EMPTY_CATALOG } from "../model";
-import type { LayoutMemory, Reservations, TablePlan } from "../layout";
+import type { LayoutMemory, Paradigm, Reservations, TablePlan } from "../layout";
 import { reservations } from "../layout";
 import * as narrative from "../narrative";
 import * as play from "../play";
@@ -83,6 +83,8 @@ export interface AppState {
   /** What the plan was computed from (null: no plan); a plan whose inputs are unchanged is kept. */
   readonly planKey: string | null;
   readonly layoutMemory: ReadonlyMap<SeatId, LayoutMemory>;
+  /** Which table the page lays out (fixed for the page): today's mats or focus-first's leaves. */
+  readonly paradigm: Paradigm;
   /** The decision controller: lives for the page (its counters keep stops and tokens unique), never reset. */
   readonly play: play.State;
   /** The log, the notices waiting on the table's motion, my losses, the recaps and the toasts (narrative/). */
@@ -162,6 +164,8 @@ export interface InitialOptions {
   readonly lastGame?: NewGameRequest | null;
   /** The page's reduced-motion setting at start. */
   readonly reducedMotion?: boolean;
+  /** Which table the page lays out: today's mats (the default) or focus-first's leaves. */
+  readonly paradigm?: Paradigm;
 }
 
 export function initialState(o: InitialOptions): AppState {
@@ -191,5 +195,6 @@ export function initialState(o: InitialOptions): AppState {
     commit: 0,
     drawn: { top: null, stop: null },
     epoch: o.epoch ?? 0,
+    paradigm: o.paradigm ?? "mat",
   };
 }

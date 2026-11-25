@@ -94,7 +94,9 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
 export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean, at: At = AT_REST): Shape {
   const p: Placement = u.placement;
   const q = cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
-  const creature = u.role === "creature";
+  // A creature's floor is for one standing; a pile of creatures lying in a leaf's back row (focus-first's muster) is a
+  // pile, held to the any-card floor like every other pile that lies.
+  const creature = u.role === "creature" && p.posture === "stand";
   return {
     group: u.id,
     kind: "unit",
