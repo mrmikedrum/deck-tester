@@ -1,0 +1,1328 @@
+/* The chrome: the prompt, the hand, sheets and the toast. Ported from live.css and common.css; every colour is a
+   custom property (theme/css.ts for the tokens, chrome/style/surfaces.ts for the surfaces). Sizes are multiples of
+   --u (1px at 1180x820), set by the renderer from the viewport, as the old CSS's --u was. Touch first: every target is
+   at least 44px; hover only ever adds. */
+@layer chrome {
+  .dm-chrome {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    color: var(--ink);
+    font-family: var(--ui);
+    font-size: calc(14 * var(--u));
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :where(.dm-chrome) button {
+    font: inherit;
+    color: inherit;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .l-hand-host,
+  .l-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  /* Neither host is a stacking context: the fan (41) stays in full over a sheet's scrim (40), as it always did, and a
+     card held where it was let go (39) waits under the sheet that offers its plays. */
+  .dm-chrome [hidden] {
+    display: none !important;
+  }
+
+  /* ---- The prompt: bottom right, inside its reserve ---------------------------------------------------------- */
+  .l-prompt {
+    position: absolute;
+    z-index: 30;
+    pointer-events: auto;
+    right: calc(var(--res-right, 0px) + 14 * var(--u) + var(--safe-right, 0px));
+    bottom: calc(var(--res-bottom, 0px) + 14 * var(--u) + var(--safe-bottom, 0px));
+    display: grid;
+    justify-items: end;
+    gap: calc(3 * var(--u));
+    width: max-content;
+    max-width: min(40vw, calc(300 * var(--u)));
+    padding: calc(8 * var(--u)) calc(14 * var(--u)) calc(10 * var(--u));
+    border-radius: 4px calc(14 * var(--u)) 4px calc(14 * var(--u));
+    color: var(--ink);
+    background: var(--sheet);
+    box-shadow: var(--sheet-shadow);
+    text-align: right;
+    transition:
+      box-shadow 0.3s,
+      opacity 0.25s;
+  }
+  /* The prompt asks you to act: the option ring, like everything you can act on. */
+  .l-prompt.asking {
+    box-shadow: var(--sheet-shadow), var(--ring-ask);
+  }
+  .l-prompt.play {
+    box-sizing: border-box;
+    width: min(40vw, calc(326 * var(--u)));
+    max-width: none;
+  }
+  /* The opening hand's question sits over the dimmed table, in the middle. */
+  .l-prompt.overlay {
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    justify-items: center;
+    text-align: center;
+  }
+  .l-where {
+    font: 600 calc(15 * var(--u)) / 1.15 var(--ui);
+    color: var(--ink-2);
+  }
+  .l-what {
+    font: 400 calc(19 * var(--u)) / 1.15 var(--serif);
+    letter-spacing: 0.005em;
+    text-wrap: balance;
+    transition: color 0.3s;
+  }
+  .l-ctx {
+    font: 400 calc(14 * var(--u)) / 1.3 var(--serif);
+    color: var(--ink-2);
+    max-width: calc(290 * var(--u));
+    text-wrap: pretty;
+  }
+  /* Back at an earlier position: the cue stands in the headline's place a moment, then the decision is asked again. */
+  .l-what:has(.l-restore-cue) {
+    display: grid;
+  }
+  .l-what:has(.l-restore-cue) > span {
+    grid-area: 1 / 1;
+  }
+  .l-restore-cue,
+  .l-prompt.restoring .l-what > span:first-child,
+  .l-prompt.restoring .l-ctx,
+  .l-prompt.restoring .l-buttons button:not(.l-hold) {
+    visibility: hidden;
+  }
+  .l-prompt.restoring .l-restore-cue {
+    visibility: visible;
+  }
+  .l-prompt.restoring {
+    transition: none;
+  }
+  /* Something aimed at you: the prompt says so in red. */
+  .l-prompt.threat {
+    box-shadow: var(--sheet-shadow), var(--ring-threat);
+  }
+  .l-prompt.threat .l-what {
+    color: var(--sig-danger-ink);
+  }
+  .l-prompt.threat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: var(--threat-glow);
+  }
+  /* While a sheet is open it owns the decision: the prompt steps back. */
+  .sheet-open .l-prompt {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  /* Buttons, three tiers and one rule each. Primary (the answer): bronze with an ember lit in it, cream text.
+     Secondary: a bronze rim round a flat, quiet bronze inset carrying the ink label. Tertiary (letting Forge decide):
+     an ink-ruled pill in the parchment's own tone. */
+  .l-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: calc(6 * var(--u));
+    margin-top: calc(3 * var(--u));
+  }
+  .l-buttons:empty {
+    display: none;
+  }
+  .l-buttons button,
+  .l-row button,
+  .l-number button {
+    min-height: max(40px, calc(40 * var(--u)));
+    padding: 0 calc(15 * var(--u));
+    border-radius: 6px;
+    border: 0;
+    cursor: pointer;
+    background: var(--btn-inset), var(--plaque);
+    box-shadow: var(--plaque-shadow);
+    color: var(--btn-ink);
+    font: 400 calc(16 * var(--u)) var(--serif);
+    letter-spacing: 0.02em;
+    text-shadow: var(--btn-ink-lift);
+  }
+  .l-buttons button.act,
+  .l-row .l-done {
+    color: var(--btn-act-ink);
+    text-shadow: var(--btn-act-ink-shadow);
+    background: var(--btn-act);
+    box-shadow: var(--plaque-shadow), var(--btn-act-glow);
+  }
+  .l-buttons button.ghost,
+  .l-row .l-ghost {
+    min-height: 34px;
+    padding: 0 calc(13 * var(--u));
+    border-radius: 999px;
+    background: var(--btn-ghost);
+    box-shadow: var(--btn-ghost-rule);
+    color: var(--ink);
+    font: 400 calc(14.5 * var(--u)) var(--serif);
+    letter-spacing: 0.02em;
+    text-shadow: none;
+  }
+  @media (hover: hover) {
+    .l-buttons button.ghost:hover:not(:disabled),
+    .l-row .l-ghost:hover:not(:disabled) {
+      background: var(--btn-ghost-hover);
+    }
+  }
+  .l-buttons button:disabled,
+  .l-row button:disabled,
+  .l-number button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .l-buttons button:active:not(:disabled),
+  .l-row button:active:not(:disabled),
+  .l-number button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .l-buttons button:focus-visible,
+  .l-row button:focus-visible,
+  .l-number button:focus-visible,
+  .l-opt:focus-visible,
+  .l-card:focus-visible {
+    outline: 3px solid var(--sig-selected);
+    outline-offset: 2px;
+  }
+  .l-play-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .l-play-buttons:has(.l-stack-rules):has(.l-delegate, .auto) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+  }
+  .l-play-buttons button {
+    min-width: 0;
+    padding-inline: calc(6 * var(--u));
+  }
+  .l-play-buttons .l-choice {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding-block: calc(7 * var(--u));
+  }
+  .l-play-buttons button:is(.l-stack-rules, .l-delegate) {
+    padding-inline: calc(5 * var(--u));
+  }
+  .l-choice-label,
+  .l-response-names {
+    display: block;
+  }
+  .l-choice-label {
+    white-space: nowrap;
+  }
+  .l-choice-label + .l-response-names {
+    margin-top: calc(2 * var(--u));
+  }
+  .l-response-names {
+    max-height: calc(48 * var(--u));
+    overflow: auto;
+    font: 600 calc(13.5 * var(--u)) / 1.3 var(--ui);
+  }
+  /* Every button in the prompt and the sheets is a 44px target, the pills too. */
+  .l-prompt .l-buttons button,
+  .l-row button,
+  .l-number button {
+    min-height: 44px;
+  }
+  .l-number button {
+    min-width: 44px;
+  }
+  .l-buttons .cost {
+    margin-left: 0.3em;
+    white-space: nowrap;
+  }
+  /* Play goes on by itself: the pass button fills as the moment runs out. */
+  .l-buttons button.auto {
+    position: relative;
+    overflow: hidden;
+  }
+  .l-auto-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 4px;
+    width: 100%;
+    background: var(--bone-3);
+    transform-origin: left;
+    pointer-events: none;
+  }
+
+  /* ---- Sheets: choices the board can't show ------------------------------------------------------------------ */
+  .l-sheet {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    background: var(--scrim);
+    padding: calc(16px + var(--safe-top, 0px)) calc(16px + var(--safe-right, 0px)) calc(16px + var(--safe-bottom, 0px))
+      calc(16px + var(--safe-left, 0px));
+    pointer-events: auto;
+  }
+  .l-box {
+    position: relative;
+    width: min(92vw, calc(520 * var(--u)));
+    max-height: 82dvh;
+    overflow: auto;
+    overscroll-behavior: contain;
+    display: grid;
+    gap: calc(8 * var(--u));
+    padding: calc(20 * var(--u));
+    padding-top: calc(16 * var(--u));
+    border-radius: 3px;
+    color: var(--ink);
+    background: var(--mounts), var(--sheet-quiet);
+    box-shadow: var(--sheet-shadow);
+    outline: 1px solid var(--sheet-rule);
+    outline-offset: calc(-8 * var(--u));
+  }
+  .l-sheet.wide .l-box {
+    width: min(94vw, calc(900 * var(--u)));
+  }
+  .l-box h3 {
+    margin: 0 calc(40 * var(--u)) calc(6 * var(--u)) 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--sheet-rule);
+    font: 400 calc(24 * var(--u)) / 1.15 var(--serif);
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+  /* The close stud set into a sheet: 36px of bronze, a 44px target. */
+  .g-close {
+    position: absolute;
+    top: calc(12 * var(--u) - 4px);
+    right: calc(12 * var(--u) - 4px);
+    z-index: 2;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--stud-ink);
+    font: 600 15px / 1 var(--ui);
+    cursor: pointer;
+  }
+  .g-close::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--stud);
+    box-shadow: var(--stud-shadow);
+  }
+  .g-close span {
+    position: relative;
+  }
+  /* A row to choose: a slip of lighter parchment ruled in ink, its label in the serif; detail under it in the sans. */
+  .l-opt {
+    position: relative;
+    display: grid;
+    gap: 2px;
+    text-align: left;
+    min-height: 48px;
+    padding: calc(9 * var(--u)) calc(14 * var(--u));
+    border-radius: 3px calc(10 * var(--u)) 3px calc(10 * var(--u));
+    border: 1px solid var(--sheet-rule-strong);
+    background: var(--opt-paper);
+    color: var(--ink);
+    cursor: pointer;
+    font: 400 calc(17 * var(--u)) / 1.25 var(--serif);
+    letter-spacing: 0.01em;
+    box-shadow: var(--opt-shadow);
+  }
+  .l-opt b {
+    font-weight: 400;
+  }
+  .l-opt .cost {
+    float: right;
+    margin-left: 10px;
+    white-space: nowrap;
+  }
+  .l-opt small {
+    color: var(--ink-2);
+    font: 500 calc(13.5 * var(--u)) / 1.35 var(--ui);
+    letter-spacing: 0;
+  }
+  .l-opt.on {
+    background: var(--opt-on);
+    border-color: var(--opt-on-rule);
+    box-shadow: var(--opt-on-shadow);
+  }
+  .l-mana {
+    text-align: center;
+  }
+  .l-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(120 * var(--u)), 1fr));
+    gap: calc(10 * var(--u));
+  }
+  .l-grid .l-opt {
+    grid-column: 1 / -1;
+  }
+  /* Many cards: two balanced rows, each card as large as two rows can be on the sheet, but never narrower than a card
+     that can be read and tapped: past that they wrap into more rows and the sheet scrolls. */
+  .l-grid.two {
+    --card-min: max(88px, calc(100 * var(--u)));
+    grid-template-columns: repeat(auto-fill, minmax(max(var(--card-min), calc(100% / var(--cols) - 16 * var(--u))), 1fr));
+    justify-items: center;
+    gap: calc(12 * var(--u)) calc(16 * var(--u));
+  }
+  .l-grid.two .l-card {
+    width: 100%;
+    max-width: calc(152 * var(--u));
+  }
+  .l-card {
+    position: relative;
+    display: grid;
+    gap: 4px;
+    padding: 4px;
+    border-radius: calc(12 * var(--u));
+    border: 1px solid transparent;
+    background: none;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .l-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 12%;
+    bottom: 12%;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--sig-option);
+  }
+  .l-card.on {
+    border-color: transparent;
+    box-shadow:
+      0 0 0 4px var(--sig-selected),
+      0 0 0 6px var(--ink);
+  }
+  .l-card.on::before {
+    display: none;
+  }
+  .l-card .pic {
+    aspect-ratio: 488 / 680;
+    border-radius: calc(8 * var(--u));
+    background: var(--card-art-ground) center / cover;
+  }
+  .l-card small {
+    font: 400 calc(15 * var(--u)) / 1.15 var(--serif);
+    color: var(--ink);
+    text-align: center;
+  }
+  .l-card[data-n]::after,
+  .l-opt[data-n]::after {
+    content: attr(data-n);
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--sig-selected);
+    color: var(--ink);
+    font: 700 16px var(--ui);
+    box-shadow: 0 0 0 2px var(--ink);
+  }
+  .l-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: calc(8 * var(--u));
+    margin-top: calc(6 * var(--u));
+  }
+  .l-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(16 * var(--u));
+  }
+  .l-number button.end {
+    opacity: 0.45;
+  }
+  .l-number output {
+    font: 700 calc(44 * var(--u)) var(--num);
+    min-width: 2ch;
+    text-align: center;
+  }
+
+  /* ---- The toast: over every layer ---------------------------------------------------------------------------- */
+  .l-toast {
+    position: absolute;
+    left: 50%;
+    bottom: calc(190 * var(--u) + var(--safe-bottom, 0px));
+    transform: translate(-50%, 20px);
+    opacity: 0;
+    z-index: 120;
+    pointer-events: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    background: var(--sig-danger-ink);
+    color: var(--toast-ink);
+    box-shadow: var(--toast-shadow);
+    font: 700 calc(15 * var(--u)) var(--ui);
+    transition: 0.25s;
+  }
+  .l-toast.on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  /* ---- The focus layers: wrappers only; each layer's own box stacks by the focus stack's order (inline z-index) -- */
+  .l-base,
+  .l-layer-slot {
+    display: contents;
+  }
+  .l-sheet .l-box:focus,
+  .inspector:focus,
+  .l-mullbox:focus {
+    outline: none;
+  }
+
+  /* ---- The stack's rules (a sheet drawn from the model) ------------------------------------------------------ */
+  .l-rules {
+    display: grid;
+    gap: calc(4 * var(--u));
+    white-space: pre-line;
+    font: 400 calc(17 * var(--u)) / 1.4 var(--serif);
+  }
+  .l-rules + .l-rules {
+    padding-top: calc(8 * var(--u));
+    border-top: 1px solid var(--sheet-rule);
+  }
+
+  /* ---- The inspector: the card large, and a parchment leaf ---------------------------------------------------- */
+  .scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 85;
+    pointer-events: auto;
+    display: grid;
+    place-items: center;
+    background: var(--scrim-deep);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: max(16px, var(--safe-top, 0px)) max(16px, var(--safe-right, 0px)) max(16px, var(--safe-bottom, 0px)) max(16px, var(--safe-left, 0px));
+    animation: g-fade 0.15s ease-out;
+  }
+  .inspector {
+    position: relative;
+    display: flex;
+    gap: calc(24 * var(--u));
+    align-items: center;
+    max-width: 100%;
+    max-height: 100%;
+  }
+  .inspector .faces {
+    display: flex;
+    gap: calc(12 * var(--u));
+    flex: none;
+  }
+  .inspector .big {
+    position: relative;
+    width: calc(320 * var(--u));
+    aspect-ratio: 488 / 680;
+    border-radius: calc(14 * var(--u));
+    background: var(--peek-ground) center / cover;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  }
+  .inspector .big.back {
+    background: radial-gradient(circle, #c9a25c 0 8%, #6a4a20 9%, transparent 10%), radial-gradient(ellipse at 50% 45%, rgba(120, 70, 30, 0.25), rgba(0, 0, 0, 0.5)),
+      #2a170c;
+    box-shadow:
+      inset 0 0 0 12px rgba(0, 0, 0, 0.25),
+      inset 0 0 0 14px rgba(255, 210, 150, 0.14),
+      0 20px 60px rgba(0, 0, 0, 0.7);
+  }
+  .inspector .facecap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(-24 * var(--u));
+    text-align: center;
+    font-size: calc(12 * var(--u));
+    color: var(--muted);
+  }
+  /* The information column is a parchment leaf like the prompt: serif heading, ink text, rules in the readable sans. */
+  .inspector .info {
+    position: relative;
+    box-sizing: border-box;
+    width: calc(340 * var(--u));
+    display: grid;
+    gap: calc(10 * var(--u));
+    font-size: calc(14 * var(--u));
+    padding: calc(20 * var(--u)) calc(22 * var(--u));
+    border-radius: 3px;
+    color: var(--ink);
+    background: var(--mounts), var(--sheet-quiet);
+    box-shadow: var(--sheet-shadow);
+    outline: 1px solid var(--sheet-rule);
+    outline-offset: calc(-8 * var(--u));
+    max-height: calc(100dvh - 40px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .inspector h3 {
+    margin: 0 calc(40 * var(--u)) 0 0;
+    font: 400 calc(28 * var(--u)) / 1.1 var(--serif);
+    letter-spacing: 0.005em;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .inspector .owner {
+    color: var(--ink-2);
+    font: italic 400 calc(15 * var(--u)) var(--serif);
+    letter-spacing: 0.03em;
+  }
+  .inspector .owner::before {
+    content: "";
+    display: inline-block;
+    width: 0.6em;
+    height: 0.6em;
+    margin-right: 0.45em;
+    border-radius: 50%;
+    background: var(--seat);
+    box-shadow: 0 0 0 1.5px var(--ink);
+    vertical-align: 0.05em;
+  }
+  /* Facts written on the leaf, not buttons on it: a line of words set off by points. */
+  .inspector .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 8px;
+  }
+  .inspector .chip {
+    color: var(--ink);
+    font: 600 calc(14 * var(--u)) / 1.35 var(--ui);
+  }
+  .inspector .chip + .chip::before {
+    content: "·";
+    margin-right: 8px;
+    color: var(--ink-2);
+    font-weight: 400;
+  }
+  .inspector .label {
+    padding-top: calc(4 * var(--u));
+    border-top: 1px solid var(--sheet-rule);
+    font: italic 400 calc(14 * var(--u)) var(--serif);
+    letter-spacing: 0.04em;
+    color: var(--ink-2);
+  }
+  .inspector .oracle {
+    white-space: pre-line;
+    color: var(--ink-2);
+    font: 500 calc(13.5 * var(--u)) / 1.45 var(--ui);
+    max-height: calc(220 * var(--u));
+    overflow: auto;
+  }
+  .l-related {
+    display: grid;
+    gap: calc(6 * var(--u));
+  }
+  .inspector .rel {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .inspector .rel .tile {
+    width: max(44px, calc(84 * var(--u)));
+    aspect-ratio: 488 / 680;
+    padding: 0;
+    border: 0;
+    border-radius: calc(6 * var(--u));
+    background: var(--peek-ground) center / cover;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+    color: var(--bone);
+    font: 600 11px / 1.1 var(--ui);
+    cursor: pointer;
+  }
+  .inspector .info > .g-close {
+    top: calc(14 * var(--u) - 4px);
+    right: calc(14 * var(--u) - 4px);
+  }
+  /* The card's plays, inside the inspector. */
+  .l-actions {
+    display: grid;
+    gap: 8px;
+    margin: 10px 0 14px;
+  }
+  .l-actions .l-opt {
+    font-size: calc(16 * var(--u));
+  }
+  /* Narrow and tall (a phone, the iPad upright): the card above its leaf. */
+  @media (max-aspect-ratio: 1/1) {
+    .inspector {
+      flex-direction: column;
+      gap: calc(14 * var(--u));
+    }
+    .inspector .big {
+      width: min(calc(260 * var(--u)), 42dvh * 488 / 680);
+    }
+    .inspector .info {
+      width: min(calc(420 * var(--u)), 92vw);
+      max-height: 48dvh;
+    }
+  }
+
+  /* ---- The mulligan: the opening hand in the middle of the screen --------------------------------------------- */
+  .l-mull {
+    position: absolute;
+    inset: 0;
+    z-index: 35;
+    pointer-events: auto;
+    display: grid;
+    place-items: center;
+    background: var(--scrim-deep);
+    padding: max(16px, var(--safe-top, 0px)) max(16px, var(--safe-right, 0px)) max(16px, var(--safe-bottom, 0px)) max(16px, var(--safe-left, 0px));
+  }
+  .l-mullbox {
+    display: grid;
+    gap: calc(18 * var(--u));
+    justify-items: center;
+  }
+  .l-mullbox h2 {
+    margin: 0;
+    font: 400 calc(30 * var(--u)) var(--serif);
+    color: var(--bone);
+    text-wrap: balance;
+    text-align: center;
+  }
+  .l-mullbox .cards {
+    display: flex;
+    gap: calc(10 * var(--u));
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 94vw;
+  }
+  .l-mullbox .pic {
+    width: max(64px, calc(132 * var(--u)));
+    aspect-ratio: 488 / 680;
+    border: 0;
+    padding: 0;
+    border-radius: calc(8 * var(--u));
+    cursor: pointer;
+    background: var(--peek-ground) center / cover;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
+  }
+  .l-mullbox .pic:focus-visible {
+    outline: 3px solid var(--sig-selected);
+    outline-offset: 2px;
+  }
+  .l-mullbox .l-buttons {
+    justify-content: center;
+  }
+  .l-mullbox .l-buttons button {
+    min-width: calc(150 * var(--u));
+    min-height: 52px;
+    font-size: calc(17 * var(--u));
+  }
+
+  /* ---- The fixtures on the table's edge: the Game button, View hand, chips, the back bar ----------------------- */
+  .l-menu {
+    position: absolute;
+    z-index: 30;
+    pointer-events: auto;
+    left: calc(12 * var(--u) + var(--safe-left, 0px));
+    top: calc(10 * var(--u) + var(--safe-top, 0px));
+    min-height: 44px;
+    padding: 0 calc(16 * var(--u));
+    border-radius: 6px;
+    border: 0;
+    background: var(--btn-inset), var(--plaque);
+    box-shadow: var(--plaque-shadow);
+    color: var(--btn-ink);
+    font: 400 calc(16 * var(--u)) var(--serif);
+    letter-spacing: 0.04em;
+    text-shadow: var(--btn-ink-lift);
+    cursor: pointer;
+  }
+  .l-hand-view {
+    position: absolute;
+    z-index: 40;
+    pointer-events: auto;
+    left: calc(14 * var(--u) + var(--safe-left, 0px));
+    bottom: calc(222 * var(--u) + var(--safe-bottom, 0px));
+    width: max-content;
+    min-height: 44px;
+    padding: 0 calc(12 * var(--u));
+    background: var(--sheet);
+    color: var(--ink);
+    border: 1px solid var(--hand-view-rule);
+    border-radius: 6px;
+    font: 400 calc(15 * var(--u)) / 1.1 var(--serif);
+    cursor: pointer;
+  }
+  /* Top right, clear of the seats' plaques (the across seat's sits top centre): the chips, then the back bar. */
+  .l-corner {
+    position: absolute;
+    z-index: 30;
+    top: calc(10 * var(--u) + var(--safe-top, 0px));
+    right: calc(14 * var(--u) + var(--safe-right, 0px));
+    display: flex;
+    align-items: center;
+    gap: calc(8 * var(--u));
+    pointer-events: none;
+  }
+  .l-chips {
+    display: flex;
+    gap: calc(8 * var(--u));
+  }
+  /* A layer set aside: a slip at the top that brings it back. */
+  .l-stackchip {
+    pointer-events: auto;
+    min-height: 44px;
+    padding: calc(6 * var(--u)) calc(16 * var(--u));
+    border: 0;
+    border-radius: 3px;
+    background: var(--sheet-quiet);
+    color: var(--ink);
+    box-shadow: var(--sheet-shadow);
+    outline: 1px solid var(--sheet-rule);
+    outline-offset: -4px;
+    font: italic 400 calc(17 * var(--u)) var(--serif);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  /* A sift's caption, just above its cards: what the pile is, how to use it, its pages, the way back. */
+  .l-sift {
+    pointer-events: auto;
+    position: absolute;
+    z-index: 30;
+    left: 50%;
+    transform: translate(-50%, calc(-100% - 10px));
+    display: flex;
+    align-items: center;
+    gap: calc(12 * var(--u));
+    padding: calc(6 * var(--u)) calc(8 * var(--u)) calc(6 * var(--u)) calc(18 * var(--u));
+    border-radius: 4px 12px 4px 12px;
+    background: var(--sheet);
+    color: var(--ink);
+    box-shadow: var(--sheet-shadow);
+    white-space: nowrap;
+  }
+  .l-sift > span:first-child {
+    display: grid;
+    gap: 1px;
+  }
+  .l-sift b {
+    font: 400 calc(22 * var(--u)) / 1.1 var(--serif);
+  }
+  .l-sift b i {
+    font-style: italic;
+    color: var(--ink-2);
+    font-size: 0.8em;
+  }
+  .l-sift small {
+    font: italic 400 calc(14 * var(--u)) / 1.2 var(--serif);
+    color: var(--ink-2);
+  }
+  .l-sift .pager {
+    display: flex;
+    align-items: center;
+    gap: calc(6 * var(--u));
+    font: italic 400 calc(15 * var(--u)) var(--serif);
+  }
+  .l-sift .pager button {
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--plaque);
+    box-shadow: var(--plaque-shadow);
+    color: var(--btn-ink);
+    font: 600 calc(22 * var(--u)) var(--serif);
+    cursor: pointer;
+  }
+  .l-sift .pager button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .l-sift .g-close {
+    position: static;
+  }
+  .l-back {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 6px 6px 18px;
+    border-radius: 4px 12px 4px 12px;
+    background: var(--sheet);
+    color: var(--ink);
+    box-shadow: var(--sheet-shadow);
+    font: italic 400 calc(18 * var(--u)) var(--serif);
+    letter-spacing: 0.02em;
+  }
+  .l-back button {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 6px;
+    border: 0;
+    background: var(--plaque);
+    box-shadow: var(--plaque-shadow);
+    color: var(--btn-ink);
+    font: 600 calc(16 * var(--u)) var(--serif);
+    cursor: pointer;
+  }
+  .l-menu:focus-visible,
+  .l-hand-view:focus-visible,
+  .l-stackchip:focus-visible,
+  .l-back button:focus-visible,
+  .tile:focus-visible {
+    outline: 3px solid var(--sig-selected);
+    outline-offset: 2px;
+  }
+
+  /* ---- The Game menu's form and the hand's list --------------------------------------------------------------- */
+  .l-field {
+    display: grid;
+    grid-template-columns: 9em 1fr;
+    align-items: center;
+    gap: 10px;
+    font: 600 calc(14 * var(--u)) var(--ui);
+  }
+  .l-field select {
+    min-height: 44px;
+    min-width: 0;
+    padding: 0 8px;
+    border-radius: 10px;
+    border: 1.5px solid var(--bone-3);
+    background: var(--field-ground);
+    color: var(--ink);
+    font: 500 max(16px, calc(14 * var(--u))) var(--ui);
+    color-scheme: light;
+  }
+  .l-note {
+    margin: 4px 0 0;
+    color: var(--ink-2);
+    font-size: calc(13 * var(--u));
+  }
+  .l-opt.l-read {
+    box-shadow: var(--opt-read-shadow);
+  }
+  .l-hand-pass {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    justify-content: space-between;
+    margin: 0;
+    padding: 0 6px;
+    background: var(--sheet-quiet);
+    color: var(--ink);
+    font: 400 calc(15 * var(--u)) var(--serif);
+  }
+
+  /* ---- Mana symbols in text ---------------------------------------------------------------------------------- */
+  .pip {
+    display: inline-grid;
+    place-items: center;
+    width: 1.15em;
+    height: 1.15em;
+    margin: 0 0.06em;
+    border-radius: 50%;
+    vertical-align: -0.18em;
+    font: 700 0.78em / 1 var(--ui);
+    font-style: normal;
+    color: var(--pip-ink);
+    background: var(--pip-ground);
+    box-shadow: var(--pip-shadow);
+  }
+  .pip-w { background: var(--pip-w); color: transparent; }
+  .pip-u { background: var(--pip-u); color: transparent; }
+  .pip-b { background: var(--pip-b); color: transparent; }
+  .pip-r { background: var(--pip-r); color: transparent; }
+  .pip-g { background: var(--pip-g); color: transparent; }
+  .pip-c { background: var(--pip-c); color: transparent; }
+  .pip-n { background: var(--pip-n); }
+  .pip-h { background: var(--pip-hybrid); }
+  .pip-t { background: var(--pip-tap); }
+
+  /* ---- The hand: held in the bottom-left corner, always in full ---------------------------------------------- */
+  .g-hand {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  /* The held fan is what moves. Leaving and coming back with the board's 500 ms move; the cards stay solid the whole
+     way: the fan slides clear of the screen and only then goes, and it is back at once when it returns. */
+  .held {
+    position: absolute;
+    width: 0;
+    height: 0;
+    z-index: 41;
+    transition:
+      transform 0.5s cubic-bezier(0.37, 0, 0.63, 1),
+      opacity 0s;
+  }
+  .g-hand.away .held {
+    transform: translateY(calc(var(--hh) * 1.4 + 40px));
+    opacity: 0;
+    transition:
+      transform 0.5s cubic-bezier(0.37, 0, 0.63, 1),
+      opacity 0s 0.5s;
+  }
+  .g-hand.away .hcard {
+    pointer-events: none;
+  }
+  .hcard {
+    position: absolute;
+    width: var(--hw);
+    height: var(--hh);
+    border-radius: calc(var(--hw) * 0.045);
+    background: var(--sheet-quiet);
+    box-shadow: var(--card-shadow);
+    transform-origin: 50% 100%;
+    touch-action: none;
+    box-sizing: border-box;
+    border: 2px solid var(--card-stock-edge);
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    cursor: grab;
+    pointer-events: auto;
+  }
+  .held .hcard {
+    left: calc(var(--hw) / -2);
+    bottom: 0;
+  }
+  .hcard:focus-visible {
+    outline: 3px solid var(--sig-selected);
+    outline-offset: 2px;
+  }
+  .hcard.dragging {
+    cursor: grabbing;
+    box-shadow: var(--card-lifted-shadow);
+  }
+  /* A released card, held where it was let go until the table takes it. */
+  .l-loose .hcard {
+    pointer-events: none;
+    box-shadow: var(--card-lifted-shadow);
+  }
+  .l-hand-art {
+    position: absolute;
+    inset: 20% 3% 13%;
+    border-block: 1px solid var(--card-art-rule);
+    background: var(--card-art-ground) 35% center / cover;
+    pointer-events: none;
+  }
+  .l-hand-label {
+    position: absolute;
+    top: 2px;
+    left: 0;
+    box-sizing: border-box;
+    width: var(--label-w, 100%);
+    max-width: 100%;
+    padding: 3px 3px 4px;
+    border-radius: 2px;
+    color: var(--ink);
+    /* Only between words: a strip too narrow for a word shrinks its name (--label-k) instead. */
+    overflow-wrap: normal;
+    word-break: normal;
+    pointer-events: none;
+    font: 700 calc(max(12px, calc(14 * var(--u))) * var(--label-k, 1)) / 1.04 var(--num);
+  }
+  /* Shrunk to the floor and still too wide: the word is cut with an ellipsis. */
+  .l-hand-label.tight {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .l-hand-label .cost {
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .l-hand-rules {
+    display: none;
+  }
+  .hcard:has(.l-hand-rules) .l-hand-art {
+    inset-block: 23% 28%;
+    background-size: 145% auto;
+    background-position: 93% center;
+  }
+  .hcard .l-hand-rules {
+    position: absolute;
+    inset: 72% 5% 1%;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    visibility: hidden;
+    overflow: hidden;
+    color: var(--ink);
+    font: 600 max(11px, calc(12.5 * var(--u))) / 1.1 var(--ui);
+    pointer-events: none;
+  }
+  .hcard.reading .l-hand-rules {
+    visibility: visible;
+  }
+  .hcard.dragging .l-hand-label {
+    width: 100%;
+  }
+  /* A card you can play: its edge is lit by embers, not ringed. */
+  .hcard.playable {
+    box-shadow: var(--card-playable);
+  }
+  .hcard.playable .l-hand-label {
+    background: var(--card-playable-label);
+  }
+  /* New arrivals catch the lamplight as they join the fan. */
+  .hcard.drawn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    animation: l-drawn 1.2s ease-out forwards;
+    box-shadow: var(--card-drawn);
+  }
+  @keyframes l-drawn {
+    0%,
+    45% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  /* Hold to peek: the whole card, above the finger. */
+  .g-peek {
+    position: absolute;
+    z-index: 120;
+    width: 260px;
+    aspect-ratio: 488 / 680;
+    border-radius: 12px;
+    background: var(--peek-ground) center / cover;
+    box-shadow: var(--peek-shadow);
+    pointer-events: none;
+    animation: g-fade 0.12s;
+  }
+  @keyframes g-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+/* ==== narrative lane: the log strip, the log and loss sheets, the loss notice (chrome/log.tsx) ===================
+   Ported from live.css (.l-feed, .l-log, .l-recap). Their tints are chrome/style/surfaces.ts's. */
+@layer chrome {
+  /* The strip: along the screen's top edge beside the Game button, above every page's back band. Aged parchment a
+     shade darker than the sheets, in ink: a note in the margin, lighter than the board. */
+  .l-feed {
+    position: absolute;
+    z-index: 25;
+    left: calc(102 * var(--u) + var(--safe-left, 0px));
+    top: calc(8 * var(--u) + var(--safe-top, 0px));
+    width: min(29vw, calc(322 * var(--u)));
+    min-height: 44px;
+    display: grid;
+    grid-template-columns: fit-content(40%) minmax(0, 1fr);
+    align-items: center;
+    gap: calc(10 * var(--u));
+    padding: calc(5 * var(--u)) calc(9 * var(--u));
+    border: 0;
+    border-radius: 3px 8px 3px 8px;
+    cursor: pointer;
+    text-align: left;
+    pointer-events: auto;
+    background: var(--log-wash), var(--parchment) center / 420px, var(--log-paper);
+    box-shadow: var(--log-shadow);
+    font: italic 400 calc(12.5 * var(--u)) / 1.28 var(--serif);
+    color: var(--log-ink);
+  }
+  .l-feed:not(:has(.l-feed-events)) {
+    width: auto;
+    max-width: min(29vw, calc(322 * var(--u)));
+    grid-template-columns: auto;
+  }
+  .l-feed-turn,
+  .l-feed-event {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .l-feed-event {
+    color: var(--ink);
+    font-style: normal;
+  }
+  .l-feed-event:first-child {
+    font-weight: 700;
+  }
+  .l-feed-events {
+    min-width: 0;
+  }
+  .l-feed-events.recent .l-feed-event {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .l-feed-events.recent .l-feed-event + .l-feed-event,
+  .l-feed-events.summary .l-feed-event + .l-feed-event {
+    color: var(--log-ink-soft);
+  }
+  .l-feed:has(.l-feed-events.summary) {
+    column-gap: calc(6 * var(--u));
+  }
+  .l-feed-events.recent .l-feed-event.l-feed-draw {
+    text-decoration: underline;
+    text-decoration-color: var(--log-draw-rule);
+    text-underline-offset: 0.15em;
+  }
+
+  /* The log and the loss report: a line each, turns headed in capitals. */
+  .l-log {
+    display: grid;
+    gap: 4px;
+    font: 500 calc(14 * var(--u)) / 1.35 var(--ui);
+  }
+  .l-log-turn {
+    display: grid;
+    gap: 4px;
+  }
+  .l-log div {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--log-rule);
+  }
+  .l-log .t-turn {
+    color: var(--ink);
+    font: 700 calc(16 * var(--u)) var(--num);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding-top: 10px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .l-log .t-combat,
+  .l-log .t-damage {
+    color: var(--sig-danger-ink);
+  }
+  .l-log small {
+    display: block;
+    color: var(--ink-2);
+    font-size: calc(12.5 * var(--u));
+  }
+
+  /* What I lost while the others played: one line set into the prompt, the whole list a tap away. */
+  .l-recap {
+    justify-self: stretch;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    margin-bottom: 2px;
+    padding: 0 0 0 10px;
+    border-radius: calc(12 * var(--u));
+    background: var(--recap-wash);
+    border: 1px solid var(--sig-danger-ink);
+    pointer-events: auto;
+  }
+  .l-recap .l-lost {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--sig-danger-ink);
+    font: 400 calc(16 * var(--u)) var(--serif);
+  }
+  .l-recap .l-lost small,
+  .l-recap .l-lost span {
+    display: block;
+    color: var(--ink);
+    font: 600 calc(15 * var(--u)) / 1.2 var(--ui);
+  }
+  .l-recap .l-lost span {
+    margin-top: calc(2 * var(--u));
+    text-decoration: underline;
+  }
+  .l-recap .g-close {
+    position: static;
+    flex: none;
+    color: var(--recap-close-ink);
+  }
+  .l-recap .g-close::before {
+    display: none;
+  }
+}
+@layer chrome {
+  /* The stack summary set into the prompt (StackSummary): the order and the decision read together in one margin. */
+  .l-stackinfo {
+    box-sizing: border-box;
+    width: 100%;
+    max-height: calc(124 * var(--u));
+    overflow: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--stackinfo-rule-strong);
+    text-align: left;
+    color: var(--ink);
+    font: 400 calc(14 * var(--u)) / 1.16 var(--serif);
+  }
+  .l-stackinfo li {
+    padding: calc(3 * var(--u)) calc(5 * var(--u));
+    border-bottom: 1px solid var(--stackinfo-rule);
+  }
+  .l-stackinfo li:first-child {
+    background: var(--stackinfo-next);
+    box-shadow: inset 2px 0 0 var(--stackinfo-next-edge);
+  }
+  .l-order {
+    color: var(--ink-2);
+    font: 700 calc(11 * var(--u)) var(--ui);
+    margin-right: calc(3 * var(--u));
+  }
+  .l-stackinfo b {
+    font-weight: 700;
+  }
+  .l-stackinfo span {
+    font-style: italic;
+    color: var(--ink-2);
+  }
+  .l-stackinfo .aimed {
+    color: var(--sig-danger-ink);
+  }
+  /* While the table moves the prompt waits on it: its buttons step back to plain ink, and the hand's plays go unlit. */
+  .l-prompt.moving .l-buttons button {
+    color: var(--ink-2);
+    background: var(--btn-ghost);
+    text-shadow: none;
+    box-shadow: var(--moving-rule);
+  }
+  .watching .held .hcard.playable {
+    box-shadow: var(--card-shadow);
+  }
+  .watching .held .hcard.playable .l-hand-label {
+    background: none;
+  }
+}
+/* ==== end of the narrative lane's block ============================================================================ */
