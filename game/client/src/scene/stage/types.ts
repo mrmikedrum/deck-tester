@@ -266,7 +266,7 @@ export interface Piece {
   /** Cheap: patched in place (tap, counters, marks, titles). */
   readonly mods: string;
   readonly mark: Mark | null;
-  /** Its cards are under 56 px on screen: they wear the small face (theme `FaceSpec.small`). */
+  /** Its cards are at the 44 px floor on screen (`SMALL_FACE_PX`): they wear the small face (theme `FaceSpec.small`). */
   readonly small?: boolean;
   readonly draw: Draw;
   /** Shown only while it holds an arrived card (a unit, a zone pile, a spell on the stack). */

@@ -1,7 +1,7 @@
 // A card's table face: the narrow description the painter needs (`FaceSpec`), its cache key, and the painter. A face is
 // composed from what the card is now, never chosen per type: its stock is its colour, its window's shape what it is
 // made of, its foot what it can do now; a commander is its name in gold leaf. A basic land, a dual, an any-colour land,
-// a utility land, a planeswalker and a battle are whole faces of their own; the small form (under 56 px on screen) is a
+// a utility land, a planeswalker and a battle are whole faces of their own; the small form (at the 44 px floor) is a
 // second drawing from the same facts. The model maps a Card to a FaceSpec (nothing here knows about the model).
 import { colour, font, signal } from "../tokens";
 import { drawBack } from "./back";
@@ -72,7 +72,7 @@ export interface FaceSpec {
   readonly whole: FaceWhole | null;
   /** The mana it makes (letters), shown at its foot; a land's symbols on a whole face. */
   readonly mana: readonly string[];
-  /** The small form, for a card under 56 px on screen: one word, one figure or one glyph. */
+  /** The small form, for a card at the 44 px floor (describe `SMALL_FACE_PX`): one word, one figure or one glyph. */
   readonly small: boolean;
 }
 
@@ -578,7 +578,7 @@ function paintFoot(x: Ctx, c: FaceSpec, env: FaceEnv, fy: number, overArt = fals
 }
 
 /**
- * The small form, under 56 px on screen: a second drawing from the same facts. One word of the name as large as fits;
+ * The small form, at the 44 px floor: a second drawing from the same facts. One word of the name as large as fits;
  * a body's figures at a quarter of the card; otherwise one glyph in the window; a land its symbols and nothing else.
  */
 function drawSmall(x: Ctx, c: FaceSpec, env: FaceEnv): void {
@@ -594,7 +594,9 @@ function drawSmall(x: Ctx, c: FaceSpec, env: FaceEnv): void {
   const short = shortName(c.name);
   const family = c.commander ? font.serif : NUM;
   x.font = `700 84px ${family}`;
-  const word = x.measureText(short).width <= W - 16 ? short : short.split(" ").sort((a, b) => b.length - a.length)[0] ?? short;
+  // The whole name where it fits; else a commander's first word (the name it goes by), another card's longest word.
+  const words = short.split(" ");
+  const word = x.measureText(short).width <= W - 16 ? short : c.commander ? (words[0] ?? short) : ([...words].sort((a, b) => b.length - a.length)[0] ?? short);
   const barH = nameStrip(x, c, env, { y: 20, min: 84, text: word });
   const cy = (20 + barH + FH - 20) / 2 + 10;
   const foot = c.foot;

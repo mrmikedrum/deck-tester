@@ -219,7 +219,7 @@ export function gallery(root: HTMLElement, env: FaceEnv, isReady: (url: string) 
     ),
   );
 
-  // The table faces, composed from what each card is now, at their standard size and in the small form (under 56 px).
+  // The table faces, composed from what each card is now, at their standard size and in the small form (at the 44 px floor).
   const table = section(root, "table-faces", "Table faces");
   for (const f of TABLE_FACES) {
     const spec = faceOf(f.entry, false, isReady);

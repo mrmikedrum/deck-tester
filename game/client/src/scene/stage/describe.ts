@@ -497,8 +497,11 @@ function unitPiece(
   };
 }
 
-/** A card narrower than this on screen (CSS px) wears its small face: one word, one figure or one glyph. */
-const SMALL_FACE_PX = 56;
+/**
+ * A card narrower than this on screen (CSS px) wears its small face: one word, one figure or one glyph. It is the 44 px
+ * floor itself (a little over, for rounding): anything drawn larger keeps its name and art.
+ */
+export const SMALL_FACE_PX = 46;
 function isSmall(plan: DescribeInput["plan"], pose: Pose): boolean {
   const q = poseQuad(plan.projector, pose);
   return Math.hypot(q[1].x - q[0].x, q[1].y - q[0].y) < SMALL_FACE_PX;

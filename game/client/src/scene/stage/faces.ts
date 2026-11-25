@@ -27,7 +27,7 @@ function colouredMana(c: Card): string[] {
 /**
  * The face a card wears on the table, composed from what it is now (its type line is the engine's, so a crewed
  * vehicle, an animated land or a stationed spacecraft wears what it has become). `mark` lights its ability gem when it
- * is an option; `small`: it is under 56 px on screen, and wears the small form.
+ * is an option; `small`: it is at the 44 px floor on screen, and wears the small form.
  */
 export function faceOfCard(model: TableModel, c: Card, mark: Mark | null = null, small = false): FaceSpec {
   const type = c.face.type;
