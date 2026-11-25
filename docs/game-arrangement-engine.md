@@ -80,12 +80,17 @@ asked for something different, the code does the following. Sections below keep 
 | **Current types** (§1.2, guarantee 11) | Classification is from current types every plan, as designed. When a card's tier changes, its **posture follows at once where it is** (it stands up or lies down in its place, as its own unit, `ArrUnit.retyped`), and it **moves rows at the next re-sort**, which the change itself triggers at the next phase change. A crewed Vehicle fights from where it stands and lies back down without travelling. Memory keeps the tier each card was seated by (`bases`), only for this; nothing caches a classification. | The visual spec's rule (its §5): the playtest bug was the card looking and lying like a work; its look and posture never wait. **A change from "moves the same plan"; flagged for the owner's eye.** |
 | **Notable members** | A fan or summary reports up to two hidden members that matter (`ArrUnit.notable`, with a cue: act, threat, answer, news), by importance, for the scene to draw proud and lit. "News" (arrived since I last opened it) waits for the spread focus. | The visual spec's attention cue. |
 | **Hidden** (§1.3, guarantee 10) | Every member of a fan but its top counts as hidden (spines are blank). Copies under a stack's top are not cued for what they are (the top and the die say it), only when offered or aimed. | Visual spec §2, §4. |
-| **Poses** (§5.3, guarantee 12) | A pose is the frame slid along its `away` (`FramePose { id, shift }`), the camera unchanged. The solver audits each pose and **reports** it (`report.poses`); it does not fold for a pose. | Measured: parted by two card heights, the second standing row's creatures are 53 px (floor 56) and the lying row's patches go under the plates and off the screen's top at 1.85 (and at 1.95). No fold can fix that: the parting and the leaf's depth need to change, which is the template's and the designer's (step 8). |
+| **Poses** (§5.3, guarantee 12) | A pose is the frame slid along its `away` (`FramePose { id, shift }`), the camera unchanged. The solver audits each pose only when asked (`ArrangeInput.auditPoses`: goldens, design measurements) and **reports** it (`report.poses`); it does not fold for a pose, so a plan the player sees does not pay for it. | Measured: parted by two card heights, the second standing row's creatures are 53 px (floor 56) and the lying row's patches go under the plates and off the screen's top at 1.85 (and at 1.95). No fold can fix that: the parting and the leaf's depth need to change, which is the template's and the designer's (step 8). |
 | **Scale** (§4.2) | `S_table` stays 1.85. On the across leaf at rest the front row reads 63 px, the standing row behind it 58, the lying row 52 (floors 56, 56, 44); a third standing row would be under 56 with today's camera, so the space gives two. `tableScale` measures the floors exactly; my field's row is taken at z ≈ 1.5 until step 9 places it. | Measured in `test/layout/arrange/frame.test.ts` and the goldens. |
 | **Floors** | A turned card's floor is measured on the same card unturned at the same place (as today's audit measures the upright face). | A quarter turn is not a smaller card. |
 | **Targets** (§1.6) | A target's region is its slot's box on screen (the feet, a block's height, a standing card's top), widened to hold every corner. | A raised block's corners spread past the feet's line in perspective. |
 | **Acting** | An acting card is presented, but a tapped one lies turned in its place (tapped never stands). The `away` mode and the gathering wait for their step. | The two constraints meet on a tapped attacker. |
-| **Interfaces** | `Policy.tidy` is a function of the clock, the last re-sort and whether the ranking changed; `Policy.seat` takes no moment; `order` and `formation` wait for the containers that need them. `Container` adds `safe` and `floors.tapPx`; `Row` adds `quarter`; `Arrangement` adds `policy` and `report.{policyInvalid, violations, poses}`; `PolicyMemory` adds `bases`, `held` and `folds`. An overflow of actors names every card no place could hold. | What the slice used. |
+| **Attachments** | Each attachment rides with its displayed root (an Aura on an Equipment on a creature rides with the creature); its immediate host stays on the card. An attachment that acts leaves its host as its own unit; an offered one is cued on its host, whose target opens the focus. | Review of the slice. |
+| **Choosing from a block** (§1.6) | Only a block of copies is one target that selects; a block of distinct choices (a mixed well) opens its focus with them offered. | Review: one Forest target could never choose the Island under it. |
+| **Re-sort and choice timing** | A phase change is measured from the phase the last plan saw (`PolicyMemory.seen`), not the last re-sort's; the policy choice `policyFor` made is what memory keeps (`ArrangeInput.selection`), so it holds all turn. | Review: a card crewed mid-phase moved at once; a choice could switch mid-turn. |
+| **Lineage** (§3) | A vanished unit's id goes first to the part holding its old top, then by overlap and arrival, never by key order. | Review. |
+| **What is kept between plans** (§7.3's remedies) | `arrange` is kept by its whole input (`memo.ts`: a hash of every field, memory hashed once per memory object), so a container whose input is unchanged costs its key; rows are kept per container geometry, audits per drawn arrangement. All are pure memoization: a kept answer is the one computing it gives, and a test holds it. The walk reuses units and layouts until an edit runs, and moves groups out of an overflowing standing band in one batch (a test shows it changes nothing). | The iPad's first numbers (§7.3). |
+| **Interfaces** | `Policy.tidy` is a function of the clock, the turn and phase the last plan saw and whether the ranking changed; `Policy.seat` takes no moment; `order` and `formation` wait for the containers that need them. `Container` adds `safe` and `floors.tapPx`; `Row` adds `quarter`; `Arrangement` adds `policy` and `report.{policyInvalid, violations, poses}`; `PolicyMemory` adds `bases`, `held` and `folds`. An overflow of actors names every card no place could hold. | What the slice used. |
 
 ## 0. Shape of the thing
 
@@ -943,22 +948,51 @@ The iPad: on the Mac, `bin/deckmaster game` (it rebuilds the client when stale);
 the same inputs (`scene/workbench/bench-inputs.ts`) with the shadow leaf on and off; Safari's clock is coarse (1 ms),
 so it also reports a batch mean. Send the table or "Copy results".
 
-**Node, Nov 25** (300 plans per input after 150 to warm up, ms per `planTable` at 1180×820; "with the shadow leaf"
-adds one container, its audit, and its audit under the parted pose; worst cases move with the machine's load):
+**The iPad, first run (Nov 25)**, before the bench fixes below and the optimizations (ms per `planTable`, median /
+worst; an iPad's browser at 834×1210 @2x, planned at 1180×820):
 
-| Input | With the shadow leaf: median / p90 / worst | `mat` only: median / worst |
+| Input | With the shadow leaf | `mat` only |
 |---|---|---|
-| The design pass's turn 15 | 2.15 / 2.64 / 4.74 | 1.22 / 2.43 |
-| Dense: four seats × 40, a stack of four | 2.00 / 2.36 / 3.06 | 1.21 / 2.08 |
-| 40 distinct names per seat | 1.73 / 2.03 / 2.63 | 1.07 / 2.21 |
-| A combat of twelve (no gathering yet: `mat`'s combat row) | 7.99 / 8.44 / 10.80 | 6.82 / 8.28 |
-| 30 snapshots in sequence, memory carried | 2.04 / 2.38 / 3.11 | 1.33 / 3.25 |
+| The design pass's turn 15 | 30 / 33 | 18 / 20 |
+| Dense | 30 / 32 | 18 / 20 |
+| 40 distinct names | 28 / 30 | 16 / 18 |
+| A combat of twelve | 145 / 149 | 132 / 136 |
+| 30 snapshots in sequence | 30 / 34 | 18 / 22 |
 
-The engine's share is about 0.8 to 0.9 ms per plan. Per plan it estimates 19 to 27 candidates and runs one audit plus
-one per pose; no input overflows or breaks a limit at rest (the parted pose breaks 3 to 6, as Round 3 says). Desktop
-WebKit (Playwright, a 1 ms clock like Safari's) reads about 1 ms more per plan than Node on every input. The combat
-input is over budget before the engine runs: `mat`'s combat row is what costs (step 11 replaces it with the
-gathering).
+The iPad ran 10 to 15 times slower than Node; one engine leaf added about 12 ms, and `mat` alone missed the budget.
+(That page also replanned one-frame inputs without memory, where Node carried it; both now share one course.)
+
+**Where the time went** (Node `--cpu-prof` on the named inputs). The engine leaf: the audit's tap patch, a cell grid
+with a test per cell (31%); the parted pose's re-audit (18%); the walk re-laying every band on each estimate (17%);
+drawing and placing (27%). `mat`'s combat row: its audit run in full on every candidate placement and fold round,
+59% of the plan, the cell grid alone 44%.
+
+**What changed**: an exact geometric patch check before any grid (the engine's audit and `mat`'s, where it changes no
+plan); `arrange` kept by its whole input, rows per container geometry and audits per drawn arrangement; the walk's
+reuse and batching; pose audits on request; card facts reusing their string parsing (Round 3). The engine per leaf, in
+Node, alone, ms (the host was busy, load average 6 to 18: read these as upper bounds):
+
+| Input | Unchanged leaf | A changed leaf (rows kept) | Cold (nothing kept) |
+|---|---|---|---|
+| The design pass's turn 15 | 0.02 | 0.24 | 0.40 |
+| Dense | 0.02 | 0.22 | 0.37 |
+| 40 distinct names | 0.02 | 0.20 | 0.35 |
+| 30 snapshots in sequence | 0.29 (it changes) | 0.25 | 0.37 |
+
+Down from about 1.4 for every plan. A snapshot usually changes one seat, so with four leaves the engine costs one
+changed leaf plus three keys. `mat`'s combat-row input went from 8.2 to 5.0 ms in Node; what is left is `mat`'s own
+search over placements (step 11 replaces it). The bench's "the leaf changed" column times the shadow leaf arranged
+from scratch every plan. Whole `planTable`, Node (load average 10), median: the design pass's turn 15 0.99 with the
+shadow leaf, 1.24 with it changed every plan, 0.73 `mat` alone; dense 0.87, 1.12, 0.76; the combat of twelve 4.96,
+5.21, 4.62.
+
+**A worker** (planning off the main thread, the scene drawing the last committed plan) is the structural answer to
+jank, and not small: layout is pure and its input is plain data, but the plan carries a `Projector` with functions
+(rebuilt on the main thread from the camera spec), the app plans synchronously inside `update` and play reads the new
+hit groups at once (a tap between would act on the last committed plan: membership stamps already make a stale tap do
+nothing), results must be matched to their plan key and memory carried back, and the recorder's determinism needs a
+plan in flight to be a pending deadline on the virtual clock. With unchanged leaves costing a key, the iPad numbers
+after these changes decide whether it is needed; `mat` (until step 12 deletes it) is the larger cost either way.
 
 ## Settled here, for the designer to know
 
