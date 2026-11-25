@@ -988,12 +988,16 @@ class AccountView implements PieceView {
   private readonly mat: MeshStandardMaterial;
   private readonly mesh: Mesh;
   private lease: Lease;
+  /** The lines as they were; the changed ones are wet (painted red) until they dry. */
+  private lines: readonly string[];
+  private wet: { lease: Lease; lines: ReadonlySet<string>; at: number | null } | null = null;
   constructor(
     private readonly host: Host,
     v: ActorView,
   ) {
     const d = v.draw as Extract<Draw, { t: "account" }>;
     this.lease = host.painter.account(d.ink);
+    this.lines = d.ink.lines.map((l) => JSON.stringify(l));
     this.mat = new MeshStandardMaterial({ map: this.lease.texture, transparent: true, depthWrite: false, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2 });
     this.mesh = new Mesh(this.geo, this.mat);
     this.mesh.scale.set(d.w, d.d, 1);
@@ -1007,20 +1011,50 @@ class AccountView implements PieceView {
     else {
       this.lease.release();
       this.lease = next;
-      this.mat.map = next.texture;
-      this.mat.needsUpdate = true;
+      // What changed is wet: every line not written just so before (a figure, a mark, a new entry). A repaint that
+      // changes no words (the page settling) keeps what is wet, and its clock.
+      const now = d.ink.lines.map((l) => JSON.stringify(l)), had = new Set(this.lines);
+      const fresh = now.filter((l) => !had.has(l));
+      this.lines = now;
+      const lines = new Set([...(this.wet?.lines ?? []), ...fresh]);
+      const at = fresh.length ? null : (this.wet?.at ?? null);
+      this.dry();
+      const wet = now.flatMap((l, i) => (lines.has(l) ? [i] : []));
+      if (wet.length) this.wet = { lease: this.host.painter.wetInk(d.ink, wet), lines, at };
     }
+    this.show();
     this.mesh.scale.set(d.w, d.d, 1);
   }
-  look(v: ActorView): void {
+  private show(): void {
+    const map = (this.wet ? this.wet.lease : this.lease).texture;
+    if (this.mat.map !== map) {
+      this.mat.map = map;
+      this.mat.needsUpdate = true;
+    }
+  }
+  private dry(): void {
+    if (!this.wet) return;
+    this.wet.lease.release();
+    this.wet = null;
+    this.show();
+  }
+  look(v: ActorView, clock: Clock): void {
     this.mat.color.setScalar(Math.max(0, 1 - v.sample.fade));
     this.mat.opacity = v.sample.alpha;
-    // While a decision lights cards it holds, its ink lights with them: fire for a choice, gilt for a pick, blood in danger.
-    const lit = v.mark ? INK_LIGHT[v.mark] : null;
+    // While a decision lights cards it holds, its ink lights with them: fire for a choice, gilt for a pick. (Never blood:
+    // under a sweep the heading says what is lost, and the account stays what it is.)
+    const lit = v.mark && v.mark !== "danger" ? INK_LIGHT[v.mark] : null;
     this.mat.emissive.set(lit ?? "#000000");
     this.mat.emissiveIntensity = lit ? 0.55 * Math.max(0.3, v.sample.glow || 1) : 0;
+    // Wet ink is red until it dries (a cut at both ends: it reads as ink, not a light).
+    if (this.wet) {
+      // (Measured on the effects' clock from the first frame it shows; a clock that went back starts it again.)
+      if (this.wet.at === null || clock.t < this.wet.at) this.wet.at = clock.t;
+      if (clock.t - this.wet.at >= motion.inkDries / 1000) this.dry();
+    }
   }
   dispose(): void {
+    this.dry();
     this.lease.release();
     this.geo.dispose();
     this.mat.dispose();

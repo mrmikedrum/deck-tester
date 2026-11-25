@@ -67,7 +67,8 @@ describe("answers", () => {
     const { p } = asked("attack15", 0);
     // (One line under the plaque: the clauses that fit, in their order.)
     expect(said(p, "Marath")).toBe("26 untapped · no fliers or reach");
-    expect(said(p, "Atraxa")).toBe("17 untapped · 9 fly · Atraxa deathtouch");
+    // (Atraxa's line keeps to her account's width, beside the well: the clauses that fit there.)
+    expect(said(p, "Atraxa")).toBe("17 untapped · 9 fly");
     expect(said(p, "Dack")).toBe("10 untapped · 5 fly · biggest 4/6");
     expect(p.violations).toEqual([]);
   });

@@ -47,7 +47,8 @@ export function inkPpu(spec: InkSpec): number {
   return Math.min(INK_EM_PX / spec.em, MAX_SIDE / Math.max(spec.w, spec.d));
 }
 
-export function paintAccount(canvas: Canvas, spec: InkSpec): void {
+/** `wet`: these lines are painted in red (the changed ink, until it dries). */
+export function paintAccount(canvas: Canvas, spec: InkSpec, wet?: readonly number[]): void {
   const ppu = inkPpu(spec), E = spec.em * ppu, k = 1 / spec.stretch;
   const W = Math.max(4, Math.round(spec.w * ppu)), H = Math.max(4, Math.round(spec.d * ppu));
   const x = begin(canvas, W, H);
@@ -57,7 +58,9 @@ export function paintAccount(canvas: Canvas, spec: InkSpec): void {
   x.setTransform(k, 0, 0, 1, 0, 0);
   x.textBaseline = "alphabetic";
   x.textAlign = "left";
-  const ink = (c: string, a = 0.92): void => {
+  let red = false;
+  const ink = (c0: string, a = 0.92): void => {
+    const c = red ? INK.red : c0;
     x.fillStyle = c;
     x.globalAlpha = a;
     // A little bleed into the vellum.
@@ -65,6 +68,7 @@ export function paintAccount(canvas: Canvas, spec: InkSpec): void {
     x.shadowBlur = E * 0.05;
   };
   spec.lines.forEach((l, i) => {
+    red = !!wet?.includes(i);
     const top = (spec.at[i] ?? 0) * E;
     if (l.t === "tally") {
       ink(INK.sepia, 0.95);
@@ -89,7 +93,7 @@ export function paintAccount(canvas: Canvas, spec: InkSpec): void {
     x.fillText(l.text, 0, base, room);
     if (l.t !== "entry") return;
     let at = Math.min(room, x.measureText(l.text).width) + E * 0.55;
-    marks(x, l.marks, l.out ?? 0, at, base, E, room);
+    marks(x, l.marks, l.out ?? 0, at, base, E, room, red ? INK.red : INK.sepia);
     if (l.trait) {
       const n = l.marks.length, tapped = l.marks.filter(Boolean).length, gone = l.out ?? 0;
       at += (n - tapped + gone) * (MARK.w + MARK.gap) * E + tapped * (MARK.h + MARK.gap) * E + (tapped && tapped < n ? E * 0.3 : 0) + (gone ? E * 0.3 : 0) + E * 0.35;
@@ -105,8 +109,8 @@ export function paintAccount(canvas: Canvas, spec: InkSpec): void {
 
 /** The marks of an entry: ready ones upright, then a little space, then tapped ones turned, on the line's baseline; then
  *  a hollow one for each card out in a fight, where it will come back. */
-function marks(x: Ctx, ms: readonly boolean[], out: number, at: number, base: number, E: number, room: number): void {
-  x.fillStyle = INK.sepia;
+function marks(x: Ctx, ms: readonly boolean[], out: number, at: number, base: number, E: number, room: number, colour: string = INK.sepia): void {
+  x.fillStyle = colour;
   x.globalAlpha = 0.85;
   let p = at;
   const ready = ms.filter((t) => !t).length;
@@ -119,7 +123,7 @@ function marks(x: Ctx, ms: readonly boolean[], out: number, at: number, base: nu
   });
   if (out) p += E * 0.3;
   x.lineWidth = Math.max(1, E * 0.07);
-  x.strokeStyle = INK.sepia;
+  x.strokeStyle = colour;
   for (let i = 0; i < out; i++) {
     const w = MARK.w * E, h = MARK.h * E;
     if (p + w > room) break;

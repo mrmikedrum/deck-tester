@@ -172,16 +172,25 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null, froze
     }).map((z) => depthOf(z.placement.pos) + shift0 - (CH / 2) * z.placement.scale - 0.25));
   // The answer's line under the plaque, across the page, kept free on every told page: nothing below reaches into it.
   const lo = -r.w / 2 + SIDE + INK_MARGIN;
-  const top = Math.min(plateA - 0.4, zoneNear(lo, colHi - INK_MARGIN));
-  const heading = headingSlot(g, r, lo, colHi - INK_MARGIN, top);
-  const roof = top - heading.d - 0.08;
+  const lineAt = (hiU: number) => {
+    const top = Math.min(plateA - 0.4, zoneNear(lo, hiU)), slot = headingSlot(g, r, lo, hiU, top);
+    return { slot, roof: top - slot.d - 0.08 };
+  };
+  let line = lineAt(colHi - INK_MARGIN), roof = line.roof;
   const wellScale = (a: number, u: number): number => Math.max(1.1, floorScale(g, at(u, a), FLOOR.any, true, 1.1));
-  const wellFar = (a: number, ws: number, u: number): boolean => a + CH * ws <= Math.min(plateA - 0.5, roof, zoneNear(u - (CW / 2) * ws, u + (CW / 2) * ws)) + 1e-6;
+  const wellFar = (a: number, ws: number, u: number, rf = roof): boolean => a + CH * ws <= Math.min(plateA - 0.5, rf, zoneNear(u - (CW / 2) * ws, u + (CW / 2) * ws)) + 1e-6;
   const pitch = (CW + 0.12) * wS;
   let colW = walkers.length ? Math.min(2, walkers.length) * pitch : CW * 1.25;
   // The well lies behind the planeswalkers where there is room; else beside them, at their depth.
   const wRows = Math.ceil(walkers.length / 2);
   const aBack = walkers.length ? clearBehind(g, r, behind + (wRows - 1) * 1.1 * wS, wS) + 0.1 : behind;
+  // Where the well fits behind the planeswalkers only by reaching into the answer's line, the line keeps to the account's
+  // width instead: a well squeezed beside them would starve the account.
+  if (mana.length && walkers.length && !wellFar(aBack, wellScale(aBack, colHi - colW / 2), colHi - colW / 2) && wellFar(aBack, wellScale(aBack, colHi - colW / 2), colHi - colW / 2, Infinity)) {
+    line = lineAt(colHi - colW - 0.2);
+    roof = Infinity;
+  }
+  const heading = line.slot;
   const backFits = mana.length > 0 && wellFar(aBack, wellScale(aBack, colHi - colW / 2), colHi - colW / 2);
   const beside = mana.length > 0 && walkers.length > 0 && !backFits;
   if (beside) colW += CW * wellScale(behind, colHi - colW) + 0.2;
@@ -213,7 +222,7 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null, froze
 
   // The account, left of the column, ends short of the answer's line.
   const hi = (mana.length || walkers.length ? colLo : colHi) - 0.2;
-  const a1 = Math.min(roof, zoneNear(lo, hi));
+  const a1 = Math.min(line.roof, zoneNear(lo, hi));
 
   // Written creatures out in a fight keep their entry as hollow marks; each stands as a card of its own (the combat row's).
   const out = new Set(frozen ? writtenCreatures.filter((c) => input.fighting?.has(c.id)).map((c) => c.id) : []);

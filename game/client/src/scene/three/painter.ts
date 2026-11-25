@@ -54,6 +54,10 @@ export class Painter {
   account(spec: InkSpec): Lease {
     return this.cache.lease("ink|" + canonical(spec), (c) => paintAccount(c, spec));
   }
+  /** Only the changed lines of an account, in red: laid over it while they dry. */
+  wetInk(spec: InkSpec, wet: readonly number[]): Lease {
+    return this.cache.lease(`wet|${wet.join(",")}|` + canonical(spec), (c) => paintAccount(c, spec, wet));
+  }
   /** An answer in red: a slip, a landing numeral, a note. */
   answer(spec: AnswerSpec): Lease {
     return this.cache.lease("answer|" + canonical(spec), (c) => paintAnswer(c, spec));

@@ -138,6 +138,7 @@ export class Stage {
   private reduced = false;
   /** Each page's turn as last drawn, and until when its edge is still changing hands (the view's 300 ms handover). */
   private readonly pageTurns = new Map<string, boolean>();
+  private readonly inks = new Map<string, string>();
   private handoffUntil = -Infinity;
   /** Each stack card's focus as last drawn (its printed face fades in and out over `motion.stackPrint`). */
   private readonly stackUps = new Map<string, boolean>();
@@ -621,6 +622,12 @@ export class Stage {
         const was = this.pageTurns.get(st.id);
         if (was !== undefined && was !== p.draw.turn && !this.reduced) this.handoffUntil = t + motion.turnHandoff;
         this.pageTurns.set(st.id, p.draw.turn);
+      }
+      if (p.draw.t === "account") {
+        // Ink that changed is wet (red) until it dries: the view fades it on the clock, so the frames keep coming.
+        const was = this.inks.get(st.id);
+        if (was !== undefined && was !== p.mods && !this.reduced) this.handoffUntil = Math.max(this.handoffUntil, t + motion.inkDries);
+        this.inks.set(st.id, p.mods);
       }
       if (p.draw.t === "stack") {
         // The printed card crossing over the painted face as it rises or is set aside: the view fades it on the clock.

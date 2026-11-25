@@ -85,6 +85,8 @@ export const motion = {
   hold: 380,
   /** The turn's edge changing hands on a page: out, then in. */
   turnHandoff: 300,
+  /** Ink that changed is red this long, then dries to sepia (its last third a fade). */
+  inkDries: 2000,
   /** The stack's printed card coming up over its painted face as it rises (and going as it is set aside). */
   stackPrint: 250,
   /** A cut settles at once; a flight to a pile past this is a cut. */
