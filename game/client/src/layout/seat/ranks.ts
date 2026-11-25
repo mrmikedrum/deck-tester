@@ -32,7 +32,7 @@ export const RANKS = {
   /** A ranks card takes a line place at tidy only if it outscores the incumbent by this much; a newcomer between tidies too. */
   margin: 1.25,
   /** A tail shows at most this many cards; each one under the top shows this share of a card's width (its right-hand sliver). */
-  tailShown: 4,
+  tailShown: 3,
   sliver: 0.3,
   /** A column shows at most this many cards; each under the top shows this share of a card's height (its name strip). */
   columnShown: 3,
@@ -342,7 +342,8 @@ function deal(input: SeatInput, opts: { readonly wellBack: boolean }): SeatPlan 
       tailWOf(rk.tail.reduce((t, c) => t + c.ids.length, 0)) +
       singles.reduce((t, c) => t + cardW(c.id, sS), 0) +
       cols.reduce((t, c) => t + cardW(c.ids[0]!, c.s), 0) +
-      (mana.length && !wellBack ? CW * sW + 0.3 : 0) +
+      // (In the plaque's band, the well still wants the row's outer end free under it.)
+      (mana.length ? (wellBack ? CW * zS0 * 0.9 : CW * sW + 0.3) : 0) +
       actorW;
     rung = { ranks: rk, cols, singles, stage: L.stage, w };
     if (w <= width || frozen) break;
@@ -483,7 +484,8 @@ function deal(input: SeatInput, opts: { readonly wellBack: boolean }): SeatPlan 
     });
   }
   const rowW = row.reduce((t, x) => t + x.w, 0), nLine = out.length;
-  let su = (toward * rowW) / 2;
+  // (With the well in the plaque's band at the outer end, the row starts from the middle side and leaves under it free.)
+  let su = wellBack ? (toward * width) / 2 : (toward * rowW) / 2;
   for (const it of row) {
     it.put(su - (toward * it.w) / 2);
     su -= toward * it.w;
@@ -640,5 +642,6 @@ function mine(input: SeatInput): SeatPlan {
 }
 
 export const ranks: SeatLayout = { id: "ranks", plan };
+
 
 
