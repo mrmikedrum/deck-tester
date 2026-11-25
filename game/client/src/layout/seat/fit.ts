@@ -172,6 +172,11 @@ export function holdFit(cards: Cards, prev0: Fit, plan: Fit, cur: Draft[], now: 
     };
   });
   for (const u of cur) {
+    // A held place belongs to the old row. Refit when a card joins or leaves the creature row.
+    if (u.ids.some((id) => {
+      const held = at.get(id);
+      return held && (held.role === "creature") !== (u.role === "creature");
+    })) return null;
     const out = u.ids.filter((id) => !at.has(id)), host = u.ids.map((id) => at.get(id)).find(Boolean);
     if (!out.length) continue;
     if (host) {

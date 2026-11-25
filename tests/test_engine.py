@@ -13,6 +13,44 @@ DECK = Path(__file__).resolve().parent / "fixtures" / "decks" / "marath-tokens.t
 
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class ManualGameTest(unittest.TestCase):
+    @unittest.skipUnless(engine.FORGE_BUILD.exists(), "requires installed Forge")
+    def test_station_changes_the_spacecraft_type_in_the_client_view(self):
+        ship = "Wurmwall Sweeper"
+        crew = "Siege Wurm"
+        reply = engine.request({"cmd": "start", "commanders": ["Marath, Will of the Wild"],
+                                "main": [[99, "Forest"]], "seed": 11, "turns": 2})
+        session = reply["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        def battlefield():
+            view = request("view")["view"]
+            return {c["name"]: c for c in view["players"][0]["battlefield"]}
+
+        try:
+            request("answer", answer=[1])
+            request("override", args=["create", ship])
+            reply = request("override", args=["create", crew])
+            before = battlefield()[ship]
+            self.assertIn("Spacecraft", before["type"])
+            self.assertNotIn("Creature", before["type"])
+
+            decision = reply["decision"]
+            self.assertEqual(decision["kind"], "play")
+            [station] = [i for i, label in enumerate(decision["options"], 1)
+                         if label.startswith(ship + ":") and "Station" in label]
+            request("answer", answer=[station])  # Forge taps the only eligible creature.
+
+            field = battlefield()
+            after = field[ship]
+            self.assertEqual(after["id"], before["id"])
+            self.assertTrue(field[crew]["tapped"])
+            self.assertEqual(after["counters"]["Charge"], 5)
+            self.assertIn("Creature", after["type"])
+        finally:
+            request("end")
+
     def test_seeded_game_keeps_lands_restores_and_records(self):
         deck = decklist.load(DECK)
         start = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2}
