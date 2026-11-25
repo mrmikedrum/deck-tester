@@ -112,9 +112,11 @@ function plan(input: SeatInput): SeatPlan {
     const cs = [...cs0.filter((c) => !c.tapped), ...cs0.filter((c) => c.tapped)];
     // A lone card is known by its id (it keeps its home as it grows); a regiment by its look.
     const key = cs0.length > 1 ? `g:${k}` : `c:${cs0[0]!.id}`;
-    const out = cs.filter((c) => involved.has(c.id)), stay = cs.filter((c) => !involved.has(c.id));
+    // A lone card that acts keeps its own home; a regiment's members that act step out of it.
+    const split = cs.length > 1;
+    const out = split ? cs.filter((c) => involved.has(c.id)) : [], stay = split ? cs.filter((c) => !involved.has(c.id)) : cs;
     const best = Math.max(...cs.map(restScore));
-    if (stay.length) cands.push({ key, ids: stay.map((c) => c.id), score: stay.length > 1 ? regimentScore(best, stay.length) : restScore(stay[0]!), commander: stay.some((c) => c.commander), acting: false });
+    if (stay.length) cands.push({ key, ids: stay.map((c) => c.id), score: stay.length > 1 ? regimentScore(best, stay.length) : restScore(stay[0]!), commander: stay.some((c) => c.commander), acting: !split && involved.has(stay[0]!.id) });
     for (const c of out) cands.push({ key: `a:${c.id}`, ids: [c.id], score: restScore(c), commander: c.commander, acting: true, from: key });
   }
   const byKey = new Map(cands.map((c) => [c.key, c]));
@@ -266,7 +268,10 @@ function plan(input: SeatInput): SeatPlan {
   ] as const;
   // Cards acting alone (aimed at, in a fight) step out of their fold: into a free place on the line where their fold
   // stands there, else at the second row's middle end, its own place counted in the row.
-  const actors = cands.filter((c) => c.from);
+  // (A fighter stands in the combat row in the middle: its fold keeps its place, and it needs none of its own.)
+  const fights = (c: Cand) => c.ids.some((id) => input.fighting?.has(id));
+  const fighters = cands.filter((c) => c.from && fights(c));
+  const actors = cands.filter((c) => c.from && !fights(c));
   const lineFree = line.map((k, i) => (k === null ? i : -1)).filter((i) => i >= 0);
   const actorLine = new Map<string, number>();
   for (const c of actors) if (lineSet.has(c.from!) && lineFree.length) actorLine.set(c.key, lineFree.shift()!);
@@ -314,7 +319,7 @@ function plan(input: SeatInput): SeatPlan {
     if (st === "forward" && step) return { pos: at(u, a - stepOf(s)), scale: s * RANKS.forward, posture: "stand" };
     return { pos: at(u, a), scale: s, posture: "stand" };
   };
-  const creatureUnit = (c: Cand, a: number, u: number, s: number, step: boolean): void => {
+  const creatureUnit = (c: Cand, a: number, u: number, s: number, step: boolean, pos?: V3): void => {
     const ids = c.ids, top = ids[0]!, look: UnitLook = ids.length > 1 ? "regiment" : "card";
     const st = c.acting ? "ease" : foldStance(ids);
     const tag: TagFacts | undefined = look === "regiment" ? tagOf("regiment", ids.map(need), qTag, answers) : undefined;
@@ -327,7 +332,7 @@ function plan(input: SeatInput): SeatPlan {
       // (Down, it lies flat and square at its foot: tapped shows on its face, never by a turn across its neighbours.)
       tapped: st !== "down" && need(top).tapped,
       acting: c.acting,
-      placement: standing(a, u, s, st, step),
+      placement: pos ? { pos, scale: s, posture: "stand" } : standing(a, u, s, st, step),
       look,
       stance: st,
       ...(tag ? { tag } : {}),
@@ -417,6 +422,12 @@ function plan(input: SeatInput): SeatPlan {
     su -= toward * it.w;
   }
   for (const [key, i] of actorLine) creatureUnit(byKey.get(key)!, aLine, (i - (places - 1) / 2) * per, sL, true);
+  for (const c of fighters) {
+    const home = out.find((x) => x.id === idOf(c.from!)), slot = line.indexOf(c.from!);
+    if (home) creatureUnit(c, 0, 0, home.placement.scale, false, home.placement.pos);
+    else if (slot >= 0) creatureUnit(c, aLine, (slot - (places - 1) / 2) * per, sL, true);
+    else creatureUnit(c, aRanks, (-toward * rowW) / 2, sR, false);
+  }
 
   // ---- the plaque's band, behind the second row's tallest top (and its tags) ------------------------------------------
   // (A creature lying down measures as standing: it stands again with the next question.)

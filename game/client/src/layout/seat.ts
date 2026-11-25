@@ -121,6 +121,8 @@ export interface SeatInput {
   readonly viewport: Viewport;
   /** Cards acting now (combat, aimed at): they leave their piles while they act. */
   readonly involved: ReadonlySet<CardId>;
+  /** The cards of those in a fight: they stand in the combat row, not on the page. */
+  readonly fighting?: ReadonlySet<CardId>;
   /** True while cards are still flying off the battlefield (the app's virtual clock says so): the page holds its shape. */
   readonly settling: boolean;
   /** The previous plan's memory: kept places, held rows. Ignored when it was written by another paradigm. */

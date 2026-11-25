@@ -230,8 +230,8 @@ export function planTable(input: TableInput): TablePlan {
     const clock = input.clock ? { clock: { turn: input.clock.turn, active: input.clock.active === seat } } : {};
     return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null, ...(input.question ? { question: input.question } : {}), ...clock };
   };
-  const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);
+  const inputs = input.seats.map((_, i) => ({ ...mk(i), fighting: fight }));
   const plans: SeatPlan[] = inputs.map((i) => planSeat(layout, i, { fighting: fight }));
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
