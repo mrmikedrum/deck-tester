@@ -106,7 +106,7 @@ async function main(): Promise<void> {
   const reduced = reducedMotionSource(globalThis.window);
   const motion = new Queue<MotionReading>(true);
   reduced.subscribe((r) => motion.push({ at: now(), reduced: r }));
-  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read() }), {
+  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read(), layout: new URLSearchParams(globalThis.location?.search ?? "").get("layout") ?? "die" }), {
     transport,
     // A scripted page reports to no bridge.
     log: script ? null : clientLogSender(),

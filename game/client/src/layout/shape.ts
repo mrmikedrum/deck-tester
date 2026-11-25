@@ -53,9 +53,9 @@ interface Frame {
   readonly up: V3;
 }
 
-const frameOf = (proj: Projector, pos: V3, posture: Posture, tapped: boolean): Frame => {
+const frameOf = (proj: Projector, pos: V3, posture: Posture, tapped: boolean, lean?: number): Frame => {
   if (posture === "stand") {
-    const th = proj.pitch + (tapped ? TAP_LEAN : 0);
+    const th = (lean ?? proj.pitch) + (tapped ? TAP_LEAN : 0);
     return { base: { x: pos.x, y: pos.y + 0.02, z: pos.z }, up: { x: 0, y: Math.cos(th), z: -Math.sin(th) } };
   }
   const el = Math.atan2(proj.eye.y - pos.y, Math.max(1, proj.eye.z - pos.z));
@@ -69,7 +69,7 @@ const AT_REST: At = (v) => v;
 
 /** A card's middle at rest (the point the scene poses it by, `unitPose`): where a lean-in carries it from. */
 export function cardMiddle(proj: Projector, p: Placement, tapped: boolean): V3 {
-  const fr = frameOf(proj, p.pos, p.posture, tapped), h = (CH / 2) * p.scale;
+  const fr = frameOf(proj, p.pos, p.posture, tapped, p.lean), h = (CH / 2) * p.scale;
   return { x: fr.base.x + fr.up.x * h, y: fr.base.y + fr.up.y * h, z: fr.base.z + fr.up.z * h };
 }
 
@@ -91,9 +91,27 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
   return { face: win(0, 1), name: win(5 / 6, 1), foot: win(0, 1 / 6), width: Math.abs(b.x - a.x) };
 }
 
+/**
+ * A tray's footprint in its card's frame, card heights from its foot (the ready card's near edge): its lip in front, its
+ * tapped band behind, one creature place wide (scene/three/pieces.ts `TRAY`).
+ */
+export const TRAY_PRINT = { w: CH + 0.11, front: -0.24, back: CH + 0.3 + 0.085, detached: CH + 0.085 } as const;
+/** How much of its height the tapped stack shows behind the ready one: 0.3, so two tray rows fit a side page. */
+export const TRAY_BAND = 0.3;
+
 export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean, at: At = AT_REST): Shape {
   const p: Placement = u.placement;
-  const q = cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
+  const fr = frameOf(proj, p.pos, p.posture, u.tapped, p.lean);
+  const q = cardQuads(proj, fr, p.scale, u.tapped, CW, CH, at);
+  if (u.tray && p.posture !== "stand") {
+    // A tray is one unit: its footprint is what it covers and where a tap reaches it; its card's name and foot are what
+    // nothing else may cover. (Its own dice, lip and tapped stack lie on it.)
+    const s = p.scale, back = u.tray.detachment ? TRAY_PRINT.detached : TRAY_PRINT.back;
+    const pt = (x: number, b: number): Point => proj.project(at({ x: fr.base.x + x * s, y: fr.base.y + fr.up.y * b * s, z: fr.base.z + fr.up.z * b * s }));
+    const hw = TRAY_PRINT.w / 2, face: Quad = [pt(-hw, TRAY_PRINT.front), pt(hw, TRAY_PRINT.front), pt(hw, back), pt(-hw, back)];
+    // (It lies flat from its foot back: drawn by depth, it is as far off as its middle, behind a card standing beside it.)
+    return { group: u.id, kind: "unit", seat, ...q, face, order: p.pos.z - (CH / 2) * s, floor: u.role === "creature" ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any, members: u.members };
+  }
   const creature = u.role === "creature";
   return {
     group: u.id,

@@ -46,7 +46,7 @@ function groups(list: readonly BoardCard[], hosts: ReadonlySet<CardId>): { rep: 
   return out;
 }
 
-interface Classified {
+export interface Classified {
   C: Draft[];
   S: Draft[];
   L: Draft[];
@@ -98,7 +98,7 @@ function classify(bf: readonly BoardCard[], hosts: ReadonlySet<CardId>, me: bool
 
 // A pile whose first card has gone is still the same pile: it keeps the key it had (a unit's key is its first card's),
 // so it keeps its place and its piece, and its other cards never turn up as a new pile beside the old one.
-function rekey(prev: Fit, units: Draft[], onBoard: ReadonlySet<CardId>): void {
+export function rekey(prev: Fit, units: Draft[], onBoard: ReadonlySet<CardId>): void {
   const old = new Map<CardId, string>(), used = new Set(units.map((u) => u.key));
   BANDS.forEach((k) => (prev[k].units ?? []).forEach((u) => u.ids.forEach((id) => old.set(id, u.key))));
   units.forEach((u) => {
@@ -113,11 +113,30 @@ function rekey(prev: Fit, units: Draft[], onBoard: ReadonlySet<CardId>): void {
 
 /** The card a unit shows: a standee its rep; a support pile its last shown card (the old `pileOf` shows at most 3 fanned or 8). */
 
+/** What a page layout built on the mat's fit varies: how it classifies, folds and finishes its units. */
+export interface MatStyle {
+  readonly paradigm: string;
+  readonly classify: (bf: readonly BoardCard[], hosts: ReadonlySet<CardId>, me: boolean, seat: string, input: SeatInput) => Classified;
+  /** The creature fold (fit.ts `FitCtx.foldC`), given the board's cards and who is dressed. */
+  readonly foldC?: (cards: Cards, hosts: ReadonlySet<CardId>, input: SeatInput) => (units: Draft[], cap: number) => Draft[];
+  /** The page's geometry, where the layout stands or lies things differently (its bands' specs, its standees' lean). */
+  readonly geo?: (g: Geo) => Geo;
+  /** Each unit as placed: its posture and anything of its own (a tray). */
+  readonly finish?: (d: Draft, u: Unit, cards: Cards, input: SeatInput) => Unit;
+}
+
+const MAT: MatStyle = { paradigm: "mat", classify: (bf, hosts, me, seat, input) => classify(bf, hosts, me, seat, input.involved) };
+
 function plan(input: SeatInput): SeatPlan {
-  const { board, region, projector, reserve, involved, settling, pressure } = input;
+  return planWith(input, MAT);
+}
+
+export function planWith(input: SeatInput, style: MatStyle): SeatPlan {
+  const { board, region, projector, reserve, settling, pressure } = input;
   const me = region.position === "near";
   const cards: Cards = cardsOf(board.cards);
-  const g = makeGeo(projector, reserve, board.mine ? FLOOR.mine : FLOOR.theirs);
+  const g0 = makeGeo(projector, reserve, board.mine ? FLOOR.mine : FLOOR.theirs);
+  const g: Geo = style.geo ? style.geo(g0) : g0;
   const r: Region = region;
 
   // Attached cards ride on their host's top card; they are permanents on this seat too, but never stand on their own.
@@ -131,15 +150,17 @@ function plan(input: SeatInput): SeatPlan {
     }
   }
   const bf = board.cards.filter((c) => !attached.has(c.id));
-  const { C, S, L } = classify(bf, new Set(dressedBy.keys()), me, board.seat, involved);
+  const hosts = new Set(dressedBy.keys());
+  const { C, S, L } = style.classify(bf, hosts, me, board.seat, input);
 
-  const mem = input.memory && input.memory.paradigm === "mat" && input.memory.v === 1 ? (input.memory.fit as Fit) : null;
+  const mem = input.memory && input.memory.paradigm === style.paradigm && input.memory.v === 1 ? (input.memory.fit as Fit) : null;
   const prev = mem ? clone(mem) : null;
   const now = new Set([...C, ...S, ...L].flatMap((u) => u.ids));
   if (prev) rekey(prev, [...C, ...S, ...L], new Set(bf.map((c) => c.id)));
 
   const keepOf = (u: Draft): boolean => !!u.lands || cards.need(u.rep).commander || cards.need(u.rep).legendary;
-  const ctx = (p: Fit | null): FitCtx => ({ g, cards, region: r, me, keepOf, prev: p });
+  const foldC = style.foldC?.(cards, hosts, input);
+  const ctx = (p: Fit | null): FitCtx => ({ g, cards, region: r, me, keepOf, prev: p, ...(foldC ? { foldC, tabs: false } : {}) });
   const args = {
     nz: Number(board.fixtures.graveyard > 0) + Number(board.fixtures.exile > 0),
     cmd: board.fixtures.commandZone,
@@ -173,11 +194,11 @@ function plan(input: SeatInput): SeatPlan {
       else chosen = loose;
     }
   }
-  return poses(input, g, cards, chosen, dressedBy, board.fixtures);
+  return poses(input, g, cards, chosen, dressedBy, board.fixtures, style);
 }
 
 // Target poses for every unit and fixture at rest (the old `targets()`, one seat's part).
-function poses(input: SeatInput, g: Geo, cards: Cards, fit: Fit, dressedBy: ReadonlyMap<CardId, CardId[]>, fx: SeatInput["board"]["fixtures"]): SeatPlan {
+function poses(input: SeatInput, g: Geo, cards: Cards, fit: Fit, dressedBy: ReadonlyMap<CardId, CardId[]>, fx: SeatInput["board"]["fixtures"], style: MatStyle): SeatPlan {
   const { region: r, board } = input;
   const me = r.position === "near";
   // Every page has the same bands in the same order from its fixed edge (fitSeat): theirs from the front, toward the
@@ -190,7 +211,7 @@ function poses(input: SeatInput, g: Geo, cards: Cards, fit: Fit, dressedBy: Read
     const dress = d.ids.flatMap((id) => dressedBy.get(id) ?? []);
     const topCard = cards.need(top);
     const placement: Placement = { pos, scale, posture: role === "creature" ? "stand" : role === "mana" ? "flat" : me ? "lean" : "prop" };
-    out.push({
+    const unit: Unit = {
       id: d.key,
       role,
       kind: role === "mana" ? "well" : d.ids.length > 1 ? "pile" : "card",
@@ -204,7 +225,8 @@ function poses(input: SeatInput, g: Geo, cards: Cards, fit: Fit, dressedBy: Read
       // sign's "n tapped", so it never lies turned over the next well's name (the old client's did).
       tapped: role === "mana" ? false : topCard.tapped,
       placement,
-    });
+    };
+    out.push(style.finish ? style.finish(d, unit, cards, input) : unit);
   };
   // A band's rows, each unit in its place (seatPlaces, rowU): theirs march away from the fixed edge from its near side,
   // mine toward me from its far side (a standee leans toward the page's front, so my front row stands its lean back
@@ -265,7 +287,7 @@ function poses(input: SeatInput, g: Geo, cards: Cards, fit: Fit, dressedBy: Read
   }
   // The mat is the page, lying from the fixed edge.
   const fixtures: Fixtures = { page: { pos: g.toWorld(r, 0, r.d / 2 - D / 2), w: W, d: D, yaw: r.yaw }, plate, zones, ...(commander ? { commander } : {}) };
-  const memory: LayoutMemory = { v: 1, paradigm: "mat", fit: clone(fit) };
+  const memory: LayoutMemory = { v: 1, paradigm: style.paradigm, fit: clone(fit) };
   const ledger = new Ledger(board.cards.map((c) => c.id));
   return ledger.seal({
     seat: board.seat,

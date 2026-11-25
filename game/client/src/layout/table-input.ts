@@ -3,6 +3,7 @@
 // boundary so the app and the scene's workbench plan the corpus exactly alike. It takes plain facts, never play's types:
 // the cards a combat draft involves come in as ids.
 import { boards } from "./board";
+import { LAYOUTS } from "./plan";
 import type { StackEntry, TableInput } from "./plan";
 import type { ChromeMode } from "./reservations";
 import type { LayoutMemory } from "./seat";
@@ -23,6 +24,8 @@ export interface TableInputOptions {
   readonly involved?: ReadonlySet<CardId>;
   /** A combat draft (play's `cues.combat`, as plain pairs): drawn over the engine's combat, its fighters in the row. */
   readonly combat?: CombatPairs | null;
+  /** The seat layout by id (`LAYOUTS`): `mat` when absent or unknown. */
+  readonly layout?: string;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -57,5 +60,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     memory: o.memory ?? null,
     stack,
     combat,
+    ...(o.layout && LAYOUTS[o.layout] ? { layout: LAYOUTS[o.layout]! } : {}),
   };
 }

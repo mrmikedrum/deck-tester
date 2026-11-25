@@ -10,6 +10,7 @@ import {
   isPlaneswalker,
   isSpecialLand,
   isTreasure,
+  kin,
   sig,
   typeWord,
 } from "../model";
@@ -31,6 +32,8 @@ export interface BoardCard {
    * goaded, counters, and power/toughness. Copies with equal `sig` and nothing attached stack into one pile.
    */
   readonly sig: string;
+  /** `sig` without tapped and summoning sickness: one kind of card for a tray under a die, ready and tapped alike. */
+  readonly kin: string;
 
   // ---- type flags (the old common.js predicates; `isLand` and `isCreature` below follow common.js exactly) ----
   /** `!!c.becameLand || /\bLand\b/.test(typeLine(c))`. */
@@ -112,6 +115,7 @@ export function boardCard(c: Card): BoardCard {
     name: c.face.name,
     cardKey: cardKey(c),
     sig: sig(c),
+    kin: kin(c),
     land: isLand(c),
     creature: isCreature(c),
     planeswalker: isPlaneswalker(c),

@@ -729,7 +729,7 @@ export function sceneNews(s: AppState, r: RenderReport): boolean {
  * and what makes ids unique for the page's life: play (told the game is gone), the change seq and the moment serial.
  */
 export function tornDown(s: AppState, at: Ms): AppState {
-  const fresh = initialState({ clientBuild: s.session.clientBuild, viewport: s.viewport, epoch: s.epoch + 1, reducedMotion: s.reducedMotion });
+  const fresh = initialState({ clientBuild: s.session.clientBuild, viewport: s.viewport, epoch: s.epoch + 1, reducedMotion: s.reducedMotion, layout: s.layout });
   const r = play.step(s.play, { t: "snapshot", at, model: null, decision: null, continuity: "newGame" });
   return {
     ...fresh,

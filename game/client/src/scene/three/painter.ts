@@ -20,7 +20,11 @@ import {
   paintTable,
   paintTag,
   paintVellumTile,
+  paintDie,
+  paintTally,
+  paintLip,
 } from "../../theme";
+import type { DieSpec, LipSpec, TallySpec } from "../../theme";
 import type { ChipSpec, FaceEnv, FaceSpec, FxSprite, HaloKind, PageSpec, PlateSpec, SignSpec } from "../../theme";
 import type { Lease, TextureCache } from "./textures";
 
@@ -56,6 +60,18 @@ export class Painter {
   }
   tag(text: string, colour: string): Lease {
     return this.cache.lease(`tag|${text}|${colour}`, (c) => paintTag(c, text, colour, this.env.surfaces));
+  }
+  /** A die's top face (the `die` layout). */
+  die(spec: DieSpec): Lease {
+    return this.cache.lease("die|" + canonical(spec), (c) => paintDie(c, spec));
+  }
+  /** A tally card naming a mixed stack. */
+  tally(spec: TallySpec): Lease {
+    return this.cache.lease("tally|" + canonical(spec), (c) => paintTally(c, spec, this.env.surfaces));
+  }
+  /** A tray's brass lip. */
+  lip(spec: LipSpec): Lease {
+    return this.cache.lease("lip|" + canonical(spec), (c) => paintLip(c, spec, this.env.surfaces));
   }
   chip(spec: ChipSpec): Lease {
     return this.cache.lease("chip|" + canonical(spec), (c) => paintChip(c, spec, this.env.surfaces));

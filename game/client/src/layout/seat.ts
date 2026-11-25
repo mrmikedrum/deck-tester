@@ -1,4 +1,5 @@
 import type { SeatBoard } from "./board";
+import type { CombatPairs } from "./combat";
 import type { Projector } from "./projector";
 import type { Reservations } from "./reservations";
 import type { SeatSlot } from "./template";
@@ -26,6 +27,9 @@ export interface Placement {
   readonly pos: V3;
   readonly scale: number;
   readonly posture: Posture;
+  /** Standing: how far it leans back from upright, radians (the `die` layout's brass foot: 25°); the camera's pitch,
+   * square to me, when absent. */
+  readonly lean?: number;
 }
 
 export interface Unit {
@@ -50,6 +54,26 @@ export interface Unit {
   /** Whether the card it shows lies turned, tapped (never a well's: its spent state is its stain and its sign). */
   readonly tapped: boolean;
   readonly placement: Placement;
+  /** A tray under dice (the `die` layout): its cards lying as one unit, ready ones under a bone die and tapped ones
+   * turned behind under an iron die. `members` is `ready` then `tapped`. */
+  readonly tray?: Tray;
+}
+
+/** What a tray's top card is: the real card (a swarm of one kind) or a tally card naming a mixed stack. */
+export type TrayTop = "card" | "ranks" | "others" | "mana" | "lands" | "rocks";
+
+export interface Tray {
+  readonly ready: readonly CardId[];
+  readonly tapped: readonly CardId[];
+  readonly top: TrayTop;
+  /** The brass lip along its front: "36 power", or null (nothing worth a lip: not creatures, or no power). */
+  readonly lip: string | null;
+  /** The keywords on the lip, each with how many have it, or null when every member has it. */
+  readonly lipIcons: readonly { readonly keyword: string; readonly count: number | null }[];
+  /** A tally card's roster and ceiling: what a mixed stack holds, in the terms that matter. */
+  readonly summary: Summary | null;
+  /** A detachment: the attackers of a swarm that go to the combat row together, under one die. */
+  readonly detachment?: boolean;
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */
@@ -94,6 +118,8 @@ export interface SeatInput {
   readonly memory: LayoutMemory | null;
   /** Fold this many notches harder than the layout likes (set by `planSeat`'s retry, 0 to start). */
   readonly pressure: number;
+  /** Attacks and blocks, where a layout seats its fighters by what they do (the `die` layout's detachments). */
+  readonly combat?: CombatPairs | null;
 }
 
 export interface SeatPlan {

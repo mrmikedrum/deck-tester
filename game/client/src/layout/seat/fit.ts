@@ -71,6 +71,13 @@ export interface FitCtx {
   /** Seat identity for the plaque side. */
   readonly keepOf: Keep;
   readonly prev: Fit | null;
+  /**
+   * A layout's own creature fold (the `die` layout's Ranks tray), in place of piling like creatures and then one mixed
+   * pile. Its folds never send creatures to the support row or fold lone noncreatures after them.
+   */
+  readonly foldC?: (units: Draft[], cap: number) => Draft[];
+  /** Piles wear title tabs (the mat's); false where nothing does (the `die` layout's trays say it on their dice). */
+  readonly tabs?: boolean;
 }
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
@@ -199,7 +206,7 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
 
   // A pile of like cards stays one while its page holds: opened as soon as a place comes free, it would send an idle
   // copy the length of its row. (Only like cards: a mixed pile opens as soon as it can.)
-  if (hold && prev) {
+  if (hold && prev && !ctx.foldC) {
     [C, S] = [C, S].map((us0, i) =>
       (prev[i ? "S" : "C"].units ?? [])
         .filter((p) => p.title && !p.mixed)
@@ -276,9 +283,12 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
         s = Math.max(B.pref, floorScale(g, g.toWorld(r, 0, r.d / 2 - foot), k === "C" || (host && k === "S") ? B.px / Math.cos(TAP_LEAN) : B.px, B.flat, s));
       }
       let step = B.step, d = s * (B.first + (rows[k]! - 1) * B.step);
-      if (!me) {
+      if (!me && B.lying) {
+        // theirs lying flat: each row as deep as it lies, nothing to see over
+        d = s * (B.first + (rows[k]! - 1) * step);
+      } else if (!me) {
         // theirs stand: each row, and the band behind, where it shows whole
-        const tall = CH + TAB_H; // above a folded pile, its title tab
+        const tall = B.tall ?? CH + TAB_H; // above a folded pile, its title tab
         for (let i = 0; i < rows[k]! - 1; i++) {
           const f = a + s * (B.lead + i * step);
           step = Math.max(step, (clearBehind(g, r, f, s, tall) - f) / s);
@@ -292,7 +302,7 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
         let sL = L0.pref;
         for (let it = 0; it < 3; it++) sL = Math.max(L0.pref, floorScale(g, g.toWorld(r, 0, r.d / 2 - foot), L0.px, true, sL));
         const lw = sL * CW + 0.35, lo = zs > 0 ? span.lo + lw : span.lo, hi = zs > 0 ? span.hi : span.hi - lw;
-        b.L = { ...L0, k: "L", s: sL, n: n.L, rows: 1, perRow: 1, cap: 1, a0: foot - sL * L0.lead, a1: foot + sL * CH, w: lw, u: zs > 0 ? span.lo + (sL * CW) / 2 : span.hi - (sL * CW) / 2 };
+        b.L = { ...L0, k: "L", s: sL, n: n.L, rows: 1, perRow: 1, cap: 1, a0: foot - sL * L0.lead, a1: foot + sL * (L0.lying ? L0.first - L0.lead : CH), w: lw, u: zs > 0 ? span.lo + (sL * CW) / 2 : span.hi - (sL * CW) / 2 };
         span = { lo, hi, w: Math.max(0, hi - lo), uc: (lo + hi) / 2 };
       }
       const perRow = Math.max(1, Math.floor((span.w - (rows[k]! > 1 ? STAGGER * s : 0)) / (s * B.per)));
@@ -305,12 +315,13 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
     // far enough behind it for the plaque's top to stay inside the border.
     b.plateA = a - GAP + back - PLATE_IN;
     const B = b.S.n ? b.S : b.C.n ? b.C : null;
-    if (B) b.plateA = Math.max(b.plateA, clearBehind(g, r, B.a0 + B.s * (B.lead + (B.rows - 1) * B.step), B.s));
-    if (b.L.n) b.plateA = Math.max(b.plateA, b.L.a1 + 0.2); // and behind the far end of their well
+    // (Lying, its last row ends where it ends; the piles in the plaque's row stand propped from half a card in front.)
+    if (B) b.plateA = Math.max(b.plateA, B.lying ? B.a1 + 0.7 : clearBehind(g, r, B.a0 + B.s * (B.lead + (B.rows - 1) * B.step), B.s));
+    if (b.L.n) b.plateA = Math.max(b.plateA, b.L.a1 + (b.L.lying ? 0.7 : 0.2)); // and behind the far end of their well
     // The graveyard and exile in the plaque's row are propped from their near edge, half a card in front of it: where a
     // pile in front wears a title tab (a pile of copies, a fold), they stand back far enough that the tab never covers
     // their foot (`zoneBack`).
-    const tabbed = B && ([...C, ...S].some((u) => u.ids.length > 1) || B.n > B.cap);
+    const tabbed = B && ctx.tabs !== false && ([...C, ...S].some((u) => u.ids.length > 1) || B.n > B.cap);
     b.zoneBack = tabbed ? Math.max(0, clearBehind(g, r, B.a0 + B.s * (B.lead + (B.rows - 1) * B.step), B.s, CH + TAB_H) + 0.45 - b.plateA) : 0;
     // The page reaches far enough behind the plaque that its top, leaning back, stays inside the fine rule as I see it.
     const pf = g.toWorld(r, 0, r.d / 2 - b.plateA);
@@ -367,8 +378,8 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
     return { s, c: fold(cards, C, all - s.length, likeC, keep, named, "Creatures") };
   };
   let split: { s: Draft[]; c: Draft[] } | null = null;
-  const alone = fold(cards, C, squeeze(b.C.cap), likeC, keep, named, "Creatures");
-  if (!me && S.length && b.C.cap && alone.some((u) => u.mixed)) {
+  const alone = ctx.foldC ? ctx.foldC(C, squeeze(b.C.cap)) : fold(cards, C, squeeze(b.C.cap), likeC, keep, named, "Creatures");
+  if (!ctx.foldC && !me && S.length && b.C.cap && alone.some((u) => u.mixed)) {
     const rows0 = { ...rows };
     host = true;
     fitRows();
@@ -405,12 +416,12 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
     // (Where creatures share a pile anyway, like noncreatures still fan into their named piles first: folding order.)
     b.C.units = alone;
     b.S.units = fold(cards, S, squeeze(b.S.cap), likeS, keep, named, "Others");
-    if (alone.some((u) => u.mixed)) b.S.units = fold(cards, b.S.units, 1, likeS.slice(1), keep, named, null);
+    if (!ctx.foldC && alone.some((u) => u.mixed)) b.S.units = fold(cards, b.S.units, 1, likeS.slice(1), keep, named, null);
   }
   b.L.units = fold(cards, L, squeeze(b.L.cap), likeL, keep, named, "Mana");
   // Creatures sharing a pile is the last resort: by then no noncreature lies alone on the page, legendary or not. Lone
   // ones fold into their likes ("Lands" takes a legendary land), and only then into one mixed pile.
-  if (b.C.units.some((u) => u.mixed)) {
+  if (!ctx.foldC && b.C.units.some((u) => u.mixed)) {
     const cmdr: Keep = (u) => !!u.lands || cards.need(u.rep).commander;
     const lone = (us: Draft[]) => us.some((u) => u.ids.length === 1 && !cmdr(u));
     const tighten = (us0: Draft[], likes: readonly Like[], mixed: string): Draft[] => {

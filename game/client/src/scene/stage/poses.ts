@@ -23,7 +23,7 @@ export const PILE_STEP = 0.0075;
 export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
   const s = p.scale;
   if (p.posture === "stand") {
-    const th = proj.pitch + (tapped ? TAP_LEAN : 0);
+    const th = (p.lean ?? proj.pitch) + (tapped ? TAP_LEAN : 0);
     const up = v3(0, Math.cos(th), -Math.sin(th));
     return { pos: add(v3(p.pos.x, p.pos.y + STAND_OFF, p.pos.z), scaled(up, 0.5 * s)), rx: -th, ry: 0, s };
   }

@@ -94,6 +94,8 @@ export interface AppState {
   readonly hover: string | null;
   /** Reduced motion is asked for (`prefers-reduced-motion`): the scene shortens its moves; decision timing never changes. */
   readonly reducedMotion: boolean;
+  /** The seat layout the table is planned with (layout `LAYOUTS`): `die` here, `mat` with `?layout=mat`. */
+  readonly layout: string;
   readonly reserve: Reservations;
   readonly moments: MomentsState;
   readonly answer: AnswerLedger;
@@ -162,6 +164,8 @@ export interface InitialOptions {
   readonly lastGame?: NewGameRequest | null;
   /** The page's reduced-motion setting at start. */
   readonly reducedMotion?: boolean;
+  /** The seat layout (`?layout=`), `die` by default. */
+  readonly layout?: string;
 }
 
 export function initialState(o: InitialOptions): AppState {
@@ -183,6 +187,7 @@ export function initialState(o: InitialOptions): AppState {
     viewport,
     hover: null,
     reducedMotion: o.reducedMotion ?? false,
+    layout: o.layout ?? "die",
     reserve: reservations(viewport),
     moments: NO_MOMENTS,
     answer: NO_ANSWERS,

@@ -9,17 +9,17 @@ import { abilityText, entryText, isLand, isTreasure, sweepHarms, sweeps } from "
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
 import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
-import type { Lean, TablePlan, Unit } from "../../layout";
+import type { Lean, TablePlan, Tray, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
-import type { FaceSpec } from "../../theme";
+import type { FaceSpec, TallySpec } from "../../theme";
 import { DIM, SCRIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
 import type { LabelAsk, Measure } from "./labels";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
 import { pagePose, platePose, screenPose, stackPose, unitPose, zonePose } from "./poses";
 import { LOOK, tableFocus } from "./types";
-import type { Aim, Description, Draw, FocusTop, Lane, Look, Piece, Pose, WellLook } from "./types";
+import type { Aim, Description, Draw, FocusTop, Lane, Look, Piece, Pose, TrayLook, WellLook } from "./types";
 
 export interface DescribeInput {
   readonly model: TableModel;
@@ -186,6 +186,7 @@ export function describe(input: DescribeInput): Description {
           label: null,
           seatColour: colourOf(model, seat),
           seed: cmd.card,
+          tray: null,
         },
         needsMembers: true,
       });
@@ -447,8 +448,10 @@ function unitPiece(
     .filter((c): c is Card => !!c)
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
   const { copies, tapNote } = copiesOf(model, u);
+  const tray = u.tray ? trayLook(model, u, u.tray) : null;
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
-  const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
+  // (A tray says it all on its dice, its lip and its tally card: no title.)
+  const title = tray ? null : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
   const draw: Draw = {
     t: "unit",
     unit: u.kind,
@@ -467,6 +470,8 @@ function unitPiece(
     label: null,
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
+    tray,
+    ...(u.placement.posture === "stand" && u.placement.lean !== undefined ? { lean: u.placement.lean } : {}),
   };
   return {
     id: u.id,
@@ -476,12 +481,49 @@ function unitPiece(
     face: u.top,
     pose: unitPose(plan.projector, u.placement, u.tapped),
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
-    form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
+    form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}|${draw.lean ?? ""}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), tray ? canonical(tray) : ""].join("#"),
     mark,
     draw,
     needsMembers: true,
+  };
+}
+
+/** A tally card's word for each kind of mixed stack. */
+const TALLY_WORD: Readonly<Record<Exclude<Tray["top"], "card">, string>> = { ranks: "Ranks", others: "Others", mana: "Mana", lands: "Lands", rocks: "Rocks" };
+
+/**
+ * A tray as drawn: its counts, its tally card (a mixed stack's roster, biggest first, then "+5"; a mana tally by kind:
+ * "14 lands", "2 rocks", "10 Treasure"), its tapped stack's face and its lip.
+ */
+function trayLook(model: TableModel, u: Unit, t: Tray): TrayLook {
+  const cs = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
+  let tally: TallySpec | null = null;
+  if (t.top !== "card") {
+    let lines: string[];
+    if (t.top === "mana" || (t.top === "lands" && cs.some((c) => !isLand(c)))) {
+      const lands = cs.filter(isLand).length, tr = cs.filter(isTreasure).length, rocks = cs.length - lands - tr;
+      lines = [lands ? `${lands} land${lands > 1 ? "s" : ""}` : "", rocks ? `${rocks} rock${rocks > 1 ? "s" : ""}` : "", tr ? `${tr} Treasure` : ""].filter(Boolean);
+    } else {
+      const by = new Map<string, Card[]>();
+      for (const c of cs) by.set(c.face.name, [...(by.get(c.face.name) ?? []), c]);
+      const size = (c: Card) => (c.power ?? 0) * 100 + (c.toughness ?? 0);
+      const names = [...by.values()].sort((a, b) => size(b[0]!) - size(a[0]!) || b.length - a.length).map((g) => `${shortName(g[0]!.face.name)}${g.length > 1 ? ` ×${g.length}` : ""}`);
+      lines = names.length > 5 ? [...names.slice(0, 4), `+${names.length - 4}`] : names;
+    }
+    const pw = cs.filter((c) => c.power !== null);
+    const pt = t.top === "ranks" && pw.length ? `≤${Math.max(...pw.map((c) => c.power ?? 0))}/${Math.max(...pw.map((c) => c.toughness ?? 0))}` : null;
+    tally = { word: TALLY_WORD[t.top], pt, lines };
+  }
+  const tapped = t.tapped.map((id) => model.cards.get(id)).find((c): c is Card => !!c);
+  return {
+    ready: t.ready.length,
+    tapped: t.tapped.length,
+    tally,
+    tappedFace: tally || !tapped ? null : faceOfCard(model, tapped),
+    lip: t.lip ? { text: t.lip, icons: t.lipIcons } : null,
+    detachment: !!t.detachment,
   };
 }
 

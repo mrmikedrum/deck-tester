@@ -66,6 +66,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         settling,
         involved: new Set(involved),
         combat: cues.combat,
+        layout: s.layout,
       }),
     );
     return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };

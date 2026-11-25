@@ -18,10 +18,13 @@ import {
   PlaneGeometry,
   RepeatWrapping,
 } from "three";
-import type { Material, Texture } from "three";
+import type { BufferGeometry, Material, Texture } from "three";
+import { BoxGeometry } from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
-import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
-import type { FaceSpec, SeatPlace } from "../../theme";
+import { TRAY_BAND } from "../../layout/shape";
+import { LIP_PX, SIGN_FONT, SIGN_U, canonical, colour, faceKey, kit, materials, motion, seatInk } from "../../theme";
+import type { DieTone, FaceSpec, SeatPlace, TallySpec } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
 import { PILE_STEP, siftRoll } from "../stage/poses";
 import { LABEL_PX } from "../stage/labels";
@@ -306,6 +309,301 @@ function standeeShadow(env: PieceEnv, tapped: boolean, lean: number): { mesh: Me
 const TAPPED_SHOW = 0.18;
 const WELL_TURN = Math.PI / 12;
 
+// ---- a tray under dice (the `die` layout) ------------------------------------------------------------------------------
+
+/** A tray's sizes in card units (a card is 1 tall), in its card's own frame: +y away from me, +z up off the page. */
+const TRAY = {
+  /** One creature place wide (a turned card's width and a little), from the ready card's foot to past the tapped band. */
+  w: CH + 0.06,
+  front: -CH / 2 - 0.06,
+  /** The tapped stack shows this much of a card's height behind the ready stack. */
+  band: TRAY_BAND,
+  back: CH / 2 + TRAY_BAND + 0.06,
+  floor: 0.022,
+  /** A stack is as thick as its cards, to 12. */
+  most: 12,
+  /** The bone die's edge; the iron die is 0.8 of it. */
+  die: 0.3,
+  iron: 0.8,
+  /** The die on the ready stack's art, right of centre; the iron die at the band's right end. */
+  boneAt: { x: 0.1, y: 0.08 },
+  ironAt: { x: CH / 2 - 0.14, y: CH / 2 + TRAY_BAND / 2 },
+  /** The lip: a brass strip along the front, tilted to face me. */
+  lip: { h: 0.15, z: 0.05, tilt: 1.0 },
+  /** A die's hop and tumble when its count changes. */
+  hop: 0.2,
+  tumble: 0.45,
+} as const;
+
+/** A slotted brass foot a standee stands in: a low bar across its foot, on the page. */
+function brassFoot(ground: Group): { mesh: Mesh; dispose(): void } {
+  const geo = new RoundedBoxGeometry(CW * 1.08, 0.05, 0.11, 2, 0.015);
+  const mat = new MeshStandardMaterial({ color: kit.tray.rim, roughness: 0.38, metalness: 0.7 });
+  const mesh = covers(new Mesh(geo, mat));
+  mesh.castShadow = true;
+  mesh.position.set(0, 0.025, 0.0);
+  ground.add(mesh);
+  return { mesh, dispose: () => (geo.dispose(), mat.dispose()) };
+}
+
+/** A die: a rounded cube of its tone, its numeral on its top face, on a contact shadow. Hops and tumbles on a change. */
+class Die {
+  readonly group = new Group();
+  private readonly spin = new Group();
+  private readonly geo: RoundedBoxGeometry;
+  private readonly mat: MeshStandardMaterial;
+  private top: Decal | null = null;
+  private readonly shadow: Mesh;
+  private readonly shadowLease: Lease;
+  private n = -1;
+  private t0 = -1;
+  constructor(
+    private readonly host: Host,
+    private readonly tone: DieTone,
+    private readonly e: number,
+    yaw: number,
+  ) {
+    this.geo = new RoundedBoxGeometry(e, e, e, 3, e * 0.16);
+    this.mat = new MeshStandardMaterial({ color: kit.die[tone].body, roughness: tone === "iron" ? 0.45 : 0.6, metalness: tone === "iron" ? 0.55 : 0.02 });
+    const cube = covers(new Mesh(this.geo, this.mat));
+    cube.castShadow = true;
+    this.spin.add(cube);
+    this.spin.position.z = e / 2;
+    this.group.add(this.spin);
+    this.group.rotation.z = yaw;
+    this.shadowLease = host.painter.shade();
+    this.shadow = new Mesh(new PlaneGeometry(e * 1.7, e * 1.7), new MeshBasicMaterial({ map: this.shadowLease.texture, color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false, toneMapped: false }));
+    this.shadow.position.set(e * 0.12, e * 0.12, 0.002);
+    this.shadow.renderOrder = 1;
+    this.group.add(this.shadow);
+  }
+  /** Its count; a change after the first hops and tumbles it (from the frame's clock). */
+  set(n: number, t: number): void {
+    if (n === this.n) return;
+    if (this.n >= 0) this.t0 = t;
+    this.n = n;
+    const lease = this.host.painter.die({ n, tone: this.tone });
+    if (this.top) this.top.set(lease);
+    else {
+      this.top = new Decal(lease, this.e * 0.86, this.e * 0.86, { renderOrder: 6 });
+      this.top.mesh.position.z = this.e / 2 + 0.002;
+      this.spin.add(this.top.mesh);
+    }
+  }
+  tick(c: Clock, fade: number): void {
+    this.mat.color.setHex(kit.die[this.tone].body).multiplyScalar(1 - 0.7 * fade);
+    this.top?.tone(1 - 0.7 * fade);
+    const k = this.t0 < 0 || c.still ? 1 : Math.min(1, (c.t - this.t0) / TRAY.tumble);
+    if (k >= 1) this.t0 = -1;
+    const hop = Math.sin(Math.PI * k) * TRAY.hop;
+    this.spin.position.z = this.e / 2 + hop;
+    // A tumble lands square: whole quarter turns about the page's two axes.
+    const ease = 1 - (1 - k) ** 3;
+    this.spin.rotation.x = k < 1 ? ease * Math.PI * 2 : 0;
+    this.spin.rotation.y = k < 1 ? ease * Math.PI : 0;
+  }
+  get moving(): boolean {
+    return this.t0 >= 0;
+  }
+  dispose(): void {
+    this.geo.dispose();
+    this.mat.dispose();
+    this.top?.dispose();
+    this.shadow.geometry.dispose();
+    (this.shadow.material as Material).dispose();
+    this.shadowLease.release();
+  }
+}
+
+/** The texture a tray's top card shows: a member's face, or its tally card. */
+type TopFace = { readonly face: FaceSpec | null } | { readonly tally: TallySpec };
+
+/** One card of a tray: a real face (CardPart) or a tally card's painted face. */
+class TrayCard {
+  readonly obj: CardObject;
+  private lease: Lease;
+  private key: string;
+  constructor(
+    private readonly host: Host,
+    top: TopFace,
+    token: boolean,
+  ) {
+    this.lease = this.leaseOf(top);
+    this.key = this.lease.key;
+    this.obj = createCard(host.kit, this.lease.texture, { token });
+    this.obj.group.traverse((o) => (o as Mesh).isMesh && covers(o as Mesh));
+  }
+  private leaseOf(top: TopFace): Lease {
+    return "tally" in top ? this.host.painter.tally(top.tally) : faceLease(this.host, top.face);
+  }
+  set(top: TopFace): void {
+    const next = this.leaseOf(top);
+    if (next.key === this.key) return next.release();
+    this.lease.release();
+    this.lease = next;
+    this.key = next.key;
+    this.obj.material.map = next.texture;
+  }
+  look(tap: number, fade: number, mark: ActorView["mark"], glow: number): void {
+    this.obj.body.rotation.z = -tap * (Math.PI / 2);
+    setLook(this.obj.material, { tap: 0, dim: fade });
+    setSignal(this.obj.material, this.host.rim, glow > 0.5 ? mark : null);
+  }
+  dispose(): void {
+    this.lease.release();
+    this.obj.dispose();
+  }
+}
+
+/**
+ * A tray: a bronze rim and vellum floor one creature place wide; the ready stack lying upright at its front, as thick as
+ * its cards, under a bone die; the tapped stack turned a quarter behind it, a band of it showing, under an iron die; and
+ * the brass lip along its front saying what the tray is worth. Counts follow what has arrived.
+ */
+class TrayParts {
+  readonly group = new Group();
+  private readonly geos: BufferGeometry[] = [];
+  private readonly mats: MeshStandardMaterial[] = [];
+  private readonly tones: number[] = [];
+  private ready: TrayCard | null = null;
+  private tapped: TrayCard | null = null;
+  private readyBlock: Mesh;
+  private tappedBlock: Mesh;
+  private bone: Die;
+  private iron: Die;
+  private lip: Decal | null = null;
+  private lipKey = "";
+  private shape = "";
+  private counts = { r: 0, t: 0 };
+  constructor(
+    private readonly host: Host,
+    seed: number,
+    detachment: boolean,
+  ) {
+    const back = detachment ? CH / 2 + 0.06 : TRAY.back, d = back - TRAY.front, cy = (back + TRAY.front) / 2;
+    const bronze = new MeshStandardMaterial({ color: kit.tray.rim, roughness: 0.42, metalness: 0.65 });
+    const floor = new MeshStandardMaterial({ color: kit.tray.floor, roughness: 0.9, metalness: 0 });
+    const edge = new MeshStandardMaterial({ color: 0xd8c9a2, roughness: 0.95, metalness: 0 });
+    this.mats.push(bronze, floor, edge);
+    this.tones.push(kit.tray.rim, kit.tray.floor, 0xd8c9a2);
+    const rim = new BoxGeometry(TRAY.w + 0.05, d + 0.05, TRAY.floor);
+    const inner = new BoxGeometry(TRAY.w - 0.03, d - 0.03, 0.004);
+    this.geos.push(rim, inner);
+    const rimMesh = new Mesh(rim, bronze), innerMesh = new Mesh(inner, floor);
+    rimMesh.position.set(0, cy, TRAY.floor / 2);
+    innerMesh.position.set(0, cy, TRAY.floor + 0.002);
+    rimMesh.receiveShadow = innerMesh.receiveShadow = true;
+    this.group.add(rimMesh, innerMesh);
+    // The stacks' edges: boxes as thick as their cards, re-scaled as counts change.
+    const one = new BoxGeometry(1, 1, 1);
+    this.geos.push(one);
+    this.readyBlock = new Mesh(one, edge);
+    this.tappedBlock = new Mesh(one, edge);
+    this.readyBlock.castShadow = this.tappedBlock.castShadow = true;
+    this.group.add(this.readyBlock, this.tappedBlock);
+    // (A little seeded yaw, so no two dice sit alike.)
+    const yaw = (k: number) => (((seed * 2654435761 + k * 40503) >>> 0) % 1000) / 1000 - 0.5;
+    this.bone = new Die(host, "bone", TRAY.die, yaw(1) * 0.5);
+    this.iron = new Die(host, "iron", TRAY.die * TRAY.iron, yaw(2) * 0.5);
+    this.group.add(this.bone.group, this.iron.group);
+  }
+
+  /** The ready stack's top card's body (chips ride on it), or the tapped one's when none is ready. */
+  body(): Group | null {
+    return (this.ready ?? this.tapped)?.obj.body ?? null;
+  }
+  front(): Mesh | null {
+    return (this.ready ?? this.tapped)?.obj.front ?? null;
+  }
+
+  patch(v: ActorView, d: Extract<Draw, { t: "unit" }>): void {
+    const t = d.tray!;
+    // What has arrived: a newcomer is ready (tokens arrive untapped), so the bone die counts up as they land.
+    const r = Math.max(0, Math.min(t.ready, v.shown - t.tapped)), k = Math.max(0, Math.min(t.tapped, v.shown - r));
+    this.counts = { r, t: k };
+    const readyTop: TopFace = t.tally ? { tally: t.tally } : { face: v.face };
+    const tappedTop: TopFace = t.tally ? { tally: t.tally } : { face: t.tappedFace ?? v.face };
+    const shape = `${r > 0}|${k > 0}`;
+    if (shape !== this.shape) {
+      this.shape = shape;
+      for (const c of [this.ready, this.tapped])
+        if (c) {
+          this.group.remove(c.obj.group);
+          c.dispose();
+        }
+      this.ready = r > 0 ? new TrayCard(this.host, readyTop, d.token) : null;
+      this.tapped = k > 0 ? new TrayCard(this.host, tappedTop, d.token) : null;
+      for (const c of [this.ready, this.tapped]) if (c) this.group.add(c.obj.group);
+    } else {
+      this.ready?.set(readyTop);
+      this.tapped?.set(tappedTop);
+    }
+    // The tapped stack lies behind, turned, a band of it showing; alone it lies where the ready stack would.
+    const hT = Math.min(k, TRAY.most) * TH, hR = Math.min(r, TRAY.most) * TH, f = TRAY.floor + 0.004;
+    const yT = r > 0 ? CH / 2 + TRAY.band - CW / 2 : 0;
+    this.tappedBlock.visible = k > 1;
+    this.tappedBlock.scale.set(CH * 0.98, CW * 0.98, Math.max(1e-3, hT - TH));
+    this.tappedBlock.position.set(0, yT, f + (hT - TH) / 2);
+    this.tapped?.obj.group.position.set(0, yT, f + hT - TH / 2);
+    const zR = f + (k > 0 && r > 0 ? hT : 0);
+    this.readyBlock.visible = r > 1;
+    this.readyBlock.scale.set(CW * 0.98, CH * 0.98, Math.max(1e-3, hR - TH));
+    this.readyBlock.position.set(0, 0, zR + (hR - TH) / 2);
+    this.ready?.obj.group.position.set(0, 0, zR + hR - TH / 2);
+    // The dice: one card needs none.
+    this.bone.group.visible = r > 1;
+    this.bone.group.position.set(TRAY.boneAt.x, TRAY.boneAt.y, zR + hR + 0.001);
+    this.iron.group.visible = k > 1;
+    const ironAt = r > 0 ? TRAY.ironAt : TRAY.boneAt;
+    this.iron.group.position.set(ironAt.x, ironAt.y, f + hT + 0.001);
+    // The lip.
+    const lipKey = t.lip ? canonical(t.lip) : "";
+    if (lipKey !== this.lipKey) {
+      this.lipKey = lipKey;
+      if (this.lip) {
+        this.group.remove(this.lip.mesh);
+        this.lip.dispose();
+      }
+      this.lip = null;
+      if (t.lip) {
+        const lease = this.host.painter.lip(t.lip);
+        this.lip = new Decal(lease, TRAY.w, TRAY.lip.h, { renderOrder: 6 });
+        this.lip.mesh.userData[LABEL] = { fonts: [54], h: LIP_PX.h } satisfies LabelTag;
+        this.lip.mesh.rotation.x = TRAY.lip.tilt;
+        this.lip.mesh.position.set(0, TRAY.front - (TRAY.lip.h / 2) * Math.cos(TRAY.lip.tilt) - 0.01, TRAY.lip.z);
+        this.group.add(this.lip.mesh);
+      }
+    }
+  }
+
+  look(v: ActorView, clock: Clock): void {
+    const s = v.sample;
+    this.ready?.look(0, s.fade, v.mark, s.glow);
+    this.tapped?.look(1, s.fade, this.ready ? null : v.mark, s.glow);
+    this.bone.set(this.counts.r, clock.t);
+    this.iron.set(this.counts.t, clock.t);
+    this.bone.tick(clock, s.fade);
+    this.iron.tick(clock, s.fade);
+    this.lip?.tone(1 - 0.7 * s.fade);
+    const k = 1 - 0.7 * s.fade;
+    this.mats.forEach((m, i) => m.color.setHex(this.tones[i]!).multiplyScalar(k));
+  }
+
+  get moving(): boolean {
+    return this.bone.moving || this.iron.moving;
+  }
+
+  dispose(): void {
+    this.ready?.dispose();
+    this.tapped?.dispose();
+    this.bone.dispose();
+    this.iron.dispose();
+    this.lip?.dispose();
+    for (const g of this.geos) g.dispose();
+    for (const m of this.mats) m.dispose();
+  }
+}
+
 class UnitView implements PieceView {
   readonly group = new Group();
   private cards: CardPart[] = [];
@@ -321,6 +619,8 @@ class UnitView implements PieceView {
   private shadow: { mesh: Mesh; lease: Lease; tapped: boolean } | null = null;
   private well: { effect: Effect; key: string } | null = null;
   private wellSign: Decal | null = null;
+  private tray: TrayParts | null = null;
+  private foot: { mesh: Mesh; dispose(): void } | null = null;
 
   constructor(
     private readonly env: PieceEnv,
@@ -334,6 +634,8 @@ class UnitView implements PieceView {
       this.ash = ashFx(env.fx, d.seed, SIZE.ash);
       this.ground.group.add(this.ash.object);
     }
+    // A card standing at a lean of its own stands in a slotted brass foot.
+    if (d.posture === "stand" && d.lean !== undefined) this.foot = brassFoot(this.ground.group);
     this.patch(v);
   }
 
@@ -342,11 +644,39 @@ class UnitView implements PieceView {
   }
 
   front(): Mesh | null {
-    return this.cards[0]?.obj.front ?? null;
+    return this.tray ? this.tray.front() : (this.cards[0]?.obj.front ?? null);
+  }
+
+  /** The body its chips ride on: the top card's, or a tray's ready card's. */
+  private body(): Group | null {
+    return this.tray ? this.tray.body() : (this.cards[0]?.obj.body ?? null);
   }
 
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "unit" }>;
+    if (d.tray) {
+      // A tray draws its own stacks; no copies.
+      for (const c of this.cards) {
+        this.group.remove(c.obj.group);
+        c.dispose();
+      }
+      this.cards = [];
+      this.copyKey = "";
+      if (!this.tray) {
+        this.tray = new TrayParts(this.host, d.seed, d.tray.detachment);
+        this.group.add(this.tray.group);
+      }
+      this.tray.patch(v, d);
+    } else if (this.tray) {
+      this.group.remove(this.tray.group);
+      this.tray.dispose();
+      this.tray = null;
+    }
+    if (d.tray) {
+      this.dressing(d);
+      this.wellLook(d);
+      return this.chipsOn(v, d, false);
+    }
     const well = d.well;
     const copies = Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown)));
     // Each copy stands for members of the pile and wears their state (while members are still arriving, the first).
@@ -387,9 +717,14 @@ class UnitView implements PieceView {
     } else this.cards.forEach((c, i) => c.face(plan[i]?.face ?? v.face));
     this.dressing(d);
     this.wellLook(d);
+    this.chipsOn(v, d, !!well);
+  }
+
+  /** Its title tab and chips: counters on the top card, and a pile's count where its title gave way. */
+  private chipsOn(v: ActorView, d: Extract<Draw, { t: "unit" }>, well: boolean): void {
     const turned = !!v.face?.tapped;
     // A pile whose title gave way (no room on screen) shows its count as a chip on its face.
-    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well;
+    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well && !d.tray;
     const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
     if (key === this.key) return;
     this.key = key;
@@ -398,16 +733,18 @@ class UnitView implements PieceView {
     this.sign = null;
     if (d.title && d.label && !well) this.sign = this.titleTab(d, turned);
     for (const c of this.chips) {
-      this.cards[0]!.obj.body.remove(c.mesh);
+      c.mesh.parent?.remove(c.mesh);
       c.dispose();
     }
     this.chips = [];
+    const body = this.body();
+    if (!body) return;
     // (A well's count is on its sign.)
     const specs = [...d.chips, ...(chip ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
     specs.forEach((spec, i) => {
       const chip = new Decal(this.host.painter.chip(spec), SIZE.chip, SIZE.chip, { renderOrder: 6 });
       chip.mesh.position.set(SIZE.chipAt.x - i * SIZE.chipStep, SIZE.chipAt.y, SIZE.chipAt.z);
-      this.cards[0]!.obj.body.add(chip.mesh);
+      body.add(chip.mesh);
       this.chips.push(chip);
     });
   }
@@ -456,14 +793,15 @@ class UnitView implements PieceView {
   /** A well's pool under its lands and its sign (mine in front, alternating rows; theirs over the card in its seat's colour). */
   private wellLook(d: Extract<Draw, { t: "unit" }>): void {
     const w = d.well;
-    const key = w ? `${w.colours.join("")}|${w.spent}|${d.seed}` : "";
+    const spent = d.tray ? d.tray.ready === 0 : !!w?.spent;
+    const key = w ? `${w.colours.join("")}|${spent}|${d.seed}` : "";
     if (this.well && this.well.key !== key) {
       this.group.remove(this.well.effect.object);
       this.well.effect.dispose();
       this.well = null;
     }
     if (w && !this.well) {
-      const effect = wellFx(this.env.fx, w.colours, d.seed, w.spent, CW, CH);
+      const effect = wellFx(this.env.fx, w.colours, d.seed, spent, CW, CH);
       effect.object.position.set(0, 0, SIZE.well.glow);
       this.group.add(effect.object);
       this.well = { effect, key };
@@ -473,7 +811,8 @@ class UnitView implements PieceView {
       this.wellSign.dispose();
       this.wellSign = null;
     }
-    if (!w) return;
+    // (A tray's sign is its dice and tally card.)
+    if (!w || d.tray) return;
     const lease = this.host.painter.sign({ text: w.sign, colour: w.theirs ? d.seatColour : null, sub: w.sub });
     const sign = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
     labelled(sign, lease, w.sub ? [SIGN_FONT.text, SIGN_FONT.sub] : [SIGN_FONT.text], LABEL_PX.theirs);
@@ -501,6 +840,7 @@ class UnitView implements PieceView {
       c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own);
     }
     for (const c of this.dress) c.look(0, s.fade, null, 0);
+    this.tray?.look(v, clock);
     this.sign?.tone(1 - 0.8 * s.fade);
     this.ground.follow(s.rx);
     if (this.wellSign) {
@@ -518,7 +858,7 @@ class UnitView implements PieceView {
       const tapped = s.tap > 0.5;
       if (!this.shadow || this.shadow.tapped !== tapped) {
         this.dropShadow();
-        const sh = standeeShadow(this.env, tapped, this.env.pitch + (tapped ? TAP_LEAN : 0));
+        const sh = standeeShadow(this.env, tapped, (d.lean ?? this.env.pitch) + (tapped ? TAP_LEAN : 0));
         this.shadow = { ...sh, tapped };
         this.ground.group.add(sh.mesh);
       }
@@ -541,6 +881,8 @@ class UnitView implements PieceView {
     this.sign?.dispose();
     this.wellSign?.dispose();
     for (const c of this.chips) c.dispose();
+    this.tray?.dispose();
+    this.foot?.dispose();
     this.marks.clear();
     this.ash?.dispose();
     this.well?.effect.dispose();

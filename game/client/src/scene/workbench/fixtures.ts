@@ -89,6 +89,7 @@ function boardCard(e: Entry, id: number): BoardCard {
     name: e.name,
     cardKey: e.name,
     sig: `${e.name}|${e.tapped ?? false}|${e.power ?? ""}/${e.toughness ?? ""}`,
+    kin: `${e.name}|${e.power ?? ""}/${e.toughness ?? ""}`,
     land,
     creature,
     planeswalker: e.kind === "walker",

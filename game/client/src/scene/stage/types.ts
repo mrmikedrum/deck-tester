@@ -5,7 +5,7 @@ import type { ChangeSet, MomentKind, ReadingId, SeatId, TableModel } from "../..
 import type { CardId } from "../../protocol";
 import type { Point, Rect, TablePlan, V3 } from "../../layout";
 import type { BoardCues, CommitId, Mark, Ms, ScreenPose } from "../../play";
-import type { ChipSpec, FaceSpec, PlateSpec, SeatPlace } from "../../theme";
+import type { ChipSpec, FaceSpec, LipSpec, PlateSpec, SeatPlace, TallySpec } from "../../theme";
 import type { DrawnPiece } from "./pick";
 
 // ---- the frame in, the report out -------------------------------------------------------------------------------------
@@ -220,6 +220,10 @@ export type Draw =
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
       readonly seed: number;
+      /** A tray under dice (the `die` layout), or null. */
+      readonly tray: TrayLook | null;
+      /** Standing at a lean of its own in a brass foot (the `die` layout), radians back from upright. */
+      readonly lean?: number;
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }
@@ -367,6 +371,22 @@ export interface Scheduled extends FlightPlan {
 }
 
 // ---- what the view draws each frame ----------------------------------------------------------------------------------
+
+/**
+ * A tray as drawn: how many lie ready and tapped (the dice; a count follows what has arrived), its top card (the real
+ * card, or a tally card), its tapped stack's face, and its lip.
+ */
+export interface TrayLook {
+  readonly ready: number;
+  readonly tapped: number;
+  /** The tally card, where the stack is mixed; null shows the real card. */
+  readonly tally: TallySpec | null;
+  /** The tapped stack's top face (a tapped member's), or null for the tally card turned. */
+  readonly tappedFace: FaceSpec | null;
+  readonly lip: LipSpec | null;
+  /** A detachment in the combat row: a small tray of attackers going together. */
+  readonly detachment: boolean;
+}
 
 export interface ActorView {
   readonly id: string;

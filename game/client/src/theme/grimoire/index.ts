@@ -6,6 +6,7 @@ export * from "./names";
 export * from "./face-size";
 export * from "./face";
 export * from "./sign";
+export * from "./die";
 export * from "./plate";
 export * from "./decals";
 export * from "./page";

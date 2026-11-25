@@ -42,6 +42,7 @@ export function card(o: CardInput): BoardCard {
     id,
     cardKey: o.name,
     sig: `${o.name}|${o.tapped ?? false}|${o.power ?? ""}/${o.toughness ?? ""}`,
+    kin: `${o.name}|${o.power ?? ""}/${o.toughness ?? ""}`,
     land: false,
     creature: false,
     planeswalker: false,

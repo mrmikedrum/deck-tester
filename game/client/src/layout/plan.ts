@@ -7,6 +7,10 @@ import type { ChromeMode, Reservations } from "./reservations";
 import type { LayoutMemory, SeatInput, SeatLayout, SeatPlan, Summary, Unit } from "./seat";
 import { Ledger } from "./ledger";
 import { mat } from "./seat/mat";
+import { die } from "./seat/die";
+
+/** The seat layouts a table can be planned with, by id: `mat` (today's page) and `die` (trays under dice). */
+export const LAYOUTS: Readonly<Record<string, SeatLayout>> = { mat, die };
 import { combatRow, fighters, rowUnits } from "./combat";
 import type { CombatPairs } from "./combat";
 import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry";
@@ -222,7 +226,7 @@ export function planTable(input: TableInput): TablePlan {
   const vp = input.viewport, projector = pinhole(tpl.camera, vp), reserve = reservations(vp, input.mode, input.safe);
   const mk = (i: number): Omit<SeatInput, "pressure"> => {
     const { seat, board } = input.seats[i]!, slot = tpl.slots[i]!;
-    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null };
+    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null, combat: input.combat ?? null };
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);

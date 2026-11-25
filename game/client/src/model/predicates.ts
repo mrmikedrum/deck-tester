@@ -96,6 +96,13 @@ export const sig = (c: Card): string =>
     "|",
   );
 
+/**
+ * Kin: what makes two cards one kind for a tray under a die (the `die` layout): `sig` without tapped and summoning
+ * sickness, so a swarm holds its ready and its tapped members alike.
+ */
+export const kin = (c: Card): string =>
+  [c.name, c.copy ? c.name : "", c.faceDown, JSON.stringify(lookCounters(c)), c.power ?? "", c.toughness ?? ""].join("|");
+
 /** A card's role on its seat's page, as h.js named its pieces: what sweeps read their reach by. */
 export type Role = "creature" | "walker" | "mana" | "support";
 export const roleOf = (c: Card): Role =>

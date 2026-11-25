@@ -44,6 +44,10 @@ export interface BandSpec {
   step: number;
   per: number;
   rows: number;
+  /** Its things lie flat on the page (the `die` layout's support): a row is as deep as it lies, with nothing to see over. */
+  lying?: boolean;
+  /** How tall what stands in it is, for what must show behind it (the mat's: a card and its title tab). */
+  tall?: number;
 }
 export type BandKey = "C" | "S" | "L";
 
@@ -58,6 +62,8 @@ export interface Region {
 export interface Geo {
   readonly proj: Projector;
   readonly pitch: number;
+  /** How far a standee leans back from upright, where a layout stands its cards at a lean of its own; else `pitch`. */
+  readonly lean?: number;
   /** The 1180x820 design unit in CSS px. */
   readonly u: number;
   readonly hand: { readonly right: number; readonly top: number } | null;
@@ -119,7 +125,7 @@ export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1
   // lying flat reaches away from its near edge (its foot).
   const mid: V3 = flat
     ? { x: pos.x, y: pos.y, z: pos.z - 0.5 * CH * s }
-    : { x: pos.x, y: pos.y + 0.5 * CH * s * Math.cos(g.pitch), z: pos.z - 0.5 * CH * s * Math.sin(g.pitch) };
+    : { x: pos.x, y: pos.y + 0.5 * CH * s * Math.cos(g.lean ?? g.pitch), z: pos.z - 0.5 * CH * s * Math.sin(g.lean ?? g.pitch) };
   const at = (y: number) => g.proj.project({ x: pos.x, y, z: pos.z });
   const a = g.proj.project({ ...mid, x: mid.x - 0.5 }), b = g.proj.project({ ...mid, x: mid.x + 0.5 });
   const k = (b.x - a.x) / g.u;
@@ -127,7 +133,8 @@ export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1
   // (Tapped, it lies turned: then its narrow side runs away from me, foreshortened, and that must be 44 too.)
   if (flat) {
     const tall = ((at(0).y - g.proj.project({ x: pos.x, y: 0, z: pos.z - 0.5 }).y) * 2) / g.u;
-    w = Math.max(w, ((Math.max(FLOOR.any, tap) * 1.12 * k) / tall) * (CW / CH), (px * 1.09 * k) / tall);
+    // (Turned, any card's floor: a band whose floor is higher, my trays', has its tapped cards in its trays' bands.)
+    w = Math.max(w, ((Math.max(FLOOR.any, tap) * 1.12 * k) / tall) * (CW / CH), (Math.max(FLOOR.any, tap) * 1.09 * k) / tall);
   }
   return w / (CW * k);
 }
@@ -136,7 +143,7 @@ export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1
 // at depth `foot`, as I see it. Far off I look across the table more than down on it, so a standee there hides more of
 // the page behind it than near me: a row or band behind starts here, or the card in front covers its foot.
 export function clearBehind(g: Geo, r: Region, foot: number, s: number, tall = CH * 1.04): number {
-  const up = { y: Math.cos(g.pitch), z: -Math.sin(g.pitch) };
+  const up = { y: Math.cos(g.lean ?? g.pitch), z: -Math.sin(g.lean ?? g.pitch) };
   const f = g.toWorld(r, 0, r.d / 2 - foot);
   const top = g.proj.project({ x: f.x, y: f.y + up.y * tall * s, z: f.z + up.z * tall * s }).y / g.u - 2;
   let lo = foot, hi = r.d + 4;
