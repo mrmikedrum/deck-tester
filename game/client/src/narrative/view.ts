@@ -82,12 +82,18 @@ export function recapView(s: State): RecapView | null {
   const settled = s.losses.filter((l) => ids.has(l.id) && l.wait === null);
   if (!settled.length) return null;
   const one = settled.length === 1 ? settled[0]! : null;
-  // One line, and the line is the button: "Lost: Meloku (exile) ›", "Lost 3: Meloku, Thopter, Thopter ›".
+  // One line, and the line is the button: "Lost: Meloku (exile) ›", "Lost 22: Princess Yue, Meloku +6 · Illusion ×7 ›".
   if (one) {
     const where = one.where === "away" ? (one.token ? "token" : "") : one.where.replace(/^to (?:the )?/, "");
     return { title: `Lost: ${one.name}${where ? ` (${where})` : ""} ›`, summary: "" };
   }
-  return { title: `Lost ${settled.length}: ${settled.map((l) => l.name).join(", ")} ›`, summary: "" };
+  // Many: like cards counted ("Illusion ×7"), the first two others named, the rest "+N".
+  const by = new Map<string, number>();
+  for (const l of settled) by.set(l.name, (by.get(l.name) ?? 0) + 1);
+  const singles = [...by].filter(([, n]) => n === 1).map(([name]) => name);
+  const kinds = [...by].filter(([, n]) => n > 1).sort((a, b) => b[1] - a[1]).map(([name, n]) => `${name} ×${n}`);
+  const named = singles.slice(0, 2).join(", ") + (singles.length > 2 ? ` +${singles.length - 2}` : "");
+  return { title: `Lost ${settled.length}: ${[named, ...kinds].filter(Boolean).join(" · ")} ›`, summary: "" };
 }
 
 /** live.js `lostSheet` ("What you lost"): every settled loss this game, newest first. */

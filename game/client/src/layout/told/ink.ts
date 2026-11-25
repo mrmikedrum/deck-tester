@@ -6,9 +6,9 @@ import type { Account } from "./account";
 /** Type sizes (design px on screen, at their smallest: the line furthest from me). The tally's numeral is the glance. */
 export const INK_PX = { line: 13, tally: 28, slip: 14 } as const;
 /** Rows, in ems: the tally's row holds its numeral; every other line a row of its own. */
-export const ROW = { tally: 2.3, line: 1.22 } as const;
+export const ROW = { tally: 2.6, line: 1.22 } as const;
 /** The tally numeral's size, in ems of a line. */
-export const TALLY_EM = INK_PX.tally / INK_PX.line;
+export const TALLY_EM = 2.4;
 /** A line's average letter, in ems, for packing words into a width (the serif the ink is written in). */
 export const LETTER_EM = 0.47;
 

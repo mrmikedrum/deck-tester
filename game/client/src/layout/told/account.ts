@@ -8,8 +8,8 @@ import type { CardId } from "../types";
 // the engine's keywords as the card has them now): it never works out a fight or a ruling, and a missing fact drops its
 // clause rather than guess. Its words: digits first, then one game term; no sentences; clauses join with " · ".
 
-/** At most this many lines on a page at rest (a lean-in may write them all). */
-export const ACCOUNT_LINES = 7;
+/** At most this many lines on a page at rest; fewer only where the page has no room (seat/told.ts `inkBlock`). */
+export const ACCOUNT_LINES = 10;
 
 /** The keywords an account speaks of, in the order it says them, and the word it says each with. Vigilance, haste, flash
  *  and ward never: they do not change who can block whom. */

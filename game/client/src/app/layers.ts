@@ -162,7 +162,7 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
   const what = all.zone ? `${whose} ${all.zone}` : names.size === 1 ? [...names][0]! : `${whose} ${kind}`;
   // An account (the told table) opens as itself: its words over its cards.
   const account = [...plan.seats.values()].flatMap((p) => p.units).find((u) => u.id === group)?.account;
-  const title = account ? `${whose} account ×${n}` : n > 1 ? `${what} ×${n}` : what;
+  const title = account ? seatName(model, seat) : n > 1 ? `${what} ×${n}` : what;
   const lines = account ? inkLines(account.words).map((l) => (l.t === "tally" ? `${l.power} ${l.rest}` : l.t === "entry" ? [l.text, l.trait].filter(Boolean).join(" ") : l.text)) : null;
   const pages = siftPages(n), p = Math.max(0, Math.min(pages - 1, page));
   const from = p * SIFT_PAGE, to = Math.min(n, from + SIFT_PAGE);
@@ -170,7 +170,7 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
   return {
     group,
     title,
-    tapped: all.tapped.filter(Boolean).length,
+    tapped: account ? 0 : all.tapped.filter(Boolean).length,
     page: p,
     pages,
     range: pages > 1 ? `${from + 1}–${to} of ${n}` : null,

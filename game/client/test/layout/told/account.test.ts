@@ -31,7 +31,7 @@ const seat = (turn: 9 | 15, name: string) => boardOf(gameAt(turn), seatId(name))
 describe("the account at turn 15", () => {
   it("Marath: 92 power, three kinds, five more, the works", () => {
     const b = seat(15, "Marath");
-    const a = accountOf(b, written(b, ["Marath, Will of the Wild", "Rishkar, Peema Renegade", "Herd Baloth", "Evolution Witness", "Generous Patron"]), { width: 40 });
+    const a = accountOf(b, written(b, ["Marath, Will of the Wild", "Rishkar, Peema Renegade", "Herd Baloth", "Evolution Witness", "Generous Patron"]), { width: 40, lines: 7 });
     expect(lines(a)).toEqual([
       "92 power · 33 creatures",
       "Beast 4/4 ×9 ▮▮▮▮▮▮▮▬▬",
@@ -46,7 +46,7 @@ describe("the account at turn 15", () => {
 
   it("Atraxa: the fliers counted with their power, her own traits by name", () => {
     const b = seat(15, "Atraxa");
-    const a = accountOf(b, written(b, ["Atraxa, Praetors' Voice", "Glissa, Herald of Predation", "Steel Overseer", "Tekuthal, Inquiry Dominus"]), { width: 36 });
+    const a = accountOf(b, written(b, ["Atraxa, Praetors' Voice", "Glissa, Herald of Predation", "Steel Overseer", "Tekuthal, Inquiry Dominus"]), { width: 36, lines: 7 });
     expect(lines(a)).toEqual([
       "42 power · 21 creatures",
       "11 fly (21 power)",
@@ -61,7 +61,7 @@ describe("the account at turn 15", () => {
 
   it("Dack: the works take the lines left", () => {
     const b = seat(15, "Dack");
-    const a = accountOf(b, written(b, ["Dack Fayden, Helping Hand", "Wispweaver Angel", "Restoration Angel", "Felidar Guardian"]), { width: 52 });
+    const a = accountOf(b, written(b, ["Dack Fayden, Helping Hand", "Wispweaver Angel", "Restoration Angel", "Felidar Guardian"]), { width: 52, lines: 7 });
     expect(lines(a)).toEqual([
       "21 power · 13 creatures",
       "8 fly (13 power)",
@@ -101,7 +101,7 @@ describe("the account at turn 9", () => {
 
   it("Atraxa: identical works are counted", () => {
     const b = seat(9, "Atraxa");
-    const a = accountOf(b, written(b, ["Atraxa, Praetors' Voice", "Glissa, Herald of Predation", "Steel Overseer", "Chrome Host Seedshark"]), { width: 40 });
+    const a = accountOf(b, written(b, ["Atraxa, Praetors' Voice", "Glissa, Herald of Predation", "Steel Overseer", "Chrome Host Seedshark"]), { width: 40, lines: 7 });
     expect(lines(a)).toEqual([
       "21 power · 9 creatures",
       "4 fly (10 power)",
