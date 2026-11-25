@@ -127,7 +127,7 @@ function standing(c: BoardCard, hosts: ReadonlySet<CardId>): number {
  * outnumber the places, the smallest trays join it too.
  */
 const foldC =
-  (cards: Cards, hosts: ReadonlySet<CardId>, me: boolean) =>
+  (cards: Cards, hosts: ReadonlySet<CardId>, me: boolean, offered: ReadonlySet<CardId>) =>
   (units: Draft[], cap: number): Draft[] => {
     const fights = units.filter((u) => u.fight), rest = units.filter((u) => !u.fight);
     const room = Math.max(1, cap - fights.length);
@@ -135,7 +135,9 @@ const foldC =
     // (Theirs: the commander first, then the trays, then the standouts. Mine: my own creatures before my token swarms,
     // which I know by their dice; past my front line they lie in my Ranks.)
     const tray = (u: Draft) => (me ? u.ids.length : 1e7 + u.ids.length);
-    const worth = (u: Draft): number => (cards.need(u.rep).commander ? 1e8 : u.ids.length > 1 ? tray(u) : standing(cards.need(u.rep), hosts));
+    // (A card a decision offers steps out of the Ranks while it is offered, so a tap on the table reaches it.)
+    const worth = (u: Draft): number =>
+      cards.need(u.rep).commander ? 1e8 : u.ids.length > 1 ? tray(u) : offered.has(u.rep) ? 5e7 : standing(cards.need(u.rep), hosts);
     const ranked = rest.slice().sort((a, b) => worth(b) - worth(a));
     const kept = new Set(ranked.slice(0, room - 1)), folded = rest.filter((u) => !kept.has(u));
     const cs = readyFirst(folded.flatMap((u) => u.ids).map((id) => cards.need(id)));
@@ -235,5 +237,5 @@ const band =
 
 export const die: SeatLayout = {
   id: "die",
-  plan: (input) => planWith(input, { paradigm: "die", classify, foldC: (cards, hosts, input) => foldC(cards, hosts, input.board.mine), geo: (g) => ({ ...g, lean: STAND_LEAN, band: band(g) }), finish }),
+  plan: (input) => planWith(input, { paradigm: "die", classify, foldC: (cards, hosts, input) => foldC(cards, hosts, input.board.mine, input.offered ?? new Set()), geo: (g) => ({ ...g, lean: STAND_LEAN, band: band(g) }), finish }),
 };

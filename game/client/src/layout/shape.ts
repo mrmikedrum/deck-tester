@@ -95,7 +95,7 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
  * A tray's footprint in its card's frame, card heights from its foot (the ready card's near edge): its lip in front, its
  * tapped band behind, one creature place wide (scene/three/pieces.ts `TRAY`).
  */
-export const TRAY_PRINT = { w: CH + 0.11, front: -0.24, back: CH + 0.3 + 0.085, detached: CH + 0.085 } as const;
+export const TRAY_PRINT = { w: CH + 0.11, front: -0.32, back: CH + 0.3 + 0.085, detached: CH + 0.085 } as const;
 /** How much of its height the tapped stack shows behind the ready one: 0.3, so two tray rows fit a side page. */
 export const TRAY_BAND = 0.3;
 

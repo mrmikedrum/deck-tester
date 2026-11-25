@@ -160,6 +160,8 @@ export interface TableInput {
   readonly layout?: SeatLayout;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
+  /** Cards the decision up offers (`SeatInput.offered`). */
+  readonly offered?: ReadonlySet<CardId>;
 }
 
 export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack";
@@ -228,7 +230,7 @@ export function planTable(input: TableInput): TablePlan {
   const vp = input.viewport, projector = pinhole(tpl.camera, vp), reserve = reservations(vp, input.mode, input.safe);
   const mk = (i: number): Omit<SeatInput, "pressure"> => {
     const { seat, board } = input.seats[i]!, slot = tpl.slots[i]!;
-    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null, combat: input.combat ?? null };
+    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null, combat: input.combat ?? null, ...(input.offered ? { offered: input.offered } : {}) };
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);

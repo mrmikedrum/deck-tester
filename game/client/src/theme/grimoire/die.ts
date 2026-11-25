@@ -102,7 +102,7 @@ export interface LipSpec {
 }
 
 /** The lip's canvas size, px: one line on a brass strip as wide as the tray. */
-export const LIP_PX = { w: 512, h: 72 } as const;
+export const LIP_PX = { w: 512, h: 84, font: 60 } as const;
 
 /** A tray's brass lip: total power, then keyword icons, each with a count unless every member has it. */
 export function paintLip(canvas: Canvas, spec: LipSpec, s: Surfaces): void {
@@ -121,7 +121,7 @@ export function paintLip(canvas: Canvas, spec: LipSpec, s: Surfaces): void {
   x.lineWidth = 4;
   rr(x, 2, 2, W - 4, H - 4, 9);
   x.stroke();
-  x.font = `700 54px ${font.num}`;
+  x.font = `700 ${LIP_PX.font}px ${font.num}`;
   x.textBaseline = "middle";
   const icons = spec.icons.filter((i) => KEYWORD_ICONS[i.keyword]).slice(0, 3);
   const iw = (i: (typeof icons)[number]) => 50 + (i.count !== null ? x.measureText(String(i.count)).width + 4 : 0);
@@ -133,8 +133,8 @@ export function paintLip(canvas: Canvas, spec: LipSpec, s: Surfaces): void {
   at += tw + 14;
   for (const i of icons) {
     x.save();
-    x.translate(at, H / 2 - 22);
-    x.scale(44 / 24, 44 / 24);
+    x.translate(at, H / 2 - 24);
+    x.scale(48 / 24, 48 / 24);
     x.fill(new Path2D(KEYWORD_ICONS[i.keyword]!));
     x.restore();
     if (i.count !== null) x.fillText(String(i.count), at + 48, H / 2 + 3);

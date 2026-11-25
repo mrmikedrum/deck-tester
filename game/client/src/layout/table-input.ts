@@ -26,6 +26,8 @@ export interface TableInputOptions {
   readonly combat?: CombatPairs | null;
   /** The seat layout by id (`LAYOUTS`): `mat` when absent or unknown. */
   readonly layout?: string;
+  /** Cards the decision up offers: a layout may keep them out of its folds (the `die` layout's Ranks). */
+  readonly offered?: ReadonlySet<CardId>;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -61,5 +63,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     stack,
     combat,
     ...(o.layout && LAYOUTS[o.layout] ? { layout: LAYOUTS[o.layout]! } : {}),
+    ...(o.offered?.size ? { offered: o.offered } : {}),
   };
 }

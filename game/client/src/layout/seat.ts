@@ -120,6 +120,8 @@ export interface SeatInput {
   readonly pressure: number;
   /** Attacks and blocks, where a layout seats its fighters by what they do (the `die` layout's detachments). */
   readonly combat?: CombatPairs | null;
+  /** Cards the decision up offers: a layout may keep them out of its folds, so a tap on the table can reach them. */
+  readonly offered?: ReadonlySet<CardId>;
 }
 
 export interface SeatPlan {

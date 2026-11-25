@@ -329,7 +329,7 @@ const TRAY = {
   boneAt: { x: 0.1, y: 0.08 },
   ironAt: { x: CH / 2 - 0.14, y: CH / 2 + TRAY_BAND / 2 },
   /** The lip: a brass strip along the front, tilted to face me. */
-  lip: { h: 0.15, z: 0.05, tilt: 1.0 },
+  lip: { h: 0.18, z: 0.05, tilt: 1.2 },
   /** A die's hop and tumble when its count changes. */
   hop: 0.2,
   tumble: 0.45,
@@ -572,9 +572,9 @@ class TrayParts {
       if (t.lip) {
         const lease = this.host.painter.lip(t.lip);
         this.lip = new Decal(lease, TRAY.w, TRAY.lip.h, { renderOrder: 6 });
-        this.lip.mesh.userData[LABEL] = { fonts: [54], h: LIP_PX.h } satisfies LabelTag;
+        this.lip.mesh.userData[LABEL] = { fonts: [LIP_PX.font], h: LIP_PX.h } satisfies LabelTag;
         this.lip.mesh.rotation.x = TRAY.lip.tilt;
-        this.lip.mesh.position.set(0, TRAY.front - (TRAY.lip.h / 2) * Math.cos(TRAY.lip.tilt) - 0.01, TRAY.lip.z);
+        this.lip.mesh.position.set(0, TRAY.front - (TRAY.lip.h / 2) * Math.cos(TRAY.lip.tilt) - 0.06, (TRAY.lip.h / 2) * Math.sin(TRAY.lip.tilt) + 0.01);
         this.group.add(this.lip.mesh);
       }
     }
@@ -1034,10 +1034,10 @@ class PlateView implements PieceView {
     }
     if (d.muster && !this.muster) {
       const lease = this.host.painter.sign({ text: d.muster.lines[0], colour: null, sub: d.muster.lines[1] });
-      const fit = Math.min(1, 2.8 / (lease.width * SIGN_U * 1.35));
-      const decal = new Decal(lease, lease.width * SIGN_U * 1.35 * fit, lease.height * SIGN_U * 1.35 * fit, { depthTest: false, renderOrder: 10 });
+      const fit = Math.min(1, 3.2 / (lease.width * SIGN_U * 1.55));
+      const decal = new Decal(lease, lease.width * SIGN_U * 1.55 * fit, lease.height * SIGN_U * 1.55 * fit, { depthTest: false, renderOrder: 10 });
       labelled(decal, lease, [SIGN_FONT.text, SIGN_FONT.sub]);
-      const mw = lease.width * SIGN_U * 1.35 * fit, mh = lease.height * SIGN_U * 1.35 * fit;
+      const mw = lease.width * SIGN_U * 1.55 * fit, mh = lease.height * SIGN_U * 1.55 * fit;
       if (d.muster.side) decal.mesh.position.set(d.muster.side * (SIZE.plate.w / 2 + 0.08 + mw / 2), SIZE.plate.y, 0);
       // (Above it, clear of the red die that stands on its top edge in a combat.)
       else decal.mesh.position.set(-SIZE.plate.w * 0.12, SIZE.plate.y + SIZE.plate.h / 2 + 0.42 + mh / 2, 0);

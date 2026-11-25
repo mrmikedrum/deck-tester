@@ -16,6 +16,16 @@ export function chromeMode(s: AppState, cues: BoardCues): ChromeMode {
   return cues.handAway ? "mulligan" : "normal";
 }
 
+/** The cards the decision up offers (its refs' cards), as layout takes them: a layout may keep them out of its folds. */
+function offeredBy(s: AppState): CardId[] {
+  const d = s.session.decision;
+  const refs: readonly unknown[] = (d && "refs" in d ? d.refs : null) ?? [];
+  return refs.flatMap((r) => {
+    const c = r && typeof r === "object" ? (r as { card?: unknown }).card : undefined;
+    return typeof c === "number" ? [c as CardId] : [];
+  });
+}
+
 /** The cards play's combat draft has acting, as layout takes them: ids. */
 function drafted(cues: BoardCues): CardId[] {
   const d = cues.combat;
@@ -30,9 +40,9 @@ function pairsKey(cues: BoardCues): string {
   return [...d.attacks.map((a) => `${a.attacker}>${to(a.defender)}`), ...d.blocks.map((b) => `${b.blocker}|${b.attacker}`)].join(",");
 }
 
-function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
+function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean, offered: readonly CardId[]): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${s.layout}|${offered.join(",")}|${settling ? "settling" : ""}`;
 }
 
 export interface Replanned {
@@ -54,7 +64,8 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
     return { state: s.plan || s.planKey ? { ...s, plan: null, planKey: null, reserve } : { ...s, reserve }, error: null };
   }
   const involved = drafted(cues);
-  const key = keyOf(model, s, mode, pairsKey(cues), settling);
+  const offered = offeredBy(s);
+  const key = keyOf(model, s, mode, pairsKey(cues), settling, offered);
   if (key === s.planKey) return { state: s, error: null };
   try {
     const plan = planTable(
@@ -67,6 +78,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         involved: new Set(involved),
         combat: cues.combat,
         layout: s.layout,
+        offered: new Set(offered),
       }),
     );
     return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };
