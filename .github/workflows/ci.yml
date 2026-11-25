@@ -24,7 +24,7 @@ jobs:
       - run: python -m unittest discover -s tests -v
 
   client:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # Playwright 1.48 installs browser dependencies for 24.04
     timeout-minutes: 20
     defaults:
       run:
