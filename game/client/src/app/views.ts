@@ -34,6 +34,7 @@ export function sceneFrame(s: AppState): SceneFrame | null {
     hover: s.hover,
     commit: s.commit,
     reducedMotion: s.reducedMotion,
+    ...(s.paradigm === "front" ? { reading: narrative.readingContext(s.model, s.session.decision?.kind ?? null) } : {}),
   };
 }
 

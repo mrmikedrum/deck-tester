@@ -9,6 +9,7 @@ export * from "./sign";
 export * from "./plate";
 export * from "./decals";
 export * from "./page";
+export * from "./reading";
 export * from "./table";
 export * as materials from "./materials";
 export * from "./fx";

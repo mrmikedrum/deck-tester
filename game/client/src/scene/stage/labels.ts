@@ -28,6 +28,9 @@ export interface LabelAsk {
   readonly count: number;
   /** "↷4", or null. */
   readonly tap: string | null;
+  /** Said after the count where there is room ("· 36"), and whether the count reads "×9". */
+  readonly note?: string | null;
+  readonly times?: boolean;
 }
 
 /** A label as placed: its text's parts, its size, and its slide along the card's top edge as a share of the card's width. */
@@ -35,6 +38,8 @@ export interface PlacedLabel {
   readonly name: string;
   readonly px: number;
   readonly slide: number;
+  /** The note it kept, or null where it had no room for one. */
+  readonly note?: string | null;
 }
 
 type Box = readonly [number, number, number, number];
@@ -58,7 +63,8 @@ export function shorter(name: string): string[] {
   return [...new Set(out)];
 }
 
-export const labelText = (name: string, count: number, tap: string | null): string => [name, String(count), tap].filter(Boolean).join(" ");
+export const labelText = (name: string, count: number, tap: string | null, note: string | null = null, times = false): string =>
+  [name, times ? `×${count}` : String(count), note, tap].filter(Boolean).join(" ");
 
 /** Places every ask's label (in order: mine first, then by seat), or leaves it to the count chip (absent from the map). */
 export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure: Measure = estimate): Map<string, PlacedLabel> {
@@ -78,14 +84,15 @@ export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure:
     const want = a.mine ? LABEL_PX.mine : LABEL_PX.theirs;
     let done: PlacedLabel | null = null;
     find: for (const slide of [0, 0.125, -0.125, 0.25, -0.25])
+      for (const note of a.note ? [a.note, null] : [null])
       for (const name of shorter(a.name))
         for (let px = want; px >= LABEL_PX.floor; px--) {
-          const tw = measure(labelText(name, a.count, a.tap), px), bw = tw + LABEL_PX.pad * px, bh = LABEL_PX.tall * px;
+          const tw = measure(labelText(name, a.count, a.tap, note, !!a.times), px), bw = tw + LABEL_PX.pad * px, bh = LABEL_PX.tall * px;
           if (bw > room) continue;
           const mid = cx + slide * w, box: Box = [mid - bw / 2, card[1] - bh + OVERLAP, mid + bw / 2, card[1] + OVERLAP];
           if (box[1] < 0 || obstacles.some((o) => o.id !== a.id && meets(o.box, box))) continue;
           obstacles.push({ id: a.id, box });
-          done = { name, px, slide };
+          done = { name, px, slide, ...(a.note !== undefined ? { note } : {}) };
           break find;
         }
     if (done) placed.set(a.id, done);

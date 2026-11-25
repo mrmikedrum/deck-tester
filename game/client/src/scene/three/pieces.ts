@@ -20,7 +20,7 @@ import {
 } from "three";
 import type { Material, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
-import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
+import { SIGN_FONT, SIGN_U, canonical, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
 import { PILE_STEP, siftRoll } from "../stage/poses";
@@ -419,7 +419,7 @@ class UnitView implements PieceView {
   private titleTab(d: Extract<Draw, { t: "unit" }>, turned: boolean): Decal {
     const l = d.label!;
     const count = /(\d+)$/.exec(d.title ?? "")?.[1] ?? "";
-    const lease = this.host.painter.sign({ text: [l.name, count, d.tapNote].filter(Boolean).join(" "), colour: null, sub: null });
+    const lease = this.host.painter.sign({ text: [l.name, d.times ? `×${count}` : count, l.note, d.tapNote].filter(Boolean).join(" "), colour: null, sub: null });
     const top = turned ? CW / 2 : CH / 2, across = turned ? CH : CW;
     const tab = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
     tab.mesh.userData[LABEL] = { fonts: [SIGN_FONT.text], h: lease.height, want: l.px, foot: top, overlap: LABEL_OVERLAP } satisfies LabelTag;
@@ -1043,6 +1043,46 @@ class ScrimView implements PieceView {
   }
 }
 
+/** A leaf's slip: its painted strip lying on the table (a page's layer, under every card), dimmed with its seat. */
+class SlipView implements PieceView {
+  readonly group = new Group();
+  private readonly mesh: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private lease: Lease;
+  private key: string;
+  constructor(
+    private readonly host: Host,
+    v: ActorView,
+  ) {
+    const d = v.draw as Extract<Draw, { t: "slip" }>;
+    this.lease = host.painter.reading(d.spec);
+    this.key = canonical(d.spec);
+    this.mesh = new Mesh(new PlaneGeometry(d.spec.w, d.spec.d), new MeshBasicMaterial({ map: this.lease.texture, transparent: true, depthWrite: false }));
+    this.mesh.rotation.x = -Math.PI / 2;
+    this.mesh.position.y = 0.004;
+    this.mesh.renderOrder = -1;
+    this.group.add(this.mesh);
+  }
+  patch(v: ActorView): void {
+    const d = v.draw as Extract<Draw, { t: "slip" }>;
+    const key = canonical(d.spec);
+    if (key === this.key) return;
+    const next = this.host.painter.reading(d.spec);
+    this.lease.release();
+    this.lease = next;
+    this.key = key;
+    this.mesh.material.map = next.texture;
+    this.mesh.material.needsUpdate = true;
+  }
+  look(v: ActorView): void {
+    this.mesh.material.color.setScalar(1 - v.sample.fade);
+  }
+  dispose(): void {
+    this.mesh.geometry.dispose();
+    this.mesh.material.dispose();
+    this.lease.release();
+  }
+}
+
 /** A piece view for an actor's form. */
 export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
   switch (v.draw.t) {
@@ -1060,6 +1100,8 @@ export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
       return new SiftView(env.host, v);
     case "scrim":
       return new ScrimView(env.host, v);
+    case "slip":
+      return new SlipView(env.host, v);
     case "hidden":
       return null;
   }

@@ -11,6 +11,7 @@ import {
   paintFxSprite,
   paintHalo,
   paintPage,
+  paintReading,
   paintPageShade,
   paintPlate,
   paintShade,
@@ -21,7 +22,7 @@ import {
   paintTag,
   paintVellumTile,
 } from "../../theme";
-import type { ChipSpec, FaceEnv, FaceSpec, FxSprite, HaloKind, PageSpec, PlateSpec, SignSpec } from "../../theme";
+import type { ChipSpec, FaceEnv, FaceSpec, FxSprite, HaloKind, PageSpec, PlateSpec, ReadingSpec, SignSpec } from "../../theme";
 import type { Lease, TextureCache } from "./textures";
 
 export class Painter {
@@ -85,6 +86,10 @@ export class Painter {
   }
   page(spec: PageSpec): Lease {
     return this.cache.lease("page|" + canonical(spec), (c) => paintPage(c, spec, this.env.surfaces));
+  }
+  /** A leaf's slip: its lines of ink on a strip of vellum. */
+  reading(spec: ReadingSpec): Lease {
+    return this.cache.lease("reading|" + canonical(spec), (c) => paintReading(c, spec, this.env.surfaces));
   }
   vellumTile(mine: boolean, base: string): Lease {
     return this.cache.lease(`vellum|${mine}|${base}`, (c) => paintVellumTile(c, mine, base, this.env.surfaces));

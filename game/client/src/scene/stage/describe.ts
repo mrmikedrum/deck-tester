@@ -11,6 +11,8 @@ import type { CardId } from "../../protocol";
 import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
+import { seatReading } from "../../narrative";
+import type { ReadingContext } from "../../narrative";
 import { canonical, faceKey, shortName } from "../../theme";
 import type { FaceSpec } from "../../theme";
 import { DIM, SCRIM } from "./motion";
@@ -30,6 +32,8 @@ export interface DescribeInput {
   readonly hover: string | null;
   /** The labels' text widths (the sign's font measured); an estimate without one. */
   readonly measure?: Measure;
+  /** What I am doing, which chooses a leaf's slip's second line. */
+  readonly reading?: ReadingContext;
 }
 
 /** The hover lift: a card under the pointer comes up off its page (a guess; the old client peeked in HTML instead). */
@@ -176,6 +180,8 @@ export function describe(input: DescribeInput): Description {
           title: null,
           sub: null,
           mixed: false,
+          note: null,
+          times: false,
           mine,
           chips: [],
           dressed: [],
@@ -210,6 +216,30 @@ export function describe(input: DescribeInput): Description {
       draw: { t: "plate", spec },
       needsMembers: false,
     });
+
+    // A leaf's slip: its words, lying under the page's near edge (focus-first). None where there is nothing to say.
+    const slip = sp.fixtures.slip;
+    if (slip && !mine) {
+      const folded = sp.units.some((u) => u.role === "creature" && u.members.length > 1);
+      const lines = seatReading(model, seat, folded, input.reading ?? "rest");
+      if (lines.length) {
+        const spec = { lines, colour: colourOf(model, seat), w: slip.w, d: slip.d };
+        put({
+          id: `slip:${seat}`,
+          kind: "slip",
+          seat,
+          members: [],
+          face: null,
+          ...placed(seat, pagePose(slip), true),
+          look: { ...LOOK, fade: dimOf(seat) },
+          form: `slip|${seat}`,
+          mods: canonical(spec),
+          mark: null,
+          draw: { t: "slip", spec },
+          needsMembers: false,
+        });
+      }
+    }
 
     // A hand is the chrome's (mine) or a count on the plate (theirs, never visible): counted, never drawn here.
     const hand = model.zone(seat, "hand");
@@ -282,12 +312,12 @@ export function describe(input: DescribeInput): Description {
   for (const p of pieces.values()) {
     if (p.draw.t !== "unit" || !p.draw.title || p.draw.well) continue;
     const m = /^(.*?)\s*(\d+)$/.exec(p.draw.title);
-    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote });
+    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote, note: p.draw.note ?? null, times: p.draw.times ?? false });
   }
   const labelled = placeLabels(plan, asks, input.measure);
   for (const a of asks) {
     const p = pieces.get(a.id)!, d = p.draw as Extract<Draw, { t: "unit" }>, l = labelled.get(a.id) ?? null;
-    pieces.set(a.id, { ...p, draw: { ...d, label: l }, mods: `${p.mods}#${l ? `${l.name}|${l.px}|${l.slide}` : "chip"}` });
+    pieces.set(a.id, { ...p, draw: { ...d, label: l }, mods: `${p.mods}#${l ? `${l.name}|${l.px}|${l.slide}|${l.note ?? ""}` : "chip"}` });
   }
 
   // The stack as the focus lays one scrim over the table; the stack's cards, what they aim at and the arcs stand above it,
@@ -440,7 +470,7 @@ function unitPiece(
   const mark = strongest(u.members.map(markOf));
   const face = top ? faceOfCard(model, top, mark) : null;
   const chips = top ? chipsOf(top) : [];
-  const looked = u.kind === "well" ? wellLook(model, u, mine) : null;
+  const looked = u.kind === "well" ? wellLook(model, u, mine, plan.paradigm === "front") : null;
   const well = looked ? { ...looked, sign: looked.theirs ? looked.sign : fitWellSign(plan, u.id, looked.sign, input.measure ?? estimate), ...row } : null;
   const dressed = u.dressing
     .map((id) => model.cards.get(id))
@@ -457,6 +487,8 @@ function unitPiece(
     title,
     sub: title && u.kind !== "well" ? pileSub(model, u, title) : null,
     mixed: u.mixed,
+    note: u.note ?? null,
+    times: u.times ?? false,
     mine,
     chips,
     dressed,
@@ -560,7 +592,7 @@ function wellColours(cards: readonly Card[]): string[] {
  * A well's sign (h.js `buildBoard`): mine say what they hold and how many are tapped ("Mountain ×4" over "1 tapped");
  * theirs is one well signed with its count of lands, and what else makes their mana under it ("+ 1 mana rock").
  */
-function wellLook(model: TableModel, u: Unit, mine: boolean): Omit<WellLook, "alt" | "small"> {
+function wellLook(model: TableModel, u: Unit, mine: boolean, leaf = false): Omit<WellLook, "alt" | "small"> {
   const cards = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
   const n = cards.length,
     tapped = cards.filter((c) => c.tapped).length;
@@ -572,6 +604,11 @@ function wellLook(model: TableModel, u: Unit, mine: boolean): Omit<WellLook, "al
       tr = cards.filter(isTreasure).length,
       rocks = n - lands - tr;
     const more = [rocks ? `${rocks}${tr ? "" : " mana"} rock${rocks > 1 ? "s" : ""}` : "", tr ? `${tr} Treasure${tr > 1 ? "s" : ""}` : ""].filter(Boolean);
+    // A leaf's well says what it holds on one line and how much of it is open under it ("Lands 14 · 2 rocks" / "10 open").
+    if (leaf) {
+      const short = [rocks ? `${rocks} rock${rocks > 1 ? "s" : ""}` : "", tr ? `${tr} Treasure${tr > 1 ? "s" : ""}` : ""].filter(Boolean);
+      return { sign: [`Lands ${lands}`, ...short].join(" · "), sub: `${n - tapped} open`, colours, spent, shown, theirs: true };
+    }
     return { sign: `Lands ${lands}`, sub: more.length ? `+ ${more.join(" · ")}` : null, colours, spent, shown, theirs: true };
   }
   const rep = model.cards.get(u.top);

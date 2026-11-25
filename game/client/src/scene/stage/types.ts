@@ -5,7 +5,8 @@ import type { ChangeSet, MomentKind, ReadingId, SeatId, TableModel } from "../..
 import type { CardId } from "../../protocol";
 import type { Point, Rect, TablePlan, V3 } from "../../layout";
 import type { BoardCues, CommitId, Mark, Ms, ScreenPose } from "../../play";
-import type { ChipSpec, FaceSpec, PlateSpec, SeatPlace } from "../../theme";
+import type { ChipSpec, FaceSpec, PlateSpec, ReadingSpec, SeatPlace } from "../../theme";
+import type { ReadingContext } from "../../narrative";
 import type { DrawnPiece } from "./pick";
 
 // ---- the frame in, the report out -------------------------------------------------------------------------------------
@@ -80,6 +81,8 @@ export interface SceneFrame {
   readonly commit: CommitId;
   /** Reduced motion (a setting): shorter moves, no stagger; never changes decision timing. */
   readonly reducedMotion?: boolean;
+  /** What I am doing, which chooses what a leaf's slip says on its second line (focus-first). */
+  readonly reading?: ReadingContext;
 }
 
 /**
@@ -161,7 +164,7 @@ export const LOOK: Look = { fade: 0, lift: 0, tap: 0, glow: 0, alpha: 1, w: 0, d
  * What a piece is: a layout unit, a zone pile, a plate, a stack entry, a page, a hidden count (a hand), or a sifted card
  * (a pile's card fanned out in front of the camera, and the scrim behind them).
  */
-export type PieceKind = "unit" | "zone" | "plate" | "stack" | "page" | "hidden" | "sift";
+export type PieceKind = "unit" | "zone" | "plate" | "stack" | "page" | "hidden" | "sift" | "slip";
 
 /** A mana well's sign and light (old h.js `well`): what it says, its colours, and whether every land in it is spent. */
 export interface WellLook {
@@ -215,7 +218,10 @@ export type Draw =
       readonly tapNote: string | null;
       /** Its title as placed on screen (labels.ts): the name it says, its text size (CSS px) and its slide along the top
        * edge (a share of the card's width); null where it gives way to the count chip, or has no title. */
-      readonly label: { readonly name: string; readonly px: number; readonly slide: number } | null;
+      readonly label: { readonly name: string; readonly px: number; readonly slide: number; readonly note?: string | null } | null;
+      /** What its tab says after its count ("· 36"), and whether the count reads "×9" (focus-first's tabs). */
+      readonly note?: string | null;
+      readonly times?: boolean;
       /** Its seat's colour (a well's sign notch, a standee's stripe). */
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
@@ -241,6 +247,8 @@ export type Draw =
     }
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
   | { readonly t: "hidden" }
+  /** A leaf's slip (focus-first): its lines, lying on the table under the page's near edge. */
+  | { readonly t: "slip"; readonly spec: ReadingSpec }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
   | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }
   /** The shade a sift lays over the table, and the vellum behind its cards (a screen rect, CSS px). */

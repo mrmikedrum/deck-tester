@@ -4,6 +4,7 @@ import type { BoardCard } from "../board";
 import type { Fixtures, LayoutMemory, Placement, SeatInput, SeatLayout, SeatPlan, Unit, UnitRole } from "../seat";
 import type { CardId, V3 } from "../types";
 import { Ledger } from "../ledger";
+import { RULE_CARDS } from "../../model";
 import { CH, CW, PLATE_S, ZONE_S, clearBehind, floorScale, makeGeo } from "./geometry";
 import type { Geo, Region } from "./geometry";
 import { chooseFront, weightOf } from "./rank";
@@ -74,6 +75,14 @@ function behind(g: Geo, r: Region, y: number, u = 0): number {
     else hi = m;
   }
   return hi;
+}
+
+/** A works pile's tab names what acts on play: its planeswalkers, and how many rule-changing cards (`RULE_CARDS`). */
+function worksNote(cs: readonly BoardCard[]): string | undefined {
+  const walkers = cs.filter((c) => c.planeswalker).map((c) => c.name.split(/[\s,]/)[0]!);
+  const rules = cs.filter((c) => RULE_CARDS.has(c.name)).length;
+  const parts = [...walkers, ...(rules ? [`${rules} rule${rules > 1 ? "s" : ""}`] : [])];
+  return parts.length ? `· ${parts.join(" · ")}` : undefined;
 }
 
 const isMana = (c: BoardCard): boolean => !c.creature && !c.planeswalker && !c.specialLand && (c.land || c.manaRock || c.treasure);
@@ -168,7 +177,7 @@ function plan(input: SeatInput): SeatPlan {
   const aFlat = Math.max(clearBehind(g, r, LEAF.foot, sFront), behind(g, r, frontTop - 2 * g.u, -span / 2), behind(g, r, frontTop - 2 * g.u, span / 2)) + 0.05;
 
   const units: Unit[] = [];
-  const unit = (key: string, role: UnitRole, members: CardId[], pl: Placement, o: { title?: string | null; mixed?: boolean; acting?: boolean; well?: boolean } = {}): void => {
+  const unit = (key: string, role: UnitRole, members: CardId[], pl: Placement, o: { title?: string | null; mixed?: boolean; acting?: boolean; well?: boolean; note?: string; times?: boolean } = {}): void => {
     if (!members.length) return;
     // A pile shows a ready card where it has one: its tapped ones lie turned at its end.
     const ready = members.filter((id) => !need(id).tapped), tapped = members.filter((id) => need(id).tapped);
@@ -183,6 +192,8 @@ function plan(input: SeatInput): SeatPlan {
       top,
       title: o.title ?? null,
       mixed: !!o.mixed,
+      ...(o.note && order.length > 1 ? { note: o.note } : {}),
+      ...(o.times ? { times: true } : {}),
       acting: !!o.acting,
       tapped: o.well ? false : need(top).tapped,
       placement: pl,
@@ -195,20 +206,27 @@ function plan(input: SeatInput): SeatPlan {
     if (!gr) return;
     const m = out(gr);
     const c0 = need(gr.ids[0]!);
-    unit(gr.key, gr.role, m, { pos: frontPos(i), scale: sFront, posture: "stand" }, { title: m.length > 1 ? `${c0.name} ${m.length}` : null });
+    // A regiment's tab: its name, how many, and its power, or the keyword that matters more ("Thopter ×8 · fly").
+    const cs = m.map(need), fly = cs.every((c) => c.keywords.some((k) => k.toLowerCase() === "flying"));
+    const note = fly ? "· fly" : `· ${cs.reduce((t, c) => t + Math.max(0, c.power ?? 0), 0)}`;
+    unit(gr.key, gr.role, m, { pos: frontPos(i), scale: sFront, posture: "stand" }, { title: m.length > 1 ? `${c0.name} ${m.length}` : null, note, times: true });
   });
 
   // The flat row: the well, the works (one pile past three), the muster.
   const backCreatures = groups.filter((gr) => gr.role === "creature" && !inFront.has(gr.key)).flatMap(out);
   const works = [...groups.filter((gr) => gr.role === "walker" && !inFront.has(gr.key)).flatMap(out), ...support.map((c) => c.id).filter((id) => !actingSet.has(id) && id !== lip)];
-  const flat: { key: string; role: UnitRole; ids: CardId[]; title?: string; mixed?: boolean; well?: boolean }[] = [];
+  const flat: { key: string; role: UnitRole; ids: CardId[]; title?: string; mixed?: boolean; well?: boolean; note?: string }[] = [];
   const manaIds = mana.map((c) => c.id);
   if (manaIds.length) flat.push({ key: `m${board.seat}`, role: "mana", ids: manaIds, well: true });
   // At most four things lie in the back row: past that the works are one pile.
   const lying = Number(manaIds.length > 0) + Number(groups.some((gr) => gr.role === "creature" && !inFront.has(gr.key)));
-  if (works.length > Math.min(LEAF.compact.lying, 4 - lying)) flat.push({ key: `k${board.seat}`, role: "support", ids: works, title: `Works ${works.length}`, mixed: true });
+  if (works.length > Math.min(LEAF.compact.lying, 4 - lying)) flat.push({ key: `k${board.seat}`, role: "support", ids: works, title: `Works ${works.length}`, mixed: true, note: worksNote(works.map(need)) ?? "" });
   else for (const id of works) flat.push({ key: `s${id}`, role: need(id).planeswalker ? "walker" : "support", ids: [id] });
-  if (backCreatures.length) flat.push({ key: `u${board.seat}`, role: "creature", ids: backCreatures, ...(backCreatures.length > 1 ? { title: `More ${backCreatures.length}`, mixed: true } : {}) });
+  if (backCreatures.length) {
+    const cs = backCreatures.map(need), fliers = cs.filter((c) => c.keywords.some((k) => k.toLowerCase() === "flying")).length;
+    const note = `· ${cs.reduce((t, c) => t + Math.max(0, c.power ?? 0), 0)} power${fliers ? ` · ${fliers} flier${fliers > 1 ? "s" : ""}` : ""}`;
+    flat.push({ key: `u${board.seat}`, role: "creature", ids: backCreatures, ...(backCreatures.length > 1 ? { title: `More ${backCreatures.length}`, mixed: true, note } : {}) });
+  }
   // A pile far off lying flat would have to be huge to be 44 px tall from my chair: the back row leans up a little. Each
   // thing takes its own width (a turned one a card's height), and the row is centred.
   const turned = (ids: CardId[], well: boolean) => !well && ids.every((id) => need(id).tapped);
@@ -219,13 +237,14 @@ function plan(input: SeatInput): SeatPlan {
     return at(-total / 2 + widths.slice(0, i).reduce((t, w) => t + w * sc, 0) + (widths[i]! * sc) / 2, aFlat);
   };
   const sFlat = Math.min(room, Math.max(sizeFor(g, at(0, aFlat), "lean", FLOOR.any), ...flat.map((_, i) => sizeFor(g, flatAt(i, 1.6), "lean", FLOOR.any))));
-  flat.forEach((f, i) => unit(f.key, f.role, f.ids, { pos: flatAt(i, sFlat), scale: sFlat, posture: "lean" }, { ...(f.title ? { title: f.title } : {}), mixed: !!f.mixed, well: !!f.well }));
+  flat.forEach((f, i) => unit(f.key, f.role, f.ids, { pos: flatAt(i, sFlat), scale: sFlat, posture: "lean" }, { ...(f.title ? { title: f.title } : {}), mixed: !!f.mixed, well: !!f.well, ...(f.note ? { note: f.note } : {}) }));
   // Where the back row's tops end on screen: the plaque and the piles behind it stand from there.
   const backTop = Math.min(...units.filter((x) => x.placement.posture === "lean").map((x) => bounds(unitShape(g.proj, "", x, false).face).t), g.proj.project(at(0, aFlat + CH * sFlat)).y);
   const yBack = backTop - 3 * g.u;
 
   // The lip: the card played last, then whatever acts, shingled toward the table's middle; just off the near edge.
-  const inner = r.x > 0.5 ? -1 : 1;
+  // (Every lip at its leaf's right end: the across leaf's and the right one's never meet in the gap between them.)
+  const inner = 1;
   const lipCards = [...(lip !== null ? [lip] : []), ...acting];
   const sLip = sizeFor(g, at(inner * (W / 2 - 1), -1.2), "lean", FLOOR.any);
   const aLip = -(CH * sLip + 0.12);

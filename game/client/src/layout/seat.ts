@@ -43,6 +43,9 @@ export interface Unit {
   readonly title: string | null;
   /** A pile of unlike cards. */
   readonly mixed: boolean;
+  /** What its tab says after its count ("· 36", "· fly", "· 15 power"), or none. Its count reads "×9" with `times`. */
+  readonly note?: string;
+  readonly times?: boolean;
   /** Its cards act now (attack, block, are aimed at): it stands in its place but the combat row will take it. */
   readonly acting: boolean;
   /** Standing in the combat row in the open middle, away from its page place, which stays free for it (combat.ts). */

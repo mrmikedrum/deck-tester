@@ -30,3 +30,5 @@ export {
   TOASTS_KEPT,
 } from "./narrate";
 export { logSheetView, logStripView, lossReport, recapView, restoreView, watching } from "./view";
+export { forceLine, readingContext, seatReading } from "./reading";
+export type { ReadingContext, SlipLine } from "./reading";
