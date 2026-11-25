@@ -154,7 +154,9 @@ export function describe(input: DescribeInput): Description {
     const cmdCard = cmd ? model.cards.get(cmd.card) : undefined;
     if (cmd && cmdCard) {
       const mark = markOf(cmd.card) ?? null;
-      const face = faceOfCard(model, cmdCard, mark);
+      const cmdPose = unitPose(plan.projector, cmd.placement, false);
+      const small = isSmall(plan, cmdPose);
+      const face = faceOfCard(model, cmdCard, mark, small);
       const id = `command:${seat}`;
       put({
         id,
@@ -162,11 +164,12 @@ export function describe(input: DescribeInput): Description {
         seat,
         members: [cmd.card],
         face: cmd.card,
-        ...placed(seat, unitPose(plan.projector, cmd.placement, false)),
+        ...placed(seat, cmdPose),
         look: lookOf(Math.max(dimOf(seat), fighting ? DIM.fightOther : 0), mark, input.hover === id, false),
         form: `command|${cmd.card}`,
         mods: faceKey(face) + (mark ?? ""),
         mark,
+        small,
         // (It leans with the plaque, no standee's ash or shadow under it.)
         draw: {
           t: "unit",
@@ -442,9 +445,7 @@ function unitPiece(
   const top = model.cards.get(u.top);
   const mark = strongest(u.members.map(markOf));
   const pose = unitPose(plan.projector, u.placement, u.tapped);
-  // Under 56 px on screen a card wears its small form: one word, one figure or one glyph.
-  const q = poseQuad(plan.projector, pose);
-  const small = Math.hypot(q[1].x - q[0].x, q[1].y - q[0].y) < SMALL_FACE_PX;
+  const small = isSmall(plan, pose);
   const face = top ? faceOfCard(model, top, mark, small) : null;
   const chips = top ? chipsOf(top) : [];
   const looked = u.kind === "well" ? wellLook(model, u, mine) : null;
@@ -453,7 +454,7 @@ function unitPiece(
     .map((id) => model.cards.get(id))
     .filter((c): c is Card => !!c)
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
-  const { copies, tapNote } = copiesOf(model, u);
+  const { copies, tapNote } = copiesOf(model, u, small);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
   const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
   const draw: Draw = {
@@ -490,13 +491,18 @@ function unitPiece(
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
     mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.sick, draw.cue ?? ""].join("#"),
     mark,
+    small,
     draw,
     needsMembers: true,
   };
 }
 
-/** A card narrower than this on screen (CSS px) wears its small face. */
+/** A card narrower than this on screen (CSS px) wears its small face: one word, one figure or one glyph. */
 const SMALL_FACE_PX = 56;
+function isSmall(plan: DescribeInput["plan"], pose: Pose): boolean {
+  const q = poseQuad(plan.projector, pose);
+  return Math.hypot(q[1].x - q[0].x, q[1].y - q[0].y) < SMALL_FACE_PX;
+}
 
 /** How many copies a pile draws (a well's short stack: four). */
 export const PILE_COPIES = { pile: 3, well: 4 } as const;
@@ -511,13 +517,13 @@ export function tappedCopies(k: number, n: number, t: number): number {
 }
 
 /** The copies a unit draws, ready first, each tapped one a tapped member's face; and its tapped count where inexact. */
-function copiesOf(model: TableModel, u: Unit): { copies: { face: FaceSpec | null; tapped: boolean }[]; tapNote: string | null } {
+function copiesOf(model: TableModel, u: Unit, small = false): { copies: { face: FaceSpec | null; tapped: boolean }[]; tapNote: string | null } {
   const cs = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
   const n = cs.length, k = Math.max(1, Math.min(n, u.kind === "well" ? PILE_COPIES.well : PILE_COPIES.pile));
   const tapped = cs.filter((c) => c.tapped), t = tapped.length, kt = tappedCopies(k, n, t);
   const copies = [
     ...Array.from({ length: k - kt }, () => ({ face: null, tapped: false })),
-    ...tapped.slice(0, kt).map((c) => ({ face: faceOfCard(model, c), tapped: true })),
+    ...tapped.slice(0, kt).map((c) => ({ face: faceOfCard(model, c, null, small), tapped: true })),
   ];
   return { copies, tapNote: t > 0 && n > k && u.kind !== "well" ? `↷${t}` : null };
 }

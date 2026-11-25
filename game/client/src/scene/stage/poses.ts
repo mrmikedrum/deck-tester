@@ -3,7 +3,7 @@
 // Ported from old h.js `layout` (standees lean back by the camera's pitch, a tapped one further; flat cards are propped
 // up a little), `zoneLean` (a pile propped from its near edge), `buildStack` (cards facing the camera) and `restOf`/
 // `onPile` (where a card lands on a pile). Pure.
-import { STACK_POSE } from "../../layout";
+import { STACK_POSE, STAND_OFF, TILT } from "../../layout";
 import type { Placement, Point, Posture, Projector, Quad, Rect, V3 } from "../../layout";
 import { CH, CW, PILE_LEAN, TAP_LEAN } from "../../layout/seat/geometry";
 import type { ScreenPose } from "../../play";
@@ -11,12 +11,8 @@ import { materials } from "../../theme";
 import { PATH, add, scaled, v3 } from "./motion";
 import type { Pose } from "./types";
 
-// Layout's posture rules (layout/shape.ts `frameOf`): a prop stands nearly upright. A lean is drawn lying flat on the
-// vellum, as a card on a table does (layout measures it propped a little, so its patch is a little taller than it).
-const TILT = { prop: 0.85, lean: 0, flat: 0 } as const;
+// Layout's posture rules (layout/shape.ts `TILT`, `STAND_OFF`), shared so what is drawn is what a tap reaches.
 const { slab } = materials;
-/** A standee's face stands this far off the page (layout's `base.y + 0.02`): its stock's back corner then meets it. */
-const STAND_OFF = 0.02;
 /** A stack card's foot stands at least this far over the table. */
 const STACK_CLEAR = 0.02;
 /** A zone pile's block under its top card: its height by its count (a library of 67 the tallest thing on its leaf). */

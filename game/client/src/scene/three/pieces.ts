@@ -1,6 +1,6 @@
 // The stage's pieces as three.js objects: a unit (its top card, the copies under it, its title sign and chips; a standee
 // in its ash on its shadow, Auras and Equipment peeking out from behind it; a well of its mana's light under its signed
-// lands), a zone pile (a box of cards with the top one face up and its sign), a plate, a stack card (sleeved in its
+// lands), a zone pile (a box of cards with the top one face up and its sign), a plate's place, a stack card (sleeved in its
 // owner's colour on its drop shadow, its mana crackling off its rim, igniting as it is cast) with its owner's tag, a
 // page (its turn's edge handed over in 300 ms), a sifted card and the sift's shade, and a flying card (a ghost) with its
 // flare. A mark brings its effect: embers under what you can act on, gilt under what you chose, the sigil under what is
@@ -20,6 +20,7 @@ import {
 } from "three";
 import type { Material, Object3D, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { STAND_OFF } from "../../layout";
 import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
@@ -163,7 +164,6 @@ function faceLease(host: Host, spec: FaceSpec | null): Lease {
 export function artWanted(v: ActorView): readonly string[] {
   const urls: string[] = [];
   if (v.face?.art) urls.push(v.face.art);
-  if (v.draw.t === "plate" && v.draw.spec.art) urls.push(v.draw.spec.art);
   if (v.draw.t === "unit") for (const d of v.draw.dressed) if (d.face.art) urls.push(d.face.art);
   if (v.draw.t === "stack" && v.draw.img) urls.push(v.draw.img);
   return urls;
@@ -622,6 +622,8 @@ class UnitView implements PieceView {
     this.stand?.effect.tick(clock.t, level * lit, clock.still);
     this.mote?.effect.tick(clock.t, level, clock.still);
     this.dice?.tick(clock.t, clock.still);
+    // On the vellum: a standing card's foot (where its ground is) stands a little off the page.
+    if (this.dice) this.dice.group.position.y = uprightOf(d.posture) ? -STAND_OFF / Math.max(1e-3, s.s) : 0;
     this.well?.effect.tick(clock.t, level, clock.still);
     // The block and the contact shadow turn with the pile; the cast shadow is the lamp's own.
     this.pile.rotation.z = d.well ? 0 : -s.tap * (Math.PI / 2);
@@ -770,36 +772,15 @@ export function buildPlate(lease: Lease, pitch: number): { outer: Group; decal: 
   return { outer, decal, set: (l) => decal.set(l), dispose: () => decal.dispose() };
 }
 
-class PlateView implements PieceView {
+/**
+ * A seat's plate on the table: the nameplate is the chrome's now (chrome/plates.tsx), so this draws nothing and leases
+ * nothing. It keeps only its place, which a player's arcs and lanes land on.
+ */
+class PlateAnchor implements PieceView {
   readonly group = new Group();
-  private readonly plate: ReturnType<typeof buildPlate>;
-  constructor(
-    private readonly host: Host,
-    v: ActorView,
-    pitch: number,
-  ) {
-    this.plate = buildPlate(this.lease(v), pitch);
-    this.group.add(this.plate.outer);
-  }
-  private lease(v: ActorView): Lease {
-    const d = v.draw as Extract<Draw, { t: "plate" }>;
-    // As faces: a plate painted with its portrait keeps it, decoded or not.
-    const painted = d.spec.art ? this.host.painter.paintedPlate(d.spec) : null;
-    if (painted) return painted;
-    const art = d.spec.art && this.host.art(d.spec.art) ? d.spec.art : null;
-    return this.host.painter.plate({ ...d.spec, art });
-  }
-  patch(v: ActorView): void {
-    this.plate.set(this.lease(v));
-  }
-  look(v: ActorView): void {
-    // Dimmed, never dark: the name and life still read (h.js: `1 - 0.55 * f`). Gone under a sift's shade.
-    this.plate.decal.tone(1 - 0.55 * v.sample.fade);
-    this.plate.outer.visible = v.sample.alpha > 0.02;
-  }
-  dispose(): void {
-    this.plate.dispose();
-  }
+  patch(): void {}
+  look(): void {}
+  dispose(): void {}
 }
 
 // ---- a stack card ---------------------------------------------------------------------------------------------------
@@ -1179,7 +1160,7 @@ export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
     case "zone":
       return new ZoneView(env.host, v);
     case "plate":
-      return new PlateView(env.host, v, env.pitch);
+      return new PlateAnchor();
     case "stack":
       return new StackView(env, v);
     case "page":

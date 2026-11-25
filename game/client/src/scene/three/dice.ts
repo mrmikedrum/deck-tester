@@ -2,7 +2,7 @@
 // holds. 2 to 6 is one d6 (pips), 7 to 20 one d20 (a numeral), more is d10s side by side, one per digit. Bone with dark
 // ink, a little yaw each, never on a card. A die tumbles to its new face when the count changes (not under reduced
 // motion).
-import { BoxGeometry, CircleGeometry, CylinderGeometry, Group, IcosahedronGeometry, Mesh, MeshBasicMaterial, MeshStandardMaterial } from "three";
+import { BoxGeometry, CircleGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry } from "three";
 import type { BufferGeometry, Material } from "three";
 import type { Host } from "./host";
 import type { Lease } from "./textures";
@@ -16,7 +16,7 @@ export function diceFor(n: number): { kind: "d6" | "d20" | "d10"; face: number }
 }
 
 /** A die's size, world units (a card is 1 tall), and how far apart dice sit. */
-const DIE = { s: 0.24, gap: 1.12, tumble: 0.35, hop: 0.12 } as const;
+const DIE = { s: 0.17, gap: 1.15, tumble: 0.35, hop: 0.1, shade: 0.45 } as const;
 const BONE = 0xe9dcc0;
 
 /** The faces a d6 shows on its sides, given its top (opposite faces sum to 7). */
@@ -24,6 +24,8 @@ const SIDES: Readonly<Record<number, readonly number[]>> = { 1: [3, 4, 2, 5], 2:
 
 class Die {
   readonly group = new Group();
+  /** The die itself (body and numeral), which hops and turns; its contact shade stays on the vellum. */
+  readonly spin = new Group();
   private readonly leases: Lease[] = [];
   private readonly own: { dispose(): void }[] = [];
   constructor(host: Host, kind: "d6" | "d20" | "d10", face: number, yaw: number) {
@@ -46,22 +48,29 @@ class Die {
       body = new Mesh(keep(new BoxGeometry(s, s, s)), [lit(lease(true, a!)), lit(lease(true, b!)), lit(lease(true, face)), lit(null), lit(lease(true, c!)), lit(lease(true, d!))]);
       body.position.y = s / 2;
     } else {
-      const r = kind === "d20" ? s * 0.78 : s * 0.62;
-      const geo = kind === "d20" ? keep(new IcosahedronGeometry(r, 0)) : keep(new CylinderGeometry(r * 0.62, r, r * 1.15, 10));
+      // A faceted die resting on its base with a facet up, where its numeral is: a d20 rounder, a d10 squatter.
+      const r = kind === "d20" ? s * 0.72 : s * 0.64;
+      const h = kind === "d20" ? r * 1.25 : r * 1.05;
       const m = lit(null);
       m.flatShading = true;
-      body = new Mesh(geo, m);
-      body.position.y = kind === "d20" ? r * 0.8 : r * 0.58;
-      // Its numeral on a facet facing up.
-      const top = new Mesh(keep(new CircleGeometry(r * (kind === "d20" ? 0.66 : 0.6), 24)), new MeshBasicMaterial({ map: lease(false, face).texture, toneMapped: false }));
+      body = new Mesh(keep(new CylinderGeometry(r * (kind === "d20" ? 0.68 : 0.58), r, h, kind === "d20" ? 10 : 5)), m);
+      body.position.y = h / 2;
+      const top = new Mesh(keep(new CircleGeometry(r * (kind === "d20" ? 0.62 : 0.52), 24)), new MeshBasicMaterial({ map: lease(false, face).texture, toneMapped: false }));
       this.own.push(top.material as Material);
       top.rotation.x = -Math.PI / 2;
-      // (On a d20 it sits just over the top, where the facets meet, so it reads from across the table.)
-      top.position.y = body.position.y + (kind === "d20" ? r * 0.96 : r * 0.58) + 0.002;
-      this.group.add(top);
+      top.position.y = h + 0.002;
+      this.spin.add(top);
     }
-    body.castShadow = true;
-    this.group.add(body);
+    // Seated on the vellum: a soft dark contact under it.
+    const drop = host.painter.drop();
+    this.leases.push(drop);
+    const shade = new Mesh(keep(new PlaneGeometry(s * 2.1, s * 2.1)), new MeshBasicMaterial({ map: drop.texture, color: 0x000000, transparent: true, opacity: DIE.shade, depthWrite: false, toneMapped: false }));
+    this.own.push(shade.material as Material);
+    shade.rotation.x = -Math.PI / 2;
+    shade.position.y = 0.002;
+    shade.renderOrder = -1;
+    this.group.add(shade, this.spin);
+    this.spin.add(body);
     this.group.rotation.y = yaw;
   }
   dispose(): void {
@@ -108,9 +117,8 @@ export class Dice {
     const k = this.changedAt === null || still ? 1 : Math.min(1, (t - this.changedAt) / DIE.tumble);
     const hop = Math.sin(Math.PI * k) * DIE.hop;
     for (const d of this.dice) {
-      const body = d.group.children[d.group.children.length - 1]!;
-      body.rotation.x = (1 - k) * Math.PI * 1.5;
-      d.group.position.y = hop;
+      d.spin.rotation.x = (1 - k) * Math.PI * 1.5;
+      d.spin.position.y = hop;
     }
     if (k >= 1) this.changedAt = null;
   }
@@ -122,5 +130,6 @@ export class Dice {
   }
 }
 
-/** Where dice sit at a pile's foot (in its ground's frame: +x right, +z toward me), at its right-hand corner. */
-export const DICE_AT = { x: 0.36 - DIE.s * 0.05, z: DIE.s * 1.05 } as const;
+/** Where dice sit at a stack's foot (in its ground's frame: +x right, +z toward me): just under its power and toughness,
+ * in front of the foot, on the vellum. The same for every stack, standing or lying. */
+export const DICE_AT = { x: 0.358 - DIE.s * 0.9, z: DIE.s * 0.85 } as const;
