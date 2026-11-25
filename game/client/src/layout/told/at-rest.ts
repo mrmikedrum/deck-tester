@@ -38,6 +38,8 @@ export interface InkAtRest {
   /** A slip with no clear place on the table (the fight stands where it would lie): it is not drawn, and the prompt
    *  says it instead. */
   readonly away?: boolean;
+  /** It answers what I am doing to its seat now (slips: told/answers.ts `SlipWords.aimed`). */
+  readonly aimed?: boolean;
 }
 
 /** How far a slip lies in over its page's front edge (world): on the page's margin, short of the front row's feet. */
@@ -65,7 +67,8 @@ function block(proj: Projector, id: string, kind: InkKind, seat: SeatId | null, 
   const f = frameOf(yaw), k = pxPer(proj, p0, f);
   const em = px / k.deep, stretch = k.across / k.deep;
   const chars = Math.max(...lines.map((l) => l.length));
-  const w = (chars * LETTER_EM * em) / stretch + (pad ? 2 * PAD.x * em : 0);
+  // (Room for its widest letters: a numeral's digits run wider than an average letter.)
+  const w = ((chars * LETTER_EM + 0.6) * em) / stretch + (pad ? 2 * PAD.x * em : 0);
   // A slip is tapped to open its cards: at least a finger's patch deep on screen.
   const d = Math.max(lines.length * ROW.line * em + (pad ? 2 * PAD.y * em : 0), tall ? (TAP_PX + 2) / designUnit(proj.viewport) / k.deep : 0);
   const pos = centred ? p0 : at(p0, f, 0, -d / 2);
@@ -143,7 +146,8 @@ export function answersAtRest(o: AnswersInput): InkAtRest[] {
       ...wheres.map((w) => ({ x: make(false, narrow, w), tall: false })),
     ];
     const found = tries.find((t) => clear(t.x, t.tall));
-    out.push(found ? found.x : { ...tries[wheres.length]!.x, away: true });
+    const aimed = s.aimed ? { aimed: true } : {};
+    out.push(found ? { ...found.x, ...aimed } : { ...tries[wheres.length]!.x, away: true, ...aimed });
   }
   // (While I pick my attackers the prompt says my sums; the landing is written once an attack is declared.)
   if (o.combat?.attacks.length && o.ask?.kind !== "attack") {

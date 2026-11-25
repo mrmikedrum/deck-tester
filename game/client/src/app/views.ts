@@ -80,13 +80,14 @@ function handOf(s: AppState, model: TableModel, scene: SceneReport | null): Hand
 
 /**
  * The prompt's own sums are the told table's (the base page's prompt says nothing new); and a slip the table had no
- * clear place for (the fight stands where it would lie) is said there instead, under them, by its seat.
+ * clear place for (the fight stands where it would lie) is said there instead, under them, by its seat, when it answers
+ * what I am doing to that seat now; another stays quiet.
  */
 function promptSums(s: AppState, controls: ReturnType<typeof play.present>["controls"]): ReturnType<typeof play.present>["controls"] {
   const p = controls.prompt;
   if (!p) return controls;
   if (s.layout !== "told") return p.sum ? { ...controls, prompt: { ...p, sum: null } } : controls;
-  const away = (s.plan?.answers ?? []).filter((a) => a.away && a.kind === "slip").map((a) => `${s.model?.seat(a.seat!)?.name ?? a.seat}: ${a.lines.join(" · ")}`);
+  const away = (s.plan?.answers ?? []).filter((a) => a.away && a.aimed && a.kind === "slip").map((a) => `${s.model?.seat(a.seat!)?.name ?? a.seat}: ${a.lines.join(" · ")}`);
   if (!away.length) return controls;
   return { ...controls, prompt: { ...p, sum: [p.sum, ...away].filter(Boolean).join("\n") } };
 }

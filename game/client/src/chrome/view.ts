@@ -132,6 +132,8 @@ export interface SiftView {
   readonly range: string | null;
   /** The top of the fanned cards, CSS px: the caption sits just above them. */
   readonly top: number;
+  /** An opened account's own words, a line each, written above its cards (the told table). */
+  readonly lines?: readonly string[];
 }
 
 /** "Your hand" as a list (live.js `handSheet`): every card, what it costs, whether it has a play now. */

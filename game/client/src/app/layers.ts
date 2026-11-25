@@ -6,7 +6,7 @@ import type { CardId } from "../protocol";
 import { abilityText, handOrder, isCreature } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, SiftView, StackRow } from "../chrome";
-import { SIFT_PAGE, siftOf, siftPages } from "../layout";
+import { SIFT_PAGE, inkLines, siftOf, siftPages } from "../layout";
 import type { TablePlan } from "../layout";
 import { siftCards } from "../scene/stage/describe";
 import type { SeatPlace } from "../theme";
@@ -160,7 +160,10 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
   const names = new Set(cards.map((c) => c.face.name));
   const kind = cards.every((c) => /\bLand\b/.test(c.face.type)) ? "lands" : cards.every(isCreature) ? "creatures" : "cards";
   const what = all.zone ? `${whose} ${all.zone}` : names.size === 1 ? [...names][0]! : `${whose} ${kind}`;
-  const title = n > 1 ? `${what} ×${n}` : what;
+  // An account (the told table) opens as itself: its words over its cards.
+  const account = [...plan.seats.values()].flatMap((p) => p.units).find((u) => u.id === group)?.account;
+  const title = account ? `${whose} account ×${n}` : n > 1 ? `${what} ×${n}` : what;
+  const lines = account ? inkLines(account.words).map((l) => (l.t === "tally" ? `${l.power} ${l.rest}` : l.t === "entry" ? [l.text, l.trait].filter(Boolean).join(" ") : l.text)) : null;
   const pages = siftPages(n), p = Math.max(0, Math.min(pages - 1, page));
   const from = p * SIFT_PAGE, to = Math.min(n, from + SIFT_PAGE);
   const places = siftOf(plan.viewport, all.tapped.slice(from, to));
@@ -172,5 +175,6 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
     pages,
     range: pages > 1 ? `${from + 1}–${to} of ${n}` : null,
     top: Math.min(...places.map((q) => q.rect.top)),
+    ...(lines ? { lines } : {}),
   };
 }

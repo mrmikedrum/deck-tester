@@ -12,6 +12,8 @@ export { told } from "./seat/told";
 export { SEAT_LAYOUTS, seatLayoutId } from "./layouts";
 export type { SeatLayoutId } from "./layouts";
 export type { Ask } from "./told/answers";
+export { inkLines } from "./told/ink";
+export type { InkLine } from "./told/ink";
 export type { InkAtRest, InkKind } from "./told/at-rest";
 export { planSeat, auditSeat, planTable, hitTest, summarize } from "./plan";
 export { STACK_POSE } from "./plan";

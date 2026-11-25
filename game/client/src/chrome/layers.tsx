@@ -257,6 +257,9 @@ export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Ele
           {view.title}
           {view.tapped ? <i> · {view.tapped} tapped</i> : null}
         </b>
+        {view.lines?.map((l, i) => (
+          <small key={i}>{l}</small>
+        ))}
       </span>
       {view.range !== null ? (
         <span class="pager">

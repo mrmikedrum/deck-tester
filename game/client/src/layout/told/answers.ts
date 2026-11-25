@@ -22,6 +22,9 @@ export interface SlipWords {
   readonly seat: SeatId;
   readonly lines: readonly string[];
   readonly ids: readonly CardId[];
+  /** It answers what I am doing to this seat now (my picks aim at it; a sweep): worth the prompt's words if the table
+   *  has no room for it. */
+  readonly aimed?: boolean;
 }
 
 /** Where an attack lands on a defender: the power arriving unblocked, and whether a blocked attacker tramples. */
@@ -134,11 +137,14 @@ export function slipsOf(boards: readonly SeatBoard[], ask: Ask | null, combat: C
       .filter((b) => b.seat !== me && ask.defenders.includes(b.seat))
       .map((b) => {
         const picks = (combat?.attacks ?? []).filter((a) => "seat" in a.defender && a.defender.seat === b.seat).flatMap((a) => card.get(a.attacker) ?? []);
-        return attackSlip(b, picks);
+        return { ...attackSlip(b, picks), aimed: picks.length > 0 };
       });
   if (ask.kind === "sweep") {
     const hits = new Set(ask.hits);
-    return boards.filter((b) => b.seat !== me).flatMap((b) => sweepSlip(b, hits) ?? []);
+    return boards.filter((b) => b.seat !== me).flatMap((b) => {
+      const s = sweepSlip(b, hits);
+      return s ? [{ ...s, aimed: true }] : [];
+    });
   }
   return [];
 }
