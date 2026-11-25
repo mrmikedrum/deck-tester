@@ -80,6 +80,8 @@ export function inspectorOf(model: TableModel, id: CardId, actions: readonly Car
     });
   return {
     card: id,
+    // A card in my hand is held up in the hand's focus, the fan live under it.
+    ...(c.zone === "hand" && c.owner === model.viewer.perspective ? { held: true } : {}),
     name: c.faceDown && !mine ? "Face-down card" : c.face.name,
     image: c.faceDown ? null : c.face.img,
     faceDown: c.faceDown,

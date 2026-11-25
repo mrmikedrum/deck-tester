@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // The chrome's layers rendered from views: the inspector, the mulligan, the Game menu and its form, the hand as a list,
-// the stack's rules, the fixtures (the Game button, View hand, chips, the back bar), and the focus stack's rules in the
+// the stack's rules, the fixtures (the Game button, chips, the back bar), and the focus stack's rules in the
 // DOM: layers in its order, everything under the top one inert, keyboard focus into a new layer and back to the control
 // that opened it, and a scrim that dismisses only a press that started on it.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -71,6 +71,14 @@ describe("the inspector", () => {
     click($(".inspector .rel .tile"));
     expect(orders()).toEqual([{ act: { a: "pick", option: 5, card: INSPECTOR.card } }, { t: "dismiss" }, { t: "open", layer: "inspector", card: 9 }]);
     expect(sent[0]).toMatchObject({ stop: STOP });
+  });
+  it("a card in my hand is held up in the hand's focus: the card and its plays, under the fan, which stays live", () => {
+    open({ inspector: { ...INSPECTOR, held: true } });
+    expect($(".scrim.from-hand .inspector.from-hand .big")?.getAttribute("style")).toContain("meloku-the-clouded-mirror.jpg");
+    expect($(".inspector.from-hand h3")).toBeNull();
+    expect($$(".inspector.from-hand .l-actions button")).toHaveLength(1);
+    expect(($(".l-hand-host") as HTMLElement | null)?.inert).toBe(false);
+    expect(($(".scrim.from-hand") as HTMLElement | null)?.style.zIndex).toBe("40");
   });
   it("no plays: no action list", () => {
     open({ inspector: { ...INSPECTOR, actions: [] } });
@@ -152,11 +160,8 @@ describe("the Game menu", () => {
 });
 
 describe("the hand as a list", () => {
-  it("View hand opens it, over the fan; hidden when the hand is away", () => {
+  it("has no View hand button: looking at the hand is a focus, opened by tapping one of my cards", () => {
     show({});
-    click($(".l-hand-view"));
-    expect(orders()).toEqual([{ t: "open", layer: "hand", card: null }]);
-    show({ hand: { cards: HAND, away: true, respond: false, carried: [], fresh: [] } });
     expect($(".l-hand-view")).toBeNull();
   });
   it("lists each card with its cost and whether it has a play; a card opens the inspector; Hold while auto-pass runs", () => {

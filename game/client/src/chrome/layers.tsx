@@ -1,6 +1,7 @@
 // The chrome's other layers and fixtures: the opening hand over a dimmed table (live.js `mulligan`), the Game menu with
 // its new game form (live.js `menu`), the hand as a list (`handSheet`), and the fixtures always on the table's edge:
-// the Game button, "View hand", the chips of set-aside layers and the back bar of a lean-in. Pure projections; each
+// the Game button, the chips of set-aside layers and the back bar of a lean-in. (Looking at the hand is a focus: a tap
+// on one of my cards holds it up, chrome/inspector.tsx.) Pure projections; each
 // sends an act for play or an order for the app.
 import type { JSX } from "preact";
 import type { Button, Ms, PromptView } from "../play";
@@ -206,15 +207,6 @@ export function GameButton({ send }: { send: Send }): JSX.Element {
   return (
     <button type="button" class="l-menu" data-fk="menu" onClick={() => send({ t: "open", layer: "menu", card: null })}>
       Game
-    </button>
-  );
-}
-
-/** "View hand": the hand as a list, above the fan. */
-export function ViewHand({ send }: { send: Send }): JSX.Element {
-  return (
-    <button type="button" class="l-hand-view" data-fk="hand" onClick={() => send({ t: "open", layer: "hand", card: null })}>
-      View hand
     </button>
   );
 }

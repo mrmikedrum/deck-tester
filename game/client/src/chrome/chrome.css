@@ -1549,5 +1549,41 @@
     justify-content: space-between;
     margin-top: calc(16 * var(--u));
   }
+
+  /* ---- The hand as a focus: a card of mine held up beside the fan ------------------------------------------------- */
+  /* A light shade, so the table stays in view; the fan stays live over it. The card is held up at reading size to the
+     right of the fan, above my lands, where it covers as little of my board as it can. */
+  .scrim.from-hand {
+    position: fixed;
+    inset: 0;
+    padding: 0;
+    display: block;
+    background: rgba(8, 5, 3, 0.3);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .inspector.from-hand {
+    position: fixed;
+    left: max(calc(400 * var(--u)), 36%);
+    bottom: calc(190 * var(--u) + var(--safe-bottom, 0px));
+    align-items: flex-end;
+    gap: calc(14 * var(--u));
+  }
+  .inspector.from-hand .big {
+    width: calc(250 * var(--u));
+    border-radius: calc(12 * var(--u));
+    box-shadow:
+      0 0 0 2px rgba(241, 200, 106, 0.85),
+      0 24px 60px rgba(0, 0, 0, 0.75);
+  }
+  .inspector.from-hand .info {
+    width: calc(240 * var(--u));
+    padding: calc(14 * var(--u)) calc(16 * var(--u));
+  }
+  .inspector.from-hand .g-close {
+    top: calc(-14 * var(--u));
+    right: auto;
+    left: calc(214 * var(--u));
+  }
 }
 /* ==== end of the narrative lane's block ============================================================================ */

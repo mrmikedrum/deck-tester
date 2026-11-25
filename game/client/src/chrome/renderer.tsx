@@ -26,7 +26,7 @@ import { HandMotion, progress, running, sameScreen } from "./frame";
 import { Hand } from "./hand";
 import { Inspector } from "./inspector";
 import { LogSheet, LogStrip, LossSheet } from "./log";
-import { BackBar, Chips, GameButton, HandList, Menu, Mulligan, SiftBar, ViewHand } from "./layers";
+import { BackBar, Chips, GameButton, HandList, Menu, Mulligan, SiftBar } from "./layers";
 import { Plates, SeatFocus } from "./plates";
 import { Prompt, WaitingPrompt } from "./prompt";
 import { isOrder } from "./send";
@@ -98,9 +98,10 @@ const SHEETS: ReadonlySet<ChromeLayer> = new Set<ChromeLayer>(["sheet", "menu", 
 
 /** Each modal layer's stacking: in the focus stack's order, over the fan (41) and every fixture, under the toast; play's
  * sheet, when it is the lowest, stays under the fan as it always did (a released card's offer keeps the hand in full). */
-function zOf(modals: readonly ChromeLayer[], layer: ChromeLayer): number {
+function zOf(modals: readonly ChromeLayer[], layer: ChromeLayer, held = false): number {
   const i = modals.indexOf(layer);
-  return i === 0 && layer === "sheet" ? 40 : 42 + 2 * i;
+  // The hand's focus (a card of mine held up) lies under the fan, as play's sheet does: the fan stays live over it.
+  return (i === 0 && layer === "sheet") || (layer === "inspector" && held) ? 40 : 42 + 2 * i;
 }
 
 /** What a control answers as drawn now: its button or option (or its name, for the stepper and the stud). */
@@ -307,10 +308,11 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
         const modals = [...new Set([...view.layers.map((l) => l.layer), ...MODAL])].filter((l) => MODAL.has(l) && shows[l]);
         const topModal = modals[modals.length - 1] ?? null;
         const under = (l: ChromeLayer): boolean => modals.indexOf(l) < modals.length - 1;
-        const layerStyle = (l: ChromeLayer): string => `z-index:${zOf(modals, l)}`;
+        const held = view.inspector?.held === true;
+        const layerStyle = (l: ChromeLayer): string => `z-index:${zOf(modals, l, held)}`;
         el.classList.toggle("sheet-open", topModal !== null && SHEETS.has(topModal));
         el.classList.toggle("watching", view.watch !== null); // the hand's plays are not lit while the table moves
-        handHost.inert = topModal !== null && topModal !== "sheet";
+        handHost.inert = topModal !== null && topModal !== "sheet" && !(topModal === "inspector" && held);
 
         binding.tick(t);
         let handActive = false;
@@ -345,7 +347,6 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
         const overlaid = shows.mulligan || view.chips.some((x) => x.layer === "mulligan");
         const bar = prompt && !(prompt.style === "overlay" && overlaid) ? prompt : null;
         const base = topModal !== null; // the fixtures and the prompt sit under any modal layer
-        const handShown = view.waiting === null && !view.hand.away && view.hand.cards.length > 0;
         const hold = c.mayAnswer ? (c.prompt?.buttons.find((b) => b.role === "hold") ?? null) : null;
         // Auto-pass's countdown, for the layers that cover the prompt (the hand's list, the inspector).
         const fill = hold && c.prompt?.countdown ? progress(c.prompt.countdown, t) : null;
@@ -404,7 +405,6 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
               ) : null}
               <GameButton send={send} />
               {view.waiting === null ? <LogStrip view={view.log} onOpen={() => send({ t: "open", layer: "log", card: null })} /> : null}
-              {handShown ? <ViewHand send={send} /> : null}
               {view.chips.length || view.back !== null ? (
                 <div class="l-corner">
                   <Chips chips={view.chips} send={send} />

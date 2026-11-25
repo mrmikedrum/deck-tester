@@ -131,6 +131,8 @@ export interface CardTile {
 /** Everything about one card (common.js `inspect`), with what I can do with it now as buttons. */
 export interface InspectorView {
   readonly card: CardId;
+  /** A card in my hand: the hand's focus, the card held up at reading size beside the fan, the fan live under it. */
+  readonly held?: boolean;
   readonly name: string;
   /** The whole card's picture; null face down or while it loads. */
   readonly image: string | null;
