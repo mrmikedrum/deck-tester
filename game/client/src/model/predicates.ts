@@ -123,3 +123,6 @@ export function handOrder(a: Card, b: Card): number {
   const land = (c: Card) => Number(/Land/.test(c.face.type) && !/Creature/.test(c.face.type));
   return land(b) - land(a) || manaValue(a) - manaValue(b) || a.name.localeCompare(b.name, "en");
 }
+
+/** live.js `shortCard`, the short name words use: "Meloku the Clouded Mirror" -> "Meloku", "Atraxa, Praetors' Voice" -> "Atraxa". */
+export const shortCard = (n: string): string => n.split(", ")[0]!.replace(/^(\S{3,}) (?:of )?the .+$/, "$1");

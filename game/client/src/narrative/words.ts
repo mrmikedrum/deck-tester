@@ -2,13 +2,12 @@
 // log lines are the record; these only say what the zones show (where a card went) and what the old client called it.
 import type { CardId } from "../protocol";
 import type { Card, SeatId, TableModel, Zone } from "../model";
-import { abilityText, entersDraw, isIncubateSweep, logText } from "../model";
+import { abilityText, entersDraw, isIncubateSweep, logText, shortCard } from "../model";
 import type { Arrival, Loss } from "./types";
 
 export const listNames = (names: readonly string[]): string => new Intl.ListFormat("en").format(names);
 
-/** live.js `shortCard` (play's `shortCard` too): "Meloku the Clouded Mirror" -> "Meloku". */
-export const shortCard = (n: string): string => n.split(", ")[0]!.replace(/^(\S{3,}) (?:of )?the .+$/, "$1");
+export { shortCard };
 
 export const seatName = (m: TableModel, seat: SeatId | null): string =>
   seat === null ? "" : (m.seat(seat)?.name ?? seat);

@@ -4,7 +4,7 @@
 // what may be answered.
 import type { Decision, StackId } from "../protocol";
 import type { SeatId, Target } from "../model";
-import { phaseName } from "../model";
+import { phaseName, shortCard } from "../model";
 import type { Facts, ItemFact } from "./facts";
 import { cardOf, seatName, topItem } from "./facts";
 
@@ -39,8 +39,7 @@ export function itemLine(f: Facts, st: ItemFact): string {
 
 export const lists = listNames;
 
-/** live.js `shortCard`: "Meloku the Clouded Mirror" -> "Meloku". */
-export const shortCard = (n: string): string => n.split(", ")[0]!.replace(/^(\S{3,}) (?:of )?the .+$/, "$1");
+export { shortCard };
 
 /** live.js `abilityText`: an ability's text without its "<card> - " prefix, shortened unless `full`. */
 export function abilityText(t: string, name: string, full = false): string {
