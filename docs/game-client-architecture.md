@@ -462,6 +462,14 @@ false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
 today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
 cards, needs `planTable` work too.
 
+The second, `told` (the "Told, not shown" direction, a prototype; the app plans with it, `?layout=mat` shows the base),
+keeps `mat`'s page while it fits eight places; past that the commander, what acts and the most important creatures stand
+in one front row and everything else is one `summary` unit whose `account` (`layout/told/account.ts`: clauses with the
+ids they counted) is ink in the page's plane, audited for its letters' floor (`text-floor`) and for nothing over its
+words. Given an `ask` (`tableInputOf`: the decision's defenders or legal blocks; a sweep read from the stack),
+`planTable` also writes the moment's answers in red (`TablePlan.answers`: slips, where an attack lands, block notes),
+each audited and never folding a seat; a slip with no clear place is said in the prompt instead.
+
 ## play: the decision controller
 
 A pure reducer. It owns the current decision and its `StopId`, the player's draft, what lights up, the prompt and its
