@@ -280,8 +280,11 @@ function standeeShadow(env: PieceEnv, tapped: boolean, lean: number): { mesh: Me
   return { mesh: m, lease };
 }
 
-/** A pile's tapped copy shows this share of a card's height past the front card's right edge; a well's lies turned 15°. */
-const TAPPED_SHOW = 0.28;
+/**
+ * A pile's tapped copy shows this share of a card's height past the front card's right edge (a creature's place is 1.06
+ * card heights: this much still clears a turned neighbour's stats); a well's lies turned 15°.
+ */
+const TAPPED_SHOW = 0.18;
 const WELL_TURN = Math.PI / 12;
 
 class UnitView implements PieceView {
