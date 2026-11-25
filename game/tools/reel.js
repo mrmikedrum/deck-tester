@@ -288,7 +288,7 @@ async function newPage(ctx, clip) {
   const scenario = { catalog, envelopes: [clip.liveNew || clip.live], reply: { t: "queued" } };
   await p.route("**/script.json", route => route.fulfill({ json: scenario }));
   await p.route("**/api/**", route => route.fulfill({ status: 404, json: {} }));   // a scripted page asks the bridge nothing
-  await p.goto(BASE + "index.html?script=script.json");
+  await p.goto(BASE + "index.html?script=script.json" + (process.env.LAYOUT ? "&layout=" + encodeURIComponent(process.env.LAYOUT) : ""));
   await p.waitForFunction(() => window.__deckmaster, null, { timeout: 60000 });
   await p.evaluate(() => window.__deckmaster.ready);
   await p.waitForFunction(() => window.__deckmaster.seats().length > 0, null, { timeout: 60000 });

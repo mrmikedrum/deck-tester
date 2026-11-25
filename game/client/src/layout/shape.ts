@@ -11,7 +11,7 @@ import { CH, CW, PILE_LEAN, TAP_LEAN } from "./seat/geometry";
 
 export type Quad = readonly [Point, Point, Point, Point];
 
-export type ItemKind = "unit" | "plate" | "zone" | "stack";
+export type ItemKind = "unit" | "plate" | "zone" | "stack" | "tail";
 
 export interface Shape {
   /** The group a tap on it reaches: a unit's id, "plate:<seat>", "command:<seat>", "zone:<zone>:<seat>", "stack:<key>". */
@@ -31,6 +31,10 @@ export interface Shape {
   /** Face width on screen across its middle, px, upright. */
   readonly width: number;
   readonly members: readonly CardId[];
+  /** The file it stands in (`Unit.file`): a file is one pile to the audit, its own cards may overlap each other. */
+  readonly file?: string;
+  /** A head reached only through its file's tail: no patch of its own. */
+  readonly tailed?: boolean;
 }
 
 const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
@@ -103,16 +107,63 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     order: p.pos.z,
     floor: creature ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
     members: u.members,
+    ...(u.file ? { file: u.file.id } : {}),
+    ...(u.file && u.file.rank > 0 && !u.raised && !u.fighting ? { tailed: true } : {}),
   };
 }
 
+/** A tail a tap may land on, at the least (TAP_PX, with room for the audit's 4 px grid). */
+const TAIL_MIN = TAP_PX + 6;
+
+/**
+ * A file's tail (`lines`): every head behind its front, reached as one pile (`tail:<file>`). Its patch is where the heads
+ * show above the front, borrowing a little of the front's top where they show less than a finger needs.
+ */
+export function tailShapes(seat: string, units: readonly Shape[]): Shape[] {
+  const by = new Map<string, Shape[]>();
+  for (const s of units) if (s.file && s.tailed) by.set(s.file, [...(by.get(s.file) ?? []), s]);
+  const out: Shape[] = [];
+  for (const [file, heads] of by) {
+    const front = units.filter((s) => s.file === file && !s.tailed).sort((x, y) => y.order - x.order)[0];
+    const hb = heads.map((h) => bounds(h.face));
+    const l = Math.min(...hb.map((b) => b.l)), r = Math.max(...hb.map((b) => b.r)), t = Math.min(...hb.map((b) => b.t));
+    const fb = front ? bounds(front.face) : null;
+    const b = fb ? Math.max(fb.t + 6, Math.min(t + TAIL_MIN, fb.t + 0.3 * (fb.b - fb.t))) : Math.max(...hb.map((x) => x.b));
+    // (A heap with no front, lower than a finger, reaches up over its sign.)
+    const t0 = fb ? t : Math.min(t, b - TAIL_MIN);
+    const pt = (x: number, y: number): Point => ({ x, y });
+    const face: Quad = [pt(l, b), pt(r, b), pt(r, t0), pt(l, t0)];
+    const strip = (v0: number, v1: number): Quad => [pt(l, b - (b - t0) * v0), pt(r, b - (b - t0) * v0), pt(r, b - (b - t0) * v1), pt(l, b - (b - t0) * v1)];
+    out.push({
+      group: `tail:${file}`,
+      kind: "tail",
+      seat,
+      face,
+      name: strip(5 / 6, 1),
+      foot: strip(0, 1 / 6),
+      order: (front?.order ?? Math.max(...heads.map((h) => h.order))) + 1e-3,
+      floor: 0,
+      width: r - l,
+      members: heads.slice().sort((x, y) => y.order - x.order).flatMap((h) => h.members),
+      file,
+    });
+  }
+  return out;
+}
+
 /** The plaque stands leaning back by the camera's pitch, 3.2 wide and 0.82 tall at scale 1. */
-export function plateShape(proj: Projector, seat: string, p: Placement, at: At = AT_REST): Shape {
+export function plateShape(proj: Projector, seat: string, p: Placement, at: At = AT_REST, slipPx = 0): Shape {
   const th = proj.pitch, up = { x: 0, y: Math.cos(th), z: -Math.sin(th) }, s = p.scale;
   const pt = (sx: number, t: number): Point => proj.project(at({ x: p.pos.x + sx * 1.6 * s, y: p.pos.y + up.y * t * 0.82 * s, z: p.pos.z + up.z * t * 0.82 * s }));
   const quad = (t0: number, t1: number): Quad => [pt(-1, t0), pt(1, t0), pt(1, t1), pt(-1, t1)];
-  return { group: `plate:${seat}`, kind: "plate", seat, face: quad(0, 1), name: quad(5 / 6, 1), foot: quad(0, 1 / 6), order: PLATE_ORDER, floor: 0, width: 0, members: [] };
+  // (A battle line's muster slip hangs under it: the plaque's face reaches down over it, so a tap on it leans in too.)
+  const down = (q: Point): Point => ({ x: q.x, y: q.y + slipPx });
+  const face: Quad = slipPx > 0 ? [down(pt(-1, 0)), down(pt(1, 0)), pt(1, 1), pt(-1, 1)] : quad(0, 1);
+  return { group: `plate:${seat}`, kind: "plate", seat, face, name: quad(5 / 6, 1), foot: quad(0, 1 / 6), order: PLATE_ORDER, floor: 0, width: 0, members: [] };
 }
+
+/** How far a muster slip hangs under a plaque, design px (two lines of a sign). */
+export const SLIP_PX = 34;
 
 /** The commander beside the plaque: a card standing square to me, its group "command:<seat>". */
 export function commanderShape(proj: Projector, seat: string, c: NonNullable<SeatPlan["fixtures"]["commander"]>, at: At = AT_REST): Shape {
@@ -136,10 +187,12 @@ export function stackShape(group: string, face: Quad, order: number, members: re
 }
 
 export function seatShapes(proj: Projector, plan: SeatPlan, mine: boolean): Shape[] {
+  const units = plan.units.map((u) => unitShape(proj, plan.seat, u, mine));
   return [
-    ...plan.units.map((u) => unitShape(proj, plan.seat, u, mine)),
+    ...units,
+    ...tailShapes(plan.seat, units),
     ...plan.fixtures.zones.map((z) => zoneShape(proj, plan.seat, z.zone, z.placement, mine)),
-    plateShape(proj, plan.seat, plan.fixtures.plate),
+    plateShape(proj, plan.seat, plan.fixtures.plate, AT_REST, plan.fixtures.muster ? SLIP_PX * designUnit(proj.viewport) : 0),
     ...(plan.fixtures.commander ? [commanderShape(proj, plan.seat, plan.fixtures.commander)] : []),
   ];
 }
@@ -227,18 +280,20 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     if (s.floor > 0 && s.width / u < s.floor - 1e-6) out.push({ rule: "floor", group: s.group, seat: s.seat, measured: s.width / u, limit: s.floor });
     const bb = box.get(s)!;
     const near = sorted.filter((o) => o !== s && o.group !== s.group && o.order >= s.order && overlaps(box.get(o)!, bb));
-    // what covers it: items on top of it (the same pile never covers itself)
+    // What covers it: items drawn on top of it. The same pile never covers itself, nor does a file (a shingled column or
+    // heap is one pile whose cards overlap on purpose), and a tail is a tap target, not a thing drawn.
+    const over = near.filter((o) => o.kind !== "tail" && (!s.file || o.file !== s.file));
     const covered = (q: Quad, n: number, m: number): number => {
       let hit = 0, all = 0;
       for (let i = 0; i < n; i++)
         for (let j = 0; j < m; j++) {
           const p = lerpQuad(q, (i + 0.5) / n, (j + 0.5) / m);
           all++;
-          if (near.some((o) => inQuad(o.face, p.x, p.y))) hit++;
+          if (over.some((o) => inQuad(o.face, p.x, p.y))) hit++;
         }
       return hit / all;
     };
-    if (s.kind !== "plate") {
+    if (s.kind !== "plate" && s.kind !== "tail") {
       const nm = covered(s.name, 7, 2), ft = covered(s.foot, 7, 2), fc = covered(s.face, 7, 7);
       if (nm > COVER.strip) out.push({ rule: "covers-name", group: s.group, seat: s.seat, measured: nm, limit: COVER.strip });
       if (ft > COVER.strip) out.push({ rule: "covers-foot", group: s.group, seat: s.seat, measured: ft, limit: COVER.strip });
@@ -246,6 +301,8 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     }
     // tappable: a window of tap x tap px that the hit test gives to this group
     // (A plaque is not a card or a pile: intent.md's patch rule is for those. It still draws over what it stands on.)
+    // (A head is reached through its file's tail, which is measured instead.)
+    if (s.tailed) continue;
     const best = s.kind === "plate" ? tap : tapPatch(s, near, area, tap);
     if (best < tap - 1e-6) out.push({ rule: "tap-patch", group: s.group, seat: s.seat, measured: best, limit: tap });
   }

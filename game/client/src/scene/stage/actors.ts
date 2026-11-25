@@ -28,6 +28,8 @@ export interface FaceMemo {
   readonly model: TableModel | null;
   readonly face: FaceSpec;
   readonly key: string;
+  /** The piece's face overrides it was derived with (`Piece.faceOver`), as a key. */
+  readonly over: string;
 }
 
 /** The actor states the stage keeps, as the rest of the stage reads them. */

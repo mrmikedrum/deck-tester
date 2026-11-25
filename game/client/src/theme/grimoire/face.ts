@@ -60,6 +60,15 @@ export interface FaceSpec {
   /** The owner's seal, when it is not the controller. */
   readonly owner: FaceTag | null;
   readonly tip: FaceTag | null;
+  /**
+   * How its name strip reads: "plate" (a head in a battle line: only its top shows) puts its numbers, keyword glyphs and
+   * copies on a second line under its name.
+   */
+  readonly head?: "plate";
+  /** Copies it stands for (the plate head's "×6"). */
+  readonly count?: number;
+  /** The plate head's second line in place of its numbers (a rearguard's "9 power"). */
+  readonly plate?: string;
 }
 
 export const FACE_DEFAULTS: Omit<FaceSpec, "name"> = {
@@ -167,6 +176,7 @@ export function drawFace(x: Ctx, c: FaceSpec, env: FaceEnv): void {
   const far = c.far,
     nx = far ? 26 : 32,
     nW = FW - 2 * nx + 4;
+  if (c.head === "plate") return void paintPlated(x, c, env, vellum, nx, nW);
   const nl = nameLines(x, shortName(c.name), nW, far ? 72 : 52);
   const barH = Math.min(
     far ? Math.round(FH / 3) : FH,
@@ -208,6 +218,91 @@ export function drawFace(x: Ctx, c: FaceSpec, env: FaceEnv): void {
     x.font = `700 28px ${NUM}`;
     pill(x, c.tip.label, 36, FH - 22 - footH - 46, c.tip.colour, "#f3e6c4");
   }
+  if (c.tapped) tapBadge(x, FW - 62, artY + 42);
+}
+
+/** The plate head's strip: its bottom, as a share of the card's height (what a head shows above the card in front). */
+export const PLATE_HEAD = 0.32;
+
+/**
+ * A head in a battle line: only its top shows over the card in front, so its strip says what the card is in two lines,
+ * its name and under it its numbers, keyword glyphs and copies ("1/1 (fly) ×6"). The rest of the card is its art.
+ */
+function paintPlated(x: Ctx, c: FaceSpec, env: FaceEnv, vellum: CanvasPattern | string, nx: number, nW: number): void {
+  const FW = FACE_W,
+    FH = FACE_H,
+    bottom = Math.round(FH * PLATE_HEAD) - 4,
+    top = 22,
+    h = bottom - top;
+  rr(x, 22, top, FW - 44, h, 6);
+  x.fillStyle = vellum;
+  x.fill();
+  x.lineWidth = 2;
+  x.strokeStyle = "rgba(26,16,6,.8)";
+  x.stroke();
+  // The name: one line, as large as fits; a long one by its first words ("Kami" of Whispered Hopes) rather than tiny.
+  const fits = (t: string, px: number): boolean => ((x.font = `700 ${px}px ${NUM}`), x.measureText(t).width <= nW);
+  let name = shortName(c.name);
+  if (!fits(name, 54)) {
+    const cut = name.split(/,| of | the /)[0]!.trim();
+    if (cut && cut !== name) name = cut;
+  }
+  let size = 66;
+  for (; size > 44; size -= 2) if (fits(name, size)) break;
+  x.font = `700 ${size}px ${NUM}`;
+  x.textBaseline = "middle";
+  x.fillStyle = colour.ink;
+  const y1 = top + h * 0.3,
+    y2 = top + h * 0.74;
+  x.fillText(name, nx, y1 + 2, nW);
+  // Under it: numbers, keywords, copies.
+  let lx = nx;
+  if (c.plate) {
+    x.font = `700 50px ${NUM}`;
+    x.fillStyle = "#6a3b0c";
+    x.fillText(c.plate, lx, y2 + 2, nW);
+    lx = FW;
+  } else if (c.foot.kind === "creature") {
+    const f = c.foot;
+    x.font = `700 56px ${NUM}`;
+    const up = f.power > f.basePower || f.toughness > f.baseToughness,
+      down = f.power < f.basePower || f.toughness < f.baseToughness;
+    x.fillStyle = up ? "#1a6a30" : down ? signal.dangerInk : "#6a3b0c";
+    const t = `${f.power}/${f.toughness}`;
+    x.fillText(t, lx, y2 + 2);
+    lx += x.measureText(t).width + 30;
+  } else if (c.foot.kind === "walker") {
+    x.font = `700 52px ${NUM}`;
+    x.fillStyle = colour.ink;
+    x.fillText(c.foot.loyalty, lx, y2 + 2);
+    lx += x.measureText(c.foot.loyalty).width + 30;
+  }
+  const count = c.count && c.count > 1 ? `×${c.count}` : "";
+  x.font = `700 50px ${NUM}`;
+  const cw = count ? x.measureText(count).width + 12 : 0;
+  const kws = faceKeywords(c.keywords);
+  let k = 0;
+  for (; k < kws.length && lx + 44 <= FW - 30 - cw; k++) {
+    kwIcon(x, env.surfaces, kws[k]!, lx, y2, 21);
+    lx += 48;
+  }
+  if (count) {
+    x.font = `700 50px ${NUM}`;
+    x.fillStyle = colour.ink;
+    x.textAlign = "right";
+    x.fillText(count, FW - 32, y2 + 2);
+    x.textAlign = "left";
+  }
+  // The rest of the card: its art, behind the card in front.
+  const artY = bottom + 6,
+    artH = FH - 22 - artY;
+  x.save();
+  rr(x, 23, artY, FW - 46, artH, 5);
+  x.clip();
+  const img = c.art ? env.art(c.art) : null;
+  if (img) drawCover(x, img, 20, artY, FW - 40, artH);
+  else paintTextArt(x, c.text, artY, artH);
+  x.restore();
   if (c.tapped) tapBadge(x, FW - 62, artY + 42);
 }
 

@@ -4,11 +4,21 @@
 // Planning is pure: a board layout cannot plan yet is reported once and leaves the table unplanned (play then offers
 // every choice in a sheet), never a thrown frame.
 import type { ChromeMode } from "../layout";
-import { planTable, reservations, tableInputOf } from "../layout";
+import { lines, mat, planTable, reservations, tableInputOf } from "../layout";
+import type { SeatLayout } from "../layout";
 import type { TableModel } from "../model";
 import type { BoardCues } from "../play";
 import type { CardId } from "../protocol";
 import type { AppState } from "./state";
+
+/**
+ * The seat layout: `mat` (today's pages), or another arrangement asked for by the page's query (`?layout=lines`), so
+ * design directions can be recorded side by side.
+ */
+export const LAYOUT: SeatLayout = (() => {
+  const q = new URLSearchParams(globalThis.location?.search ?? "");
+  return q.get("layout") === "lines" ? lines : mat;
+})();
 
 /** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sift too. */
 export function chromeMode(s: AppState, cues: BoardCues): ChromeMode {
@@ -57,8 +67,8 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
   const key = keyOf(model, s, mode, pairsKey(cues), settling);
   if (key === s.planKey) return { state: s, error: null };
   try {
-    const plan = planTable(
-      tableInputOf(model, {
+    const plan = planTable({
+      ...tableInputOf(model, {
         viewport: { w: s.viewport.w, h: s.viewport.h },
         safe: s.viewport.safe,
         mode,
@@ -67,7 +77,8 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         involved: new Set(involved),
         combat: cues.combat,
       }),
-    );
+      layout: LAYOUT,
+    });
     return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };
   } catch (e) {
     return { state: { ...s, plan: null, planKey: key, reserve }, error: e instanceof Error ? e.message : String(e) };

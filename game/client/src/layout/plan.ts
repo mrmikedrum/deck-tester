@@ -513,7 +513,18 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
   for (const p of plans)
-    for (const un of p.units) groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: shape(un.id).face, order: shape(un.id).order });
+    for (const un of p.units) {
+      // (A head in a file is reached through the file's tail.)
+      if (un.file && un.file.rank > 0 && !un.raised && !un.fighting) continue;
+      groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: shape(un.id).face, order: shape(un.id).order });
+    }
+  // A file's tail: its heads as one pile (a lone head answers as itself: a card, or a pile of its copies).
+  for (const s of shapes)
+    if (s.kind === "tail") {
+      const heads = plans.flatMap((p) => p.units.filter((u) => u.file && `tail:${u.file.id}` === s.group && u.file.rank > 0 && !u.raised && !u.fighting));
+      const kind = heads.length === 1 ? heads[0]!.kind : "pile";
+      groups.push({ id: s.group, kind, seat: s.seat as SeatId, members: s.members, quad: s.face, order: s.order });
+    }
   for (const p of plans) for (const z of p.fixtures.zones) {
     const id = `zone:${z.zone}:${p.seat}`;
     groups.push({ id, kind: "zone", seat: p.seat, members: [], quad: shape(id).face, order: shape(id).order });

@@ -8,6 +8,7 @@ export * from "./seat";
 export * from "./ledger";
 export * from "./shape";
 export { mat } from "./seat/mat";
+export { lines } from "./seat/lines";
 export { planSeat, auditSeat, planTable, hitTest, summarize } from "./plan";
 export { STACK_POSE } from "./plan";
 export { tableInputOf } from "./table-input";

@@ -50,6 +50,47 @@ export interface Unit {
   /** Whether the card it shows lies turned, tapped (never a well's: its spent state is its stain and its sign). */
   readonly tapped: boolean;
   readonly placement: Placement;
+  /**
+   * Its place in a file (`lines`): the file's id and its rank, 0 for the front. Units of one file may overlap each other
+   * on purpose (a shingled column, a shingled heap): the audit treats a file as one pile. Heads (rank > 0, not raised)
+   * are reached together, as the file's tail (`tail:<file id>`), never one by one.
+   */
+  readonly file?: { readonly id: string; readonly rank: number };
+  /** A head pulled up out of its file (it acts or is aimed at): its whole face shows, and a tap reaches it alone. */
+  readonly raised?: boolean;
+  /** Shown as a head (`lines`): its face's name strip carries its numbers, keywords and copies on a second line. */
+  readonly head?: boolean;
+  /** Its copies are counted by a coin on its shoulder and shown as card edges behind it, not by a title (`lines`). */
+  readonly coin?: boolean;
+  /** The lightest of a file folded behind its last head (`lines`): how many, and their power. */
+  readonly rearguard?: { readonly count: number; readonly power: number; readonly lead: string; readonly more: number };
+  /** A sign of its own, in place of the one its kind would say (`lines`: a land heap's "Lands 14 · 10 open"). */
+  readonly caption?: { readonly text: string; readonly sub: string | null };
+}
+
+/** Facts a seat's board adds up to (`lines`' muster slip): counted, never judged. */
+export interface Muster {
+  readonly ready: number;
+  readonly power: number;
+  readonly fly: number;
+  readonly reach: number;
+  readonly deathtouch: number;
+  readonly trample: number;
+  readonly firstStrike: number;
+  /** The biggest ready creature's numbers, or null. */
+  readonly biggest: readonly [number, number] | null;
+}
+
+/** A sign lying on a page, said by facts (scene words them): the spent heap's, a line's after a wipe. */
+export type NoteFacts =
+  | { readonly kind: "spent"; readonly count: number; readonly power: number; readonly big: { readonly name: string; readonly p: number; readonly t: number } | null }
+  | { readonly kind: "gone"; readonly gone: number; readonly exiled: number };
+
+export interface Note {
+  readonly id: string;
+  /** Where it lies on the table (its middle). */
+  readonly at: V3;
+  readonly facts: NoteFacts;
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */
@@ -60,6 +101,12 @@ export interface Fixtures {
   readonly zones: readonly { readonly zone: "graveyard" | "exile"; readonly placement: Placement }[];
   /** The commander standing beside the plaque while it is in the command zone (h.js `banner`). */
   readonly commander?: { readonly card: CardId; readonly placement: Placement };
+  /** A ruled line on the page in the seat's colour (`lines`: the ready line), its two ends on the table. */
+  readonly line?: { readonly a: V3; readonly b: V3 };
+  /** Signs lying on the page (`lines`). */
+  readonly notes?: readonly Note[];
+  /** The muster slip under the plaque (`lines`), when the board is past a glance. */
+  readonly muster?: Muster;
 }
 
 /** A summary: what a folded or last-resort unit holds, in the terms that matter. */

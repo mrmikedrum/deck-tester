@@ -20,6 +20,7 @@ import {
 } from "three";
 import type { Material, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { EDGE } from "../../layout/seat/lines";
 import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
@@ -39,6 +40,9 @@ const SIZE = {
   /** Copies under a pile's top card, each a little behind and up (old standee: up to three stacked). */
   copies: 3,
   copyStep: { x: 0.035, y: 0.045, z: -0.03 },
+  /** A battle line's run: its copies' edges stand up behind it (layout lines `EDGE`), at most six; its coin on its shoulder. */
+  edge: { x: 0.012, y: EDGE.step, z: -0.02, most: EDGE.most + 1 },
+  coin: { s: 0.3, x: CW / 2 - 0.03, y: CH / 2 - 0.03, z: TH / 2 + 0.035 },
   /** Counter chips: on the face, from the right just above the foot, stepping left (h.js `chipsOn`). */
   chip: 0.26,
   chipStep: 0.27,
@@ -348,7 +352,9 @@ class UnitView implements PieceView {
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "unit" }>;
     const well = d.well;
-    const copies = Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown)));
+    const run = d.coin !== undefined && d.coin !== null;
+    const most = run || d.copies.length > SIZE.copies ? SIZE.edge.most : SIZE.copies;
+    const copies = Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(most, v.shown)));
     // Each copy stands for members of the pile and wears their state (while members are still arriving, the first).
     const plan = d.copies.slice(0, copies);
     const copyKey = plan.map((c) => (c.tapped ? "t" : "r")).join("") + `|${copies}|${d.posture}`;
@@ -377,7 +383,8 @@ class UnitView implements PieceView {
             c.obj.group.position.set(cx, cy - (CW / 2) * (1 - Math.cos(TAP_LEAN)), z - (CW / 2) * Math.sin(TAP_LEAN));
           } else c.obj.group.position.set(cx, cy, z);
         } else {
-          const st = SIZE.copyStep;
+          // (A battle line's run: each copy's edge a little higher behind it, the way a held stack shows its count.)
+          const st = d.copies.length > SIZE.copies ? SIZE.edge : SIZE.copyStep;
           c.obj.group.position.set(st.x * i, st.y * i, st.z * i);
         }
         c.obj.group.userData["tapped"] = !!cp?.tapped && (mixed || !!well);
@@ -389,8 +396,9 @@ class UnitView implements PieceView {
     this.wellLook(d);
     const turned = !!v.face?.tapped;
     // A pile whose title gave way (no room on screen) shows its count as a chip on its face.
-    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well;
-    const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
+    const coin = d.coin !== undefined && d.coin !== null;
+    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well && !coin;
+    const key = `${coin ? v.shown : ""}|${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
     if (key === this.key) return;
     this.key = key;
     this.sign?.dispose();
@@ -410,6 +418,14 @@ class UnitView implements PieceView {
       this.cards[0]!.obj.body.add(chip.mesh);
       this.chips.push(chip);
     });
+    // A run's count: a brass coin on its front card's shoulder, following what has arrived.
+    if (coin && v.shown > 1) {
+      const c = SIZE.coin;
+      const disc = new Decal(this.host.painter.chip({ text: String(v.shown), ink: colour.ink, sub: null }), c.s, c.s, { renderOrder: 6 });
+      disc.mesh.position.set(c.x, c.y, c.z);
+      this.cards[0]!.obj.body.add(disc.mesh);
+      this.chips.push(disc);
+    }
   }
 
   /**
@@ -646,6 +662,8 @@ export function buildPlate(lease: Lease, pitch: number): { outer: Group; decal: 
 class PlateView implements PieceView {
   readonly group = new Group();
   private readonly plate: ReturnType<typeof buildPlate>;
+  private slip: Decal | null = null;
+  private slipKey = "";
   constructor(
     private readonly host: Host,
     v: ActorView,
@@ -653,6 +671,27 @@ class PlateView implements PieceView {
   ) {
     this.plate = buildPlate(this.lease(v), pitch);
     this.group.add(this.plate.outer);
+    this.slipOf(v);
+  }
+  /** The muster slip hanging under the plaque (a battle line's): drawn over the table, as the plaque is. */
+  private slipOf(v: ActorView): void {
+    const d = v.draw as Extract<Draw, { t: "plate" }>;
+    const key = d.slip ? `${d.slip.text}|${d.slip.sub ?? ""}` : "";
+    if (key === this.slipKey) return;
+    this.slipKey = key;
+    if (this.slip) {
+      this.slip.mesh.parent?.remove(this.slip.mesh);
+      this.slip.dispose();
+      this.slip = null;
+    }
+    if (!d.slip) return;
+    const lease = this.host.painter.sign({ text: d.slip.text, colour: null, sub: d.slip.sub });
+    const w = lease.width * SIGN_U, h = lease.height * SIGN_U;
+    const slip = new Decal(lease, w, h, { depthTest: false, renderOrder: 10 });
+    labelled(slip, lease, d.slip.sub ? [SIGN_FONT.text, SIGN_FONT.sub] : [SIGN_FONT.text], LABEL_PX.theirs);
+    slip.mesh.position.set(0, -h / 2 + 0.02, 0.001);
+    this.plate.decal.mesh.parent?.add(slip.mesh);
+    this.slip = slip;
   }
   private lease(v: ActorView): Lease {
     const d = v.draw as Extract<Draw, { t: "plate" }>;
@@ -664,14 +703,17 @@ class PlateView implements PieceView {
   }
   patch(v: ActorView): void {
     this.plate.set(this.lease(v));
+    this.slipOf(v);
   }
   look(v: ActorView): void {
     // Dimmed, never dark: the name and life still read (h.js: `1 - 0.55 * f`). Gone under a sift's shade.
     this.plate.decal.tone(1 - 0.55 * v.sample.fade);
+    this.slip?.tone(1 - 0.55 * v.sample.fade);
     this.plate.outer.visible = v.sample.alpha > 0.02;
   }
   dispose(): void {
     this.plate.dispose();
+    this.slip?.dispose();
   }
 }
 
@@ -916,6 +958,10 @@ const HANDOFF_S = motion.turnHandoff / 1000;
 class PageView implements PieceView {
   readonly group = new Group();
   private parts: PageParts | null = null;
+  /** A battle line's ruled line and signs, lying on the page (not stretched with it). */
+  private readonly marks = new Group();
+  private marksKey = "";
+  private markParts: { dispose(): void }[] = [];
   private w = 0;
   private d = 0;
   private turn: boolean;
@@ -927,7 +973,41 @@ class PageView implements PieceView {
     v: ActorView,
   ) {
     this.turn = (v.draw as Extract<Draw, { t: "page" }>).turn;
+    this.group.add(this.marks);
     this.build(v);
+    this.lay(v);
+  }
+  /** The ruled line in the seat's ink, and each sign propped up a little off the page to face me. */
+  private lay(v: ActorView): void {
+    const d = v.draw as Extract<Draw, { t: "page" }>;
+    const key = JSON.stringify([d.line ?? null, d.notes ?? []]);
+    if (key === this.marksKey) return;
+    this.marksKey = key;
+    for (const p of this.markParts) p.dispose();
+    this.markParts = [];
+    this.marks.clear();
+    const l = d.line;
+    if (l) {
+      const len = Math.hypot(l.x1 - l.x0, l.z1 - l.z0);
+      const geo = new PlaneGeometry(len, 0.06);
+      const mat = new MeshBasicMaterial({ color: new Color(seatInk[d.place]), transparent: true, opacity: 0.85, depthWrite: false });
+      const m = new Mesh(geo, mat);
+      m.rotation.order = "YXZ";
+      m.rotation.set(-Math.PI / 2, -Math.atan2(l.z1 - l.z0, l.x1 - l.x0), 0);
+      m.position.set((l.x0 + l.x1) / 2, 0.004, (l.z0 + l.z1) / 2);
+      m.renderOrder = -1;
+      this.marks.add(m);
+      this.markParts.push(geo, mat);
+    }
+    for (const n of d.notes ?? []) {
+      const lease = this.host.painter.sign({ text: n.text, colour: null, sub: n.sub });
+      const sign = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U, { renderOrder: 6 });
+      labelled(sign, lease, n.sub ? [SIGN_FONT.text, SIGN_FONT.sub] : [SIGN_FONT.text], LABEL_PX.theirs);
+      sign.mesh.rotation.x = -Math.PI / 2 + SIZE.wellSign.tilt;
+      sign.mesh.position.set(n.x, 0.12, n.z);
+      this.marks.add(sign.mesh);
+      this.markParts.push(sign);
+    }
   }
   private build(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "page" }>;
@@ -942,6 +1022,7 @@ class PageView implements PieceView {
     this.group.add(this.parts.group);
   }
   patch(v: ActorView): void {
+    this.lay(v);
     const turn = (v.draw as Extract<Draw, { t: "page" }>).turn;
     if (turn !== this.turn) {
       this.turn = turn;
@@ -973,6 +1054,7 @@ class PageView implements PieceView {
   }
   dispose(): void {
     this.parts?.dispose();
+    for (const p of this.markParts) p.dispose();
   }
 }
 

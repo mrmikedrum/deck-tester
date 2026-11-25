@@ -593,15 +593,18 @@ export class Stage {
   // ---- what to draw -------------------------------------------------------------------------------------------------
 
   /** A piece's face and its key, derived again only when its card, its mark or the model changed. */
-  private faceOf(st: ActorState, card: CardId | null, mark: Piece["mark"]): FaceMemo | null {
+  private faceOf(st: ActorState, card: CardId | null, mark: Piece["mark"], over?: Piece["faceOver"]): FaceMemo | null {
     if (card === null) return null;
     const c = this.model?.cards.get(card);
     const src = c ?? this.faces.get(card);
     if (!src) return null;
+    const overKey = over ? JSON.stringify(over) : "";
     const m = st.face;
-    if (m && m.src === src && m.mark === mark && m.model === this.model) return m;
-    const face = c ? faceOfCard(this.model!, c, mark) : (src as FaceSpec);
-    st.face = { src, mark, model: this.model, face, key: faceKey(face) };
+    if (m && m.src === src && m.mark === mark && m.model === this.model && m.over === overKey) return m;
+    const face0 = c ? faceOfCard(this.model!, c, mark) : (src as FaceSpec);
+    // (A head in a battle line wears its plate: its numbers under its name.)
+    const face = over ? { ...face0, ...over } : face0;
+    st.face = { src, mark, model: this.model, face, key: faceKey(face), over: overKey };
     return st.face;
   }
 
@@ -631,7 +634,7 @@ export class Stage {
       const sift = p.draw.t === "sift" ? { sift: { card: p.draw.card, seat: p.seat, roll: siftRoll(p.draw.tapped, sample.alpha) } } : {};
       drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...sift });
       const faceCard = p.kind === "zone" ? (st.shown[st.shown.length - 1] ?? null) : p.kind === "unit" ? (st.shown.includes(p.face!) ? p.face : (st.shown[0] ?? p.face)) : p.face;
-      const fm = this.faceOf(st, faceCard, p.mark);
+      const fm = this.faceOf(st, faceCard, p.mark, p.faceOver);
       const face = fm?.face ?? null;
       // Its Auras and Equipment are drawn once they have arrived, and never counted in its title.
       const dressedAll = p.draw.t === "unit" ? p.draw.dressed : [];

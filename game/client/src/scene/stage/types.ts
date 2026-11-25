@@ -220,9 +220,16 @@ export type Draw =
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
       readonly seed: number;
+      /** Its copies counted by a coin on its shoulder, their edges standing up behind it (a battle line's run), or null. */
+      readonly coin?: number | null;
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
-  | { readonly t: "plate"; readonly spec: PlateSpec }
+  | {
+      readonly t: "plate";
+      readonly spec: PlateSpec;
+      /** The muster slip hanging under it (a battle line's): two short lines. */
+      readonly slip?: { readonly text: string; readonly sub: string | null } | null;
+    }
   | {
       readonly t: "stack";
       readonly tag: string;
@@ -239,7 +246,17 @@ export type Draw =
       /** An ability's effect, on a slip under the card as the focus (the card alone does not say which ability). */
       readonly slip: string | null;
     }
-  | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
+  | {
+      readonly t: "page";
+      readonly place: SeatPlace;
+      readonly mine: boolean;
+      readonly seed: number;
+      readonly turn: boolean;
+      /** A ruled line across it (a battle line), in the page's own coordinates (x across, z toward its near side). */
+      readonly line?: { readonly x0: number; readonly z0: number; readonly x1: number; readonly z1: number } | null;
+      /** Signs lying on it, in its own coordinates. */
+      readonly notes?: readonly { readonly id: string; readonly text: string; readonly sub: string | null; readonly x: number; readonly z: number }[];
+    }
   | { readonly t: "hidden" }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
   | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }
@@ -265,6 +282,8 @@ export interface Piece {
   readonly draw: Draw;
   /** Shown only while it holds an arrived card (a unit, a zone pile, a spell on the stack). */
   readonly needsMembers: boolean;
+  /** How its face differs from its card's own (a battle line's head wears its plate). */
+  readonly faceOver?: Partial<FaceSpec>;
   /** It stands in the combat row (layout `Unit.fighting`): it steps out to the fight and home again along the middle. */
   readonly fight?: boolean;
   /**

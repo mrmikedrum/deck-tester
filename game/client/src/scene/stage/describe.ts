@@ -12,6 +12,7 @@ import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftO
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
+import { musterWords, noteWords } from "../../narrative";
 import type { FaceSpec } from "../../theme";
 import { DIM, SCRIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
@@ -101,7 +102,15 @@ export function describe(input: DescribeInput): Description {
     const page = sp.fixtures.page;
     const lit = leanSeat ? leanSeat === seat : softSeat ? softSeat === seat : mine && model.active === me;
     const tone = (lit ? 1.1 : 1) * (leanSeat && leanSeat !== seat && !mine ? 0.72 : 1);
-    const pageDraw: Draw = { t: "page", place, mine, seed: 7 + seat.length * 131 + seat.charCodeAt(0), turn: model.active === seat };
+    // (A battle line's ruled line and signs lie on the page, in its own coordinates.)
+    const local = (p: { readonly x: number; readonly z: number }) => {
+      const dx = p.x - page.pos.x, dz = p.z - page.pos.z, c = Math.cos(page.yaw), sn = Math.sin(page.yaw);
+      return { x: dx * c - dz * sn, z: dx * sn + dz * c };
+    };
+    const ln = sp.fixtures.line;
+    const lineDraw = ln ? (() => { const a = local(ln.a), b = local(ln.b); return { x0: a.x, z0: a.z, x1: b.x, z1: b.z }; })() : null;
+    const notesDraw = (sp.fixtures.notes ?? []).map((n) => ({ id: n.id, ...noteWords(n.facts), ...local(n.at) }));
+    const pageDraw: Draw = { t: "page", place, mine, seed: 7 + seat.length * 131 + seat.charCodeAt(0), turn: model.active === seat, line: lineDraw, notes: notesDraw };
     put({
       id: `page:${seat}`,
       kind: "page",
@@ -111,7 +120,7 @@ export function describe(input: DescribeInput): Description {
       ...placed(seat, pagePose(page), true),
       look: { ...LOOK, fade: 1 - tone / 1.1, w: page.w, d: page.d },
       form: `page|${seat}|${place}|${mine}`,
-      mods: `${pageDraw.turn}`,
+      mods: `${pageDraw.turn}|${lineDraw ? Object.values(lineDraw).map((v) => v.toFixed(3)).join(",") : ""}|${notesDraw.map((n) => `${n.text}/${n.sub ?? ""}@${n.x.toFixed(2)},${n.z.toFixed(2)}`).join(";")}`,
       mark: null,
       draw: pageDraw,
       needsMembers: false,
@@ -193,6 +202,7 @@ export function describe(input: DescribeInput): Description {
 
     const plateMark = cues.marks.seats.get(seat) ?? null;
     const spec = plateOf(model, seat, plateMark);
+    const slip = sp.fixtures.muster ? musterWords(sp.fixtures.muster) : null;
     // The rest of the command zone (a partner) is shown by its plate (the seal's art); it is counted there.
     const command = model.zone(seat, "command").filter((id) => id !== cmd?.card);
     put({
@@ -205,9 +215,9 @@ export function describe(input: DescribeInput): Description {
       // (Under a sift's shade it goes: a plaque draws over everything, and would over the sifted cards.)
       look: { ...LOOK, fade: leanSeat && leanSeat !== seat && !mine ? 0.6 : 0, glow: plateMark ? 1 : 0, alpha: sifting ? 0 : 1 },
       form: `plate|${seat}`,
-      mods: canonical(spec) + (plateMark ?? ""),
+      mods: canonical(spec) + (plateMark ?? "") + (slip ? `|${slip.text}|${slip.sub ?? ""}` : ""),
       mark: plateMark,
-      draw: { t: "plate", spec },
+      draw: { t: "plate", spec, slip },
       needsMembers: false,
     });
 
@@ -438,9 +448,17 @@ function unitPiece(
   const members = [...u.members, ...u.dressing];
   const top = model.cards.get(u.top);
   const mark = strongest(u.members.map(markOf));
-  const face = top ? faceOfCard(model, top, mark) : null;
+  const face0 = top ? faceOfCard(model, top, mark) : null;
+  // A head in a battle line says its numbers under its name, and how many copies it stands for.
+  const faceOver: Partial<FaceSpec> | undefined = u.rearguard
+    ? { head: "plate", name: u.rearguard.lead, plate: `+${u.rearguard.more} · ${u.rearguard.power} power`, art: null, text: "" }
+    : u.head
+      ? { head: "plate", ...(u.members.length > 1 ? { count: u.members.length } : {}) }
+      : undefined;
+  const face = face0 && faceOver ? { ...face0, ...faceOver } : face0;
   const chips = top ? chipsOf(top) : [];
-  const looked = u.kind === "well" ? wellLook(model, u, mine) : null;
+  const looked0 = u.kind === "well" ? wellLook(model, u, mine) : null;
+  const looked = looked0 && u.caption ? { ...looked0, sign: u.caption.text, sub: u.caption.sub } : looked0;
   const well = looked ? { ...looked, sign: looked.theirs ? looked.sign : fitWellSign(plan, u.id, looked.sign, input.measure ?? estimate), ...row } : null;
   const dressed = u.dressing
     .map((id) => model.cards.get(id))
@@ -448,7 +466,9 @@ function unitPiece(
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
   const { copies, tapNote } = copiesOf(model, u);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
-  const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
+  // (A battle line's run is counted by its coin instead; a head says its count on its plate.)
+  const coin = u.coin && !u.head ? u.members.length : null;
+  const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top && !u.coin && !u.head ? `${shortName(top.face.name)} ${u.members.length}` : null);
   const draw: Draw = {
     t: "unit",
     unit: u.kind,
@@ -467,6 +487,7 @@ function unitPiece(
     label: null,
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
+    coin,
   };
   return {
     id: u.id,
@@ -478,15 +499,16 @@ function unitPiece(
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", coin ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
     mark,
     draw,
     needsMembers: true,
+    ...(faceOver ? { faceOver } : {}),
   };
 }
 
 /** How many copies a pile draws (a well's short stack: four). */
-export const PILE_COPIES = { pile: 3, well: 4 } as const;
+export const PILE_COPIES = { pile: 3, well: 4, run: 7 } as const;
 
 /**
  * Of `k` copies drawn for `n` members with `t` tapped, how many are drawn tapped: none for none, every one for all, else
@@ -500,13 +522,13 @@ export function tappedCopies(k: number, n: number, t: number): number {
 /** The copies a unit draws, ready first, each tapped one a tapped member's face; and its tapped count where inexact. */
 function copiesOf(model: TableModel, u: Unit): { copies: { face: FaceSpec | null; tapped: boolean }[]; tapNote: string | null } {
   const cs = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
-  const n = cs.length, k = Math.max(1, Math.min(n, u.kind === "well" ? PILE_COPIES.well : PILE_COPIES.pile));
+  const n = cs.length, k = Math.max(1, Math.min(n, u.kind === "well" ? PILE_COPIES.well : u.coin ? PILE_COPIES.run : PILE_COPIES.pile));
   const tapped = cs.filter((c) => c.tapped), t = tapped.length, kt = tappedCopies(k, n, t);
   const copies = [
     ...Array.from({ length: k - kt }, () => ({ face: null, tapped: false })),
     ...tapped.slice(0, kt).map((c) => ({ face: faceOfCard(model, c), tapped: true })),
   ];
-  return { copies, tapNote: t > 0 && n > k && u.kind !== "well" ? `↷${t}` : null };
+  return { copies, tapNote: t > 0 && n > k && u.kind !== "well" && !u.coin ? `↷${t}` : null };
 }
 
 /**
