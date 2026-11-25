@@ -75,6 +75,8 @@ export function createWorld(tome: Lease, normal: Source | null): World {
     near: sh.near,
     far: sh.far,
   });
+  // (Its box was only ever assigned: without this the shadow camera keeps three's default ±5.)
+  sun.shadow.camera.updateProjectionMatrix();
   sun.shadow.bias = sh.bias;
   sun.shadow.normalBias = sh.normalBias;
   group.add(sun);

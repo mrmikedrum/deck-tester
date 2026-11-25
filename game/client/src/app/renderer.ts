@@ -72,6 +72,8 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
   let press: Press = { commit: 0, stop: null, group: null };
   /** The group a mouse hovers, as last emitted. */
   let hovered: string | null = null;
+  /** The plates' hit groups as last committed: a drag let go over a nameplate (chrome) drops on that seat's plate. */
+  let plates: readonly HitGroup[] = [];
   let markReady: () => void = () => {};
   let markFailed: (e: unknown) => void = () => {};
   const ready = new Promise<void>((resolve, reject) => {
@@ -85,6 +87,12 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
     const r = ports.canvas.getBoundingClientRect();
     const p: Point = { x: x - r.left, y: y - r.top };
     return scene.pick(p);
+  };
+  /** The plate whose nameplate is on top at (x, y), CSS px in the page. */
+  const plateAt = (x: number, y: number): HitGroup | null => {
+    const el = ports.canvas.ownerDocument.elementFromPoint(x, y)?.closest<HTMLElement>("[data-plate]");
+    const seat = el?.dataset["plate"];
+    return seat === undefined ? null : (plates.find((g) => g.seat !== null && String(g.seat) === seat) ?? null);
   };
   const act = (act: Act, at: Ms, p: Press): void => ports.emit({ t: "act", stamp: { at, commit: p.commit }, stop: p.stop, act });
   const capture = (e: PointerEvent): void => {
@@ -105,8 +113,9 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
         if (g.on) act({ a: "tap", on: targetOf(g.on.group) }, g.at, g.on);
         return;
       case "drop":
-        // The drop's target is what is under it now; its source, stop and commit are the press's.
-        if (g.on?.group) act({ a: "drag", from: targetOf(g.on.group), onto: targetOf(pick(g.x, g.y)) }, g.at, g.on);
+        // The drop's target is what is under it now (a seat's nameplate, which is chrome, or the table); its source,
+        // stop and commit are the press's.
+        if (g.on?.group) act({ a: "drag", from: targetOf(g.on.group), onto: targetOf(plateAt(g.x, g.y) ?? pick(g.x, g.y)) }, g.at, g.on);
         return;
       default:
         return; // hold (peek) and the wheel: not in the slice; hover is read off the canvas's own moves (onMove)
@@ -151,6 +160,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
     },
     ready,
     show(state, now): RenderReport {
+      plates = state.plan ? state.plan.hits.groups.filter((g) => g.kind === "plate") : [];
       build(state);
       binding?.tick(now);
       const frame = sceneFrame(state);

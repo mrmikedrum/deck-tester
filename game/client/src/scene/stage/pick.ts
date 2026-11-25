@@ -1,7 +1,7 @@
 // Picking what was drawn (docs "layout": the scene's `pick`): layout's hit groups, each moved with its piece from where
 // it rests to where it was last drawn, so a tap on a card moving through a reflow reaches that card, not the group whose
-// destination is there. At rest every piece is where layout put it, and this is layout's `hitTest` exactly: the same
-// groups, the same draw order, the same stable ids. A piece that shows none of its cards (they are in flight to it, or
+// destination is there. At rest every piece is where layout put it, and this is layout's `hitTest` exactly (but for the
+// seats' plates, which the chrome draws and takes the taps of): the same groups, the same draw order, the same stable ids. A piece that shows none of its cards (they are in flight to it, or
 // the chrome still holds them) is not pickable; a card in flight has no group. Pure.
 import { inQuad } from "../../layout";
 import type { HitGroup, Point, Projector, Quad, SeatId, TablePlan, V3 } from "../../layout";
@@ -47,7 +47,8 @@ export function pickDrawn(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece
   const groups = up ? [...plan.hits.groups.filter((g) => g.kind !== "stack"), ...(plan.hits.up ?? [])] : plan.hits.groups;
   let best: HitGroup | null = null;
   for (const g of groups) {
-    if ((best && g.order < best.order) || skip?.has(g.id)) continue;
+    // A seat's nameplate is chrome (it takes its own taps): the table under it is what a tap on the canvas reaches.
+    if ((best && g.order < best.order) || skip?.has(g.id) || g.kind === "plate") continue;
     const d = drawn.get(g.id);
     if (d && !d.pickable) continue;
     if (inQuad(d ? movedQuad(plan.projector, g.quad, d) : g.quad, p.x, p.y)) best = g;

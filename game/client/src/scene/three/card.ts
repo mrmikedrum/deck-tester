@@ -1,4 +1,4 @@
-// One card: a thin box with its face on +Z, centred on the origin and 1 tall; a front, a rear (the tome's back) and a
+// One card: a slab of stock with its face on +Z, centred on the origin and 1 tall; a front, a rear (the tome's back) and a
 // dark edge. The tap turns the body inside the pose group so a pose can face the card toward the camera without
 // undoing its quarter turn. Ported from old h.js `cardMesh`.
 import { Group, Mesh } from "three";
@@ -8,7 +8,7 @@ import type { CardGeometry } from "./geometry";
 import { faceMaterial } from "./materials";
 import type { Rim, SharedMaterials } from "./materials";
 
-const { card } = materials;
+const { card, slab } = materials;
 
 export interface CardKit {
   readonly geo: CardGeometry;
@@ -35,11 +35,12 @@ export interface CardObject {
 
 export function createCard(kit: CardKit, face: Texture, opts: CardOptions = {}): CardObject {
   const group = new Group();
-  const sharedEdge = opts.token ? kit.shared.edgeDark : kit.shared.edge;
+  const sharedEdge = opts.token ? kit.shared.stockToken : kit.shared.stock;
   const edgeMaterial = opts.transparent ? sharedEdge.clone() : sharedEdge;
   const rearMaterial = opts.transparent ? kit.shared.rear.clone() : kit.shared.rear;
   const edge = new Mesh(kit.geo.edge, [kit.shared.hidden, edgeMaterial]);
   edge.castShadow = true;
+  edge.receiveShadow = true;
   const material = faceMaterial(face, kit.rim, opts.dim ?? false);
   if (opts.transparent) {
     edgeMaterial.transparent = true;
@@ -48,8 +49,10 @@ export function createCard(kit: CardKit, face: Texture, opts: CardOptions = {}):
   }
   const front = new Mesh(kit.geo.face, material);
   front.position.z = card.thickness / 2 + card.faceLift;
+  // The face throws the card's shadow (its walls alone would throw an outline).
+  front.castShadow = true;
   const rear = new Mesh(kit.geo.face, rearMaterial);
-  rear.position.z = -card.thickness / 2 - card.faceLift;
+  rear.position.z = card.thickness / 2 - slab.depth - card.faceLift;
   rear.rotation.y = Math.PI;
   const body = new Group();
   body.rotation.z = opts.tapped ? -Math.PI / 2 : 0;

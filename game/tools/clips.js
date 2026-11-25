@@ -97,6 +97,17 @@ module.exports = [
             { at: 2500, label: "I tap the table: the stack steps aside", js: tapAt(openTable) },
             { at: 4300, label: "I tap the small stack: it comes back", js: tapAt(stackMiddle) }] },
     PLAYS.counter.first, [PLAYS.counter.steps[0]], { 1: { gesture: { tap: { open: true } } }, 2: { gesture: { tap: { stack: PLAYS.counter.steps[0].view.stack[0].source.id } } } }),
+  // The new entry's focuses, opened as a player would: a card in my hand held up, then another swapped up; a seat's
+  // nameplate opened. (The current client has neither.)
+  (() => {
+    const first = env(BOARDS[1], 1);
+    return { name: "focus", entries: ["new"], live: BOARDS[1], liveNew: first, catalogNew: catalogFor([first], H.CARDS), ms: 4200, audit: false,
+      about: "On turn 4 I tap Snap in my hand to look at it, then tap Arcane Denial, then put the hand back and tap Atraxa's nameplate.",
+      beats: [{ at: 300, label: "I tap Snap in my hand", new: { gesture: { tap: { hand: 1004 } } } },
+              { at: 1300, label: "I tap Arcane Denial", new: { gesture: { tap: { hand: 1005 } } } },
+              { at: 2300, label: "I put the hand back", new: { gesture: { key: "Escape" } } },
+              { at: 3000, label: "I tap Atraxa's nameplate", new: { gesture: { tap: { plate: "bo" } } } }] };
+  })(),
   // Offline scenario jumps cut between unrelated boards: a dev tool, not a game moment. Record it by name if wanted.
   { name: "scenarios", manual: true, live: null, ms: 5000, setup: ['__h.loadScenario("early")'], about: "The game jumps ahead: from an early board to a mid-game board to a late-game board, each side gaining many permanents.",
     beats: [{ at: 300, label: "mid-game board", js: '__h.loadScenario("mid")' },

@@ -10,6 +10,7 @@ import * as play from "../play";
 import type { Carried } from "../play";
 import type { FocusTop, MomentView, SceneFrame, SceneReport } from "../scene/stage/types";
 import { focusTopOf, isOpen, tableTop, top } from "./focus";
+import { platesOf, seatFocusOf } from "./seats";
 import { chipViewsOf, handSheetOf, inspectorOf, menuOf, mulliganOf, siftViewOf, stackRowsOf } from "./layers";
 import { sceneHas } from "./moments";
 import { offersNewGame, waitingLine } from "./readout";
@@ -134,6 +135,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null): Chrom
   const f = s.focus;
   const inspected = f.layers.find((e) => e.layer === "inspector")?.card ?? null;
   const lean = top(f)?.layer === "lean" ? top(f)?.seat : null;
+  const seatOpen = f.layers.find((e) => e.layer === "seat")?.seat ?? null;
   // The sift's caption shows while the table shows the sift: a spell that took the table since hides it with its cards.
   const table = tableTop(f);
   const sifted = table?.layer === "sift" ? table : undefined;
@@ -165,5 +167,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null): Chrom
     recap: model ? narrative.recapView(n) : null,
     watch,
     restore: model ? restoreOf(s, model, watch !== null) : null,
+    plates: model ? platesOf(model, s.plan, board.marks.seats, s.viewport.safe.top, s.viewport.h) : [],
+    seatFocus: model && seatOpen ? seatFocusOf(model, seatOpen) : null,
   };
 }

@@ -25,6 +25,7 @@ export interface ActorState {
 export interface FaceMemo {
   readonly src: Card | FaceSpec;
   readonly mark: Piece["mark"];
+  readonly small: boolean;
   readonly model: TableModel | null;
   readonly face: FaceSpec;
   readonly key: string;

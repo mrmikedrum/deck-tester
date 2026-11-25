@@ -12,9 +12,9 @@ import type { SeatId, TableModel } from "../model";
 import type { CardId } from "../protocol";
 import type { FocusLayer, FocusTop, TableLayer, TableLayerId } from "../scene/stage/types";
 
-/** The scene's focus layers, and two of the chrome's own the scene sees as a sheet: the log ("What happened") and the
- * loss report ("What you lost"). */
-export type LayerId = FocusLayer | "log" | "losses";
+/** The scene's focus layers, and three of the chrome's own the scene sees as a sheet: the log ("What happened"), the
+ * loss report ("What you lost") and a nameplate opened (`seat`, its subject the seat). */
+export type LayerId = FocusLayer | "log" | "losses" | "seat";
 
 export interface FocusEntry {
   readonly layer: LayerId;
@@ -154,6 +154,6 @@ export function focusTopOf(f: FocusState): FocusTop {
     .map((e) => ({ layer: e.layer as TableLayerId, seat: e.seat, group: e.group, ...siftPage(e) }));
   const t = top(f);
   if (!t) return { layer: null, seat: null, group: null, card: null, table };
-  const layer = t.layer === "log" || t.layer === "losses" ? "sheet" : t.layer;
+  const layer = t.layer === "log" || t.layer === "losses" || t.layer === "seat" ? "sheet" : t.layer;
   return { layer, seat: t.seat, group: t.group, card: t.card, ...siftPage(t), table };
 }
