@@ -5,7 +5,7 @@
 // the plan put them (keeping that pose as `base`, which taps are measured from): the stack as the focus stands large in
 // the middle (the plan's `stackUp`), a lean-in carries one seat's page up over the middle (layout `leanOf`), and a sift
 // fans a pile's cards out in front of the camera (layout `siftOf`).
-import { abilityText, entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
+import { abilityText, entryText, isLand, isManaRock, isTreasure, sweepHarms, sweeps } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
 import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftGroupsOf, siftOf, siftPages } from "../../layout";
@@ -385,7 +385,7 @@ function spreadOf(model: TableModel, plan: TablePlan, group: string): SiftCards 
     const heavy = (a: { c: Card }, b: { c: Card }) => (b.c.power ?? 0) - (a.c.power ?? 0) || (b.c.toughness ?? 0) - (a.c.toughness ?? 0) || (a.c.face.name < b.c.face.name ? -1 : 1);
     const ready = runsIn(model, cs.filter((c) => creature(c) && !c.tapped).map((c) => c.id)).sort(heavy);
     const spent = runsIn(model, cs.filter((c) => creature(c) && c.tapped).map((c) => c.id)).sort(heavy);
-    const other = runsIn(model, cs.filter((c) => !creature(c) && !isLand(c) && !isTreasure(c) && !/\{T\}[^:\n]*: Add/.test(c.face.text)).map((c) => c.id));
+    const other = runsIn(model, cs.filter((c) => !creature(c) && !isLand(c) && !isTreasure(c) && !isManaRock(c)).map((c) => c.id));
     const groups = [
       { label: `Ready · ${count(ready)} · ${power(ready)} power`, rs: ready },
       { label: `Tapped · ${count(spent)}`, rs: spent },
