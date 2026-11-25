@@ -1,0 +1,19 @@
+// layout: where things go. See docs/game-client-architecture.md ("layout").
+export * from "./types";
+export * from "./projector";
+export * from "./template";
+export * from "./reservations";
+export * from "./board";
+export * from "./seat";
+export * from "./ledger";
+export * from "./shape";
+export { mat } from "./seat/mat";
+export { planSeat, auditSeat, planTable, hitTest, summarize } from "./plan";
+export { STACK_POSE } from "./plan";
+export { tableInputOf } from "./table-input";
+export { combatLanes, engineCombat, fighters, mergeCombat } from "./combat";
+export type { CombatPairs, LaneEnd, LaneSpec } from "./combat";
+export type { TableInputOptions } from "./table-input";
+export type { PlanSeatOptions, StackEntry, StackAtRest, TableInput, GroupKind, HitGroup, HitGroups, TablePlan } from "./plan";
+export { LEAN_LIFT, SIFT_PAGE, carry, leanOf, siftOf, siftPages, siftQuad } from "./focus";
+export type { Lean } from "./focus";

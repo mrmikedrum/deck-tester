@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deckmaster workbench</title>
+<style>
+  html, body { margin: 0; background: #1a110a; color: #f3ece0; font-family: "Barlow", sans-serif; }
+  #root { padding: 16px; }
+  h2 { font-weight: 600; margin: 24px 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+  figure { margin: 0; }
+  figcaption { font-size: 12px; color: #a69c8b; margin-top: 4px; max-width: 336px; }
+  canvas { display: block; background: repeating-conic-gradient(#2b1d12 0 25%, #3b2717 0 50%) 0 0 / 16px 16px; }
+  #stage { background: #1a110a; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="./src/scene/workbench/main.ts"></script>
+</body>
+</html>

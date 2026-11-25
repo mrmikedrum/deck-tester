@@ -1,0 +1,606 @@
+"""The game bridge (deckmaster/game.py) without Forge: answers and their status, the build stamp, the client log, and
+serving and building the new client at /next/. The engine is stubbed at `engine.request`."""
+import http.client
+import json
+import os
+import pathlib
+import re
+import tempfile
+import threading
+import time
+import unittest
+from http.server import ThreadingHTTPServer
+from unittest import mock
+
+from deckmaster import engine, game
+
+PLAY = {"kind": "play", "turn": "T3 main1", "prompt": "", "options": ["pass", "Forest (land)"], "details": None,
+        "min": 1, "max": 1, "repeat": False, "mine": True, "refs": [{}, {"card": 7, "spell": True}], "id": 41}
+CONFIRM = {"kind": "confirm", "turn": "T3 main1", "prompt": "use Soul Warden", "options": ["yes", "no"], "min": 1,
+           "max": 1, "repeat": False, "mine": True, "id": 42}
+PLAY_AGAIN = dict(PLAY, id=43)   # the same question asked again: the same key, another decision
+
+
+def status(d, state, attempt=1, **extra):
+    return dict({"key": game.key(d), "id": d.get("id"), "attempt": attempt, "state": state}, **extra)
+
+
+class Engine:
+    """engine.request, scripted: each call takes the next behaviour; "block" waits for release(), an Exception raises."""
+
+    def __init__(self, *behaviours):
+        self.behaviours = list(behaviours)
+        self.calls = []
+        self.gates = []
+
+    def request(self, req):
+        self.calls.append(req)
+        behaviour = self.behaviours.pop(0) if self.behaviours else "ok"
+        if behaviour == "block":
+            gate = threading.Event()
+            self.gates.append(gate)
+            gate.wait(5)
+        elif isinstance(behaviour, Exception):
+            raise behaviour
+        return {"ok": True}
+
+    def release(self, n=0):
+        while len(self.gates) <= n:
+            time.sleep(0.01)
+        self.gates[n].set()
+
+
+def playing(decision, gen=1):
+    return {"state": "playing", "gen": gen, "view": {}, "decision": decision, "over": None, "pilots": {}}
+
+
+def show(t, decision, gen=1, session="s1"):
+    """What the game's watcher does with a view the engine sent for `session`, the seat of game `gen`."""
+    return t.show(playing(decision, gen), gen, session)
+
+
+def table(decision=PLAY):
+    t = game.Table()
+    t.generation = 1
+    t.mine = "s1"
+    show(t, decision)
+    return t
+
+
+def settle(t, state, timeout=3):
+    """Wait for the snapshot's answer status to reach `state`."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        status = t.snapshot.get("answer")
+        if status and status["state"] == state:
+            return status
+        time.sleep(0.01)
+    raise AssertionError(f"answer status never became {state}: {t.snapshot.get('answer')}")
+
+
+class AnswerStatusTest(unittest.TestCase):
+    def test_an_accepted_answer_is_working_until_the_engine_returns_then_applied(self):
+        t, eng = table(), Engine("block")
+        with mock.patch.object(engine, "request", eng.request):
+            before = t.version
+            self.assertEqual(t.answer({"key": game.key(PLAY), "id": 41, "answer": [2]}), {"ok": True, "attempt": 1})
+            self.assertEqual(eng.calls, [{"cmd": "answer", "session": "s1", "id": 41, "answer": [2]}])
+            self.assertEqual(t.snapshot["answer"], status(PLAY, "working"))
+            self.assertGreater(t.version, before)   # a status change wakes the long polls
+            eng.release()
+            self.assertEqual(settle(t, "applied"), status(PLAY, "applied"))
+
+    def test_the_old_clients_key_is_checked_then_the_pending_decisions_id_goes_to_the_engine(self):
+        t, eng = table(), Engine()
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"key": game.key(PLAY), "answer": [2]}), {"ok": True, "attempt": 1})
+        self.assertEqual(eng.calls, [{"cmd": "answer", "session": "s1", "id": 41, "answer": [2]}])
+
+    def test_a_decision_without_an_id_is_answered_as_before(self):
+        t, eng = table({k: v for k, v in PLAY.items() if k != "id"}), Engine("block")
+        with mock.patch.object(engine, "request", eng.request):
+            t.answer({"key": game.key(PLAY), "answer": [2]})
+            self.assertEqual(eng.calls, [{"cmd": "answer", "session": "s1", "answer": [2]}])
+            self.assertEqual(t.snapshot["answer"], {"key": game.key(PLAY), "id": None, "attempt": 1, "state": "working"})
+            self.assertEqual(t.answer({"key": game.key(PLAY), "answer": [1]}),
+                             {"ok": False, "error": "an answer is already being worked on"})   # by key
+            eng.release()
+            settle(t, "applied")
+
+    def test_a_refused_answer_says_why_in_the_reply_and_the_status(self):
+        t, eng = table(), Engine(engine.EngineError("pick exactly 1"))
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"id": 41, "answer": [1, 2]}), {"ok": False, "error": "pick exactly 1",
+                                                                    "attempt": 1})
+        self.assertEqual(t.snapshot["answer"], status(PLAY, "refused", error="pick exactly 1"))
+
+    def test_a_second_answer_while_one_is_working_is_refused(self):
+        t, eng = table(), Engine("block", "ok")
+        with mock.patch.object(engine, "request", eng.request):
+            t.answer({"id": 41, "answer": [2]})
+            self.assertEqual(t.answer({"id": 41, "answer": [1]}),
+                             {"ok": False, "error": "an answer is already being worked on"})
+            self.assertEqual(t.answer({"defer": True}), {"ok": False, "error": "an answer is already being worked on"})
+            self.assertEqual(len(eng.calls), 1)
+            eng.release()
+            settle(t, "applied")
+            # finished: it may be answered again (the engine refuses it if it has moved on)
+            self.assertEqual(t.answer({"id": 41, "defer": True}), {"ok": True, "attempt": 2})
+            self.assertEqual(eng.calls[1], {"cmd": "answer", "session": "s1", "id": 41, "defer": True, "by": "ai"})
+
+    def test_the_same_question_asked_again_is_another_decision(self):
+        t, eng = table(), Engine("block", "ok")
+        with mock.patch.object(engine, "request", eng.request):
+            t.answer({"id": 41, "answer": [1]})
+            show(t, PLAY_AGAIN)   # the engine asked again before its reply to the first reached us
+            self.assertEqual(t.answer({"key": game.key(PLAY), "id": 43, "answer": [1]}), {"ok": True, "attempt": 2})
+            self.assertEqual([c["id"] for c in eng.calls], [41, 43])
+            eng.release()
+
+    def test_answers_that_cannot_be_forwarded_leave_the_status_alone(self):
+        t, eng = table(), Engine()
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"key": "play|T2 main1||1|pass", "answer": [1]}),
+                             {"ok": False, "error": "that decision has passed"})
+            self.assertEqual(t.answer({"key": game.key(PLAY), "id": 40, "answer": [1]}),
+                             {"ok": False, "error": "that decision has passed"})
+            show(t, None)
+            self.assertEqual(t.answer({"answer": [1]}), {"ok": False, "error": "nothing to answer"})
+        self.assertEqual(eng.calls, [])
+        self.assertIsNone(t.snapshot["answer"])
+
+    def test_a_late_reply_never_overwrites_a_newer_answer(self):
+        t, eng = table(), Engine("block", engine.EngineError("pick exactly 1"))
+        with mock.patch.object(engine, "request", eng.request):
+            t.answer({"id": 41, "answer": [2]})
+            show(t, CONFIRM)   # the engine moved on before its reply reached us
+            t.answer({"id": 42, "answer": [1, 2]})
+            self.assertEqual(t.snapshot["answer"]["id"], 42)
+            eng.release()
+            time.sleep(0.1)
+        self.assertEqual(t.snapshot["answer"], status(CONFIRM, "refused", attempt=2, error="pick exactly 1"))
+
+    def test_each_forwarded_answer_is_a_new_attempt(self):
+        # a refusal that comes and goes between two polls still shows: the next status has a later attempt
+        t, eng = table(), Engine(engine.EngineError("pick exactly 1"), "ok")
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"id": 41, "answer": [1, 2]}),
+                             {"ok": False, "error": "pick exactly 1", "attempt": 1})   # the reply names it too
+            first = t.snapshot["answer"]
+            self.assertEqual((first["state"], first["error"]), ("refused", "pick exactly 1"))
+            self.assertEqual(t.answer({"key": "stale", "answer": [1]})["ok"], False)   # not forwarded: no attempt
+            self.assertEqual(t.answer({"id": 41, "answer": [2]}), {"ok": True, "attempt": 2})
+        second = settle(t, "applied")
+        self.assertIsInstance(first["attempt"], int)
+        self.assertEqual(second["attempt"], first["attempt"] + 1)
+        t.begin()   # a new game's answers carry on counting: an attempt never repeats while the bridge runs
+        show(t, PLAY, gen=2)
+        with mock.patch.object(engine, "request", Engine().request):
+            t.answer({"id": 41, "gen": 2, "answer": [2]})
+        self.assertGreater(settle(t, "applied")["attempt"], second["attempt"])
+
+    def test_the_status_survives_the_view_moving_on(self):
+        t, eng = table(), Engine()
+        with mock.patch.object(engine, "request", eng.request):
+            t.answer({"id": 41, "answer": [2]})
+        settle(t, "applied")
+        show(t, CONFIRM)
+        self.assertEqual(t.snapshot["answer"], status(PLAY, "applied"))
+        self.assertEqual(t.snapshot["decision"], CONFIRM)
+
+
+# Each engine session numbers its decisions from 1, so the next game's opening mulligan can share the last one's id
+# and key: only the game's gen tells them apart.
+MULLIGAN = {"kind": "mulligan", "turn": "T0 setup", "prompt": "keep this hand", "options": ["keep", "mulligan"],
+            "min": 1, "max": 1, "repeat": False, "mine": True, "id": 1}
+
+
+class GameReplacementTest(unittest.TestCase):
+    def replaced(self):
+        """Game 1 asked its opening mulligan in session s1; game 2 asks the same, as id 1, in session s2."""
+        t = table(MULLIGAN)
+        self.assertEqual(t.begin(), 2)
+        show(t, MULLIGAN, gen=2, session="s2")
+        return t
+
+    def test_an_answer_meant_for_the_last_game_is_refused(self):
+        t, eng = self.replaced(), Engine()
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"key": game.key(MULLIGAN), "id": 1, "gen": 1, "answer": [2]}),
+                             {"ok": False, "error": "that decision has passed"})
+            self.assertEqual(eng.calls, [])
+            self.assertIsNone(t.snapshot["answer"])
+            self.assertEqual(t.answer({"key": game.key(MULLIGAN), "id": 1, "gen": 2, "answer": [1]}), {"ok": True, "attempt": 2})
+        self.assertEqual(eng.calls, [{"cmd": "answer", "session": "s2", "id": 1, "answer": [1]}])
+
+    def test_the_old_client_sends_no_gen_and_still_answers(self):
+        t, eng = self.replaced(), Engine()
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"key": game.key(MULLIGAN), "answer": [1]}), {"ok": True, "attempt": 2})
+        self.assertEqual(eng.calls, [{"cmd": "answer", "session": "s2", "id": 1, "answer": [1]}])
+
+    def test_the_answer_goes_to_the_session_whose_view_showed_the_decision(self):
+        t, eng = table(MULLIGAN), Engine()
+        t.mine = "s2"   # the next game's seat, opened before its first view arrives
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"id": 1, "gen": 1, "answer": [1]}), {"ok": True, "attempt": 1})
+        self.assertEqual(eng.calls[0]["session"], "s1")
+
+    def test_while_the_next_game_starts_there_is_nothing_to_answer(self):
+        t, eng = table(MULLIGAN), Engine()
+        t.begin()
+        with mock.patch.object(engine, "request", eng.request):
+            self.assertEqual(t.answer({"key": game.key(MULLIGAN), "id": 1, "gen": 1, "answer": [1]}),
+                             {"ok": False, "error": "nothing to answer"})
+            self.assertEqual(t.answer({"key": game.key(MULLIGAN), "answer": [1]}),
+                             {"ok": False, "error": "nothing to answer"})
+        self.assertEqual(eng.calls, [])
+        self.assertEqual((t.snapshot["state"], t.snapshot["gen"]), ("starting", 2))
+
+    def test_a_view_from_the_last_game_is_not_shown(self):
+        t = table(MULLIGAN)
+        t.begin()
+        self.assertFalse(show(t, PLAY, gen=1, session="s1"))
+        self.assertEqual((t.snapshot["state"], t.snapshot["gen"]), ("starting", 2))
+
+
+class SlowView:
+    """engine.request for the watcher: the first view waits for release(), then shows the mulligan."""
+
+    def __init__(self):
+        self.calls, self.asked, self.gate = [], threading.Event(), threading.Event()
+
+    def request(self, req):
+        self.calls.append(req)
+        if len(self.calls) == 1:
+            self.asked.set()
+            self.gate.wait(5)
+        return {"view": {}, "decision": MULLIGAN}
+
+
+class WatcherTest(unittest.TestCase):
+    def test_a_delayed_view_from_the_last_game_never_overwrites_the_next(self):
+        t, eng = game.Table(), SlowView()
+        t.generation = 1
+        with mock.patch.object(engine, "request", eng.request):
+            watcher = threading.Thread(target=t.watch, args=(1, "s1"), daemon=True)
+            watcher.start()
+            self.assertTrue(eng.asked.wait(5))
+            t.begin()   # game 2 starts while game 1's view is on its way
+            eng.gate.set()
+            watcher.join(5)
+            self.assertFalse(watcher.is_alive())
+        self.assertEqual((t.snapshot["state"], t.snapshot["gen"]), ("starting", 2))
+        self.assertEqual(eng.calls, [{"cmd": "view", "session": "s1"}])
+
+    def test_the_watcher_reads_its_own_session(self):
+        t, eng = game.Table(), SlowView()
+        t.generation, t.mine = 1, "s9"
+        eng.gate.set()
+        with mock.patch.object(engine, "request", eng.request), mock.patch.object(game.time, "sleep",
+                                                                                   side_effect=lambda s: t.begin()):
+            t.watch(1, "s1")
+        self.assertEqual(eng.calls, [{"cmd": "view", "session": "s1"}])
+        self.assertEqual(t.snapshot["state"], "starting")
+
+
+class EnvelopeTest(unittest.TestCase):
+    def test_the_envelope_carries_version_error_build_and_answer(self):
+        self.assertEqual(game.envelope({"state": "no game"}, 0, None),
+                         {"state": "no game", "answer": None, "v": 0, "error": None, "build": None})
+        snap = dict(playing(PLAY), answer={"key": "k", "state": "working"})
+        env = game.envelope(snap, 4, "engine closed the connection", "abc123def456")
+        self.assertEqual((env["v"], env["error"], env["build"], env["answer"]),
+                         (4, "engine closed the connection", "abc123def456", {"key": "k", "state": "working"}))
+        self.assertEqual(game.Table().snapshot, {"state": "no game", "answer": None})
+
+    def test_the_build_comes_from_the_served_builds_build_json(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(game, "DIST", pathlib.Path(tmp)):
+            self.assertIsNone(game.client_build())
+            (pathlib.Path(tmp) / "build.json").write_text('{"build": "c84102cd92eb"}\n')
+            self.assertEqual(game.client_build(), "c84102cd92eb")
+            (pathlib.Path(tmp) / "build.json").write_text("not json")
+            game._BUILD["mtime"] = None
+            self.assertIsNone(game.client_build())
+
+    def test_the_key_is_the_one_in_the_corpus(self):
+        self.assertEqual(game.key(PLAY), "play|T3 main1||2|pass|Forest (land)")
+        self.assertEqual(game.key({"kind": "number", "turn": "T2 main1", "prompt": "X for Fireball", "options": []}),
+                         "number|T2 main1|X for Fireball|0")
+
+
+def entry(**changes):
+    return dict({"level": "error", "code": "decode", "build": "c84102cd92eb", "rev": 12, "stop": 3,
+                 "message": "view.players.0.battlefield.3.id: Invalid type"}, **changes)
+
+
+class ClientLogTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = pathlib.Path(self.tmp.name) / "clientlog.jsonl"
+        self.now = 1000.0
+        self.log = game.ClientLog(self.path, clock=lambda: self.now)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def lines(self):
+        return [json.loads(line) for line in self.path.read_text().splitlines()]
+
+    def test_entries_are_appended_with_the_time(self):
+        self.assertEqual(self.log.add({"entries": [entry(), entry(level="warn", build=None, rev=None, stop=None)]}),
+                         (200, {"ok": True, "kept": 2, "dropped": 0}))
+        first, second = self.lines()
+        self.assertEqual(first, dict(entry(), at=1000.0))
+        self.assertEqual((second["level"], second["build"], second["rev"], second["stop"]), ("warn", None, None, None))
+        self.log.add({"entries": [{"level": "info", "code": "boot", "message": "hello"}]})   # build, rev, stop may be left out
+        self.assertEqual(self.lines()[2]["rev"], None)
+
+    def test_other_shapes_are_refused(self):
+        bad = {
+            "not an object": [],
+            "no entries": {},
+            "extra top-level key": {"entries": [entry()], "more": 1},
+            "entries not a list": {"entries": entry()},
+            "empty": {"entries": []},
+            "51 entries": {"entries": [entry()] * 51},
+            "entry not an object": {"entries": ["x"]},
+            "unknown field": {"entries": [entry(card_text="...")]},
+            "missing message": {"entries": [{"level": "info", "code": "x"}]},
+            "level": {"entries": [entry(level="fatal")]},
+            "code with spaces": {"entries": [entry(code="bad code")]},
+            "long code": {"entries": [entry(code="x" * 65)]},
+            "message not text": {"entries": [entry(message=3)]},
+            "message over 2 KB": {"entries": [entry(message="é" * 1025)]},   # 2050 bytes
+            "rev negative": {"entries": [entry(rev=-1)]},
+            "rev a bool": {"entries": [entry(rev=True)]},
+            "stop text": {"entries": [entry(stop="3")]},
+            "build not text": {"entries": [entry(build=7)]},
+        }
+        for name, body in bad.items():
+            with self.subTest(name):
+                code, reply = self.log.add(body)
+                self.assertEqual((code, reply["ok"]), (400, False))
+                self.assertTrue(reply["error"])
+        self.assertFalse(self.path.exists())
+        self.assertEqual(self.log.add({"entries": [entry(message="é" * 1024)]})[0], 200)   # exactly 2 KB
+
+    def test_at_most_50_entries_a_minute(self):
+        self.assertEqual(self.log.add({"entries": [entry()] * 30})[1]["kept"], 30)
+        self.now += 30
+        self.assertEqual(self.log.add({"entries": [entry()] * 30})[1], {"ok": True, "kept": 20, "dropped": 10})
+        self.assertEqual(self.log.add({"entries": [entry()]})[0], 429)
+        self.now += 31   # the first 30 are over a minute old
+        self.assertEqual(self.log.add({"entries": [entry()] * 40})[1]["kept"], 30)
+        self.assertEqual(len(self.lines()), 80)
+
+    def test_the_file_rotates_keeping_one_old_file(self):
+        log = game.ClientLog(self.path, limit=1000, clock=lambda: self.now)
+        for i in range(12):
+            self.now += 61
+            log.add({"entries": [entry(code=f"c{i}")]})
+        old = self.path.with_name("clientlog.jsonl.1")
+        self.assertTrue(old.exists())
+        self.assertLessEqual(self.path.stat().st_size, 1000)
+        self.assertEqual(sorted(p.name for p in self.path.parent.iterdir()), ["clientlog.jsonl", "clientlog.jsonl.1"])
+        self.assertEqual(self.lines()[-1]["code"], "c11")
+
+
+class Server:
+    """The real handler on a free port, with the bridge's globals pointed at a temporary build and log."""
+
+    def __init__(self, dist, log):
+        self.patches = [mock.patch.object(game, "DIST", dist), mock.patch.object(game, "CLIENT_LOG", log),
+                        mock.patch.object(game, "TABLE", game.Table())]
+
+    def __enter__(self):
+        for p in self.patches:
+            p.start()
+        game._BUILD["mtime"] = None
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), game.Handler)
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        return self
+
+    def __exit__(self, *exc):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+        for p in self.patches:
+            p.stop()
+
+    def get(self, path, method="GET", body=None):
+        conn = http.client.HTTPConnection("127.0.0.1", self.httpd.server_address[1], timeout=5)
+        headers = {"Content-Type": "application/json"} if body is not None else {}
+        conn.request(method, path, body=None if body is None else json.dumps(body), headers=headers)
+        r = conn.getresponse()
+        data = r.read()
+        conn.close()
+        return r.status, dict(r.getheaders()), data
+
+    def post_raw(self, path, length, body=b""):
+        """A POST whose Content-Length header says `length`, whatever the body is."""
+        conn = http.client.HTTPConnection("127.0.0.1", self.httpd.server_address[1], timeout=5)
+        conn.putrequest("POST", path)
+        conn.putheader("Content-Type", "application/json")
+        conn.putheader("Content-Length", length)
+        conn.endheaders(body)
+        r = conn.getresponse()
+        data = r.read()
+        conn.close()
+        return r.status, json.loads(data)
+
+
+class NextClientServingTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = pathlib.Path(self.tmp.name)
+        self.dist = root / "dist"
+        (self.dist / "assets").mkdir(parents=True)
+        (self.dist / "index.html").write_text("<!doctype html><title>next</title>")
+        (self.dist / "assets" / "index-B8eTv0QL.js").write_text("console.log(1)")
+        (self.dist / "build.json").write_text('{"build": "c84102cd92eb"}\n')
+        self.log = game.ClientLog(root / "clientlog.jsonl")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_next_serves_the_build_with_long_caching_only_for_hashed_assets(self):
+        with Server(self.dist, self.log) as s:
+            status, headers, data = s.get("/next/")
+            self.assertEqual((status, data, headers["Cache-Control"]), (200, b"<!doctype html><title>next</title>", "no-store"))
+            status, headers, _ = s.get("/next/assets/index-B8eTv0QL.js")
+            self.assertEqual((status, headers["Cache-Control"]), (200, "public, max-age=31536000, immutable"))
+            self.assertIn("javascript", headers["Content-Type"])
+            status, headers, _ = s.get("/next")
+            self.assertEqual((status, headers["Location"]), (301, "/next/"))
+            self.assertEqual(s.get("/next/missing.js")[0], 404)
+            self.assertEqual(s.get("/next/../../../deckmaster/game.py")[0], 404)
+
+    def test_the_new_clients_relative_api_reaches_the_bridge_and_carries_the_build(self):
+        with Server(self.dist, self.log) as s:
+            status, _, data = s.get("/next/api/view?v=5")   # a cursor from before a restart: answered at once
+            env = json.loads(data)
+            self.assertEqual((status, env["state"], env["build"], env["answer"]), (200, "no game", "c84102cd92eb", None))
+            self.assertEqual(json.loads(s.get("/api/view?v=5")[2])["build"], "c84102cd92eb")
+
+    def test_the_client_log_endpoint(self):
+        with Server(self.dist, self.log) as s:
+            status, _, data = s.get("/api/clientlog", "POST", {"entries": [entry()]})
+            self.assertEqual((status, json.loads(data)), (200, {"ok": True, "kept": 1, "dropped": 0}))
+            self.assertEqual(s.get("/next/api/clientlog", "POST", {"entries": [entry()]})[0], 200)
+            status, _, data = s.get("/api/clientlog", "POST", {"entries": [entry(level="fatal")]})
+            self.assertEqual((status, json.loads(data)["ok"]), (400, False))
+            self.assertEqual(s.get("/api/clientlog", "POST", [1, 2])[0], 400)
+        self.assertEqual(len(self.log.path.read_text().splitlines()), 2)
+
+    def test_a_bad_content_length_is_refused_and_a_good_one_read_exactly(self):
+        body = json.dumps({"entries": [entry()]}).encode()
+        with Server(self.dist, self.log) as s:
+            for path in ("/api/clientlog", "/api/answer"):
+                for length in ("-1", "-100", "abc", "1.5", ""):
+                    with self.subTest(path=path, length=length):
+                        status, reply = s.post_raw(path, length, body)
+                        self.assertEqual((status, reply["ok"]), (400, False))
+            self.assertEqual(s.post_raw("/api/clientlog", str(300 * 1024))[0], 413)
+            self.assertEqual(s.post_raw("/api/clientlog", str(len(body)), body + b"trailing junk")[0], 200)
+            self.assertEqual(s.post_raw("/api/clientlog", str(len(body) - 1), body)[0], 400)   # read exactly: cut JSON
+        self.assertEqual(len(self.log.path.read_text().splitlines()), 1)
+
+    def test_without_a_build_next_says_how_to_make_one(self):
+        with Server(pathlib.Path(self.tmp.name) / "nothing", self.log) as s:
+            status, _, data = s.get("/next/")
+            self.assertEqual(status, 404)
+            self.assertIn(b"npm run build", data)
+
+
+class BuildOnStartTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.game = pathlib.Path(self.tmp.name) / "game"
+        client = self.game / "client"
+        (client / "src" / "protocol").mkdir(parents=True)
+        (client / "src" / "protocol" / "index.ts").write_text("export {};\n")
+        (client / "index.html").write_text("<!doctype html>")
+        (self.game / "package-lock.json").write_text("{}")
+        (self.game / "vite.config.mts").write_text("export default {};")
+        (client / "test" / "model").mkdir(parents=True)
+        (client / "test" / "model" / "catalog.json").write_text("{}")
+        self.corpus = self.game.parent / "tests" / "fixtures" / "protocol"
+        self.corpus.mkdir(parents=True)
+        (self.corpus / "001-no-game.json").write_text('{"state": "no game"}')
+        self.dist = client / "dist"
+        self.patches = [mock.patch.object(game, "GAME", self.game), mock.patch.object(game, "CLIENT", client),
+                        mock.patch.object(game, "DIST", self.dist)]
+        for p in self.patches:
+            p.start()
+        self.node = "v22.11.0"
+        self.builds = []
+        self.broken = False
+        self.said = []
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        self.tmp.cleanup()
+
+    def run_(self, cmd, **kw):
+        if cmd[1:] == ["--version"]:
+            return mock.Mock(stdout=self.node + "\n", stderr="", returncode=0)
+        self.builds.append((cmd, kw.get("cwd")))
+        if self.broken:
+            return mock.Mock(stdout="", stderr="vite: error", returncode=1)
+        out = pathlib.Path(cmd[cmd.index("--outDir") + 1])
+        out.mkdir(parents=True)
+        (out / "index.html").write_text(f"build {len(self.builds)}")
+        (out / "build.json").write_text('{"build": "x"}')
+        return mock.Mock(stdout="built", stderr="", returncode=0)
+
+    def ensure(self, which=lambda name: "/usr/bin/" + name):
+        return game.ensure_client(run=self.run_, which=which, say=self.said.append)
+
+    def test_a_stale_build_is_rebuilt_in_staging_then_published(self):
+        self.assertEqual(self.ensure(), "built")
+        (cmd, cwd), = self.builds
+        self.assertEqual(cmd[:4], ["/usr/bin/npm", "run", "build", "--"])
+        self.assertEqual((cmd[4], pathlib.Path(cmd[5]).name, cwd), ("--outDir", "dist.staging", str(self.game)))
+        self.assertEqual((self.dist / ".stamp").read_text().strip(), game.client_stamp(self.node))
+        self.assertEqual((self.dist / "index.html").read_text(), "build 1")
+        self.assertFalse(self.dist.with_name("dist.staging").exists())
+        self.assertFalse(self.dist.with_name("dist.old").exists())
+
+    def test_a_current_build_is_left_alone(self):
+        self.ensure()
+        self.assertEqual(self.ensure(), "current")
+        self.assertEqual(len(self.builds), 1)
+
+    def test_sources_and_node_make_the_stamp(self):
+        self.ensure()
+        (self.game / "client" / "src" / "protocol" / ".DS_Store").write_text("noise")
+        self.assertEqual(self.ensure(), "current")
+        (self.game / "client" / "src" / "protocol" / "index.ts").write_text("export const x = 1;\n")
+        self.assertEqual(self.ensure(), "built")
+        self.node = "v24.0.0"
+        self.assertEqual(self.ensure(), "built")
+        (self.game / "package-lock.json").write_text('{"lockfileVersion": 3}')
+        self.assertEqual(self.ensure(), "built")
+        self.assertEqual((self.dist / "index.html").read_text(), "build 4")
+
+    def test_the_workbench_inputs_make_the_stamp(self):
+        # the workbench's motion page bundles the protocol corpus and a test catalog (import.meta.glob)
+        self.ensure()
+        (self.corpus / "001-no-game.json").write_text('{"state": "no game", "v": 0}')
+        self.assertEqual(self.ensure(), "built")
+        (self.corpus / "054-choose.json").write_text("{}")
+        self.assertEqual(self.ensure(), "built")
+        (self.game / "client" / "test" / "model" / "catalog.json").write_text('{"Forest": {}}')
+        self.assertEqual(self.ensure(), "built")
+        self.assertEqual(self.ensure(), "current")
+
+    def test_the_stamp_reads_what_the_vite_build_id_reads(self):
+        config = (game.ROOT / "game" / "vite.config.mts").read_text()
+        listed = re.search(r"const BUILD_INPUTS = \[(.*?)\];", config, re.S).group(1)
+        self.assertEqual(tuple(re.findall(r'"([^"]+)"', listed)), game.STAMP_INPUTS)
+        motion = (game.ROOT / "game" / "client" / "src" / "scene" / "workbench" / "motion.ts").read_text()
+        here = game.ROOT / "game" / "client" / "src" / "scene" / "workbench"
+        for glob in re.findall(r'import\.meta\.glob[^(]*\("([^"]+)"', motion):
+            target = os.path.relpath(os.path.normpath(here / glob), game.ROOT / "game").replace(os.sep, "/")
+            self.assertTrue(any(target == rel or target.startswith(rel + "/") for rel in game.STAMP_INPUTS), target)
+
+    def test_a_failed_build_keeps_the_last_one(self):
+        self.ensure()
+        (self.game / "client" / "index.html").write_text("<!doctype html><title>changed</title>")
+        self.broken = True
+        self.assertEqual(self.ensure(), "failed")
+        self.assertEqual((self.dist / "index.html").read_text(), "build 1")
+        self.assertFalse(self.dist.with_name("dist.staging").exists())
+        self.assertIn("vite: error", self.said[-1])
+        self.assertIn("its last build", self.said[-1])
+
+    def test_without_node_what_exists_is_served(self):
+        self.assertEqual(self.ensure(which=lambda name: None), "no node")
+        self.assertEqual(self.builds, [])
+        self.assertIn("Node isn't installed", self.said[-1])
+        self.assertFalse(self.dist.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

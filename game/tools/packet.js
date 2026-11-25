@@ -2,11 +2,9 @@
 // zoomed sheet per mat that moves, a trails image (every mat's outline per frame on one picture) and plain-words
 // telemetry flags. Images are sized to survive a vision model's downscaling (≤ 1560 px wide, 3×3 tiles).
 //   node tools/packet.js <reeldir>            (every clip in it)  ·  node tools/packet.js <reeldir>/<clip>
+// A clip's layout verdict is its packet's last line: PASS, FAIL, or NOT MEASURED / INCOMPLETE where a beat held to the
+// limits had nothing measured (never a pass). packet.test.js holds the verdict to that.
 const fs = require("fs"), path = require("path");
-const pw = require(process.env.PW || "playwright");
-
-const arg = process.argv[2] || "reels/latest";
-const clipDirs = fs.existsSync(path.join(arg, "track.json")) ? [arg] : fs.readdirSync(arg).map(d => path.join(arg, d)).filter(d => fs.existsSync(path.join(d, "track.json")));
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const angle = q => Math.atan2(q[1][1] - q[0][1], q[1][0] - q[0][0]) * 180 / Math.PI;
@@ -120,11 +118,51 @@ async function compose(page, spec) {
 
 // ---- Layout audits: the hard limits in tools/look/intent.md, per stage and seat ------------------------------------
 const FLOOR = { any: 44, oppCreature: 56, myCreature: 72, tap: 44, nameCover: 20, faceCover: 35 };   // cover: most % another piece or a panel may hide
-const SEATNAME = { you: "Me", ana: "Marath (left)", bo: "Atraxa (across)", cy: "Dack (right)" };
+const SEATNAME = { you: "Me", ana: "Marath (left)", bo: "Atraxa (across)", cy: "Dack (right)", stack: "The stack (set aside)" };
+
+// One audit held to the limits: a row per seat (and the stack set aside), its breaches of the hard limits, and how many
+// pieces it measured. `fr` holds the frame's objects (each piece's face width on screen).
+function auditRows(a, fr) {
+  const md = ["| seat | permanents | drawn alone | piles (cards) | hidden | smallest face px | too small | can't tap 44 pt | name or stats covered | face covered | creatures in mixed piles |", "|---|---|---|---|---|---|---|---|---|---|"];
+  let fails = 0, measured = 0;
+  for (const pid of ["you", "ana", "bo", "cy", "stack"]) {
+    const all = Object.entries(a.pieces).filter(([, p]) => p.pid === pid && p.role !== "plate");
+    if (pid === "stack" && !all.length) continue;
+    measured += all.length;
+    const total = all.reduce((n, [, p]) => n + p.n, 0), alone = all.filter(([, p]) => p.n === 1 && !p.hidden).length;
+    const piles = all.filter(([, p]) => p.n > 1 && !p.hidden), hidden = all.filter(([, p]) => p.hidden);
+    const face = ([k]) => (fr.objects[k] || {}).face || 0;
+    const floorOf = ([, p]) => p.role === "creature" ? (pid === "you" ? FLOOR.myCreature : FLOOR.oppCreature) : FLOOR.any;
+    const small = all.filter(e => !e[1].hidden && face(e) && face(e) < floorOf(e));
+    const untappable = all.filter(([, p]) => !p.hidden && p.tapSquare < FLOOR.tap);
+    const who = w => (w.startsWith("panel:") ? "the " + w.slice(6) + " panel" : a.pieces[w] ? (a.pieces[w].names[0] || w) : w);
+    const named = all.filter(([, p]) => p.cover && Math.max(p.cover.name, p.cover.foot || 0) > FLOOR.nameCover), faced = all.filter(([, p]) => p.cover && p.cover.face > FLOOR.faceCover);
+    const coverList = (list, f) => (list.length ? "**" + list.length + "**: " + list.map(([k, p]) => `${(p.names[0] || "?")} ${f === "name" ? (p.cover.name >= (p.cover.foot || 0) ? "name " + p.cover.name : "stats " + p.cover.foot) : p.cover[f]}% by ${p.cover.by.map(who).join(", ")}`).join("; ") : 0);
+    const faces = all.filter(e => !e[1].hidden && face(e)).map(face);
+    const nm = ([, p]) => (p.names[0] || "?") + (p.n > 1 ? ` ×${p.n}` : "");
+    // Mixed piles of creatures (unlike names), for the record: what folds first is judged by importance, not measured.
+    const mixed = all.filter(([, p]) => p.role === "creature" && p.n > 1 && new Set(p.names).size > 1 && !p.hidden);
+    const loneNon = all.filter(([, p]) => ["support", "mana"].includes(p.role) && p.n === 1 && !p.hidden);
+    const early = mixed.length && loneNon.length ? mixed.length : 0;
+    fails += hidden.reduce((n, [, p]) => n + p.n, 0) + small.length + untappable.length + named.length + faced.length;
+    md.push(`| ${SEATNAME[pid]} | ${total} | ${alone} | ${piles.length} (${piles.reduce((n, [, p]) => n + p.n, 0)}) | ${hidden.length ? "**" + hidden.reduce((n, [, p]) => n + p.n, 0) + "**: " + hidden.map(nm).join(", ") : 0} | ${faces.length ? Math.round(Math.min(...faces)) : "-"} | ${small.length ? "**" + small.length + "**: " + small.map(e => nm(e) + " " + Math.round(face(e))).join(", ") : 0} | ${untappable.length ? "**" + untappable.length + "**: " + untappable.map(e => nm(e) + " " + e[1].tapSquare).join(", ") : 0} | ${coverList(named, "name")} | ${coverList(faced, "face")} | ${mixed.length ? mixed.reduce((n, [, p]) => n + p.n, 0) + " in " + mixed.length + (early ? " (" + loneNon.length + " lone noncreature" + (loneNon.length > 1 ? "s" : "") + " beside)" : "") : 0} |`);
+  }
+  return { md, fails, measured };
+}
+
+// The packet's last line: PASS only when every beat held to the limits had pieces measured and none broke one. A clip
+// with nothing measured says so: it is not a pass.
+function verdict({ gated, measured, fails }) {
+  if (fails) return `**LAYOUT: FAIL** (${fails} breaches of the hard limits)`;
+  if (!measured) return `**LAYOUT: NOT MEASURED** (${gated ? `none of the ${gated} beats held to the limits had a piece measured` : "no beat was held to the limits"}: this is not a pass)`;
+  if (measured < gated) return `**LAYOUT: INCOMPLETE** (${measured} of ${gated} beats held to the limits measured; no breaches in those)`;
+  return `**LAYOUT: PASS** (${measured} beat${measured > 1 ? "s" : ""} measured)`;
+}
+
 async function audits(page, track, dir, out) {
   const [VW, VH] = track.viewport, md = ["", "## Layout audit (hard limits from tools/look/intent.md)", "",
     `Floors: any card or pile ${FLOOR.any} px wide, an opponent's creature ${FLOOR.oppCreature}, my creature ${FLOOR.myCreature}; every piece a ${FLOOR.tap}×${FLOOR.tap} pt patch the hit test gives it; nothing hidden; no card's name or stats strip more than ${FLOOR.nameCover}% or face more than ${FLOOR.faceCover}% covered by another piece or a panel.`, ""];
-  let fails = 0;
+  let fails = 0, gated = 0, measured = 0;
   for (const a of track.audits) {
     const fr = a.objects ? { objects: a.objects } : track.frames[a.frame], tag = `stage-${String(a.frame).padStart(3, "0")}`;
     const still = path.join(dir, `still-${String(a.frame).padStart(3, "0")}.png`);
@@ -143,39 +181,35 @@ async function audits(page, track, dir, out) {
       }
     }
     if (!a.gate) { md.push("", "(a still only: not held to the limits)", ""); continue; }
-    md.push("", "| seat | permanents | drawn alone | piles (cards) | hidden | smallest face px | too small | can't tap 44 pt | name or stats covered | face covered | creatures in mixed piles |", "|---|---|---|---|---|---|---|---|---|---|");
-    for (const pid of ["you", "ana", "bo", "cy"]) {
-      const ps = Object.entries(a.pieces).filter(([, p]) => p.pid === pid && ["creature", "support", "mana", "commander"].includes(p.role) || (p.pid === pid && p.role === "card"));
-      const all = Object.entries(a.pieces).filter(([, p]) => p.pid === pid && p.role !== "plate");
-      const total = all.reduce((n, [, p]) => n + p.n, 0), alone = all.filter(([, p]) => p.n === 1 && !p.hidden).length;
-      const piles = all.filter(([, p]) => p.n > 1 && !p.hidden), hidden = all.filter(([, p]) => p.hidden);
-      const face = ([k]) => (fr.objects[k] || {}).face || 0;
-      const floorOf = ([, p]) => p.role === "creature" ? (pid === "you" ? FLOOR.myCreature : FLOOR.oppCreature) : FLOOR.any;
-      const small = all.filter(e => !e[1].hidden && face(e) && face(e) < floorOf(e));
-      const untappable = all.filter(([, p]) => !p.hidden && p.tapSquare < FLOOR.tap);
-      const who = w => (w.startsWith("panel:") ? "the " + w.slice(6) + " panel" : a.pieces[w] ? (a.pieces[w].names[0] || w) : w);
-      const named = all.filter(([, p]) => p.cover && Math.max(p.cover.name, p.cover.foot || 0) > FLOOR.nameCover), faced = all.filter(([, p]) => p.cover && p.cover.face > FLOOR.faceCover);
-      const coverList = (list, f) => (list.length ? "**" + list.length + "**: " + list.map(([k, p]) => `${(p.names[0] || "?")} ${f === "name" ? (p.cover.name >= (p.cover.foot || 0) ? "name " + p.cover.name : "stats " + p.cover.foot) : p.cover[f]}% by ${p.cover.by.map(who).join(", ")}`).join("; ") : 0);
-      const faces = all.filter(e => !e[1].hidden && face(e)).map(face);
-      const nm = ([, p]) => (p.names[0] || "?") + (p.n > 1 ? ` ×${p.n}` : "");
-      // Mixed piles of creatures (unlike names), for the record: what folds first is judged by importance, not measured.
-      const mixed = all.filter(([, p]) => p.role === "creature" && p.n > 1 && new Set(p.names).size > 1 && !p.hidden);
-      const loneNon = all.filter(([, p]) => ["support", "mana"].includes(p.role) && p.n === 1 && !p.hidden);
-      const early = mixed.length && loneNon.length ? mixed.length : 0;
-      fails += hidden.reduce((n, [, p]) => n + p.n, 0) + small.length + untappable.length + named.length + faced.length;
-      md.push(`| ${SEATNAME[pid]} | ${total} | ${alone} | ${piles.length} (${piles.reduce((n, [, p]) => n + p.n, 0)}) | ${hidden.length ? "**" + hidden.reduce((n, [, p]) => n + p.n, 0) + "**: " + hidden.map(nm).join(", ") : 0} | ${faces.length ? Math.round(Math.min(...faces)) : "-"} | ${small.length ? "**" + small.length + "**: " + small.map(e => nm(e) + " " + Math.round(face(e))).join(", ") : 0} | ${untappable.length ? "**" + untappable.length + "**: " + untappable.map(e => nm(e) + " " + e[1].tapSquare).join(", ") : 0} | ${coverList(named, "name")} | ${coverList(faced, "face")} | ${mixed.length ? mixed.reduce((n, [, p]) => n + p.n, 0) + " in " + mixed.length + (early ? " (" + loneNon.length + " lone noncreature" + (loneNon.length > 1 ? "s" : "") + " beside)" : "") : 0} |`);
-    }
-    md.push("");
+    gated++;
+    const r = auditRows(a, fr);
+    fails += r.fails;
+    if (r.measured) measured++;
+    md.push("", ...(r.measured ? r.md : ["(held to the limits, but no piece was measured here)"]), "");
   }
-  md.push(fails ? `**LAYOUT: FAIL** (${fails} breaches of the hard limits)` : "**LAYOUT: PASS**");
+  md.push(verdict({ gated, measured, fails }));
   return md;
 }
 
-(async () => {
+module.exports = { audits, verdict };
+if (require.main === module) (async () => {
+  const arg = process.argv[2] || "reels/latest";
+  const clipDirs = fs.existsSync(path.join(arg, "track.json")) ? [arg] : fs.readdirSync(arg).map(d => path.join(arg, d)).filter(d => fs.existsSync(path.join(d, "track.json")));
+  const pw = require(process.env.PW || "playwright");
   const browser = await pw.chromium.launch(), page = await browser.newPage();
   for (const dir of clipDirs) {
-    const track = JSON.parse(fs.readFileSync(path.join(dir, "track.json"))), an = analyse(track), out = path.join(dir, "review");
+    const track = JSON.parse(fs.readFileSync(path.join(dir, "track.json"))), out = path.join(dir, "review");
     fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
+    if (!track.frames.length) {
+      // Recorded with --stills: no motion to show, only the stills and their audit.
+      const md = [`# ${track.clip}`, "", track.about, "", "Stills only (reel.js --stills): no motion recorded."];
+      md.push(...((track.audits || []).length ? await audits(page, track, dir, out) : ["", "(the clip asks for no audit: its stills are beside this packet)"]));
+      if (track.errors.length) md.push("", "Page errors: " + track.errors.join(" | "));
+      fs.writeFileSync(path.join(out, "packet.md"), md.join("\n") + "\n");
+      console.log(dir + ": " + fs.readdirSync(out).length + " files");
+      continue;
+    }
+    const an = analyse(track);
     const img = f => "data:image/jpeg;base64," + fs.readFileSync(path.join(dir, "frames", String(f).padStart(3, "0") + ".jpg")).toString("base64");
     const [VW, VH] = track.viewport, md = [`# ${track.clip}`, "", track.about, "", `${track.fps} fps, ${track.frames.length} frames. Images in this folder:`, ""];
     const beats = track.beats.length ? track.beats : [{ frame: 0, label: "start" }];

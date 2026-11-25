@@ -1,0 +1,373 @@
+{
+ "answer": null,
+ "state": "playing",
+ "gen": 1,
+ "view": {
+  "turn": 4,
+  "label": "T1 main1",
+  "active": "You",
+  "phase": "MAIN1",
+  "priority": "You",
+  "me": "You",
+  "players": [
+   {
+    "name": "You",
+    "life": 40,
+    "manaPool": {},
+    "hand": [
+     {
+      "id": 9,
+      "name": "Commune with Lava",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{X} {R} {R}",
+      "text": "Exile the top X cards of your library. Until the end of your next turn, you may play those cards."
+     },
+     {
+      "id": 32,
+      "name": "Swords to Plowshares",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{W}",
+      "text": "Exile target creature. Its controller gains life equal to its power."
+     },
+     {
+      "id": 1,
+      "name": "Recon Craft Theta",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact - Vehicle",
+      "cost": "4",
+      "keywords": [
+       "Flying"
+      ],
+      "text": "Flying\nWhen Recon Craft Theta enters, create a 0/0 blue Alien creature token. Put a +1/+1 counter on it.\nWhenever Recon Craft Theta attacks, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nCrew 2"
+     },
+     {
+      "id": 49,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "text": "({T}: Add {W}.)"
+     },
+     {
+      "id": 19,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest",
+      "text": "({T}: Add {G}.)"
+     },
+     {
+      "id": 69,
+      "name": "Scholar of New Horizons",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Scout",
+      "cost": "1 {W}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Scholar of New Horizons enters with a +1/+1 counter on it.\n{T}, Remove a counter from a permanent you control: Search your library for a Plains card and reveal it. If an opponent controls more lands than you, you may put that card onto the battlefield tapped. If you don't put the card onto the battlefield, put it into your hand. Then shuffle."
+     },
+     {
+      "id": 23,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest",
+      "text": "({T}: Add {G}.)"
+     },
+     {
+      "id": 42,
+      "name": "Ornithopter of Paradise",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Thopter",
+      "cost": "2",
+      "power": 0,
+      "toughness": 2,
+      "sick": true,
+      "keywords": [
+       "Flying"
+      ],
+      "text": "Flying\n{T}: Add one mana of any color."
+     },
+     {
+      "id": 805,
+      "name": "Thriving Grove",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "tapped": true,
+      "text": "Thriving Grove enters tapped.\nAs Thriving Grove enters, choose a color other than green.\n{T}: Add {G} or one mana of the chosen color."
+     }
+    ],
+    "library": 91,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 100,
+      "name": "Marath, Will of the Wild",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Creature - Elemental Beast",
+      "cost": "{R} {G} {W}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "commander": true,
+      "text": "Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\n{X}, Remove X +1/+1 counters from Marath: Choose one —\n• Put X +1/+1 counters on target creature. X can't be 0.\n• Marath deals X damage to any target. X can't be 0.\n• Create an X/X green Elemental creature token. X can't be 0."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Atraxa",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 6,
+    "library": 91,
+    "battlefield": [
+     {
+      "id": 220,
+      "name": "Island",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Island",
+      "tapped": true
+     },
+     {
+      "id": 253,
+      "name": "Sol Ring",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact",
+      "cost": "1",
+      "text": "{T}: Add {C}{C}."
+     }
+    ],
+    "command": [
+     {
+      "id": 301,
+      "name": "Atraxa, Praetors' Voice",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Creature - Phyrexian Angel Horror",
+      "cost": "{G} {W} {U} {B}",
+      "power": 4,
+      "toughness": 4,
+      "sick": true,
+      "commander": true,
+      "keywords": [
+       "Flying",
+       "Vigilance",
+       "Deathtouch",
+       "Lifelink"
+      ],
+      "text": "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Dack",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 4,
+    "library": 91,
+    "battlefield": [
+     {
+      "id": 447,
+      "name": "Plains",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 436,
+      "name": "Mox Opal",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Artifact",
+      "cost": "0",
+      "text": "Metalcraft — {T}: Add one mana of any color. Activate only if you control three or more artifacts."
+     },
+     {
+      "id": 462,
+      "name": "Mana Vault",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Artifact",
+      "cost": "1",
+      "tapped": true,
+      "text": "At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\r\n\r\nAt the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.\r\n\r\nThis artifact doesn't untap during your untap step.\r\n\r\n{T}: Add {C}{C}{C}."
+     },
+     {
+      "id": 468,
+      "name": "Thorn of Amethyst",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Artifact",
+      "cost": "2",
+      "text": "Noncreature spells cost {1} more to cast."
+     }
+    ],
+    "command": [
+     {
+      "id": 502,
+      "name": "Dack Fayden, Helping Hand",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Creature - Human Advisor",
+      "cost": "4 {W} {W}",
+      "power": 4,
+      "toughness": 6,
+      "sick": true,
+      "commander": true,
+      "text": "When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Princess",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 91,
+    "battlefield": [
+     {
+      "id": 624,
+      "name": "Deserted Temple",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Land",
+      "text": "{T}: Add {C}.\r\n\r\n{1}, {T}: Untap target land."
+     }
+    ],
+    "command": [
+     {
+      "id": 703,
+      "name": "Princess Yue",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Legendary Creature - Human Noble Ally",
+      "cost": "2 {U}",
+      "power": 3,
+      "toughness": 2,
+      "sick": true,
+      "commander": true,
+      "text": "When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.)\n{T}: Scry 2."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   }
+  ],
+  "stack": [],
+  "log": [
+   {
+    "i": 23,
+    "type": "TURN",
+    "text": "Turn 2 (Dack)"
+   },
+   {
+    "i": 28,
+    "type": "LAND",
+    "text": "Dack played Plains (447)",
+    "card": 447
+   },
+   {
+    "i": 29,
+    "type": "STACK_ADD",
+    "text": "Dack cast Mox Opal",
+    "card": 436
+   },
+   {
+    "i": 30,
+    "type": "STACK_RESOLVE",
+    "text": "Mox Opal",
+    "card": 436
+   },
+   {
+    "i": 32,
+    "type": "STACK_ADD",
+    "text": "Dack cast Mana Vault",
+    "card": 462
+   },
+   {
+    "i": 33,
+    "type": "STACK_RESOLVE",
+    "text": "Mana Vault",
+    "card": 462
+   },
+   {
+    "i": 35,
+    "type": "STACK_ADD",
+    "text": "Dack cast Thorn of Amethyst",
+    "card": 468
+   },
+   {
+    "i": 36,
+    "type": "STACK_RESOLVE",
+    "text": "Thorn of Amethyst",
+    "card": 468
+   },
+   {
+    "i": 46,
+    "type": "TURN",
+    "text": "Turn 3 (Princess)"
+   },
+   {
+    "i": 51,
+    "type": "LAND",
+    "text": "Princess played Deserted Temple (624)",
+    "card": 624
+   },
+   {
+    "i": 61,
+    "type": "TURN",
+    "text": "Turn 4 (You)"
+   },
+   {
+    "i": 66,
+    "type": "EFFECT_REPLACED",
+    "text": "Thriving Grove enters tapped."
+   }
+  ]
+ },
+ "decision": {
+  "kind": "choose",
+  "turn": "T1 main1",
+  "prompt": "Choose a color (Thriving Grove)",
+  "options": [
+   "white",
+   "blue",
+   "black",
+   "red"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true,
+  "id": 8
+ },
+ "over": null,
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 11,
+ "error": null,
+ "build": null
+}

@@ -1,0 +1,70 @@
+{
+ "answer": null,
+ "state": "playing",
+ "gen": 1,
+ "view": {
+  "turn": 0,
+  "label": "T0 setup",
+  "phase": "setup",
+  "me": "You",
+  "players": [
+   {
+    "name": "You",
+    "life": 40,
+    "manaPool": {},
+    "hand": [],
+    "library": 0,
+    "battlefield": [],
+    "command": [],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Atraxa",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 0,
+    "library": 0,
+    "battlefield": [],
+    "command": [],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Dack",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 0,
+    "library": 0,
+    "battlefield": [],
+    "command": [],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Princess",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 0,
+    "library": 0,
+    "battlefield": [],
+    "command": [],
+    "graveyard": [],
+    "exile": []
+   }
+  ],
+  "stack": [],
+  "log": []
+ },
+ "decision": null,
+ "over": null,
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 3,
+ "error": null,
+ "build": null
+}

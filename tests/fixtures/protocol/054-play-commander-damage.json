@@ -1,0 +1,1725 @@
+{
+ "answer": null,
+ "state": "playing",
+ "gen": 1,
+ "view": {
+  "turn": 14,
+  "label": "T4 damage",
+  "active": "You",
+  "phase": "COMBAT_DAMAGE",
+  "priority": "You",
+  "me": "You",
+  "players": [
+   {
+    "name": "You",
+    "life": 325,
+    "manaPool": {},
+    "poison": 9,
+    "hand": [
+     {
+      "id": 34,
+      "name": "Stomping Ground",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land - Mountain Forest",
+      "text": "({T}: Add {R} or {G}.)\nAs Stomping Ground enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 97,
+      "name": "Reflecting Pool",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}: Add one mana of any type that a land you control could produce."
+     },
+     {
+      "id": 72,
+      "name": "Command Tower",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}: Add one mana of any color in your commander's color identity."
+     },
+     {
+      "id": 62,
+      "name": "Sacred Foundry",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land - Mountain Plains",
+      "text": "({T}: Add {R} or {W}.)\nAs Sacred Foundry enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 67,
+      "name": "Bloodstained Mire",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Bloodstained Mire: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 30,
+      "name": "Karn's Bastion",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}: Add {C}.\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     },
+     {
+      "id": 13,
+      "name": "Fabled Passage",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}, Sacrifice Fabled Passage: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land."
+     }
+    ],
+    "library": 65,
+    "battlefield": [
+     {
+      "id": 805,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 806,
+      "name": "Swamp",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 807,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 808,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 809,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest",
+      "tapped": true
+     },
+     {
+      "id": 810,
+      "name": "Island",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Island",
+      "tapped": true
+     },
+     {
+      "id": 811,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 812,
+      "name": "Swamp",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 813,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 814,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 815,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest",
+      "tapped": true
+     },
+     {
+      "id": 816,
+      "name": "Island",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Island",
+      "tapped": true
+     },
+     {
+      "id": 819,
+      "name": "Jace Beleren",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Planeswalker - Jace",
+      "cost": "1 {U} {U}",
+      "loyalty": 6,
+      "counters": {
+       "Loyalty": 6
+      },
+      "text": "+2: Each player draws a card.\r\n\r\n-1: Target player draws a card.\r\n\r\n-10: Target player mills twenty cards."
+     },
+     {
+      "id": 821,
+      "name": "Soul's Attendant",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Cleric",
+      "cost": "{W}",
+      "power": 13,
+      "toughness": 13,
+      "counters": {
+       "+1/+1": 12
+      },
+      "text": "Whenever another creature enters, you may gain 1 life."
+     },
+     {
+      "id": 92,
+      "name": "Kavaron, Memorial World",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land - Planet",
+      "tapped": true,
+      "counters": {
+       "Charge": 22
+      },
+      "text": "This land enters tapped.\r\n\r\nSTATION 12+ {1}{R}, {T}: Sacrifice a land: Create a 2/2 colorless Robot artifact creature token, then creatures you control get +1/+0 and gain haste until end of turn.\r\n\r\n{T}: Add {R}.\r\n\r\n{1}{R}, {T}, Sacrifice a land: Create a 2/2 colorless Robot artifact creature token, then creatures you control get +1/+0 and gain haste until end of turn. \r\n\r\n Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It’s an artifact creature at 12+.)"
+     },
+     {
+      "id": 825,
+      "name": "Thorn of the Black Rose",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Assassin",
+      "cost": "3 {B}",
+      "power": 11,
+      "toughness": 13,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 10
+      },
+      "keywords": [
+       "Deathtouch"
+      ],
+      "text": "Deathtouch\r\n\r\nWhen Thorn of the Black Rose enters, you become the monarch."
+     },
+     {
+      "id": 870,
+      "name": "Soldier Token",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Soldier",
+      "power": 11,
+      "toughness": 11,
+      "token": true,
+      "counters": {
+       "+1/+1": 10
+      }
+     },
+     {
+      "id": 871,
+      "name": "Soldier Token",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Soldier",
+      "power": 11,
+      "toughness": 11,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 10
+      }
+     },
+     {
+      "id": 829,
+      "name": "Willbender",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Wizard",
+      "cost": "1 {U}",
+      "power": 11,
+      "toughness": 12,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 10
+      },
+      "text": "Morph {1}{U} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\r\n\r\nWhen Willbender is turned face up, change the target of target spell or ability with a single target."
+     },
+     {
+      "id": 3,
+      "name": "Grove of the Burnwillows",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "tapped": true,
+      "text": "{T}: Add {C}.\r\n\r\n{T}: Add {R} or {G}. Each opponent gains 1 life."
+     },
+     {
+      "id": 65,
+      "name": "Tribute to the World Tree",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment",
+      "cost": "{G} {G} {G}",
+      "text": "Whenever a creature you control enters, draw a card if its power is 3 or greater. Otherwise, put two +1/+1 counters on it."
+     },
+     {
+      "id": 99,
+      "name": "Copper Myr",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Myr",
+      "cost": "2",
+      "power": 13,
+      "toughness": 16,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 12
+      },
+      "text": "{T}: Add {G}."
+     },
+     {
+      "id": 826,
+      "name": "Rancor",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment - Aura",
+      "cost": "{G}",
+      "attachedTo": 855,
+      "text": "Enchant creature\r\n\r\nWhen Rancor is put into a graveyard from the battlefield, return Rancor to its owner's hand.\r\n\r\nEnchanted creature gets +2/+0 and has trample."
+     },
+     {
+      "id": 100,
+      "name": "Marath, Will of the Wild",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Creature - Elemental Beast",
+      "cost": "{R} {G} {W}",
+      "power": 9,
+      "toughness": 9,
+      "tapped": true,
+      "commander": true,
+      "counters": {
+       "+1/+1": 9
+      },
+      "text": "Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\r\n\r\n{X}, Remove any number of +1/+1 counters from Marath: Choose one. X can't be 0.\r\n• Put X +1/+1 counters on target creature.\r\n• Marath deals X damage to any target.\r\n• Create an X/X green Elemental creature token."
+     },
+     {
+      "id": 82,
+      "name": "Ouroboroid",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Plant Wurm",
+      "cost": "2 {G} {G}",
+      "power": 13,
+      "toughness": 15,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 12
+      },
+      "text": "At the beginning of combat on your turn, put X +1/+1 counters on each creature you control, where X is this creature's power."
+     },
+     {
+      "id": 81,
+      "name": "Crystalline Crawler",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Construct",
+      "cost": "4",
+      "power": 11,
+      "toughness": 11,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 10
+      },
+      "text": "Converge — Crystalline Crawler enters with a +1/+1 counter on it for each color of mana spent to cast it.\r\n\r\nRemove a +1/+1 counter from Crystalline Crawler: Add one mana of any color.\r\n\r\n{T}: Put a +1/+1 counter on Crystalline Crawler."
+     },
+     {
+      "id": 74,
+      "name": "Terrasymbiosis",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment",
+      "cost": "2 {G}",
+      "text": "<span style=\"color:gray;\">Whenever you put one or more +1/+1 counters on a creature you control, you may draw that many cards. Do this only once each turn.</span>"
+     },
+     {
+      "id": 75,
+      "name": "Astral Cornucopia",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact",
+      "cost": "{X} {X} {X}",
+      "text": "Astral Cornucopia enters with X charge counters on it.\r\n\r\n{T}: Choose a color. Add one mana of that color for each charge counter on this artifact."
+     },
+     {
+      "id": 48,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 880,
+      "name": "Elemental Token",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Elemental",
+      "power": 13,
+      "toughness": 13,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 12
+      }
+     },
+     {
+      "id": 882,
+      "name": "Elemental Token",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Elemental",
+      "power": 10,
+      "toughness": 10,
+      "token": true,
+      "counters": {
+       "+1/+1": 9
+      }
+     },
+     {
+      "id": 11,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 28,
+      "name": "Kami of Whispered Hopes",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Spirit",
+      "cost": "2 {G}",
+      "power": 11,
+      "toughness": 11,
+      "sick": true,
+      "counters": {
+       "+1/+1": 10
+      },
+      "text": "If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on that permanent instead.\r\n\r\n{T}: Add X mana of any one color, where X is Kami of Whispered Hopes's power."
+     },
+     {
+      "id": 87,
+      "name": "Temple Garden",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land - Forest Plains",
+      "tapped": true,
+      "text": "As Temple Garden enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 20,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest",
+      "tapped": true
+     },
+     {
+      "id": 10,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 12,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 57,
+      "name": "Robe of Stars",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact - Equipment",
+      "cost": "1 {W}",
+      "attachedTo": 99,
+      "text": "Equipped creature gets +0/+3.\r\n\r\nAstral Projection — {1}{W}: Equipped creature phases out.\r\n\r\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)"
+     },
+     {
+      "id": 49,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     {
+      "id": 817,
+      "name": "Grizzly Bears",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Bear",
+      "cost": "1 {G}",
+      "power": 2,
+      "toughness": 2,
+      "sick": true
+     },
+     {
+      "id": 824,
+      "name": "Raise the Alarm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "1 {W}",
+      "text": "Create two 1/1 white Soldier creature tokens."
+     },
+     {
+      "id": 823,
+      "name": "Raise the Alarm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "1 {W}",
+      "text": "Create two 1/1 white Soldier creature tokens."
+     },
+     {
+      "id": 822,
+      "name": "Lightning Bolt",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{R}",
+      "text": "Lightning Bolt deals 3 damage to any target."
+     },
+     {
+      "id": 93,
+      "name": "Cryptic Trilobite",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Trilobite",
+      "cost": "{X} {X}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "text": "Cryptic Trilobite enters with X +1/+1 counters on it.\nRemove a +1/+1 counter from Cryptic Trilobite: Add {C}{C}. Spend this mana only to activate abilities.\n{1}, {T}: Put a +1/+1 counter on Cryptic Trilobite."
+     },
+     {
+      "id": 831,
+      "name": "Boros Charm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{R} {W}",
+      "text": "Choose one —\n• Boros Charm deals 4 damage to target player or planeswalker.\n• Permanents you control gain indestructible until end of turn.\n• Target creature gains double strike until end of turn."
+     },
+     {
+      "id": 64,
+      "name": "Escape to the Wilds",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "3 {R} {G}",
+      "text": "Exile the top five cards of your library. You may play cards exiled this way until the end of your next turn.\nYou may play an additional land this turn."
+     },
+     {
+      "id": 38,
+      "name": "Genesis Device",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Artifact",
+      "cost": "2 {G}",
+      "text": "When Genesis Device enters, search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\n{3}{G}{G}, {T}, Sacrifice Genesis Device: Sacrifice any number of lands you control, then search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle. Activate only as a sorcery."
+     },
+     {
+      "id": 35,
+      "name": "Song of the Worldsoul",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment",
+      "cost": "4 {W} {W}",
+      "text": "Whenever you cast a spell, populate. (Create a token that's a copy of a creature token you control.)"
+     },
+     {
+      "id": 828,
+      "name": "Soul Warden",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Cleric",
+      "cost": "{W}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Whenever another creature enters, you gain 1 life."
+     },
+     {
+      "id": 876,
+      "name": "Grizzly Bears",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Bear",
+      "cost": "1 {G}",
+      "power": 2,
+      "toughness": 2,
+      "sick": true
+     },
+     {
+      "id": 875,
+      "name": "Grizzly Bears",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Bear",
+      "cost": "1 {G}",
+      "power": 2,
+      "toughness": 2,
+      "sick": true
+     },
+     {
+      "id": 820,
+      "name": "Soul Warden",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Cleric",
+      "cost": "{W}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Whenever another creature enters, you gain 1 life."
+     },
+     {
+      "id": 818,
+      "name": "Grizzly Bears",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Bear",
+      "cost": "1 {G}",
+      "power": 2,
+      "toughness": 2,
+      "sick": true
+     },
+     {
+      "id": 827,
+      "name": "Fireball",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "{X} {R}",
+      "text": "This spell costs {1} more to cast for each target beyond the first.\nFireball deals X damage divided evenly, rounded down, among any number of targets."
+     },
+     {
+      "id": 830,
+      "name": "Brainstorm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{U}",
+      "text": "Draw three cards, then put two cards from your hand on top of your library in any order."
+     },
+     {
+      "id": 60,
+      "name": "Cankerbloom",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Phyrexian Fungus",
+      "cost": "1 {G}",
+      "power": 3,
+      "toughness": 2,
+      "sick": true,
+      "text": "{1}, Sacrifice Cankerbloom: Choose one —\n• Destroy target artifact.\n• Destroy target enchantment.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     },
+     {
+      "id": 6,
+      "name": "Flooded Strand",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Flooded Strand: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 86,
+      "name": "Chaos Warp",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "2 {R}",
+      "text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."
+     },
+     {
+      "id": 79,
+      "name": "Harmonize",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "2 {G} {G}",
+      "text": "Draw three cards."
+     },
+     {
+      "id": 96,
+      "name": "Tempt with Discovery",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "3 {G}",
+      "text": "Tempting offer — Search your library for a land card and put it onto the battlefield. Each opponent may search their library for a land card and put it onto the battlefield. For each opponent who searches a library this way, search your library for a land card and put it onto the battlefield. Then each player who searched a library this way shuffles."
+     },
+     {
+      "id": 31,
+      "name": "Farseek",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "1 {G}",
+      "text": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle."
+     }
+    ],
+    "exile": []
+   },
+   {
+    "name": "Atraxa",
+    "life": 30,
+    "manaPool": {},
+    "monarch": true,
+    "handCount": 8,
+    "library": 71,
+    "battlefield": [
+     {
+      "id": 835,
+      "name": "Swamp",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 836,
+      "name": "Swamp",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 837,
+      "name": "Swamp",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Swamp"
+     },
+     {
+      "id": 838,
+      "name": "Mountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 839,
+      "name": "Mountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 840,
+      "name": "Mountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Mountain"
+     },
+     {
+      "id": 220,
+      "name": "Island",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Island"
+     },
+     {
+      "id": 244,
+      "name": "Insight Engine",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact",
+      "cost": "2 {U}",
+      "tapped": true,
+      "counters": {
+       "Charge": 3
+      },
+      "text": "{2}, {T}: Put a charge counter on this artifact, then draw a card for each charge counter on it."
+     },
+     {
+      "id": 285,
+      "name": "Temple Garden",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Forest Plains",
+      "tapped": true,
+      "text": "As Temple Garden enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 263,
+      "name": "Larval Scoutlander",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact - Spacecraft",
+      "cost": "2 {G}",
+      "text": "When this Spacecraft enters, you may sacrifice a land or Lander. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\r\n\r\nSTATION 7+ Flying\r\n\r\n Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It’s an artifact creature at 7+.)"
+     },
+     {
+      "id": 249,
+      "name": "Plains",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 250,
+      "name": "Plains",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 239,
+      "name": "Godless Shrine",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Plains Swamp",
+      "tapped": true,
+      "text": "As Godless Shrine enters, you may pay 2 life. If you don't, it enters tapped."
+     }
+    ],
+    "command": [
+     {
+      "id": 301,
+      "name": "Atraxa, Praetors' Voice",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Creature - Phyrexian Angel Horror",
+      "cost": "{G} {W} {U} {B}",
+      "power": 4,
+      "toughness": 4,
+      "sick": true,
+      "commander": true,
+      "keywords": [
+       "Flying",
+       "Vigilance",
+       "Deathtouch",
+       "Lifelink"
+      ],
+      "text": "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     }
+    ],
+    "graveyard": [
+     {
+      "id": 842,
+      "name": "Doom Blade",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Instant",
+      "cost": "1 {B}",
+      "text": "Destroy target nonblack creature."
+     },
+     {
+      "id": 832,
+      "name": "Serra Angel",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Angel",
+      "cost": "3 {W} {W}",
+      "power": 4,
+      "toughness": 4,
+      "sick": true,
+      "keywords": [
+       "Flying",
+       "Vigilance"
+      ],
+      "text": "Flying, vigilance"
+     },
+     {
+      "id": 833,
+      "name": "Blighted Agent",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Phyrexian Human Rogue",
+      "cost": "1 {U}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)\nBlighted Agent can't be blocked."
+     },
+     {
+      "id": 841,
+      "name": "Lightning Bolt",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Instant",
+      "cost": "{R}",
+      "text": "Lightning Bolt deals 3 damage to any target."
+     },
+     {
+      "id": 246,
+      "name": "Plains",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Plains",
+      "text": "({T}: Add {W}.)"
+     },
+     {
+      "id": 221,
+      "name": "Island",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Island",
+      "text": "({T}: Add {U}.)"
+     },
+     {
+      "id": 872,
+      "name": "Gideon Jura",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Planeswalker - Gideon",
+      "cost": "3 {W} {W}",
+      "loyalty": 0,
+      "text": "[+2]: During target opponent's next turn, creatures that player controls attack Gideon Jura if able.\n[-2]: Destroy target tapped creature.\n[0]: Until end of turn, Gideon Jura becomes a 6/6 Human Soldier creature that's still a planeswalker. Prevent all damage that would be dealt to him this turn."
+     },
+     {
+      "id": 216,
+      "name": "Misty Rainforest",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Misty Rainforest: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 223,
+      "name": "Forest",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Forest",
+      "text": "({T}: Add {G}.)"
+     },
+     {
+      "id": 292,
+      "name": "Scalding Tarn",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Scalding Tarn: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 229,
+      "name": "Karn's Bastion",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}: Add {C}.\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     },
+     {
+      "id": 245,
+      "name": "Hallowed Fountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Plains Island",
+      "text": "({T}: Add {W} or {U}.)\nAs Hallowed Fountain enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 834,
+      "name": "Blighted Agent",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Phyrexian Human Rogue",
+      "cost": "1 {U}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)\nBlighted Agent can't be blocked."
+     },
+     {
+      "id": 261,
+      "name": "Marsh Flats",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Marsh Flats: Search your library for a Plains or Swamp card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 283,
+      "name": "Evendo, Waking Haven",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Planet",
+      "text": "This land enters tapped.\n{T}: Add {G}.\nStation (Tap another creature you control: Put charge counters equal to its power on this Planet. Station only as a sorcery.)\nSTATION 12+\n{G}, {T}: Add {G} for each creature you control."
+     },
+     {
+      "id": 233,
+      "name": "Watery Grave",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Island Swamp",
+      "text": "({T}: Add {U} or {B}.)\nAs Watery Grave enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 215,
+      "name": "Fabled Passage",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}, Sacrifice Fabled Passage: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land."
+     },
+     {
+      "id": 218,
+      "name": "Verdant Catacombs",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Verdant Catacombs: Search your library for a Swamp or Forest card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 207,
+      "name": "Flooded Strand",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Flooded Strand: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle."
+     }
+    ],
+    "exile": []
+   },
+   {
+    "name": "Dack",
+    "life": 32,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 80,
+    "battlefield": [
+     {
+      "id": 483,
+      "name": "Gemstone Caverns",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Land",
+      "tapped": true,
+      "counters": {
+       "Luck": 1
+      },
+      "text": "If Gemstone Caverns is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.\r\n\r\n{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color."
+     },
+     {
+      "id": 845,
+      "name": "Swamp",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 846,
+      "name": "Swamp",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 847,
+      "name": "Swamp",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 848,
+      "name": "Mountain",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 849,
+      "name": "Mountain",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 850,
+      "name": "Mountain",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Mountain"
+     },
+     {
+      "id": 437,
+      "name": "Ancient Tomb",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Land",
+      "text": "{T}: Add {C}{C}. Ancient Tomb deals 2 damage to you."
+     },
+     {
+      "id": 501,
+      "name": "Voltaic Key",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Artifact",
+      "cost": "1",
+      "text": "{1}, {T}: Untap target artifact."
+     },
+     {
+      "id": 487,
+      "name": "Mishra's Workshop",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Land",
+      "text": "{T}: Add {C}{C}{C}. Spend this mana only to cast artifact spells."
+     },
+     {
+      "id": 446,
+      "name": "Plains",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 476,
+      "name": "Felidar Guardian",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Creature - Cat Beast",
+      "cost": "3 {W}",
+      "power": 1,
+      "toughness": 4,
+      "sick": true,
+      "text": "When Felidar Guardian enters, you may exile another target permanent you control, then return that card to the battlefield under your control."
+     },
+     {
+      "id": 450,
+      "name": "Gleaming Splendor",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Enchantment",
+      "cost": "1 {W}",
+      "text": "Whenever an opponent draws their second card each turn, you create a Treasure token.\r\n\r\n{2}{W}: Two target players each draw a card."
+     },
+     {
+      "id": 403,
+      "name": "Crystal Vein",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Land",
+      "text": "{T}: Add {C}.\r\n\r\n{T}, Sacrifice Crystal Vein: Add {C}{C}."
+     }
+    ],
+    "command": [
+     {
+      "id": 502,
+      "name": "Dack Fayden, Helping Hand",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Creature - Human Advisor",
+      "cost": "4 {W} {W}",
+      "power": 4,
+      "toughness": 6,
+      "sick": true,
+      "commander": true,
+      "text": "When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen."
+     }
+    ],
+    "graveyard": [
+     {
+      "id": 851,
+      "name": "Lightning Bolt",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Instant",
+      "cost": "{R}",
+      "text": "Lightning Bolt deals 3 damage to any target."
+     },
+     {
+      "id": 852,
+      "name": "Doom Blade",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Instant",
+      "cost": "1 {B}",
+      "text": "Destroy target nonblack creature."
+     },
+     {
+      "id": 843,
+      "name": "Hill Giant",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Creature - Giant",
+      "cost": "3 {R}",
+      "power": 3,
+      "toughness": 3,
+      "sick": true
+     },
+     {
+      "id": 844,
+      "name": "Grizzly Bears",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Creature - Bear",
+      "cost": "1 {G}",
+      "power": 2,
+      "toughness": 2,
+      "sick": true
+     },
+     {
+      "id": 471,
+      "name": "Cavern of Souls",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Land",
+      "text": "As Cavern of Souls enters, choose a creature type.\n{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a creature spell of the chosen type, and that spell can't be countered."
+     },
+     {
+      "id": 873,
+      "name": "Chandra Nalaar",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Planeswalker - Chandra",
+      "cost": "3 {R} {R}",
+      "loyalty": 0,
+      "text": "[+1]: Chandra Nalaar deals 1 damage to target player or planeswalker.\n[-X]: Chandra Nalaar deals X damage to target creature.\n[-8]: Chandra Nalaar deals 10 damage to target player or planeswalker and each creature that player or that planeswalker's controller controls."
+     },
+     {
+      "id": 454,
+      "name": "Arid Mesa",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Arid Mesa: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 420,
+      "name": "Reprieve",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Instant",
+      "cost": "1 {W}",
+      "text": "Return target spell to its owner's hand.\nDraw a card."
+     }
+    ],
+    "exile": [
+     {
+      "id": 485,
+      "name": "Deafening Silence",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Enchantment",
+      "cost": "{W}",
+      "text": "Each player can't cast more than one noncreature spell each turn."
+     }
+    ],
+    "commanderDamage": {
+     "100": 9
+    }
+   },
+   {
+    "name": "Princess",
+    "life": 16,
+    "manaPool": {},
+    "handCount": 3,
+    "library": 82,
+    "battlefield": [
+     {
+      "id": 643,
+      "name": "Island",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Island",
+      "tapped": true
+     },
+     {
+      "id": 853,
+      "name": "Hill Giant",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Giant",
+      "cost": "3 {R}",
+      "power": 6,
+      "toughness": 6,
+      "counters": {
+       "+1/+1": 3
+      }
+     },
+     {
+      "id": 855,
+      "name": "Glistener Elf",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Phyrexian Elf Warrior",
+      "cost": "{G}",
+      "power": 6,
+      "toughness": 4,
+      "counters": {
+       "+1/+1": 3
+      },
+      "keywords": [
+       "Trample"
+      ],
+      "text": "Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.), trample"
+     },
+     {
+      "id": 858,
+      "name": "Swamp",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 859,
+      "name": "Swamp",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Swamp"
+     },
+     {
+      "id": 860,
+      "name": "Mountain",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Mountain"
+     },
+     {
+      "id": 861,
+      "name": "Mountain",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Mountain"
+     },
+     {
+      "id": 862,
+      "name": "Mountain",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Mountain"
+     },
+     {
+      "id": 699,
+      "name": "Thespian's Stage",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Land",
+      "text": "{T}: Add {C}.\r\n\r\n{2}, {T}: Thespian's Stage becomes a copy of target land, except it has this ability."
+     },
+     {
+      "id": 656,
+      "name": "Nimbleclaw Adept",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Dragon Wizard",
+      "cost": "3 {U}",
+      "power": 4,
+      "toughness": 5,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 2
+      },
+      "text": "Bigby's Hand — {T}: Untap two other target permanents. Activate only as a sorcery and only once each turn."
+     },
+     {
+      "id": 608,
+      "name": "Holdout Settlement",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Land",
+      "text": "{T}: Add {C}.\r\n\r\n{T}, Tap an untapped creature you control: Add one mana of any color."
+     },
+     {
+      "id": 703,
+      "name": "Princess Yue",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Legendary Creature - Human Noble Ally",
+      "cost": "2 {U}",
+      "power": 4,
+      "toughness": 3,
+      "commander": true,
+      "counters": {
+       "+1/+1": 1
+      },
+      "text": "When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.)\r\n\r\n{T}: Scry 2."
+     },
+     {
+      "id": 683,
+      "name": "Hill Giant",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Giant Illusion",
+      "cost": "3 {R}",
+      "power": 4,
+      "toughness": 4,
+      "copy": true,
+      "counters": {
+       "+1/+1": 1
+      },
+      "text": "When this creature becomes the target of a spell or ability, sacrifice it."
+     },
+     {
+      "id": 627,
+      "name": "Island",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Island",
+      "tapped": true
+     },
+     {
+      "id": 662,
+      "name": "North Pole Patrol",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Human Soldier Ally",
+      "cost": "2 {U}",
+      "power": 2,
+      "toughness": 3,
+      "sick": true,
+      "text": "{T}: Untap another target permanent you control.\r\n\r\nWaterbend {3}, {T}: Tap target creature an opponent controls."
+     },
+     {
+      "id": 605,
+      "name": "Waterbender Ascension",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Enchantment",
+      "cost": "1 {U}",
+      "text": "Whenever a creature you control deals combat damage to a player, put a quest counter on this enchantment. Then if it has four or more quest counters on it, draw a card.\r\n\r\nWaterbend {4}: Target creature can't be blocked this turn. (While paying a waterbend cost, you can tap your artifacts and creatures to help. Each one pays for {1}.)"
+     },
+     {
+      "id": 624,
+      "name": "Deserted Temple",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Land",
+      "text": "{T}: Add {C}.\r\n\r\n{1}, {T}: Untap target land."
+     },
+     {
+      "id": 697,
+      "name": "Seat of the Synod",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Artifact Land",
+      "tapped": true,
+      "text": "{T}: Add {U}."
+     },
+     {
+      "id": 616,
+      "name": "Faerie Mastermind",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Faerie Rogue",
+      "cost": "1 {U}",
+      "power": 2,
+      "toughness": 1,
+      "sick": true,
+      "keywords": [
+       "Flying",
+       "Flash"
+      ],
+      "text": "Flash\r\n\r\nFlying\r\n\r\nWhenever an opponent draws their second card each turn, you draw a card.\r\n\r\n{3}{U}: Each player draws a card."
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     {
+      "id": 677,
+      "name": "Arcane Denial",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Instant",
+      "cost": "1 {U}",
+      "text": "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.\nYou draw a card at the beginning of the next turn's upkeep."
+     },
+     {
+      "id": 863,
+      "name": "Lightning Bolt",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Instant",
+      "cost": "{R}",
+      "text": "Lightning Bolt deals 3 damage to any target."
+     },
+     {
+      "id": 864,
+      "name": "Doom Blade",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Instant",
+      "cost": "1 {B}",
+      "text": "Destroy target nonblack creature."
+     },
+     {
+      "id": 607,
+      "name": "Desecrated Tomb",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Artifact",
+      "cost": "3",
+      "text": "Whenever one or more creature cards leave your graveyard, create a 1/1 black Bat creature token with flying."
+     },
+     {
+      "id": 856,
+      "name": "Blighted Agent",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Phyrexian Human Rogue",
+      "cost": "1 {U}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)\nBlighted Agent can't be blocked."
+     },
+     {
+      "id": 672,
+      "name": "Snap",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Instant",
+      "cost": "1 {U}",
+      "text": "Return target creature to its owner's hand. Untap up to two lands."
+     },
+     {
+      "id": 874,
+      "name": "Ajani Goldmane",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Legendary Planeswalker - Ajani",
+      "cost": "2 {W} {W}",
+      "loyalty": 0,
+      "text": "[+1]: You gain 2 life.\n[-1]: Put a +1/+1 counter on each creature you control. Those creatures gain vigilance until end of turn.\n[-6]: Create a white Avatar creature token. It has \"This token's power and toughness are each equal to your life total.\""
+     },
+     {
+      "id": 854,
+      "name": "Hill Giant",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Creature - Giant",
+      "cost": "3 {R}",
+      "power": 3,
+      "toughness": 3,
+      "sick": true
+     },
+     {
+      "id": 681,
+      "name": "Walking Atlas",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Artifact Creature - Construct",
+      "cost": "2",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "{T}: You may put a land card from your hand onto the battlefield."
+     }
+    ],
+    "exile": []
+   }
+  ],
+  "stack": [
+   {
+    "id": 2048,
+    "source": {
+     "id": 878,
+     "name": "The Monarch",
+     "owner": "Atraxa",
+     "controller": "Atraxa",
+     "type": ""
+    },
+    "controller": "Atraxa",
+    "spell": false,
+    "text": "Whenever a creature deals combat damage to you, its controller becomes the monarch. [Damage Source: Thorn of the Black Rose (825), Damaged: Atraxa, Amount: 11]"
+   }
+  ],
+  "combat": {
+   "attackers": [
+    {
+     "id": 825,
+     "defender": "Atraxa"
+    },
+    {
+     "id": 871,
+     "defender": "Princess"
+    },
+    {
+     "id": 82,
+     "defender": "Princess"
+    },
+    {
+     "id": 880,
+     "defender": "Princess"
+    },
+    {
+     "id": 100,
+     "defender": "Dack"
+    }
+   ],
+   "blockers": []
+  },
+  "log": [
+   {
+    "i": 771,
+    "type": "DAMAGE",
+    "text": "Elemental Token (880) deals 13 combat damage to Princess.",
+    "card": 880
+   },
+   {
+    "i": 772,
+    "type": "DAMAGE",
+    "text": "Marath, Will of the Wild (100) deals 9 combat damage to Dack.",
+    "card": 100
+   },
+   {
+    "i": 773,
+    "type": "DAMAGE",
+    "text": "Hill Giant (854) deals 6 damage to Soldier Token (867).",
+    "card": 854
+   },
+   {
+    "i": 774,
+    "type": "DAMAGE",
+    "text": "Hill Giant (853) deals 6 damage to Soldier Token (867).",
+    "card": 853
+   },
+   {
+    "i": 775,
+    "type": "DAMAGE",
+    "text": "Walking Atlas (681) deals 2 damage to Ouroboroid (82).",
+    "card": 681
+   },
+   {
+    "i": 776,
+    "type": "LIFE",
+    "text": "Life: Atraxa 41 > 30"
+   },
+   {
+    "i": 777,
+    "type": "LIFE",
+    "text": "Life: Dack 41 > 32"
+   },
+   {
+    "i": 778,
+    "type": "LIFE",
+    "text": "Life: Princess 40 > 16"
+   },
+   {
+    "i": 779,
+    "type": "ZONE_CHANGE",
+    "text": "Soldier Token (867) was put into Graveyard from Battlefield.",
+    "card": 867
+   },
+   {
+    "i": 780,
+    "type": "ZONE_CHANGE",
+    "text": "Hill Giant (854) was put into Graveyard from Battlefield.",
+    "card": 854
+   },
+   {
+    "i": 781,
+    "type": "ZONE_CHANGE",
+    "text": "Walking Atlas (681) was put into Graveyard from Battlefield.",
+    "card": 681
+   },
+   {
+    "i": 782,
+    "type": "STACK_ADD",
+    "text": "Atraxa triggered The Monarch",
+    "card": 878
+   }
+  ]
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T4 damage",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Mar…",
+   "Crystalline Crawler: Remove a +1/+1 counter from this: Add one mana of…",
+   "Astral Cornucopia: {T}: Choose a color. Add one mana of that color f…"
+  ],
+  "details": [
+   "pass priority",
+   "Marath, Will of the Wild: {X}, Remove any number of +1/+1 counters from Marath: Choose one. X can't be 0. • Put X +1/+1 counters on target creature. • Marath deals X damage to any target. • Create an X/X green Elemental creature token.",
+   "Crystalline Crawler: Remove a +1/+1 counter from Crystalline Crawler: Add one mana of any color.",
+   "Astral Cornucopia: {T}: Choose a color. Add one mana of that color for each charge counter on this artifact."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true,
+  "refs": [
+   {},
+   {
+    "card": 100,
+    "spell": false
+   },
+   {
+    "card": 81,
+    "spell": false,
+    "mana": true
+   },
+   {
+    "card": 75,
+    "spell": false,
+    "mana": true
+   }
+  ],
+  "id": 365
+ },
+ "over": null,
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 298,
+ "error": null,
+ "build": null
+}

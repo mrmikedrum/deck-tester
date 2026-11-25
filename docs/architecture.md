@@ -403,18 +403,76 @@ engine with the person in seat one, answering every decision (no `ask` list), an
 with each deck's plan and advisor through the same `table.play` as CLI tables; a deck without them is refused,
 never stock-piloted. The person's seat is `watch`ed: it also stops on what the others put on the stack, so they
 see it. The server polls the engine's `view` of that seat (`Session.view`: every zone, the stack with targets,
-combat, mana, Forge's game log) and serves it to the client by long polling (`/api/view?v=N`); answers go back by
-option ref (`/api/answer`), so an answer names the option it means rather than a position that may have moved.
+combat, mana, Forge's game log) and serves it to the client by long polling (`/api/view?v=N`); answers go back as
+option numbers guarded by the decision's key (`/api/answer`; see the protocol below).
 Mana stays the player's own: `--mana creatures` asks which sources pay when a creature could; mana abilities can
 float real mana before a cast. Card text and Scryfall images are fetched on demand (`/api/cards`) into
 `.deckmaster/cache/cards/` and served same-origin, which the client's canvases need.
 
 The client (`game/client/`) is a three.js table (`h.js`, with `world.js` textures and `fx.js` effects) under an
 HTML layer (`live.js`): prompt and buttons, hand, stack panel, sheets, log. Its design goals live in
-`game/tools/look/intent.md` and its look in `game/LOOK.md`. The view and decision shapes it reads are the
-engine's; no schema pins them yet ([roadmap](roadmap.md)). `game/tools/` records the client frame-exactly on a
+`game/tools/look/intent.md` and its look in `game/LOOK.md`. The rebuilt client (`game/client/src`, TypeScript) is
+served from its build at `/next/` while the migration runs ([plan](game-client-migration.md)). `game/tools/` records the client frame-exactly on a
 virtual clock, with fixture boards and plays served by mock (`boards.js`, `plays.js`, `clips.js`), and audits
 layout limits per frame; two recordings of the same client have identical telemetry.
+
+### The game's protocol
+
+What the bridge and the browser exchange. The shapes' source of truth is `game/client/src/protocol/` (Valibot
+schemas with the rules in comments); `tests/fixtures/protocol/` holds real envelopes, and the producer test holds the
+engine to them. The rules:
+
+- **The envelope** (`GET /api/view?v=N`, a long poll that answers when the version passes `N`, or at once when `N` is
+  ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`), `gen` (a new game, a new
+  gen), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view of my seat; `{}` or null
+  before the game), `decision` (the pending one, or null), `over` (the result line), `pilots` (seat to pilot), plus
+  `answer` and `build` below. The view is facts by card id and player name: players from mine in turn order, gone once
+  they lose (me included); the stack top first; `turn` global, `label` per player ("T3 Dack main1"); `cost` in Forge's
+  short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. Ids need not resolve: a stack
+  target may be a card gone from the game (a token exiled mid-resolution, still named in the item's text), and a
+  `choose` may offer hidden cards (a library search).
+- **Decisions** carry `id`, `kind`, `turn`, `prompt`, `options` (labels, which can repeat), `details`, `min`, `max`,
+  `repeat`, `mine` (asked in my turn; every decision is mine to answer), and `refs` aligned with the options for what
+  they point at: `play` (`{card, spell, mana?}`; pass is `{}`), `pay`, `targets` and `choose` (`{card}`, `{player}`,
+  `{name}` or `{}`), `attack` (`{card, to}`: a player or a planeswalker's id), `block` (`{card, blocks}`). `mulligan`,
+  `number` (no options; the answer is one value), `mode`, `confirm` and `order` have none, and neither does a `choose`
+  Forge asks by label only (a colour, a creature type, a yes or no): the client gives each of its options an empty
+  ref. A client shows an unknown kind by its labels.
+- **Decision ids.** The engine numbers each decision it parks for a seat (`id`, strictly increasing per session; a
+  decision asked again after an override or a restore gets a new one). Its `answer` command takes an optional `id`:
+  the engine checks that the decision is still the one parked and claims it in one step, so an answer meant for a
+  decision that has moved on, or a second answer to one, is refused ("that decision has passed") and never reaches
+  the next decision. Without an `id` it answers whatever is parked, as the CLI and the pilots do.
+- **Answers** (`POST /api/answer`): `{id, gen, key, answer: [1-based option numbers]}` or `{id, gen, key, defer: true}`
+  (Forge's AI decides). Ids restart with each engine session, so the next game's opening mulligan can share the last
+  one's id and key: `gen` (the snapshot's) names the game. Under one lock the bridge refuses an `id`, `gen` or `key`
+  that is not the pending decision's ("that decision has passed") and takes the engine session whose view showed that
+  decision; it then forwards the pending decision's `id` to that session, so the old client (which sends only the key)
+  is guarded too, except against a new game asking the same question under the same id. The key is `game.key()`:
+  kind, turn, prompt, option count and the first six labels, joined by `|`, and the client computes the same
+  (`protocol/key.ts`); it is not unique (the same question asked twice shares a key), which is why the id is the
+  guard. Each game's watcher reads its own seat's session and publishes a view only while its gen is the newest, so
+  a late view from the last game never replaces the next one's snapshot.
+- **Answer status**: every snapshot carries `answer`, null or `{key, id, attempt, state, error?}` for the last answer
+  forwarded: `working` while the engine plays on to the next decision, then `applied`, or `refused` with the engine's
+  reason. A second answer to a decision (by id) whose answer is still working is refused ("an answer is already being
+  worked on"). The reply itself stays `{ok: true, attempt}` after 0.6 s, or the refusal (`{ok: false, error,
+  attempt?}`) if it comes sooner, for the old client. `attempt` numbers the forwarded answers, increasing for as long
+  as the bridge runs (a new game advances it too, so it never repeats); the reply carries the same number, so a client
+  matches a status to its own answer, and a status with a later attempt than its own, seen before its own, means its
+  outcome came and went between two polls. An answer refused before it is forwarded (a passed decision, one already
+  working) has none; so does a bridge from before it.
+- **Build stamp**: `build` is the id in `game/client/dist/build.json`, a content hash of the client's sources that the
+  bundle also carries (`platform/build.ts`); a page whose id differs is stale and offers Reload. `deckmaster game`
+  rebuilds `dist` on start when its stamp (`dist/.stamp`: the sources, the lockfile, the Vite config, what the
+  workbench bundles from outside `src` (the protocol corpus, the test catalog) and the Node version; the inputs are
+  `vite.config.mts`'s, which the build id hashes too) is stale, in a staging directory published only on success;
+  without Node it serves the last build. `/next/` serves it, its hashed `assets/` cacheable for good; `/next/api/` and
+  `/next/cache/` reach the same bridge.
+- **Client log** (`POST /api/clientlog`): `{entries: [{level, code, message, build?, rev?, stop?}]}`, at most 50
+  entries a request and 50 a minute, messages at most 2 KB; other shapes get 400. Every POST's `Content-Length` must
+  be a whole number of bytes (else 400) of at most 256 KB (else 413), and exactly that many bytes are read. Appended to
+  `.deckmaster/clientlog.jsonl`, rotated at 1 MB with one old file kept.
 
 ## Snapshots and overrides
 

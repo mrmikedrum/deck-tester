@@ -1,0 +1,459 @@
+{
+ "answer": null,
+ "state": "over",
+ "gen": 1,
+ "view": {
+  "turn": 1,
+  "label": "T1 main1",
+  "active": "You",
+  "phase": "MAIN1",
+  "priority": "Princess",
+  "me": "You",
+  "players": [
+   {
+    "name": "You",
+    "life": 298,
+    "manaPool": {
+     "W": 1,
+     "R": 1
+    },
+    "hand": [
+     {
+      "id": 32,
+      "name": "Swords to Plowshares",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{W}",
+      "text": "Exile target creature. Its controller gains life equal to its power."
+     },
+     {
+      "id": 41,
+      "name": "Vigorbloom Charm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{G} {W}",
+      "text": "Choose one —\n• Target permanent you control gains hexproof and indestructible until end of turn.\n• You draw a card and gain 3 life.\n• Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)"
+     },
+     {
+      "id": 45,
+      "name": "Loading Zone",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment",
+      "cost": "3 {G}",
+      "text": "If one or more counters would be put on a creature, Spacecraft, or Planet you control, twice that many of each of those kinds of counters are put on it instead.\nWarp {G} (You may cast this card from your hand for its warp cost. Exile this enchantment at the beginning of the next end step, then you may cast it from exile on a later turn.)"
+     },
+     {
+      "id": 47,
+      "name": "Walking Ballista",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Construct",
+      "cost": "{X} {X}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "text": "Walking Ballista enters with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on Walking Ballista.\nRemove a +1/+1 counter from Walking Ballista: It deals 1 damage to any target."
+     },
+     {
+      "id": 70,
+      "name": "Exploration Broodship",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact - Spacecraft",
+      "cost": "{G}",
+      "text": "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\nSTATION 3+\nYou may play an additional land on each of your turns.\nSTATION 8+\nFlying\nOnce during each of your turns, you may cast a permanent spell from your graveyard by sacrificing a land in addition to paying its other costs."
+     },
+     {
+      "id": 1,
+      "name": "Recon Craft Theta",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact - Vehicle",
+      "cost": "4",
+      "keywords": [
+       "Flying"
+      ],
+      "text": "Flying\nWhen Recon Craft Theta enters, create a 0/0 blue Alien creature token. Put a +1/+1 counter on it.\nWhenever Recon Craft Theta attacks, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nCrew 2"
+     },
+     {
+      "id": 85,
+      "name": "Exploratory Mission",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment",
+      "cost": "2 {R} {R}",
+      "text": "Landfall — Whenever a land you control enters, put a quest counter on this enchantment. Then exile cards from the top of your library until you exile a nonland card. You may play that card this turn. If this enchantment has five or more quest counters on it, add {R}{R}."
+     },
+     {
+      "id": 822,
+      "name": "Lightning Bolt",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{R}",
+      "text": "Lightning Bolt deals 3 damage to any target."
+     },
+     {
+      "id": 823,
+      "name": "Raise the Alarm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "1 {W}",
+      "text": "Create two 1/1 white Soldier creature tokens."
+     },
+     {
+      "id": 824,
+      "name": "Raise the Alarm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "1 {W}",
+      "text": "Create two 1/1 white Soldier creature tokens."
+     },
+     {
+      "id": 826,
+      "name": "Rancor",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment - Aura",
+      "cost": "{G}",
+      "text": "Enchant creature\nEnchanted creature gets +2/+0 and has trample.\nWhen Rancor is put into a graveyard from the battlefield, return Rancor to its owner's hand."
+     },
+     {
+      "id": 827,
+      "name": "Fireball",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "{X} {R}",
+      "text": "This spell costs {1} more to cast for each target beyond the first.\nFireball deals X damage divided evenly, rounded down, among any number of targets."
+     },
+     {
+      "id": 828,
+      "name": "Soul Warden",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Cleric",
+      "cost": "{W}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Whenever another creature enters, you gain 1 life."
+     },
+     {
+      "id": 829,
+      "name": "Willbender",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Wizard",
+      "cost": "1 {U}",
+      "power": 1,
+      "toughness": 2,
+      "sick": true,
+      "text": "Morph {1}{U} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen Willbender is turned face up, change the target of target spell or ability with a single target."
+     },
+     {
+      "id": 830,
+      "name": "Brainstorm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{U}",
+      "text": "Draw three cards, then put two cards from your hand on top of your library in any order."
+     },
+     {
+      "id": 831,
+      "name": "Boros Charm",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "{R} {W}",
+      "text": "Choose one —\n• Boros Charm deals 4 damage to target player or planeswalker.\n• Permanents you control gain indestructible until end of turn.\n• Target creature gains double strike until end of turn."
+     }
+    ],
+    "library": 91,
+    "battlefield": [
+     {
+      "id": 805,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 806,
+      "name": "Swamp",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 807,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 808,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 809,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest",
+      "tapped": true
+     },
+     {
+      "id": 810,
+      "name": "Island",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Island",
+      "tapped": true
+     },
+     {
+      "id": 811,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains"
+     },
+     {
+      "id": 812,
+      "name": "Swamp",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Swamp"
+     },
+     {
+      "id": 813,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain"
+     },
+     {
+      "id": 814,
+      "name": "Mountain",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Mountain"
+     },
+     {
+      "id": 815,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest"
+     },
+     {
+      "id": 816,
+      "name": "Island",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Island"
+     },
+     {
+      "id": 818,
+      "name": "Grizzly Bears",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Bear",
+      "cost": "1 {G}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "counters": {
+       "-1/-1": 1
+      }
+     },
+     {
+      "id": 819,
+      "name": "Jace Beleren",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Planeswalker - Jace",
+      "cost": "1 {U} {U}",
+      "loyalty": 3,
+      "counters": {
+       "Loyalty": 3
+      },
+      "text": "+2: Each player draws a card.\r\n\r\n-1: Target player draws a card.\r\n\r\n-10: Target player mills twenty cards."
+     },
+     {
+      "id": 820,
+      "name": "Soul Warden",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Cleric",
+      "cost": "{W}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "<span style=\"color:gray;\">Whenever another creature enters, you gain 1 life.</span>"
+     },
+     {
+      "id": 821,
+      "name": "Soul's Attendant",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Cleric",
+      "cost": "{W}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "<span style=\"color:gray;\">Whenever another creature enters, you may gain 1 life.</span>"
+     },
+     {
+      "id": 62,
+      "name": "Sacred Foundry",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land - Mountain Plains",
+      "text": "As Sacred Foundry enters, you may pay 2 life. If you don't, it enters tapped."
+     }
+    ],
+    "command": [
+     {
+      "id": 100,
+      "name": "Marath, Will of the Wild",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Creature - Elemental Beast",
+      "cost": "{R} {G} {W}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "commander": true,
+      "text": "Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\n{X}, Remove X +1/+1 counters from Marath: Choose one —\n• Put X +1/+1 counters on target creature. X can't be 0.\n• Marath deals X damage to any target. X can't be 0.\n• Create an X/X green Elemental creature token. X can't be 0."
+     }
+    ],
+    "graveyard": [
+     {
+      "id": 817,
+      "name": "Grizzly Bears",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Bear",
+      "cost": "1 {G}",
+      "power": 2,
+      "toughness": 2,
+      "sick": true
+     }
+    ],
+    "exile": []
+   }
+  ],
+  "stack": [
+   {
+    "id": 7,
+    "source": {
+     "id": 825,
+     "name": "Thorn of the Black Rose",
+     "owner": "You",
+     "controller": "You",
+     "type": "Creature - Human Assassin",
+     "cost": "3 {B}",
+     "power": 1,
+     "toughness": 3,
+     "sick": true,
+     "keywords": [
+      "Deathtouch"
+     ],
+     "text": "Deathtouch\nWhen Thorn of the Black Rose enters, you become the monarch."
+    },
+    "controller": "You",
+    "spell": true,
+    "text": "Thorn of the Black Rose - Creature 1 / 3"
+   }
+  ],
+  "log": [
+   {
+    "i": 46,
+    "type": "LIFE",
+    "text": "Life: Princess 40 > 0"
+   },
+   {
+    "i": 47,
+    "type": "PLAYER_CONTROL",
+    "text": "You has restored control over themself"
+   },
+   {
+    "i": 48,
+    "type": "PLAYER_CONTROL",
+    "text": "Atraxa has restored control over themself"
+   },
+   {
+    "i": 49,
+    "type": "PLAYER_CONTROL",
+    "text": "Dack has restored control over themself"
+   },
+   {
+    "i": 50,
+    "type": "PLAYER_CONTROL",
+    "text": "Princess has restored control over themself"
+   },
+   {
+    "i": 51,
+    "type": "GAME_OUTCOME",
+    "text": "Match Duration 0m : 18s"
+   },
+   {
+    "i": 52,
+    "type": "GAME_OUTCOME",
+    "text": "Turn 1"
+   },
+   {
+    "i": 53,
+    "type": "GAME_OUTCOME",
+    "text": "You has won because all opponents have lost"
+   },
+   {
+    "i": 54,
+    "type": "GAME_OUTCOME",
+    "text": "Atraxa has lost because life total reached 0"
+   },
+   {
+    "i": 55,
+    "type": "GAME_OUTCOME",
+    "text": "Dack has lost because life total reached 0"
+   },
+   {
+    "i": 56,
+    "type": "GAME_OUTCOME",
+    "text": "Princess has lost because life total reached 0"
+   },
+   {
+    "i": 57,
+    "type": "MATCH_RESULTS",
+    "text": "You: 1 Atraxa: 0 Dack: 0 Princess: 0 "
+   }
+  ],
+  "over": true
+ },
+ "decision": null,
+ "over": "over: You won",
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 22,
+ "error": null,
+ "build": null
+}

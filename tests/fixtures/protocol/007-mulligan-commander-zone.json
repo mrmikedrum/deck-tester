@@ -1,0 +1,220 @@
+{
+ "answer": null,
+ "state": "playing",
+ "gen": 1,
+ "view": {
+  "turn": 0,
+  "label": "T0 setup",
+  "phase": "setup",
+  "me": "You",
+  "players": [
+   {
+    "name": "You",
+    "life": 40,
+    "manaPool": {},
+    "hand": [
+     {
+      "id": 7,
+      "name": "Wrenn's Resolve",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "1 {R}",
+      "text": "Exile the top two cards of your library. Until the end of your next turn, you may play those cards."
+     },
+     {
+      "id": 84,
+      "name": "Patrolling Peacemaker",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Robot Soldier",
+      "cost": "2 {W}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "text": "This creature enters with two +1/+1 counters on it.\nWhenever an opponent commits a crime, proliferate. (They commit a crime if they target an opponent, anything an opponent controls, and/or cards in an opponent's graveyard. To proliferate, you choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     },
+     {
+      "id": 55,
+      "name": "Sol Ring",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact",
+      "cost": "1",
+      "text": "{T}: Add {C}{C}."
+     },
+     {
+      "id": 81,
+      "name": "Crystalline Crawler",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Construct",
+      "cost": "4",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Converge — Crystalline Crawler enters with a +1/+1 counter on it for each color of mana spent to cast it.\nRemove a +1/+1 counter from Crystalline Crawler: Add one mana of any color.\n{T}: Put a +1/+1 counter on Crystalline Crawler."
+     },
+     {
+      "id": 99,
+      "name": "Copper Myr",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Myr",
+      "cost": "2",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "{T}: Add {G}."
+     },
+     {
+      "id": 52,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "text": "({T}: Add {W}.)"
+     },
+     {
+      "id": 8,
+      "name": "Incubation Druid",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Elf Druid",
+      "cost": "1 {G}",
+      "power": 0,
+      "toughness": 2,
+      "sick": true,
+      "text": "{T}: Add one mana of any type that a land you control could produce. If Incubation Druid has a +1/+1 counter on it, add three mana of that type instead.\n{3}{G}{G}: Adapt 3. (If this creature has no +1/+1 counters on it, put three +1/+1 counters on it.)"
+     }
+    ],
+    "library": 92,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 100,
+      "name": "Marath, Will of the Wild",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Creature - Elemental Beast",
+      "cost": "{R} {G} {W}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "commander": true,
+      "text": "Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\n{X}, Remove X +1/+1 counters from Marath: Choose one —\n• Put X +1/+1 counters on target creature. X can't be 0.\n• Marath deals X damage to any target. X can't be 0.\n• Create an X/X green Elemental creature token. X can't be 0."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Atraxa",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 92,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 301,
+      "name": "Atraxa, Praetors' Voice",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Creature - Phyrexian Angel Horror",
+      "cost": "{G} {W} {U} {B}",
+      "power": 4,
+      "toughness": 4,
+      "sick": true,
+      "commander": true,
+      "keywords": [
+       "Flying",
+       "Vigilance",
+       "Deathtouch",
+       "Lifelink"
+      ],
+      "text": "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Dack",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 92,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 502,
+      "name": "Dack Fayden, Helping Hand",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Creature - Human Advisor",
+      "cost": "4 {W} {W}",
+      "power": 4,
+      "toughness": 6,
+      "sick": true,
+      "commander": true,
+      "text": "When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Princess",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 92,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 703,
+      "name": "Princess Yue",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Legendary Creature - Human Noble Ally",
+      "cost": "2 {U}",
+      "power": 3,
+      "toughness": 2,
+      "sick": true,
+      "commander": true,
+      "text": "When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.)\n{T}: Scry 2."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   }
+  ],
+  "stack": [],
+  "log": []
+ },
+ "decision": {
+  "kind": "mulligan",
+  "turn": "T0 setup",
+  "prompt": "keep this hand",
+  "options": [
+   "keep",
+   "mulligan"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true,
+  "id": 1
+ },
+ "over": null,
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 4,
+ "error": null,
+ "build": null
+}

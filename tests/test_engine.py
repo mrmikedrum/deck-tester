@@ -1,5 +1,6 @@
 """End-to-end check against the real engine. Skipped when Forge isn't installed (as in CI)."""
 
+import threading
 import unittest
 from pathlib import Path
 
@@ -109,6 +110,46 @@ class AutomatedGameTest(unittest.TestCase):
         self.assertEqual(decisions[-1]["by"], "ai")
         self.assertEqual(decisions[-1]["answer"], ["keep"])  # the AI's answer is recorded like anyone's
 
+    def test_an_answer_naming_a_decision_reaches_only_that_decision(self):
+        deck = decklist.load(DECK)
+        reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2})
+        session = reply["session"]
+
+        def answer(**req):
+            return engine.request(dict(req, cmd="answer", session=session))
+        try:
+            mulligan = reply["decision"]
+            with self.assertRaisesRegex(engine.EngineError, "pick exactly 1"):   # a bad answer leaves it parked
+                answer(id=mulligan["id"], answer=[1, 2])
+            play = answer(id=mulligan["id"], answer=[1])["decision"]
+            self.assertEqual(play["kind"], "play")
+            self.assertGreater(play["id"], mulligan["id"])
+            # an answer meant for the mulligan, arriving after it moved on, is refused and never answers the play
+            with self.assertRaisesRegex(engine.EngineError, "that decision has passed"):
+                answer(id=mulligan["id"], answer=[1])
+            self.assertEqual(engine.request({"cmd": "view", "session": session})["decision"], play)
+            # two answers to one decision at once: one is applied, the other refused
+            outcomes = []
+
+            def race():
+                try:
+                    outcomes.append(answer(id=play["id"], answer=[1])["decision"]["id"])
+                except engine.EngineError as error:
+                    outcomes.append(str(error))
+            racers = [threading.Thread(target=race) for _ in range(2)]
+            for r in racers:
+                r.start()
+            for r in racers:
+                r.join(60)
+            self.assertEqual(sorted(outcomes, key=str).count("that decision has passed"), 1, outcomes)
+            after = next(o for o in outcomes if o != "that decision has passed")
+            self.assertGreater(after, play["id"])
+            self.assertEqual(engine.request({"cmd": "view", "session": session})["decision"]["id"], after)
+            # without an id, an answer goes to whatever is parked, as before
+            self.assertIn("decision", answer(answer=[1]))
+        finally:
+            engine.request({"cmd": "end", "session": session})
+
 
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class ForkTest(unittest.TestCase):
@@ -126,12 +167,15 @@ class ForkTest(unittest.TestCase):
             forks.append(fork["session"])
             self.assertEqual(fork["parent"], session)
             self.assertGreaterEqual(fork["replayed"], 2)  # the mulligan and turn 1 and 2 plays, at least
-            self.assertEqual(fork["decision"], parked)
+
+            def same(d):   # each session numbers its own decisions
+                return {k: v for k, v in d.items() if k != "id"}
+            self.assertEqual(same(fork["decision"]), same(parked))
             # A copy fork (the default) starts from a copy of the game here: nothing to replay, same decision.
             copy = engine.request({"cmd": "fork", "session": session})
             forks.append(copy["session"])
             self.assertEqual(copy["replayed"], 0)
-            self.assertEqual(copy["decision"], parked)
+            self.assertEqual(same(copy["decision"]), same(parked))
             # The fork is a game of its own: answering it leaves the parent parked where it was.
             engine.request({"cmd": "answer", "session": fork["session"], "defer": True})
             self.assertEqual(engine.request({"cmd": "decision", "session": session})["decision"], parked)

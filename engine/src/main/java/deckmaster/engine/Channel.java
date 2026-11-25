@@ -36,8 +36,14 @@ final class Channel {
     /** The answer that hands a decision to Forge's AI. */
     static final Object DEFER = new Object();
 
+    /** A parked decision and its number: strictly increasing per session, so a client's answer names what it saw. */
+    record Parked(Decision decision, long id) {
+    }
+
     private final SynchronousQueue<Object> answers = new SynchronousQueue<>();
     private Decision pending;
+    private long pendingId;
+    private long asked;
     private boolean finished;
     private String by = "agent";
     private Double confidence;
@@ -47,6 +53,7 @@ final class Channel {
     List<Integer> ask(Decision decision) {
         synchronized (this) {
             pending = decision;
+            pendingId = ++asked;
             notifyAll();
         }
         Object answer;
@@ -73,6 +80,12 @@ final class Channel {
 
     /** Server: wait until a decision is parked or the game is over. */
     synchronized Decision await(long timeoutMillis) throws InterruptedException {
+        Parked parked = awaitParked(timeoutMillis);
+        return parked == null ? null : parked.decision();
+    }
+
+    /** Server: wait until a decision is parked or the game is over; the decision with its number. */
+    synchronized Parked awaitParked(long timeoutMillis) throws InterruptedException {
         long deadline = System.currentTimeMillis() + timeoutMillis;
         while (pending == null && !finished) {
             long left = deadline - System.currentTimeMillis();
@@ -81,11 +94,15 @@ final class Channel {
             }
             wait(left);
         }
-        return pending;
+        return parked();
     }
 
     synchronized Decision pending() {
         return pending;
+    }
+
+    synchronized Parked parked() {
+        return pending == null ? null : new Parked(pending, pendingId);
     }
 
     synchronized boolean isFinished() {
@@ -117,6 +134,30 @@ final class Channel {
             this.confidence = confidence;
         }
         resume(answer);
+    }
+
+    /**
+     * Server: answer (a list of option numbers, or DEFER) only the decision numbered id, checked and claimed in one
+     * step: an answer meant for a decision that has moved on, or a second answer to one, is refused and never reaches
+     * the next decision.
+     */
+    @SuppressWarnings("unchecked")
+    void answerIf(long id, Object answer, String by, Double confidence) throws InterruptedException {
+        synchronized (this) {
+            if (pending == null || pendingId != id) {
+                throw new IllegalStateException("that decision has passed");
+            }
+            if (answer != DEFER) {
+                String problem = pending.check((List<Integer>) answer);
+                if (problem != null) {
+                    throw new IllegalArgumentException(problem);
+                }
+            }
+            this.by = by;
+            this.confidence = confidence;
+            pending = null;
+        }
+        answers.put(answer);
     }
 
     /** Server: release the parked game thread with an answer, or with an Interrupt. */

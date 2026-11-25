@@ -1,0 +1,9 @@
+{
+  "name": "Deckmaster",
+  "short_name": "Deckmaster",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1f1b",
+  "theme_color": "#1a1f1b"
+}
