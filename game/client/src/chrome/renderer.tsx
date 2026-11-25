@@ -418,7 +418,9 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
                 {drawLayer(l)}
               </div>
             ))}
-            {view.waiting === null ? <Plates plates={view.plates} open={view.seatFocus?.seat ?? null} send={send} /> : null}
+            {view.waiting === null ? (
+              <Plates plates={view.plates} open={view.seatFocus?.seat ?? null} inert={topModal !== null && topModal !== "seat"} send={send} />
+            ) : null}
             <div class={view.toast !== null ? "l-toast on" : "l-toast"} role="status" aria-live="polite">
               {toast}
             </div>

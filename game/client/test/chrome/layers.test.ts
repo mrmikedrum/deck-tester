@@ -75,10 +75,21 @@ describe("the inspector", () => {
   it("a card in my hand is held up in the hand's focus: the card and its plays, under the fan, which stays live", () => {
     open({ inspector: { ...INSPECTOR, held: true } });
     expect($(".scrim.from-hand .inspector.from-hand .big")?.getAttribute("style")).toContain("meloku-the-clouded-mirror.jpg");
-    expect($(".inspector.from-hand h3")).toBeNull();
+    expect($(".inspector.from-hand .info h3")).toBeNull(); // the leaf holds only its plays
     expect($$(".inspector.from-hand .l-actions button")).toHaveLength(1);
     expect(($(".l-hand-host") as HTMLElement | null)?.inert).toBe(false);
     expect(($(".scrim.from-hand") as HTMLElement | null)?.style.zIndex).toBe("40");
+  });
+  it("a card held up says what it is in words: its description always, and in its picture's place when that is missing", () => {
+    open({ inspector: { ...INSPECTOR, held: true } });
+    const dialog = $(".inspector.from-hand");
+    const text = $(`#${dialog?.getAttribute("aria-describedby") ?? "none"}`);
+    expect(text?.textContent).toContain("Meloku the Clouded Mirror");
+    expect(text?.textContent).toContain("Create a 1/1 blue Illusion");
+    expect(text?.classList.contains("sr")).toBe(true); // the picture is there: the words are read, not shown
+    open({ inspector: { ...INSPECTOR, held: true, image: null } });
+    expect($(".inspector.from-hand .held-text")?.classList.contains("sr")).toBe(false);
+    expect($(".inspector.from-hand .held-text h3")?.textContent).toBe("Meloku the Clouded Mirror");
   });
   it("no plays: no action list", () => {
     open({ inspector: { ...INSPECTOR, actions: [] } });
@@ -156,6 +167,54 @@ describe("the Game menu", () => {
     show({ controls: controls({ ...MAIN, headline: "Game over", hint: null, buttons: [] }), newGame: true });
     expect(texts(".l-prompt .l-buttons button")).toEqual(["New game"]);
     expect(orders()).toEqual([{ t: "open", layer: "menu", card: null }]);
+  });
+});
+
+describe("the nameplates", () => {
+  const PLATE = {
+    seat: "Atraxa",
+    group: "plate:Atraxa",
+    name: "Atraxa",
+    life: 32,
+    place: "across" as const,
+    mine: false,
+    active: false,
+    ring: "option" as const,
+    out: false,
+    x: 500,
+    y: 6,
+    icons: [{ kind: "hand" as const, figure: "5" }],
+  };
+  const plates = () => $(".l-plates") as HTMLElement | null;
+  it("a tap on a plate is the tap on its plate's hit group", () => {
+    show({ plates: [PLATE] });
+    expect(plates()?.inert).toBe(false);
+    click($(".l-plate"));
+    expect(orders()).toEqual([{ act: { a: "tap", on: { group: "plate:Atraxa", members: [] } } }]);
+  });
+  it("are inert under a modal layer of another kind: a plate never answers through the Game menu", () => {
+    show({ plates: [PLATE], layers: [{ layer: "menu", restore: "menu" }], menu: MENU });
+    expect(plates()?.inert).toBe(true);
+    show({ plates: [PLATE], layers: [{ layer: "inspector", restore: null }], inspector: INSPECTOR });
+    expect(plates()?.inert).toBe(true);
+  });
+  it("stay live over the nameplate focus: another plate is the way to another seat", () => {
+    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], graveyard: [], exile: [], hand: [], handCount: 4, library: 60, also: null };
+    show({ plates: [PLATE], layers: [{ layer: "seat", restore: "plate:Dack" }], seatFocus: focus });
+    expect(plates()?.inert).toBe(false);
+  });
+  it("a nameplate focus's graveyard and exile open in full, from their headings or from the cards past those shown", () => {
+    const yard = Array.from({ length: 8 }, (_, i) => ({ id: (400 + i) as CardId, name: `Card ${i}`, image: null }));
+    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], graveyard: yard, exile: [], hand: [], handCount: 4, library: 60, also: null };
+    show({ layers: [{ layer: "seat", restore: "plate:Dack" }], seatFocus: focus });
+    expect($$(".l-seat .l-zone-open")).toHaveLength(1); // an empty exile has nothing to open
+    click($(".l-seat .l-zone-open"));
+    click($(".l-seat .l-more"));
+    expect($(".l-seat .l-more")?.textContent).toBe("3 more");
+    expect(orders()).toEqual([
+      { t: "zone", seat: "Dack", zone: "graveyard" },
+      { t: "zone", seat: "Dack", zone: "graveyard" },
+    ]);
   });
 });
 

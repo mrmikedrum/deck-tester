@@ -146,6 +146,7 @@ function route(s: AppState, m: Msg): Step {
     case "listDecks":
     case "dismissRecap":
     case "board":
+    case "zone":
     case "siftPage":
     case "hover":
       return input(s, m);
@@ -577,6 +578,17 @@ function input(s: AppState, m: InputMsg): Step {
       return { state: s, effects: [{ kind: "decks", epoch: s.epoch }] };
     case "dismissRecap":
       return { state: { ...s, narrative: narrative.dismissRecap(s.narrative) }, effects: [] };
+    case "zone": {
+      // A zone of a nameplate opened in full: its sift, as a tap on its pile at the far strip opens it (the stack set
+      // aside first). The nameplate closes under it; when the sift goes, keyboard focus goes back to the seat's plate.
+      const group = `zone:${m.zone}:${m.seat}`;
+      const g = s.plan ? groupById(s.plan.hits, group) : undefined;
+      if (!g || !sifts(s, g)) return done(tx);
+      const f = close(s.focus, "seat");
+      const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
+      tx.s = { ...s, focus: open(under, entry("sift", { group, restore: `plate:${m.seat}` })) };
+      return done(tx);
+    }
     case "board": {
       // The nameplate's "See … board": the nameplate closes and the table leans in on that seat (not my own).
       const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;

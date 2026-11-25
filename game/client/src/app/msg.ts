@@ -23,6 +23,8 @@ export type InputMsg = (
   | { readonly t: "open"; readonly stamp: Stamp; readonly layer: OpenLayer; readonly card: CardId | null }
   /** From a nameplate focus: that seat's board, brought nearer (the nameplate closes, the table leans in on it). */
   | { readonly t: "board"; readonly stamp: Stamp; readonly seat: string }
+  /** From a nameplate focus: one of that seat's zones opened in full (the nameplate closes; its plate gets focus back). */
+  | { readonly t: "zone"; readonly stamp: Stamp; readonly seat: string; readonly zone: "graveyard" | "exile" }
   /** The player closed the loss notice beside the decision. */
   | { readonly t: "dismissRecap"; readonly stamp: Stamp }
   /** Another page of the sift up: the sift of `group` (the hit group whose pager was pressed). */
@@ -56,6 +58,7 @@ export function rankOf(m: Msg): number {
     case "listDecks":
     case "dismissRecap":
     case "board":
+    case "zone":
     case "siftPage":
     case "hover":
       return 0;

@@ -1300,7 +1300,6 @@
   }
   .l-plate {
     position: absolute;
-    transform: translateX(-50%);
     display: flex;
     align-items: stretch;
     gap: 0;
@@ -1311,13 +1310,6 @@
     cursor: pointer;
     pointer-events: auto;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
-  }
-  /* The plate on the left hangs from its left edge, clear of the Game button; the one on the right from its right. */
-  .l-plate.left {
-    transform: none;
-  }
-  .l-plate.right {
-    transform: translateX(-100%);
   }
   .l-plate .bronze {
     display: flex;
@@ -1498,7 +1490,9 @@
   /* Picked up: printed cards, fanned a little, as held in a hand. */
   .l-picked {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-end;
+    row-gap: calc(2 * var(--u));
   }
   .l-picked .pc {
     flex: none;
@@ -1516,6 +1510,27 @@
   .l-picked .pc.back,
   .l-library {
     background: radial-gradient(circle, #c9a25c 0 8%, #6a4a20 9%, transparent 10%), radial-gradient(ellipse at 50% 45%, rgba(120, 70, 30, 0.25), rgba(0, 0, 0, 0.5)), #2a170c;
+  }
+  .l-seat .l-zone-open,
+  .l-picked .l-more {
+    min-height: 44px;
+    padding: 0 calc(6 * var(--u));
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .l-seat .l-zone-open:hover,
+  .l-picked .l-more:hover {
+    background: rgba(60, 40, 15, 0.1);
+  }
+  .l-picked .l-more {
+    margin-left: calc(22 * var(--u));
+    white-space: nowrap;
+    color: var(--ink-2);
+    text-decoration: underline;
   }
   .l-picked small {
     margin-left: calc(30 * var(--u));
@@ -1575,6 +1590,29 @@
     box-shadow:
       0 0 0 2px rgba(241, 200, 106, 0.85),
       0 24px 60px rgba(0, 0, 0, 0.75);
+  }
+  .inspector.from-hand .held-text {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: start;
+    gap: calc(8 * var(--u));
+    padding: calc(16 * var(--u));
+    border-radius: inherit;
+    color: var(--ink);
+    background: var(--sheet-quiet);
+    font-size: calc(14 * var(--u));
+    overflow: hidden;
+  }
+  .inspector.from-hand .held-text h3 {
+    margin: 0;
+    font: 400 calc(22 * var(--u)) / 1.1 var(--serif);
+  }
+  .inspector.from-hand .held-text.sr {
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
   }
   .inspector.from-hand .info {
     width: calc(240 * var(--u));

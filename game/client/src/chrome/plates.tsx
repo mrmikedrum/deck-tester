@@ -48,21 +48,25 @@ const WORD: Readonly<Record<IconKind, string>> = {
   creatures: "creatures",
   wing: "fliers",
   shield: "untapped creatures",
-  mana: "mana open",
+  mana: "untapped mana sources",
   hand: "cards in hand",
 };
 
-/** Every seat's nameplate: opponents' along the top, mine at the bottom. */
-export function Plates({ plates, open, send }: { plates: readonly PlateView[]; open: string | null; send: Send }): JSX.Element {
+/**
+ * Every seat's nameplate: opponents' along the top, mine at the bottom. Always lit, but `inert` under a modal layer
+ * of another kind (a menu, a sheet, the inspector): a plate answers decisions, so it is reached only from the table or
+ * from the nameplate focus, where another plate is the way to another seat.
+ */
+export function Plates({ plates, open, inert, send }: { plates: readonly PlateView[]; open: string | null; inert: boolean; send: Send }): JSX.Element {
   return (
-    <div class="l-plates">
+    <div class="l-plates" inert={inert}>
       {plates.map((p) => {
         const said = `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}`;
         return (
           <button
             key={p.seat}
             type="button"
-            class={["l-plate", p.mine ? "mine" : p.place === "left" || p.place === "right" ? p.place : "", p.active ? "turn" : "", p.ring ?? "", p.out ? "out" : "", open === p.seat ? "open" : ""].filter(Boolean).join(" ")}
+            class={["l-plate", p.mine ? "mine" : "", p.active ? "turn" : "", p.ring ?? "", p.out ? "out" : "", open === p.seat ? "open" : ""].filter(Boolean).join(" ")}
             data-plate={p.seat}
             data-fk={`plate:${p.seat}`}
             aria-label={said}
@@ -92,9 +96,10 @@ export function Plates({ plates, open, send }: { plates: readonly PlateView[]; o
   );
 }
 
-function Picked({ cards, max, empty }: { cards: readonly PickedCard[]; max: number; empty: string }): JSX.Element {
+function Picked({ cards, max, empty, more }: { cards: readonly PickedCard[]; max: number; empty: string; more?: (() => void) | undefined }): JSX.Element {
   if (!cards.length) return <div class="l-zone-empty">{empty}</div>;
   const shown = cards.slice(0, max);
+  const rest = cards.length - max;
   return (
     <div class="l-picked">
       {shown.map((c, i) => (
@@ -106,13 +111,39 @@ function Picked({ cards, max, empty }: { cards: readonly PickedCard[]; max: numb
           style={c.image ? `background-image:url("${c.image}")` : undefined}
         />
       ))}
-      {cards.length > max ? <small>{cards.length - max} more</small> : null}
+      {rest > 0 ? (
+        more ? (
+          <button type="button" class="l-more" onClick={more}>
+            {rest} more
+          </button>
+        ) : (
+          <small>{rest} more</small>
+        )
+      ) : null}
     </div>
+  );
+}
+
+/** A zone's heading; with cards in it, the way to open it in full. */
+function ZoneHead({ label, n, open }: { label: string; n: number; open?: (() => void) | undefined }): JSX.Element {
+  return (
+    <h4>
+      {open ? (
+        <button type="button" class="l-zone-open" aria-label={`Open ${label.toLowerCase()}, ${n} card${n === 1 ? "" : "s"}`} onClick={open}>
+          {label} <b>{n}</b> <span aria-hidden="true">›</span>
+        </button>
+      ) : (
+        <>
+          {label} <b>{n}</b>
+        </>
+      )}
+    </h4>
   );
 }
 
 /** A nameplate opened: the seat in words, a line per icon; its zones picked up; the way to its board and back. */
 export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send: Send; style?: string }): JSX.Element {
+  const openZone = (zone: "graveyard" | "exile") => () => send({ t: "zone", seat: v.seat, zone });
   return (
     <div class="l-seat-scrim" data-layer="seat" data-scrim="" style={style} onClick={onScrim(send)}>
       <div class="l-seat" role="dialog" aria-modal="true" aria-labelledby="l-seat-title" tabIndex={-1} data-focus="" style={`--seat:var(--seat-${v.place})`}>
@@ -134,18 +165,14 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
           </ul>
           <div class="zones">
             <section class="gy">
-              <h4>
-                Graveyard <b>{v.graveyard.length}</b>
-              </h4>
-              <Picked cards={v.graveyard} max={5} empty="Empty" />
+              <ZoneHead label="Graveyard" n={v.graveyard.length} open={v.graveyard.length ? openZone("graveyard") : undefined} />
+              <Picked cards={v.graveyard} max={5} empty="Empty" more={openZone("graveyard")} />
               {v.graveyard.length ? <small class="note">newest first</small> : null}
             </section>
             <div class="row">
               <section>
-                <h4>
-                  Exile <b>{v.exile.length}</b>
-                </h4>
-                <Picked cards={v.exile} max={3} empty="Empty" />
+                <ZoneHead label="Exile" n={v.exile.length} open={v.exile.length ? openZone("exile") : undefined} />
+                <Picked cards={v.exile} max={3} empty="Empty" more={openZone("exile")} />
               </section>
               <section>
                 <h4>

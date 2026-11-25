@@ -110,7 +110,8 @@ export function Inspector({
 /**
  * The hand as a focus: the card I touched held up at reading size, to the right of the fan so it covers as little of my
  * board as it can, the table under a light shade. The fan stays live over the shade: another card swaps up, and playing
- * is a drag as ever. What I can do with the card now sits under it.
+ * is a drag as ever. What I can do with the card now sits under it. Its words (name, facts, rules) are its description,
+ * and are shown in its place where its picture has not loaded.
  */
 function Held({
   view: v,
@@ -127,8 +128,19 @@ function Held({
 }): JSX.Element {
   return (
     <div class="scrim from-hand" data-layer="inspector" data-scrim="" style={style} onClick={onScrim(send)}>
-      <div class="inspector from-hand" role="dialog" aria-modal="true" aria-label={v.name} tabIndex={-1} data-focus="">
-        <div class={v.faceDown ? "big back" : "big"} style={v.image ? `background-image:url("${v.image}")` : undefined} />
+      <div class="inspector from-hand" role="dialog" aria-modal="true" aria-label={v.name} aria-describedby="l-held-text" tabIndex={-1} data-focus="">
+        <div class={v.faceDown ? "big back" : "big"} style={v.image ? `background-image:url("${v.image}")` : undefined}>
+          {/* What the card says, in words: read out always, and shown where its picture is missing. */}
+          <div id="l-held-text" class={v.image || v.faceDown ? "held-text sr" : "held-text"}>
+            <h3>{v.name}</h3>
+            {v.chips.length ? <div class="chips">{v.chips.join(" · ")}</div> : null}
+            {v.rules ? (
+              <div class="oracle">
+                <Pips text={v.rules} />
+              </div>
+            ) : null}
+          </div>
+        </div>
         {hold || v.actions.length ? (
           <div class="info">
             {hold ? <AutoPass hold={hold} fill={fill} send={send} /> : null}

@@ -142,6 +142,25 @@ describe("a tap opens the table's layers", () => {
     expect(layers(r)).toEqual([["seat", seatId("You")]]);
   });
 
+  it("a nameplate's zone opens in full: the nameplate closes, its sift opens, and keyboard focus returns to the plate", () => {
+    const r = started(board({ v: 1, graveyard: Array.from({ length: 9 }, (_, i) => ({ id: 300 + i, name: `Card ${i}`, owner: "You", controller: "You", type: "Instant" })) }));
+    const me = seatId("You");
+    tap(r, groups(r).find((g) => g.id === `plate:${me}`)!);
+    expect(layers(r)).toEqual([["seat", me]]);
+    expect(r.commits.at(-1)!.view.seatFocus?.graveyard).toHaveLength(9);
+    r.inputs.push({ t: "zone", stamp: { at: r.now, commit: r.state.commit }, seat: String(me), zone: "graveyard" });
+    r.frame(r.now + 10);
+    expect(layers(r)).toEqual([["sift", `zone:graveyard:${me}`]]);
+    expect(r.state.focus.layers[0]?.restore).toBe(`plate:${me}`);
+    expect(r.commits.at(-1)!.view.sift?.title).toBe("Your graveyard ×9");
+    // An empty zone has nothing to open.
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame(r.now + 10);
+    r.inputs.push({ t: "zone", stamp: { at: r.now, commit: r.state.commit }, seat: String(me), zone: "exile" });
+    r.frame(r.now + 10);
+    expect(layers(r)).toEqual([]);
+  });
+
   it("a sift goes when its group leaves the table", () => {
     const r = started(board({ v: 1 }));
     tap(r, islands(r));

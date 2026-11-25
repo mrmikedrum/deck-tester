@@ -77,8 +77,8 @@ export interface PlateView {
   /** What a decision makes of it: an option (ember), chosen (gold). */
   readonly ring: "option" | "selected" | null;
   readonly out: boolean;
-  /** Its anchor, CSS px: its top edge's middle (across), left end (the left seat's) or right end (the right seat's); the
-   * middle of my plate's bottom edge. */
+  /** Its anchor, CSS px: an opponent's plate's top left corner (the top row bends round the table's cards: app/seats.ts
+   * `placeTop`); the middle of my plate's bottom edge. */
   readonly x: number;
   readonly y: number;
   readonly icons: readonly IconView[];
@@ -270,6 +270,8 @@ export type Order =
   | { readonly t: "dismissRecap" }
   /** From a nameplate focus: that seat's board, brought nearer. */
   | { readonly t: "board"; readonly seat: string }
+  /** From a nameplate focus: one of that seat's zones, opened in full (its sift). */
+  | { readonly t: "zone"; readonly seat: string; readonly zone: "graveyard" | "exile" }
   /** Another page of the sift up: `delta` pages on (negative: back). */
   | { readonly t: "siftPage"; readonly group: string; readonly delta: number }
   | { readonly t: "newGame"; readonly req: GameRequest };
