@@ -12,7 +12,8 @@ import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftO
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
-import type { FaceSpec } from "../../theme";
+import type { FaceSpec, InkSpec } from "../../theme";
+import { ROW, TALLY_EM, inkLines, inkRows } from "../../layout/told/ink";
 import { DIM, SCRIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
 import type { LabelAsk, Measure } from "./labels";
@@ -119,6 +120,10 @@ export function describe(input: DescribeInput): Description {
 
     const rows = mine ? wellRows(sp.units) : new Map<string, { alt: boolean; small: boolean }>();
     for (const u of sp.units) {
+      if (u.account) {
+        put({ ...accountPiece(seat, u, markOf), ...placed(seat, accountPose(u), true), look: { ...LOOK, fade: dimOf(seat) } });
+        continue;
+      }
       const dim = dimOf(seat);
       const off = fighting && !u.fighting ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
       const piece = unitPiece(input, seat, u, mine, Math.max(dim, off), lookOf, markOf, rows.get(u.id));
@@ -481,6 +486,32 @@ function unitPiece(
     mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
     mark,
     draw,
+    needsMembers: true,
+  };
+}
+
+/** An account lies in its page's plane: its middle half its depth back from its near edge, turned with the page. */
+function accountPose(u: Unit): Pose {
+  const b = u.account!.block, p = u.placement.pos;
+  return { pos: { x: p.x - Math.sin(b.yaw) * (b.d / 2), y: 0.006, z: p.z - Math.cos(b.yaw) * (b.d / 2) }, rx: -Math.PI / 2, ry: b.yaw, s: 1 };
+}
+
+/** A page's account: its lines lettered as layout sized them (told/ink.ts), every written card its member. */
+function accountPiece(seat: SeatId, u: Unit, markOf: (id: CardId) => Mark | undefined): Omit<Piece, "pose" | "look"> {
+  const { words, block } = u.account!;
+  const lines = inkLines(words), rows = inkRows(lines);
+  const ink: InkSpec = { lines, at: rows.at, w: block.w, d: block.d, em: block.em, stretch: block.stretch, tallyEm: TALLY_EM, row: ROW.line };
+  const mark = strongest(u.members.map(markOf));
+  return {
+    id: u.id,
+    kind: "unit",
+    seat,
+    members: [...u.members, ...u.dressing],
+    face: u.top,
+    form: `account|${seat}`,
+    mods: canonical(ink) + (mark ?? ""),
+    mark,
+    draw: { t: "account", ink, w: block.w, d: block.d },
     needsMembers: true,
   };
 }

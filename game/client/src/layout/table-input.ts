@@ -5,7 +5,7 @@
 import { boards } from "./board";
 import type { StackEntry, TableInput } from "./plan";
 import type { ChromeMode } from "./reservations";
-import type { LayoutMemory } from "./seat";
+import type { LayoutMemory, SeatLayout } from "./seat";
 import type { CardId, Insets, SeatId, Viewport } from "./types";
 import { engineCombat, fighters, mergeCombat } from "./combat";
 import type { CombatPairs } from "./combat";
@@ -23,6 +23,8 @@ export interface TableInputOptions {
   readonly involved?: ReadonlySet<CardId>;
   /** A combat draft (play's `cues.combat`, as plain pairs): drawn over the engine's combat, its fighters in the row. */
   readonly combat?: CombatPairs | null;
+  /** How the seats' pages are laid out (`mat` if absent). */
+  readonly layout?: SeatLayout;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -57,5 +59,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     memory: o.memory ?? null,
     stack,
     combat,
+    ...(o.layout ? { layout: o.layout } : {}),
   };
 }

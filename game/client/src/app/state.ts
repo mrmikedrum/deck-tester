@@ -4,7 +4,7 @@ import type { Insets, Ms } from "../platform";
 import { NO_INSETS } from "../platform";
 import type { CardCatalog, ChangeSet, SeatId, TableModel, Viewer } from "../model";
 import { EMPTY_CATALOG } from "../model";
-import type { LayoutMemory, Reservations, TablePlan } from "../layout";
+import type { LayoutMemory, Reservations, SeatLayoutId, TablePlan } from "../layout";
 import { reservations } from "../layout";
 import * as narrative from "../narrative";
 import * as play from "../play";
@@ -107,6 +107,8 @@ export interface AppState {
   readonly drawn: { readonly top: string | null; readonly stop: StopId | null };
   /** Local: moves on with a new game asked for, a newGame or restart continuity, and teardown. */
   readonly epoch: number;
+  /** Which seat layout plans the opponents' pages (layout `SEAT_LAYOUTS`): `told` writes a page's crowd down; `mat` is the base. */
+  readonly layout: SeatLayoutId;
 }
 
 /**
@@ -162,6 +164,8 @@ export interface InitialOptions {
   readonly lastGame?: NewGameRequest | null;
   /** The page's reduced-motion setting at start. */
   readonly reducedMotion?: boolean;
+  /** The seat layout (the page's `?layout=`); `mat` if absent. */
+  readonly layout?: SeatLayoutId;
 }
 
 export function initialState(o: InitialOptions): AppState {
@@ -191,5 +195,6 @@ export function initialState(o: InitialOptions): AppState {
     commit: 0,
     drawn: { top: null, stop: null },
     epoch: o.epoch ?? 0,
+    layout: o.layout ?? "mat",
   };
 }

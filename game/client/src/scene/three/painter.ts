@@ -8,6 +8,7 @@ import {
   paintChip,
   paintDrop,
   paintFace,
+  paintAccount,
   paintFxSprite,
   paintHalo,
   paintPage,
@@ -21,7 +22,7 @@ import {
   paintTag,
   paintVellumTile,
 } from "../../theme";
-import type { ChipSpec, FaceEnv, FaceSpec, FxSprite, HaloKind, PageSpec, PlateSpec, SignSpec } from "../../theme";
+import type { InkSpec, ChipSpec, FaceEnv, FaceSpec, FxSprite, HaloKind, PageSpec, PlateSpec, SignSpec } from "../../theme";
 import type { Lease, TextureCache } from "./textures";
 
 export class Painter {
@@ -47,6 +48,10 @@ export class Painter {
   /** An ability's slip: its effect in ink. */
   slip(text: string): Lease {
     return this.cache.lease("slip|" + text, (c) => void paintSlip(c, text, this.env.surfaces));
+  }
+  /** A page's account: its lines in ink, lettered for the block it lies in. */
+  account(spec: InkSpec): Lease {
+    return this.cache.lease("ink|" + canonical(spec), (c) => paintAccount(c, spec));
   }
   back(): Lease {
     return this.cache.lease("back", (c) => paintBack(c, this.env));

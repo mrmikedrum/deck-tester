@@ -4,6 +4,9 @@ import type { CardId, Point, Rect, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 import { FLOOR, TAP_PX } from "./board";
 import { CH, CW, PILE_LEAN, TAP_LEAN } from "./seat/geometry";
+import { INK_PX } from "./told/ink";
+
+const INK_FLOOR = INK_PX.line;
 
 // Where things are on screen at rest: each card face as a quad, with its name strip (top sixth) and foot (bottom sixth),
 // from the same posture rules the scene poses pieces with, and the audit of the hard limits over those quads: the
@@ -31,6 +34,8 @@ export interface Shape {
   /** Face width on screen across its middle, px, upright. */
   readonly width: number;
   readonly members: readonly CardId[];
+  /** Ink (an account): the em of its furthest line on screen, design px, and the floor it must meet. */
+  readonly text?: { readonly px: number; readonly floor: number };
 }
 
 const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
@@ -92,6 +97,7 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
 }
 
 export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean, at: At = AT_REST): Shape {
+  if (u.account) return inkShape(proj, seat, u, at);
   const p: Placement = u.placement;
   const q = cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
   const creature = u.role === "creature";
@@ -103,6 +109,34 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     order: p.pos.z,
     floor: creature ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
     members: u.members,
+  };
+}
+
+/**
+ * An account: ink lying in its page's plane, w x d back from the middle of its near edge, turned with the page. Its name
+ * strip is its first (furthest) sixth and its foot its nearest, so nothing may stand over its tally or its last line more
+ * than a card's strip may be covered; it has no card floor, but its furthest line must meet the ink floor
+ * (told/ink.ts `INK_PX.line`).
+ */
+function inkShape(proj: Projector, seat: string, u: Unit, at: At): Shape {
+  const { block } = u.account!, p = u.placement.pos;
+  const across = { x: Math.cos(block.yaw), z: -Math.sin(block.yaw) }, back = { x: -Math.sin(block.yaw), z: -Math.cos(block.yaw) };
+  const pt = (a: number, b: number): Point => proj.project(at({ x: p.x + across.x * a * block.w + back.x * b * block.d, y: p.y, z: p.z + across.z * a * block.w + back.z * b * block.d }));
+  const win = (b0: number, b1: number): Quad => [pt(-0.5, b0), pt(0.5, b0), pt(0.5, b1), pt(-0.5, b1)];
+  const far = (k: number): V3 => ({ x: p.x + back.x * k, y: p.y, z: p.z + back.z * k });
+  const em = Math.abs(proj.project(far(block.d)).y - proj.project(far(block.d - block.em)).y) / designUnit(proj.viewport);
+  return {
+    group: u.id,
+    kind: "unit",
+    seat,
+    face: win(0, 1),
+    name: win(5 / 6, 1),
+    foot: win(0, 1 / 6),
+    order: p.z,
+    floor: 0,
+    width: Math.abs(pt(0.5, 0.5).x - pt(-0.5, 0.5).x),
+    members: u.members,
+    text: { px: em, floor: INK_FLOOR },
   };
 }
 
@@ -178,7 +212,7 @@ const lerpQuad = (q: Quad, u: number, v: number): Point => {
  * off-screen: a stack card at rest not wholly in the safe area; no-room: a stack card the open middle had no room for,
  * lying under the last that fitted. Layout leaves either out of the hit groups (a sheet offers it).
  */
-export type Rule = "floor" | "tap-patch" | "covers-name" | "covers-foot" | "covers-face" | "off-screen" | "no-room";
+export type Rule = "floor" | "text-floor" | "tap-patch" | "covers-name" | "covers-foot" | "covers-face" | "off-screen" | "no-room";
 
 export interface Violation {
   readonly rule: Rule;
@@ -225,6 +259,8 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     if (only && !only(s)) continue;
     // floors: card face width on screen at 1180x820, scaled by the design unit
     if (s.floor > 0 && s.width / u < s.floor - 1e-6) out.push({ rule: "floor", group: s.group, seat: s.seat, measured: s.width / u, limit: s.floor });
+    // ink: its furthest line's em on screen (already in design px)
+    if (s.text && s.text.px < s.text.floor - 0.05) out.push({ rule: "text-floor", group: s.group, seat: s.seat, measured: s.text.px, limit: s.text.floor });
     const bb = box.get(s)!;
     const near = sorted.filter((o) => o !== s && o.group !== s.group && o.order >= s.order && overlaps(box.get(o)!, bb));
     // what covers it: items on top of it (the same pile never covers itself)

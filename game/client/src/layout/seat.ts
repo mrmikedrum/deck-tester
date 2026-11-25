@@ -3,6 +3,7 @@ import type { Projector } from "./projector";
 import type { Reservations } from "./reservations";
 import type { SeatSlot } from "./template";
 import type { CardId, SeatId, V3, Viewport } from "./types";
+import type { Account } from "./told/account";
 
 // The seam for the opponent-board exploration: one seat's board in, a plan out. `mat` (seat/mat.ts) is today's page.
 
@@ -50,6 +51,22 @@ export interface Unit {
   /** Whether the card it shows lies turned, tapped (never a well's: its spent state is its stain and its sign). */
   readonly tapped: boolean;
   readonly placement: Placement;
+  /**
+   * A page's account (seat/told.ts): its members written in ink in the page's plane instead of standing. Its placement's
+   * foot is the middle of the block's near edge; the block lies flat, turned by the page's yaw.
+   */
+  readonly account?: { readonly words: Account; readonly block: InkBlock };
+}
+
+/** Where ink is written on a page: a w x d block lying flat from its near edge, turned with its page, and how it is lettered. */
+export interface InkBlock {
+  readonly w: number;
+  readonly d: number;
+  readonly yaw: number;
+  /** An em, in world depth: the line it sets sits on rows of `ROW` ems (told/ink.ts). */
+  readonly em: number;
+  /** How much taller than wide a letter is painted, so that foreshortened it reads square (road lettering). */
+  readonly stretch: number;
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */

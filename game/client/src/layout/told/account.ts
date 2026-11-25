@@ -151,7 +151,10 @@ function worksOf(cards: readonly BoardCard[], lines: number, width: number): Cla
   }
   const left = (): number => groups.slice(i).reduce((t, g) => t + g.ids.length, 0);
   const last = out[out.length - 1]!;
-  if (i < groups.length) while (last.length > 1 && `${text(last)} · +${left()}`.length > width) (last.pop(), i--);
+  while (i < groups.length && last.length > 1 && `${text(last)} · +${left()}`.length > width) {
+    last.pop();
+    i--;
+  }
   const tail = groups.slice(i);
   return out.map((l, j) => {
     const more = j === out.length - 1 && tail.length;

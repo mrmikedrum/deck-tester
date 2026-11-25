@@ -976,6 +976,53 @@ class PageView implements PieceView {
   }
 }
 
+// ---- an account -------------------------------------------------------------------------------------------------------
+
+/**
+ * A page's account: ink in the vellum, a hair over the page and lit with it (a standard material, so the lamp and the
+ * page's shade fall on it as on the page), under every card. Its group lies flat (the pose's pitch), turned with the page.
+ */
+class AccountView implements PieceView {
+  readonly group = new Group();
+  private readonly geo = new PlaneGeometry(1, 1);
+  private readonly mat: MeshStandardMaterial;
+  private readonly mesh: Mesh;
+  private lease: Lease;
+  constructor(
+    private readonly host: Host,
+    v: ActorView,
+  ) {
+    const d = v.draw as Extract<Draw, { t: "account" }>;
+    this.lease = host.painter.account(d.ink);
+    this.mat = new MeshStandardMaterial({ map: this.lease.texture, transparent: true, depthWrite: false, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2 });
+    this.mesh = new Mesh(this.geo, this.mat);
+    this.mesh.scale.set(d.w, d.d, 1);
+    this.mesh.renderOrder = -1;
+    this.group.add(this.mesh);
+  }
+  patch(v: ActorView): void {
+    const d = v.draw as Extract<Draw, { t: "account" }>;
+    const next = this.host.painter.account(d.ink);
+    if (next.key === this.lease.key) next.release();
+    else {
+      this.lease.release();
+      this.lease = next;
+      this.mat.map = next.texture;
+      this.mat.needsUpdate = true;
+    }
+    this.mesh.scale.set(d.w, d.d, 1);
+  }
+  look(v: ActorView): void {
+    this.mat.color.setScalar(Math.max(0, 1 - v.sample.fade));
+    this.mat.opacity = v.sample.alpha;
+  }
+  dispose(): void {
+    this.lease.release();
+    this.geo.dispose();
+    this.mat.dispose();
+  }
+}
+
 // ---- a sift ---------------------------------------------------------------------------------------------------------
 
 /** A pile's card fanned out in front of the camera: a tapped one turned 15° and shaded, as it lies on the table. */
@@ -1056,6 +1103,8 @@ export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
       return new StackView(env, v);
     case "page":
       return new PageView(env.host, v);
+    case "account":
+      return new AccountView(env.host, v);
     case "sift":
       return new SiftView(env.host, v);
     case "scrim":

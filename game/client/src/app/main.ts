@@ -19,6 +19,7 @@ import { clientBuild, fontsReady, frameScheduler, now, Queue, reducedMotionSourc
 import { clientLogSender, longPollTransport, scriptedTransport } from "../transport";
 import type { NewGameRequest, ScriptedTransport, Transport } from "../transport";
 import { installDebug } from "./debug";
+import { seatLayoutId } from "../layout";
 import { createLoop } from "./loop";
 import type { Loop, MotionReading } from "./loop";
 import type { InputMsg } from "./msg";
@@ -106,7 +107,9 @@ async function main(): Promise<void> {
   const reduced = reducedMotionSource(globalThis.window);
   const motion = new Queue<MotionReading>(true);
   reduced.subscribe((r) => motion.push({ at: now(), reduced: r }));
-  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read() }), {
+  // This branch's direction writes crowded pages down (`told`); `?layout=mat` shows the base page.
+  const layout = seatLayoutId(new URLSearchParams(globalThis.location?.search ?? "").get("layout"), "told");
+  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read(), layout }), {
     transport,
     // A scripted page reports to no bridge.
     log: script ? null : clientLogSender(),

@@ -5,7 +5,7 @@ import type { ChangeSet, MomentKind, ReadingId, SeatId, TableModel } from "../..
 import type { CardId } from "../../protocol";
 import type { Point, Rect, TablePlan, V3 } from "../../layout";
 import type { BoardCues, CommitId, Mark, Ms, ScreenPose } from "../../play";
-import type { ChipSpec, FaceSpec, PlateSpec, SeatPlace } from "../../theme";
+import type { ChipSpec, FaceSpec, InkSpec, PlateSpec, SeatPlace } from "../../theme";
 import type { DrawnPiece } from "./pick";
 
 // ---- the frame in, the report out -------------------------------------------------------------------------------------
@@ -221,6 +221,8 @@ export type Draw =
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
       readonly seed: number;
     }
+  /** A page's account (layout `Unit.account`): its written cards in ink, lying in the page's plane. */
+  | { readonly t: "account"; readonly ink: InkSpec; readonly w: number; readonly d: number }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }
   | {

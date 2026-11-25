@@ -4,7 +4,7 @@
 // Planning is pure: a board layout cannot plan yet is reported once and leaves the table unplanned (play then offers
 // every choice in a sheet), never a thrown frame.
 import type { ChromeMode } from "../layout";
-import { planTable, reservations, tableInputOf } from "../layout";
+import { SEAT_LAYOUTS, planTable, reservations, tableInputOf } from "../layout";
 import type { TableModel } from "../model";
 import type { BoardCues } from "../play";
 import type { CardId } from "../protocol";
@@ -66,6 +66,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         settling,
         involved: new Set(involved),
         combat: cues.combat,
+        layout: SEAT_LAYOUTS[s.layout],
       }),
     );
     return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };
