@@ -119,21 +119,33 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null): { pl
   const behind = clearBehind(g, r, aF, s) + 0.1;
   const plateA = r.d - PLATE_IN;
   const wS = Math.max(1.0, floorScale(g, at(span.hi - 1, behind), FLOOR.any, false, 1.0));
-  const colW = walkers.length ? Math.min(2, walkers.length) * (CW + 0.12) * wS : CW * 1.25;
   const colHi = r.w / 2 - SIDE;
+  // The well's far edge stays short of the plaque's band, where the zone piles stand.
+  // (A propped zone pile reaches half a card toward me from where it stands; mat set it, moved back with the plaque.)
+  const fit0 = open.memory.fit as Fit, shift0 = (plateA - fit0.plateA) || 0;
+  const depthOf = (p: V3): number => r.d / 2 - ((p.x - r.x) * Math.sin(r.yaw) + (p.z - r.z) * Math.cos(r.yaw));
+  const zoneNear = Math.min(Infinity, ...open.fixtures.zones.map((z) => depthOf(z.placement.pos) + shift0 - (CH / 2) * z.placement.scale - 0.25));
+  const zones = zoneNear;
+  const wellScale = (a: number, u: number): number => Math.max(1.1, floorScale(g, at(u, a), FLOOR.any, true, 1.1));
+  const wellFar = (a: number, ws: number): boolean => a + CH * ws <= Math.min(plateA - 0.5, zones) + 1e-6;
+  const pitch = (CW + 0.12) * wS;
+  let colW = walkers.length ? Math.min(2, walkers.length) * pitch : CW * 1.25;
+  // The well lies behind the planeswalkers where there is room; else beside them, at their depth.
+  const wRows = Math.ceil(walkers.length / 2);
+  const aBack = walkers.length ? clearBehind(g, r, behind + (wRows - 1) * 1.1 * wS, wS) + 0.1 : behind;
+  const backFits = mana.length > 0 && wellFar(aBack, wellScale(aBack, colHi - colW / 2));
+  const beside = mana.length > 0 && walkers.length > 0 && !backFits;
+  if (beside) colW += CW * wellScale(behind, colHi - colW) + 0.2;
   const colLo = colHi - colW;
-  let aCol = behind;
-  if (walkers.length) {
-    walkers.forEach((c, i) => {
-      const row = Math.floor(i / 2), u = colLo + (CW + 0.12) * wS * ((i % 2) + 0.5);
-      units.push(card("w", c, { pos: at(u, aCol + row * 1.1 * wS), scale: wS, posture: "prop" }, "walker"));
-    });
-    aCol = clearBehind(g, r, aCol + (Math.ceil(walkers.length / 2) - 1) * 1.1 * wS, wS) + 0.1;
-  }
+  walkers.forEach((c, i) => {
+    const row = Math.floor(i / 2), u = colHi - pitch * ((i % 2) + 0.5);
+    units.push(card("w", c, { pos: at(u, behind + row * 1.1 * wS), scale: wS, posture: "prop" }, "walker"));
+  });
   if (mana.length) {
-    const ws = Math.max(1.1, floorScale(g, at((colLo + colHi) / 2, aCol), FLOOR.any, true, 1.1));
-    // (Its far edge stays short of the plaque's band, where the zone piles stand.)
-    aCol = Math.min(aCol, plateA - 0.5 - CH * ws, (open.fixtures.zones.length ? plateA + ((open.memory.fit as Fit).zoneBack || 0) - CH * 0.6 - 0.2 : Infinity) - CH * ws);
+    const u = beside ? colLo + (colW - Math.min(2, walkers.length) * pitch) / 2 : colHi - colW / 2;
+    let aCol = beside ? behind : aBack;
+    const ws = wellScale(aCol, u);
+    if (!wellFar(aCol, ws)) aCol = Math.min(plateA - 0.5, zones) - CH * ws;
     const rep = (mana.find((c) => c.land) ?? mana[0]!).id;
     units.push({
       id: "m" + board.seat,
@@ -146,7 +158,7 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null): { pl
       mixed: false,
       acting: false,
       tapped: false,
-      placement: { pos: at((colLo + colHi) / 2, aCol), scale: ws, posture: "flat" },
+      placement: { pos: at(u, aCol), scale: ws, posture: "flat" },
     });
   }
 
@@ -155,8 +167,6 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null): { pl
   const writtenIds = new Set<CardId>([...creatures.filter((c) => !standing.has(c.id)), ...works].map((c) => c.id));
   const lo = -r.w / 2 + SIDE + INK_MARGIN, hi = (mana.length || walkers.length ? colLo : colHi) - 0.2;
   // (It ends short of the plaque, and of the zone piles' near edges: a propped pile reaches half a card toward me.)
-  const fit0 = open.memory.fit as Fit;
-  const zoneNear = open.fixtures.zones.length ? plateA + (fit0.zoneBack || 0) - (CH / 2) * Math.max(...open.fixtures.zones.map((z) => z.placement.scale)) - 0.2 : Infinity;
   const block = writtenIds.size ? inkBlock(g, r, board, writtenIds, lo, hi, behind, Math.min(plateA - 0.4, zoneNear)) : null;
   if (block) {
     const ids = block.words.written;
@@ -221,17 +231,27 @@ function inkBlock(g: Geo, r: Region, board: SeatInput["board"], written: Readonl
     return em;
   };
   let words: Account | null = null, em = 0;
-  for (let lines = ACCOUNT_LINES; lines >= 3; lines--) {
+  for (let lines = ACCOUNT_LINES; lines >= 1; lines--) {
     // (Packed for the floor's em first; the lines it takes decide how deep it is.)
     const guess = emFor(ACCOUNT_LINES * 1.4, INK_PX.line);
     words = accountOf(board, written, { lines, width: Math.floor((w * stretch) / (LETTER_EM * guess)) });
     const depth = inkRows(inkLines(words)).depth, least = emFor(depth, INK_PX.line);
-    if (depth * least <= a1 - a0 || lines === 3) {
+    if (depth * least <= a1 - a0 || lines === 1) {
       // Larger where the page has room, up to a fifth more.
       const most = emFor(depth, INK_PX.line * 1.2);
+      // Packed again for the em it is lettered at: fewer letters a line may take a line more, so keep what fits.
+      const packAt = (e: number): Account => accountOf(board, written, { lines, width: Math.floor((w * stretch) / (LETTER_EM * e)) });
+      const fits = (x: Account, e: number): boolean => inkRows(inkLines(x)).depth * e <= a1 - a0 + 1e-6;
       em = Math.max(least, Math.min(most, (a1 - a0) / depth));
-      words = accountOf(board, written, { lines, width: Math.floor((w * stretch) / (LETTER_EM * em)) });
-      break;
+      let at = packAt(em);
+      if (!fits(at, em) && em > least) {
+        em = least;
+        at = packAt(em);
+      }
+      if (fits(at, em) || lines === 1) {
+        words = at;
+        break;
+      }
     }
   }
   return words ? { words, block: { w, d: inkRows(inkLines(words)).depth * em, yaw: r.yaw, em, stretch } } : null;
