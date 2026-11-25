@@ -3,6 +3,7 @@
 // Serve client/ on :8797 first (node tools/serve.js).
 const path = require("path");
 const pw = require(process.env.PW || "playwright");
+const { fixtureKeywords } = require("./fixture-keywords.js");
 global.window = {}; require(path.join(__dirname, "../client/data.js")); const CARDS = window.CARDS;
 const BASE = process.env.BASE || "http://localhost:8797/";
 const [outDir = "shots/after", eng = "webkit", onlyArg] = process.argv.slice(2);
@@ -13,7 +14,7 @@ const NAMES = ["You", "Marath", "Atraxa", "Dack"];
 function board() {
   let id = 100;
   const mk = (name, o = {}) => {
-    const f = CARDS[name].faces[0], c = { id: id++, name, type: f.type.replace(/—/g, "-"), text: f.text || "", cost: (f.cost || "").replace(/[{}]/g, " ").trim() };
+    const f = CARDS[name].faces[0], c = { id: id++, name, type: f.type.replace(/—/g, "-"), text: f.text || "", cost: (f.cost || "").replace(/[{}]/g, " ").trim(), ...fixtureKeywords(f) };
     if (/Creature/.test(f.type)) { c.power = +f.power || 0; c.toughness = +f.toughness || 0; }
     if (/^Token/.test(f.type)) c.token = true;
     if (o.p1) { c.counters = { "+1/+1": o.p1 }; c.power += o.p1; c.toughness += o.p1; }

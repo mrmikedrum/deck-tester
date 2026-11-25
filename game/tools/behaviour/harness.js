@@ -9,6 +9,7 @@ const path = require("path");
 const { CLOCK } = require("./clock.js");
 const { locate: locateOn } = require("./locate.js");
 const { STATES, CARDS } = require("../shoot.js");
+const { fixtureKeywords } = require("../fixture-keywords.js");
 
 const clone = v => JSON.parse(JSON.stringify(v));
 // Which client is under test: the current one (live.html) or the new entry (index.html, built).
@@ -78,7 +79,8 @@ function opponentSpell(view, name = "Swords to Plowshares", targets, controller 
   const src = clone(find({ view: STATES.threat.view }, "Dack", "Restoration Angel"));   // any card shaped right
   const f = CARDS[name].faces[0];
   Object.assign(src, { id: 777, name, type: f.type.replace(/—/g, "-"), text: f.text || "", cost: (f.cost || "").replace(/[{}]/g, " ").trim(), owner: controller, controller });
-  delete src.power; delete src.toughness; delete src.tapped;
+  delete src.power; delete src.toughness; delete src.tapped; delete src.keywords;
+  Object.assign(src, fixtureKeywords(f));
   const item = { id: 1, source: src, controller, spell: true, text: name };
   if (targets) item.targets = targets;
   view.stack = [item];

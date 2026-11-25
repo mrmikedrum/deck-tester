@@ -2,6 +2,7 @@
 // (the bridge's shape) with every seat's battlefield grown from the stage before: lands, rocks, creatures, support,
 // token swarms, tapped cards and counters. Ids stay stable between stages, so a card that stays put is the same card.
 global.window = global.window || {}; require("../client/data.js"); const CARDS = window.CARDS;
+const { fixtureKeywords } = require("./fixture-keywords.js");
 
 const NAMES = ["You", "Marath", "Atraxa", "Dack"];
 // What each seat has on the battlefield at each stage, as [name, count, options]. Later stages list everything.
@@ -53,7 +54,7 @@ function build() {
   let id = 1000; const ids = {};
   const mk = (owner, name, slot, o = {}) => {   // the same (owner, slot) is always the same card id
     const key = owner + "|" + slot; if (!ids[key]) ids[key] = id++;
-    const f = CARDS[name].faces[0], c = { id: ids[key], name, type: f.type.replace(/—/g, "-"), text: f.text || "", cost: (f.cost || "").replace(/[{}]/g, " ").trim(), owner, controller: owner };
+    const f = CARDS[name].faces[0], c = { id: ids[key], name, type: f.type.replace(/—/g, "-"), text: f.text || "", cost: (f.cost || "").replace(/[{}]/g, " ").trim(), owner, controller: owner, ...fixtureKeywords(f) };
     if (/Creature/.test(f.type)) { c.power = +f.power || 0; c.toughness = +f.toughness || 0; }
     if (/^Token/.test(f.type)) c.token = true;
     if (o.x != null) { c.power = c.toughness = o.x; }   // an X/X token: Forge sends its size
