@@ -27,7 +27,7 @@ import { PILE_STEP, siftRoll } from "../stage/poses";
 import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard } from "./card";
-import type { CardObject } from "./card";
+import type { CardObject, CardOptions } from "./card";
 import { ashFx, burstFx, chosenFx, emberFx, sigilFx, spellFx, wellFx } from "./fx";
 import type { Effect, FxKit } from "./fx";
 import type { Host } from "./host";
@@ -172,10 +172,10 @@ class CardPart {
   constructor(
     private readonly host: Host,
     spec: FaceSpec | null,
-    token: boolean,
+    options: CardOptions = {},
   ) {
     this.lease = faceLease(host, spec);
-    this.obj = createCard(host.kit, this.lease.texture, { token });
+    this.obj = createCard(host.kit, this.lease.texture, options);
     this.obj.group.traverse((o) => (o as Mesh).isMesh && covers(o as Mesh));
   }
   face(spec: FaceSpec | null): void {
@@ -373,7 +373,7 @@ class UnitView implements PieceView {
       const mixed = plan.some((c) => c.tapped) && plan.some((c) => !c.tapped);
       for (let i = 0; i < copies; i++) {
         const cp = plan[i];
-        const c = new CardPart(this.host, cp?.face ?? v.face, d.token);
+        const c = new CardPart(this.host, cp?.face ?? v.face, { token: d.token });
         if (well) {
           // A well's lands lie in a short stack, a little proud of the page, the top one first; its tapped ones at the
           // bottom, turned 15° about the stack's middle (all of them, when every one is spent).
@@ -455,7 +455,7 @@ class UnitView implements PieceView {
     }
     const z = SIZE.dressing;
     this.dress = want.map((face, k) => {
-      const c = new CardPart(this.host, face, face.token);
+      const c = new CardPart(this.host, face, { token: face.token });
       c.obj.group.scale.setScalar(z.s);
       c.obj.group.position.set(z.x + k * z.dx, z.y + k * z.dy, z.z + k * z.dz);
       c.obj.group.rotation.z = z.turn;
@@ -619,7 +619,7 @@ class ZoneView implements PieceView {
     this.box.scale.set(CW, h, 1);
     this.box.position.y = h / 2;
     if (!this.top) {
-      this.top = new CardPart(this.host, v.face, false);
+      this.top = new CardPart(this.host, v.face);
       this.top.obj.group.rotation.x = -Math.PI / 2;
       if (d.zone === "exile") this.top.obj.group.rotation.z = SIZE.exileTurn;
       this.body.add(this.top.obj.group);
@@ -757,7 +757,7 @@ class StackView implements PieceView {
   ) {
     const host = env.host;
     const d = v.draw as Extract<Draw, { t: "stack" }>;
-    this.card = new CardPart(host, v.face, false);
+    this.card = new CardPart(host, v.face);
     this.tag = new Decal(host.painter.tag(d.tag, d.colour), SIZE.tag.w, SIZE.tag.h, { renderOrder: 6 });
     this.tag.mesh.position.set(0, SIZE.tag.y, 0.02);
     this.drop = new Decal(host.painter.drop(), CW * 1.62 * SIZE.drop.s, CH * 1.46 * SIZE.drop.s, { renderOrder: 4, covers: false });
@@ -1023,7 +1023,8 @@ class SiftView implements PieceView {
   readonly group = new Group();
   private readonly card: CardPart;
   constructor(host: Host, v: ActorView) {
-    this.card = new CardPart(host, v.face, false);
+    // Sift cards share the transparent pass with the vellum so render order puts them above it.
+    this.card = new CardPart(host, v.face, { transparent: true });
     this.group.add(this.card.obj.group);
     this.card.obj.group.traverse((o) => (o.renderOrder = 16));
   }
@@ -1115,7 +1116,7 @@ export class GhostPiece {
     private readonly host: Host,
     v: GhostView,
   ) {
-    this.card = new CardPart(host, v.face, v.token);
+    this.card = new CardPart(host, v.face, { token: v.token });
     this.group.add(this.card.obj.group);
   }
   front(): Mesh {

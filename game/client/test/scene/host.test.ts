@@ -1,13 +1,37 @@
 // The host's composer teardown: the composer disposes only its own targets and copy pass, so the passes it was given
 // (bloom's targets and materials, the output pass) are disposed first, on teardown and on context recovery alike.
 import { describe, expect, it, vi } from "vitest";
-import { Vector2, WebGLRenderTarget } from "three";
+import { Mesh, Texture, Vector2, WebGLRenderTarget } from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { disposeComposer } from "../../src/scene/three/host";
-import { Rim } from "../../src/scene/three/materials";
+import { createCard } from "../../src/scene/three/card";
+import { cardGeometry } from "../../src/scene/three/geometry";
+import { Rim, SharedMaterials } from "../../src/scene/three/materials";
 import { motion } from "../../src/theme";
+
+it("draws every visible sift-card surface in the transparent pass without changing table cards", () => {
+  const texture = new Texture();
+  const shared = new SharedMaterials(0x302010, 0x201810, texture);
+  const geo = cardGeometry();
+  const kit = { geo, shared, rim: new Rim() };
+  const materialsOf = (card: ReturnType<typeof createCard>) => card.body.children.flatMap((object) => {
+    const material = (object as Mesh).material;
+    return (Array.isArray(material) ? material : [material]).filter((m) => m.visible);
+  });
+  const table = createCard(kit, texture);
+  const sift = createCard(kit, texture, { transparent: true });
+  const dispose = materialsOf(sift).map((m) => vi.spyOn(m, "dispose"));
+
+  expect(materialsOf(sift).map((m) => m.transparent)).toEqual([true, true, true]);
+  expect(materialsOf(table).map((m) => m.transparent)).toEqual([false, false, false]);
+  sift.dispose();
+  for (const material of dispose) expect(material).toHaveBeenCalledOnce();
+  table.dispose();
+  shared.dispose();
+  texture.dispose();
+});
 
 describe("disposeComposer", () => {
   it("disposes every pass it owns, then the composer", () => {
