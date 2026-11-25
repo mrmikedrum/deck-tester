@@ -26,6 +26,13 @@ export const ctxOf = (s: S): Ctx | null => (s.decision && s.facts ? { d: s.decis
 const floatingOf = (pool: string): string | null =>
   pool ? `Floating ${pool.replace(/(\d+) (\{\w+\})\s*/g, (_, n: string, sym: string) => (+n <= 4 ? sym.repeat(+n) : `${n}${sym}`))}` : null;
 
+/** A creature sweep on the stack: what it takes from me ("You lose 10 creatures"), counted by what has power. */
+function sweepSum(f: NonNullable<S["facts"]>): string | null {
+  if (!f.sweep) return null;
+  const n = Object.values(f.cards).filter((c) => c.zone === "battlefield" && c.controller === f.me && c.power !== null).length;
+  return n ? `You lose ${n} creature${n === 1 ? "" : "s"}` : null;
+}
+
 export function promptOf(s: S): PromptOf | null {
   const f = s.facts;
   if (!f) return null;
@@ -70,7 +77,7 @@ export function promptOf(s: S): PromptOf | null {
     ...ask,
     headline: words.headline,
     hint: words.hint ?? null,
-    sum: words.sum ?? null,
+    sum: words.sum ?? sweepSum(f),
     context: context(c.d, f) || null, // the chrome shows the stack summary in its place while the stack layer is up
     buttons: bs,
     countdown: s.auto ? { from: s.auto.from, ms: s.auto.ms } : null,

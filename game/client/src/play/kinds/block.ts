@@ -22,7 +22,7 @@ export const block: Kind<BlockDecision> = {
   // One hint before the first pick; holding a blocker, which one.
   words(c) {
     const { draft } = c;
-    if (draft.holding !== null) return { headline: "Declare blockers", hint: `${shortCard(cardOf(c.f, draft.holding)?.display ?? "")}: tap an attacker` };
+    if (draft.holding !== null) return { headline: "Declare blockers", hint: `${shortCard(cardOf(c.f, draft.holding)?.display ?? "")}: tap an attacker`, ...takeOf(c) };
     return { headline: "Declare blockers", ...(draft.sel.length ? {} : { hint: "Tap a creature, then its attacker" }), ...takeOf(c) };
   },
   buttons(c) {
