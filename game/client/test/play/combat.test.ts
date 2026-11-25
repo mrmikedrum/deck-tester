@@ -24,7 +24,7 @@ describe("turn-15 reel decisions", () => {
     const t = new Table();
     t.open(env);
     t.tapSeat("Atraxa");
-    t.press("Everyone attacks");
+    t.press("All attack");
     t.press(`Attack (${picks.length})`);
     expect(t.answers()).toEqual([picks]);
   });
