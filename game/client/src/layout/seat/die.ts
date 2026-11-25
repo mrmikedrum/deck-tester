@@ -1,4 +1,5 @@
 import type { BoardCard } from "../board";
+import { fighters } from "../combat";
 import type { CombatPairs } from "../combat";
 import type { SeatInput, SeatLayout, Tray, TrayTop, Unit, UnitRole } from "../seat";
 import type { CardId } from "../types";
@@ -71,9 +72,13 @@ function fighterDrafts(cs: readonly BoardCard[], combat: CombatPairs | null | un
 function classify(bf: readonly BoardCard[], hosts: ReadonlySet<CardId>, me: boolean, seat: string, input: SeatInput): Classified {
   const { involved, combat } = input;
   const isMana = (c: BoardCard) => !c.creature && !c.planeswalker && !c.specialLand && (c.land || c.manaRock || c.treasure);
+  const fighting = fighters(combat ?? null);
   const C = kinGroups(bf.filter((c) => c.creature).sort(arrived), hosts).flatMap((g): Draft[] => {
-    // A creature acting (attacking, blocking, aimed at) steps out from under the die while it acts; the rest stay.
-    const f = g.filter((c) => involved.has(c.id)), rest = g.filter((c) => !involved.has(c.id));
+    // A creature in a fight (attacking, blocking) steps out from under the die while it fights; the rest stay. One
+    // aimed at by a spell stays under it, and the aim lands on its tray: a side page has three creature places, and
+    // one stepping out would cost its swarm its own.
+    const acts = (c: BoardCard) => (g.length > 1 ? fighting.has(c.id) : involved.has(c.id));
+    const f = g.filter(acts), rest = g.filter((c) => !acts(c));
     if (!f.length) return [draft("c", g, "creature")];
     if (g.length === 1) return [draft("c", g, "creature", true)];
     const home = rest.length ? [{ ...draft("c", rest, "creature"), key: "c" + Math.min(...g.map((c) => c.id)) }] : [];
@@ -170,7 +175,9 @@ function finish(d: Draft, u: Unit, cards: Cards): Unit {
     const stand = u.role === "creature" && (!u.tapped || u.acting);
     return { ...u, placement: { ...u.placement, posture: stand ? "stand" : "flat", ...(stand ? { lean: STAND_LEAN } : {}) } };
   }
-  const ready = cs.filter((c) => !c.tapped), tapped = cs.filter((c) => c.tapped);
+  // (A detachment's attackers go together under one bone die, tapped by attacking or not.)
+  const detached = !!d.fight && d.key.startsWith("d");
+  const ready = detached ? [...cs] : cs.filter((c) => !c.tapped), tapped = detached ? [] : cs.filter((c) => c.tapped);
   const top = topOf(u.role, cs, !!d.lands);
   const members = [...ready, ...tapped].map((c) => c.id);
   const tray: Tray = {
@@ -179,7 +186,7 @@ function finish(d: Draft, u: Unit, cards: Cards): Unit {
     top,
     ...lipOf(cs, top),
     summary: top === "card" ? null : summarize(cs),
-    ...(d.fight && d.key.startsWith("d") ? { detachment: true } : {}),
+    ...(detached ? { detachment: true } : {}),
   };
   return {
     ...u,

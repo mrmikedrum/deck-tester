@@ -209,6 +209,8 @@ export interface TablePlan {
   readonly violations: readonly Violation[];
   /** The combat it stood in the open middle (`Unit.fighting`), or null. */
   readonly combat: CombatPairs | null;
+  /** The seat layout it was planned with (`SeatLayout.id`). */
+  readonly layout?: string;
 }
 
 function fnv(s: string): number {
@@ -287,7 +289,7 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, layout: layout.id };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle

@@ -226,7 +226,14 @@ export type Draw =
       readonly lean?: number;
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
-  | { readonly t: "plate"; readonly spec: PlateSpec }
+  /** `red`: the unblocked power aimed at its seat in a combat (the `die` layout's red die), or null. */
+  | {
+      readonly t: "plate";
+      readonly spec: PlateSpec;
+      readonly red?: number | null;
+      /** The seat said as its player would say it (the `die` layout's muster card), and the side of the plaque it is clipped to. */
+      readonly muster?: { readonly lines: readonly [string, string]; readonly side: number } | null;
+    }
   | {
       readonly t: "stack";
       readonly tag: string;
@@ -246,7 +253,14 @@ export type Draw =
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
   | { readonly t: "hidden" }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
-  | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }
+  | {
+      readonly t: "sift";
+      readonly card: CardId;
+      readonly tapped: boolean;
+      readonly from: string;
+      /** An opened swarm: how many this card stands for (its die). */
+      readonly count?: number | null;
+    }
   /** The shade a sift lays over the table, and the vellum behind its cards (a screen rect, CSS px). */
   | { readonly t: "scrim"; readonly back: Rect; readonly screen: { readonly w: number; readonly h: number } };
 

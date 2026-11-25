@@ -160,14 +160,16 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
   const names = new Set(cards.map((c) => c.face.name));
   const kind = cards.every((c) => /\bLand\b/.test(c.face.type)) ? "lands" : cards.every(isCreature) ? "creatures" : "cards";
   const what = all.zone ? `${whose} ${all.zone}` : names.size === 1 ? [...names][0]! : `${whose} ${kind}`;
-  const title = n > 1 ? `${what} ×${n}` : what;
+  // (An opened swarm shows a card a state, each with its die: its caption counts them all.)
+  const total = all.counts ? all.counts.reduce((t, k) => t + k, 0) : n;
+  const title = total > 1 ? `${what} ×${total}` : what;
   const pages = siftPages(n), p = Math.max(0, Math.min(pages - 1, page));
   const from = p * SIFT_PAGE, to = Math.min(n, from + SIFT_PAGE);
   const places = siftOf(plan.viewport, all.tapped.slice(from, to));
   return {
     group,
     title,
-    tapped: all.tapped.filter(Boolean).length,
+    tapped: all.counts ? all.counts.filter((_, i) => all.tapped[i]).reduce((t, k) => t + k, 0) : all.tapped.filter(Boolean).length,
     page: p,
     pages,
     range: pages > 1 ? `${from + 1}–${to} of ${n}` : null,

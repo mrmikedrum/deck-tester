@@ -94,6 +94,7 @@ export function describe(input: DescribeInput): Description {
     glow: mark ? 1 : 0,
   });
 
+  const red = plan.layout === "die" ? aimedPower(model, cues) : new Map<SeatId, number>();
   for (const [seat, sp] of plan.seats) {
     const mine = seat === me;
     const place = placeOf(model, seat);
@@ -193,6 +194,7 @@ export function describe(input: DescribeInput): Description {
     }
 
     const plateMark = cues.marks.seats.get(seat) ?? null;
+    const muster = plan.layout === "die" && !mine ? musterOf(model, seat, sp) : null;
     const spec = plateOf(model, seat, plateMark);
     // The rest of the command zone (a partner) is shown by its plate (the seal's art); it is counted there.
     const command = model.zone(seat, "command").filter((id) => id !== cmd?.card);
@@ -206,9 +208,9 @@ export function describe(input: DescribeInput): Description {
       // (Under a sift's shade it goes: a plaque draws over everything, and would over the sifted cards.)
       look: { ...LOOK, fade: leanSeat && leanSeat !== seat && !mine ? 0.6 : 0, glow: plateMark ? 1 : 0, alpha: sifting ? 0 : 1 },
       form: `plate|${seat}`,
-      mods: canonical(spec) + (plateMark ?? ""),
+      mods: canonical(spec) + (plateMark ?? "") + `|${red.get(seat) ?? ""}|${muster?.lines.join("/") ?? ""}`,
       mark: plateMark,
-      draw: { t: "plate", spec },
+      draw: { t: "plate", spec, red: red.get(seat) ?? null, muster },
       needsMembers: false,
     });
 
@@ -310,6 +312,38 @@ export function describe(input: DescribeInput): Description {
   };
 }
 
+/** A seat said as its player would say it, once it has ten creatures or more: "35 creatures · 92 power", "no fliers ·
+ * biggest 5/5". Clipped to the plaque's side away from its piles. Sums of printed facts. */
+const MUSTER_FROM = 10;
+function musterOf(model: TableModel, seat: SeatId, sp: TablePlan["seats"] extends ReadonlyMap<SeatId, infer P> ? P : never): { lines: [string, string]; side: number } | null {
+  const cs = model.zone(seat, "battlefield").map((id) => model.cards.get(id)).filter((c): c is Card => !!c && c.power !== null && /Creature/.test(c.face.type));
+  if (cs.length < MUSTER_FROM) return null;
+  const power = cs.reduce((t, c) => t + Math.max(0, c.power ?? 0), 0), fliers = cs.filter((c) => c.keywords.includes("Flying")).length;
+  const big = cs.slice().sort((a, b) => (b.power ?? 0) - (a.power ?? 0) || (b.toughness ?? 0) - (a.toughness ?? 0))[0]!;
+  const px = sp.fixtures.plate.pos.x, z = sp.fixtures.zones[0]?.placement.pos.x ?? sp.fixtures.commander?.placement.pos.x;
+  return {
+    lines: [`${cs.length} creatures · ${power} power`, `${fliers ? `${fliers} flying` : "no fliers"} · biggest ${big.power}/${big.toughness}`],
+    side: z === undefined ? 1 : z > px ? -1 : 1,
+  };
+}
+
+/**
+ * The unblocked power aimed at each seat (the `die` layout's red die on its plaque): the printed power of every attacker
+ * at the seat that nothing blocks, the engine's combat or the draft over it. A sum of facts, never a prediction of damage.
+ */
+function aimedPower(model: TableModel, cues: BoardCues): Map<SeatId, number> {
+  const combat = mergeCombat(engineCombat(model), cues.combat), out = new Map<SeatId, number>();
+  if (!combat) return out;
+  const blocked = new Set(combat.blocks.map((b) => b.attacker));
+  for (const a of combat.attacks) {
+    if (!("seat" in a.defender) || blocked.has(a.attacker)) continue;
+    const p = Math.max(0, model.cards.get(a.attacker)?.power ?? 0);
+    out.set(a.defender.seat, (out.get(a.defender.seat) ?? 0) + p);
+  }
+  for (const [k, v] of out) if (v <= 0) out.delete(k);
+  return out;
+}
+
 const quadHeight = (q: readonly { readonly y: number }[]): number => Math.max(...q.map((p) => p.y)) - Math.min(...q.map((p) => p.y));
 
 /** A sift of a group: its cards in the order it fans them, and which of them lie turned (tapped on the battlefield). */
@@ -318,6 +352,8 @@ export interface SiftCards {
   readonly tapped: readonly boolean[];
   /** A graveyard or exile, which keeps its order; else a pile on the battlefield. */
   readonly zone: "graveyard" | "exile" | null;
+  /** An opened swarm (the `die` layout): how many each card shown stands for (its die); its caption says the rest. */
+  readonly counts?: readonly number[];
 }
 
 /**
@@ -329,6 +365,17 @@ export function siftCards(model: TableModel, plan: TablePlan, group: string): Si
   if (!g) return null;
   const m = /^zone:(graveyard|exile):(.+)$/.exec(group);
   const zone = m ? (m[1] as "graveyard" | "exile") : null;
+  // A swarm opens to one printed card a state, each with its die: never nine identical cards in a row.
+  const tray = zone ? undefined : plan.seats.get(g.seat as SeatId)?.units.find((u) => u.id === group)?.tray;
+  if (tray && tray.top === "card" && tray.ready.length + tray.tapped.length > 1) {
+    const ids = [tray.ready[0], tray.tapped[0]].filter((x): x is CardId => x !== undefined);
+    return {
+      ids,
+      tapped: ids.map((id) => model.cards.get(id)?.tapped ?? false),
+      zone: null,
+      counts: [tray.ready.length, tray.tapped.length].filter((n) => n > 0),
+    };
+  }
   let ids: CardId[] = zone ? [...model.zone(g.seat!, zone)] : [...g.members];
   if (!zone) {
     const by = new Map<string, CardId[]>();
@@ -386,9 +433,9 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
       pose: screenPose(proj, { rect: pl.rect, rotation: 0, scale: 1 }, SIFT_HEIGHT.cards),
       look: { ...LOOK, tap: pl.turn !== 0 ? 1 : 0 },
       form: `sift|${id}`,
-      mods: `${pl.turn}`,
+      mods: `${pl.turn}|${all.counts?.[p * SIFT_PAGE + i] ?? ""}`,
       mark: null,
-      draw: { t: "sift", card: id, tapped: !!c?.tapped && !zone, from: group },
+      draw: { t: "sift", card: id, tapped: !!c?.tapped && !zone, from: group, count: all.counts?.[p * SIFT_PAGE + i] ?? null },
       needsMembers: false,
     });
   });

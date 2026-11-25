@@ -362,10 +362,14 @@ class Die {
     private readonly tone: DieTone,
     private readonly e: number,
     yaw: number,
+    private readonly over = false,
   ) {
     this.geo = new RoundedBoxGeometry(e, e, e, 3, e * 0.16);
     this.mat = new MeshStandardMaterial({ color: kit.die[tone].body, roughness: tone === "iron" ? 0.45 : 0.6, metalness: tone === "iron" ? 0.55 : 0.02 });
+    // (Over everything, as a plaque is: drawn last, its faces sorted among themselves.)
+    if (over) this.mat.depthTest = false;
     const cube = covers(new Mesh(this.geo, this.mat));
+    if (over) cube.renderOrder = 11;
     cube.castShadow = true;
     this.spin.add(cube);
     this.spin.position.z = e / 2;
@@ -385,7 +389,7 @@ class Die {
     const lease = this.host.painter.die({ n, tone: this.tone });
     if (this.top) this.top.set(lease);
     else {
-      this.top = new Decal(lease, this.e * 0.86, this.e * 0.86, { renderOrder: 6 });
+      this.top = new Decal(lease, this.e * 0.86, this.e * 0.86, { renderOrder: this.over ? 12 : 6, depthTest: !this.over });
       this.top.mesh.position.z = this.e / 2 + 0.002;
       this.spin.add(this.top.mesh);
     }
@@ -974,7 +978,7 @@ class ZoneView implements PieceView {
 // ---- a plate --------------------------------------------------------------------------------------------------------
 
 /** A plaque standing at its placement, leaned back by the camera's pitch, drawn over everything on the table. */
-export function buildPlate(lease: Lease, pitch: number): { outer: Group; decal: Decal; set(l: Lease): void; dispose(): void } {
+export function buildPlate(lease: Lease, pitch: number): { outer: Group; pivot: Group; decal: Decal; set(l: Lease): void; dispose(): void } {
   const decal = new Decal(lease, SIZE.plate.w, SIZE.plate.h, { depthTest: false, renderOrder: 10 });
   decal.mesh.position.y = SIZE.plate.y;
   const pivot = new Group(),
@@ -982,12 +986,14 @@ export function buildPlate(lease: Lease, pitch: number): { outer: Group; decal: 
   pivot.add(decal.mesh);
   pivot.rotation.x = -pitch;
   outer.add(pivot);
-  return { outer, decal, set: (l) => decal.set(l), dispose: () => decal.dispose() };
+  return { outer, pivot, decal, set: (l) => decal.set(l), dispose: () => decal.dispose() };
 }
 
 class PlateView implements PieceView {
   readonly group = new Group();
   private readonly plate: ReturnType<typeof buildPlate>;
+  private red: Die | null = null;
+  private muster: { decal: Decal; key: string } | null = null;
   constructor(
     private readonly host: Host,
     v: ActorView,
@@ -1006,14 +1012,53 @@ class PlateView implements PieceView {
   }
   patch(v: ActorView): void {
     this.plate.set(this.lease(v));
+    const d = v.draw as Extract<Draw, { t: "plate" }>;
+    // The red die: what is aimed at this seat, standing at the plaque's right end, over everything as the plaque is.
+    if (d.red && !this.red) {
+      this.red = new Die(this.host, "red", 0.42, 0.18, true);
+      // (On the plaque's top edge, right of its middle, leaning back with it.)
+      this.red.group.rotation.x = -Math.PI / 2;
+      this.red.group.position.set(SIZE.plate.w * 0.22, SIZE.plate.y + SIZE.plate.h / 2 - 0.05, 0.12);
+      this.plate.pivot.add(this.red.group);
+    } else if (!d.red && this.red) {
+      this.plate.pivot.remove(this.red.group);
+      this.red.dispose();
+      this.red = null;
+    }
+    this.redN = d.red ?? 0;
+    // The muster card: a slip clipped beside the plaque, over everything as the plaque is.
+    const mk = d.muster ? `${d.muster.lines.join("/")}|${d.muster.side}` : "";
+    if (this.muster && this.muster.key !== mk) {
+      this.plate.pivot.remove(this.muster.decal.mesh);
+      this.muster.decal.dispose();
+      this.muster = null;
+    }
+    if (d.muster && !this.muster) {
+      const lease = this.host.painter.sign({ text: d.muster.lines[0], colour: null, sub: d.muster.lines[1] });
+      const fit = Math.min(1, 2.8 / (lease.width * SIGN_U * 1.35));
+      const decal = new Decal(lease, lease.width * SIGN_U * 1.35 * fit, lease.height * SIGN_U * 1.35 * fit, { depthTest: false, renderOrder: 10 });
+      labelled(decal, lease, [SIGN_FONT.text, SIGN_FONT.sub]);
+      decal.mesh.position.set(d.muster.side * (SIZE.plate.w / 2 + 0.08 + (lease.width * SIGN_U * 1.35 * fit) / 2), SIZE.plate.y, 0);
+      this.plate.pivot.add(decal.mesh);
+      this.muster = { decal, key: mk };
+    }
   }
-  look(v: ActorView): void {
+  private redN = 0;
+  look(v: ActorView, clock: Clock): void {
     // Dimmed, never dark: the name and life still read (h.js: `1 - 0.55 * f`). Gone under a sift's shade.
     this.plate.decal.tone(1 - 0.55 * v.sample.fade);
+    this.muster?.decal.tone(1 - 0.55 * v.sample.fade);
     this.plate.outer.visible = v.sample.alpha > 0.02;
+    if (this.red) {
+      this.red.set(this.redN, clock.t);
+      this.red.tick(clock, 0);
+      this.red.group.visible = this.plate.outer.visible;
+    }
   }
   dispose(): void {
     this.plate.dispose();
+    this.red?.dispose();
+    this.muster?.decal.dispose();
   }
 }
 
@@ -1324,11 +1369,22 @@ class PageView implements PieceView {
 class SiftView implements PieceView {
   readonly group = new Group();
   private readonly card: CardPart;
+  private die: Die | null = null;
   constructor(host: Host, v: ActorView) {
     this.card = new CardPart(host, v.face, false);
     this.group.add(this.card.obj.group);
     this.card.obj.group.traverse((o) => (o.renderOrder = 16));
+    // An opened swarm: each card's die on its face.
+    const d = v.draw as Extract<Draw, { t: "sift" }>;
+    if (d.count && d.count > 1) {
+      this.die = new Die(host, d.tapped ? "iron" : "bone", 0.3, 0.12);
+      this.die.group.position.set(CW / 2 - 0.16, -CH / 2 + 0.3, TH / 2 + 0.002);
+      this.die.group.traverse((o) => (o.renderOrder = 17));
+      this.dieN = d.count;
+      this.card.obj.body.add(this.die.group);
+    }
   }
+  private dieN = 0;
   front(): Mesh | null {
     return this.card.obj.front;
   }
@@ -1340,9 +1396,14 @@ class SiftView implements PieceView {
     this.card.look(0, 0, null, 0, d.tapped);
     // (Turned as it lies, as far as it has risen.)
     this.card.obj.body.rotation.z = siftRoll(d.tapped, v.sample.alpha);
+    if (this.die) {
+      this.die.set(this.dieN, 0);
+      this.die.tick({ t: 0, still: true }, 0);
+    }
   }
   dispose(): void {
     this.card.dispose();
+    this.die?.dispose();
   }
 }
 

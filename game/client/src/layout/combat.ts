@@ -122,8 +122,8 @@ export function combatRow(input: RowInput): SeatPlan[][] {
       sz.set(un, Math.max(bandSpec("C", me, proj.pitch, me ? FLOOR.mine : FLOOR.theirs).pref, floorScale(g, mid, me ? FLOOR.mine : FLOOR.theirs, false)));
     }
   const s = (un: Unit): number => sz.get(un)!;
-  // A tapped standee lies turned: as wide as it is tall.
-  const wide = (un: Unit): number => s(un) * (un.tapped ? CH : CW) * 1.06;
+  // A tapped standee lies turned: as wide as it is tall. A detachment's tray is a creature place wide.
+  const wide = (un: Unit): number => s(un) * (un.tray ? CH + 0.11 : un.tapped ? CH : CW) * 1.06;
   const tall = (un: Unit): number => s(un) * (un.tapped ? CW : CH);
   // The attackers' row is the far one, unless the attackers are mine: either way the blockers stand between them and who
   // they attack, the near row's feet at the open table's foot and the far row a row's step behind. Where the far row would
@@ -193,7 +193,8 @@ export function combatRow(input: RowInput): SeatPlan[][] {
             ...p,
             units: p.units.map((un) => {
               const at = placed.get(un.id);
-              return at ? { ...un, fighting: true, placement: { pos: at.pos, scale: at.s, posture: "stand" as const } } : un;
+              // (A detachment lies on its tray in the row; a card fighting alone stands, square to me, as it always has.)
+              return at ? { ...un, fighting: true, placement: { pos: at.pos, scale: at.s, posture: un.tray ? ("flat" as const) : ("stand" as const) } } : un;
             }),
           }
         : p,
@@ -285,9 +286,16 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
   const out: LaneSpec[] = [];
   const edges = new Map<SeatId, Edge[]>();
   const pending: { spec: Omit<LaneSpec, "to">; edge: Edge | null; to: LaneEnd | null }[] = [];
+  const drawn = new Set<string>();
   combat.attacks.forEach((a, lane) => {
     const atk = where.get(a.attacker);
     if (!atk) return;
+    // A detachment (several attackers on one tray, all at one defender) draws one lane.
+    if (atk.unit.members.length > 1) {
+      const k = `${atk.unit.id}>${"seat" in a.defender ? a.defender.seat : a.defender.card}`;
+      if (drawn.has(k)) return;
+      drawn.add(k);
+    }
     const blockers = combat.blocks.filter((b) => b.attacker === a.attacker);
     // Every blocker standing (one unit each, once): a double block draws a lane to each, so neither reads as alone.
     const stopped = blockers
