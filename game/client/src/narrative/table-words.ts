@@ -43,7 +43,7 @@ export function readWords(f: ReadFacts): readonly [string, string | null] {
   }
 }
 
-const ANSWER = { ready: "ready", untapped: "untapped", flying: "can block fliers", legal: "targetable", lost: "lost", blockers: "can block" } as const;
+const ANSWER = { ready: "ready", untapped: "untapped", flying: "can block fliers", legal: "targetable", lost: "lost" } as const;
 
 /** A fold's tag: a regiment's name and body (its count is on its die), a tail's sum, a column's title; under a question,
  * its part of the answer. */

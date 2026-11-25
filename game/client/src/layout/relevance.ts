@@ -252,10 +252,10 @@ export type TagFacts =
     }
   | { readonly t: "column"; readonly title: "binds" | "engines" | "shelf"; readonly count: number; readonly walkers: number };
 
-export type AnswerWord = "ready" | "untapped" | "flying" | "legal" | "lost" | "blockers";
+export type AnswerWord = "ready" | "untapped" | "flying" | "legal" | "lost";
 
 const answerWord = (q: Question): AnswerWord | null =>
-  q.q === "threat" ? "ready" : q.q === "strike" ? (q.airborne ? "flying" : "untapped") : q.q === "aim" ? "legal" : q.q === "sweep" ? "lost" : q.q === "fight" ? "blockers" : null;
+  q.q === "threat" ? "ready" : q.q === "strike" ? (q.airborne ? "flying" : "untapped") : q.q === "aim" ? "legal" : q.q === "sweep" ? "lost" : null;
 
 /** A fold's tag facts: its members, the stance each takes under the question. */
 export function tagOf(t: "regiment" | "tail", members: readonly BoardCard[], q: Question, answered: (c: BoardCard) => boolean): TagFacts {

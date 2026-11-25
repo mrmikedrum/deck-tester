@@ -332,7 +332,9 @@ function plan(input: SeatInput): SeatPlan {
   const creatureUnit = (c: Cand, a: number, u: number, s: number, step: boolean, pos?: V3): void => {
     const ids = c.ids, top = ids[0]!, look: UnitLook = ids.length > 1 ? "regiment" : "card";
     const st = c.acting ? "ease" : foldStance(ids);
-    const tag: TagFacts | undefined = look === "regiment" ? tagOf("regiment", ids.map(need), qTag, answers) : undefined;
+    // A regiment's face says its name and body and its die its count: its tag speaks only to answer ("7 ready").
+    const t = look === "regiment" ? tagOf("regiment", ids.map(need), qTag, answers) : undefined;
+    const tag: TagFacts | undefined = t && t.t === "regiment" && t.answer && t.answer.n > 0 ? t : undefined;
     push({
       id: idOf(c.key),
       role: "creature",

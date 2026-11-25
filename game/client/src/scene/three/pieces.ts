@@ -436,8 +436,8 @@ class UnitView implements PieceView {
     // A regiment's count sits on its card as a brass die (`ranks`), its top corner, above any counters.
     if (die !== null) {
       const dc = new Decal(this.host.painter.chip({ text: String(die), ink: colour.ink, sub: null }), FAN.die, FAN.die, { renderOrder: 6 });
-      // On its top corner, mostly off the card: the name and the art stay clear.
-      dc.mesh.position.set(CW / 2 - FAN.die * 0.12, CH / 2 + FAN.die * 0.08, TH / 2 + 0.035);
+      // On its right edge just under the name strip, half off the card: the name, the art and a tag above stay clear.
+      dc.mesh.position.set(CW / 2, CH / 2 - CH / 6 - FAN.die * 0.5, TH / 2 + 0.035);
       this.cards[0]!.obj.body.add(dc.mesh);
       this.chips.push(dc);
     }
