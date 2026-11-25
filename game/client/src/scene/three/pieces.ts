@@ -990,8 +990,9 @@ class PageView implements PieceView {
     const l = d.line;
     if (l) {
       const len = Math.hypot(l.x1 - l.x0, l.z1 - l.z0);
-      const geo = new PlaneGeometry(len, 0.12);
-      const mat = new MeshBasicMaterial({ color: new Color(seatInk[d.place]), transparent: true, opacity: 0.95, depthWrite: false });
+      // (Darker and heavier than the page's border in the same ink, so it reads as its own rule.)
+      const geo = new PlaneGeometry(len, 0.16);
+      const mat = new MeshBasicMaterial({ color: new Color(seatInk[d.place]).multiplyScalar(0.62), transparent: true, opacity: 1, depthWrite: false });
       const m = new Mesh(geo, mat);
       m.rotation.order = "YXZ";
       m.rotation.set(-Math.PI / 2, -Math.atan2(l.z1 - l.z0, l.x1 - l.x0), 0);
@@ -1000,7 +1001,7 @@ class PageView implements PieceView {
       this.marks.add(m);
       this.markParts.push(geo, mat);
       // Short brass caps at its ends: a rule of its own, never taken for the page's border.
-      const capGeo = new PlaneGeometry(0.16, 0.34);
+      const capGeo = new PlaneGeometry(0.22, 0.5);
       const capMat = new MeshBasicMaterial({ color: new Color(colour.bronze).multiplyScalar(1.25), transparent: true, opacity: 0.95, depthWrite: false });
       for (const [x, z] of [[l.x0, l.z0], [l.x1, l.z1]] as const) {
         const cap = new Mesh(capGeo, capMat);

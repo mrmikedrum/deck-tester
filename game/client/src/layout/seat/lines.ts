@@ -504,6 +504,7 @@ function plan(input: SeatInput): SeatPlan {
       const heap = side > 0 ? { lo: whole.lo, hi: whole.lo + wS } : { lo: whole.hi - wS, hi: whole.hi };
       const rest = side > 0 ? { lo: whole.lo + wS + 0.25, hi: whole.hi } : { lo: whole.lo, hi: whole.hi - wS - 0.25 };
       layoutSpent(a, sS, { ...heap, w: wS, uc: (heap.lo + heap.hi) / 2 }, true);
+      supA = a;
       layoutSupport(supportGeo(a), { ...rest, w: rest.hi - rest.lo, uc: (rest.lo + rest.hi) / 2 }, back.slipY + 2);
     } else {
       if (spent.length) {
@@ -526,7 +527,7 @@ function plan(input: SeatInput): SeatPlan {
   const heads = units.some((u) => u.head);
   const muster = heads || (shingled && !me) || (!me && spent.length > 0) ? musterOf(creatures) : null;
   const page: Fixtures["page"] = { pos: at(g, r, 0, r.d / 2), w: r.w, d: r.d, yaw: r.yaw };
-  fixtures = { ...fixtures, page, ...(creatures.length || !me ? { line } : {}), ...(notes.length ? { notes } : {}), ...(muster ? { muster } : {}), ...(me ? { tally: true } : {}) };
+  fixtures = { ...fixtures, page, line, ...(notes.length ? { notes } : {}), ...(muster ? { muster } : {}), ...(me ? { tally: true } : {}) };
 
   const col: Record<string, number> = {};
   cols.forEach((c, i) => c.forEach((run) => run.ids.forEach((id) => (col[String(id)] = i))));

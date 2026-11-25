@@ -87,6 +87,14 @@ export function recapView(s: State): RecapView | null {
     const where = one.where === "away" ? (one.token ? "token" : "") : one.where.replace(/^to (?:the )?/, "");
     return { title: `Lost: ${one.name}${where ? ` (${where})` : ""} ›`, summary: "" };
   }
+  // Past a handful it speaks in runs, as a player would after a wipe: "Lost 22: 8 cards to exile, 14 tokens ›".
+  if (settled.length > 4) {
+    const tokens = settled.filter((l) => l.token).length;
+    const by = new Map<string, number>();
+    for (const l of settled) if (!l.token) by.set(l.where === "away" ? "gone" : l.where, (by.get(l.where === "away" ? "gone" : l.where) ?? 0) + 1);
+    const parts = [...[...by.entries()].sort((a, b) => b[1] - a[1]).map(([w, n]) => `${n} card${n > 1 ? "s" : ""} ${w}`), ...(tokens ? [`${tokens} token${tokens > 1 ? "s" : ""}`] : [])];
+    return { title: `Lost ${settled.length}: ${parts.join(", ")} ›`, summary: "" };
+  }
   return { title: `Lost ${settled.length}: ${settled.map((l) => l.name).join(", ")} ›`, summary: "" };
 }
 
