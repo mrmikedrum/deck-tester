@@ -95,7 +95,10 @@ function plan(input: SeatInput): SeatPlan {
     const o = bounds(unitShape(input.projector, input.seat, u, false).face);
     return u.placement.pos.z > well.placement.pos.z && o.l < f.r && o.r > f.l && o.t < f.b && o.b > f.t;
   });
-  return !met && b.t >= Math.max(back - 2, input.reserve.safe.top + 4) ? p : deal(input, { wellBack: false });
+  // (And it lies within the page's width.)
+  const r = input.region, wp = well.placement.pos, u = (wp.x - r.x) * Math.cos(r.yaw) - (wp.z - r.z) * Math.sin(r.yaw);
+  const inside = Math.abs(u) + (CW * well.placement.scale) / 2 <= page.w / 2 - SIDE;
+  return inside && !met && b.t >= Math.max(back - 2, input.reserve.safe.top + 4) ? p : deal(input, { wellBack: false });
 }
 
 function deal(input: SeatInput, opts: { readonly wellBack: boolean }): SeatPlan {
@@ -518,7 +521,7 @@ function deal(input: SeatInput, opts: { readonly wellBack: boolean }): SeatPlan 
   const sWell = wellBack ? zS : 0;
   const far = half + (wellBack ? WELL_GAP + CW * sWell : 0);
   const eZ = Math.max(half, cmdBack ? cmdOut + 0.05 : 0, nz ? zonesU[nz - 1]! + zgap / 2 : 0), c0 = (-zs * (eZ - far)) / 2;
-  const backW = eZ + far + 2 * SIDE;
+  const backW = eZ + far + 2 * SIDE + (wellBack ? 0.3 : 0);
 
 
   if (wellBack) {
@@ -586,7 +589,7 @@ function deal(input: SeatInput, opts: { readonly wellBack: boolean }): SeatPlan 
 /** The page's margin at its sides, inside which its rows lie. */
 const MARGIN = 0.35;
 /** Between the plaque and the well beside it. */
-const WELL_GAP = 0.55;
+const WELL_GAP = 0.35;
 /** How far in front of the plaque's foot the well stands, in half its card's height. */
 const WELL_FORWARD = 1.6;
 
