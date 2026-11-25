@@ -52,6 +52,7 @@ bin/deckmaster engine stop                # after changing engine code with sess
 bin/deckmaster game                       # serve the game on this machine's network
 bin/deckmaster game --fill-cache          # once on a fresh checkout: the client's fixture card images
 (cd game && npm ci)                       # once: the client's toolchain and the tools' Playwright
+(cd game && npm run check)                # the client's checks, browser behaviour suite included; before every merge
 ```
 
 Using the CLI is in the [README](README.md). When something misbehaves, `.deckmaster/engine.log` has Forge's

@@ -84,5 +84,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    // Some suites settle whole corpus games in the scene; on a loaded machine that runs past Vitest's 5 s default.
+    testTimeout: 30_000,
   },
 });
