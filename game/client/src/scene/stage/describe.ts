@@ -318,12 +318,12 @@ export function describe(input: DescribeInput): Description {
   for (const p of pieces.values()) {
     if (p.draw.t !== "unit" || !p.draw.title || p.draw.well) continue;
     const m = /^(.*?)\s*(\d+)$/.exec(p.draw.title);
-    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote, note: p.draw.note ?? null, times: p.draw.times ?? false });
+    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote, note: p.draw.note ?? null, times: p.draw.times ?? false, countFirst: p.draw.countFirst ?? false });
   }
   const labelled = placeLabels(plan, asks, input.measure);
   for (const a of asks) {
     const p = pieces.get(a.id)!, d = p.draw as Extract<Draw, { t: "unit" }>, l = labelled.get(a.id) ?? null;
-    pieces.set(a.id, { ...p, draw: { ...d, label: l }, mods: `${p.mods}#${l ? `${l.name}|${l.px}|${l.slide}|${l.note ?? ""}` : "chip"}` });
+    pieces.set(a.id, { ...p, draw: { ...d, label: l }, mods: `${p.mods}#${l ? `${l.name}|${l.px}|${l.slide}|${l.note ?? ""}|${l.tap ?? ""}` : "chip"}` });
   }
 
   // The stack as the focus lays one scrim over the table; the stack's cards, what they aim at and the arcs stand above it,
@@ -537,7 +537,8 @@ function unitPiece(
     .map((id) => model.cards.get(id))
     .filter((c): c is Card => !!c)
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
-  const { copies, tapNote } = copiesOf(model, u);
+  // (On a leaf a pile's tapped copies are not drawn turned behind it: slivers that say nothing its tab's "↷2" does not.)
+  const { copies, tapNote } = copiesOf(model, u, plan.paradigm === "front" && !mine && u.placement.posture === "stand");
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
   const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
   const draw: Draw = {
@@ -550,6 +551,7 @@ function unitPiece(
     mixed: u.mixed,
     note: u.note ?? null,
     times: u.times ?? false,
+    ...(u.countFirst ? { countFirst: true } : {}),
     mine,
     chips,
     dressed,
@@ -591,10 +593,11 @@ export function tappedCopies(k: number, n: number, t: number): number {
 }
 
 /** The copies a unit draws, ready first, each tapped one a tapped member's face; and its tapped count where inexact. */
-function copiesOf(model: TableModel, u: Unit): { copies: { face: FaceSpec | null; tapped: boolean }[]; tapNote: string | null } {
+function copiesOf(model: TableModel, u: Unit, plain = false): { copies: { face: FaceSpec | null; tapped: boolean }[]; tapNote: string | null } {
   const cs = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
   const n = cs.length, k = Math.max(1, Math.min(n, u.kind === "well" ? PILE_COPIES.well : PILE_COPIES.pile));
-  const tapped = cs.filter((c) => c.tapped), t = tapped.length, kt = tappedCopies(k, n, t);
+  const tapped = cs.filter((c) => c.tapped), t = tapped.length, kt = plain ? 0 : tappedCopies(k, n, t);
+  if (plain) return { copies: Array.from({ length: k }, () => ({ face: null, tapped: false })), tapNote: t > 0 ? `↷${t}` : null };
   const copies = [
     ...Array.from({ length: k - kt }, () => ({ face: null, tapped: false })),
     ...tapped.slice(0, kt).map((c) => ({ face: faceOfCard(model, c), tapped: true })),
@@ -668,7 +671,8 @@ function wellLook(model: TableModel, u: Unit, mine: boolean, leaf = false): Omit
     // A leaf's well says what it holds on one line and how much of it is open under it ("Lands 14 · 2 rocks" / "10 open").
     if (leaf) {
       const short = [rocks ? `${rocks} rock${rocks > 1 ? "s" : ""}` : "", tr ? `${tr} Treasure${tr > 1 ? "s" : ""}` : ""].filter(Boolean);
-      return { sign: [`Lands ${lands}`, ...short].join(" · "), sub: `${n - tapped} open`, colours, spent, shown, theirs: true };
+      // (Its second line hides behind the propped card: what is open leads.)
+      return { sign: `Lands ${lands} · ${n - tapped} open`, sub: short.length ? `+ ${short.join(" · ")}` : null, colours, spent, shown, theirs: true };
     }
     return { sign: `Lands ${lands}`, sub: more.length ? `+ ${more.join(" · ")}` : null, colours, spent, shown, theirs: true };
   }

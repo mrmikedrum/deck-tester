@@ -419,7 +419,8 @@ class UnitView implements PieceView {
   private titleTab(d: Extract<Draw, { t: "unit" }>, turned: boolean): Decal {
     const l = d.label!;
     const count = /(\d+)$/.exec(d.title ?? "")?.[1] ?? "";
-    const lease = this.host.painter.sign({ text: [l.name, d.times ? `×${count}` : count, l.note, d.tapNote].filter(Boolean).join(" "), colour: null, sub: null });
+    const tap = l.tap !== undefined ? l.tap : d.tapNote;
+    const lease = this.host.painter.sign({ text: (d.countFirst ? [count, l.name, l.note, tap] : [l.name, d.times ? `×${count}` : count, l.note, tap]).filter(Boolean).join(" "), colour: null, sub: null });
     const top = turned ? CW / 2 : CH / 2, across = turned ? CH : CW;
     const tab = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
     tab.mesh.userData[LABEL] = { fonts: [SIGN_FONT.text], h: lease.height, want: l.px, foot: top, overlap: LABEL_OVERLAP } satisfies LabelTag;

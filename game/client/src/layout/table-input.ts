@@ -61,5 +61,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     stack,
     combat,
     ...(o.paradigm ? { paradigm: o.paradigm } : {}),
+    turn: model.turn,
+    active: model.active,
   };
 }

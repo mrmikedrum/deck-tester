@@ -22,7 +22,7 @@ export const READING_PX = 150;
 export function paintReading(canvas: Canvas, spec: ReadingSpec, s: Surfaces): void {
   const W = Math.round(spec.w * READING_PX), H = Math.round(spec.d * READING_PX);
   const x = begin(canvas, W, H);
-  const n = Math.max(1, spec.lines.length), pad = H * 0.1, rule = H * 0.07;
+  const n = Math.max(1, spec.lines.length), pad = H * 0.06, rule = H * 0.07;
   // The strip only as deep as its lines: one line, a narrower strip under the page's edge.
   const h = n === 1 ? H * 0.6 : H - 4;
   x.shadowColor = "rgba(0,0,0,.45)";
@@ -42,8 +42,9 @@ export function paintReading(canvas: Canvas, spec: ReadingSpec, s: Surfaces): vo
   const left = 10 + rule + pad, room = W - left - pad;
   const lineH = (h - 2 * pad) / n;
   spec.lines.forEach((l, i) => {
-    const px = Math.round(lineH * (l.tone === "ink" ? 0.78 : 0.74));
-    x.font = l.tone === "ink" ? `600 ${px}px ${font.num}` : `italic 400 ${px}px ${font.serif}`;
+    const px = Math.round(lineH * (l.tone === "ink" ? 0.92 : 0.88));
+    // (Line 2 in the same face as line 1, lighter: the most useful line on the table must read as easily.)
+    x.font = `${l.tone === "ink" ? 600 : 500} ${px}px ${font.num}`;
     x.fillStyle = l.tone === "red" ? signal.dangerInk : l.tone === "ink" ? colour.ink : colour.ink2;
     x.fillText(l.text, left, pad + lineH * (i + 0.52), room);
   });

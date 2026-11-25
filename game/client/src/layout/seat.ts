@@ -46,6 +46,8 @@ export interface Unit {
   /** What its tab says after its count ("· 36", "· fly", "· 15 power"), or none. Its count reads "×9" with `times`. */
   readonly note?: string;
   readonly times?: boolean;
+  /** Its tab says the count first ("8 more"). */
+  readonly countFirst?: boolean;
   /** Its cards act now (attack, block, are aimed at): it stands in its place but the combat row will take it. */
   readonly acting: boolean;
   /** Standing in the combat row in the open middle, away from its page place, which stays free for it (combat.ts). */
@@ -99,6 +101,9 @@ export interface SeatInput {
   readonly memory: LayoutMemory | null;
   /** Fold this many notches harder than the layout likes (set by `planSeat`'s retry, 0 to start). */
   readonly pressure: number;
+  /** The turn and whose it is (focus-first's lip: what arrived since a seat's turn began). */
+  readonly turn?: number;
+  readonly active?: SeatId | null;
 }
 
 export interface SeatPlan {

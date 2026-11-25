@@ -31,6 +31,8 @@ export interface LabelAsk {
   /** Said after the count where there is room ("· 36"), and whether the count reads "×9". */
   readonly note?: string | null;
   readonly times?: boolean;
+  /** The count leads ("8 more"). */
+  readonly countFirst?: boolean;
 }
 
 /** A label as placed: its text's parts, its size, and its slide along the card's top edge as a share of the card's width. */
@@ -40,6 +42,8 @@ export interface PlacedLabel {
   readonly slide: number;
   /** The note it kept, or null where it had no room for one. */
   readonly note?: string | null;
+  /** The tapped count it kept ("↷2"), or null where the name needed the room. */
+  readonly tap?: string | null;
 }
 
 type Box = readonly [number, number, number, number];
@@ -63,8 +67,16 @@ export function shorter(name: string): string[] {
   return [...new Set(out)];
 }
 
-export const labelText = (name: string, count: number, tap: string | null, note: string | null = null, times = false): string =>
-  [name, times ? `×${count}` : String(count), note, tap].filter(Boolean).join(" ");
+export const labelText = (name: string, count: number, tap: string | null, note: string | null = null, times = false, countFirst = false): string =>
+  (countFirst ? [String(count), name, note, tap] : [name, times ? `×${count}` : String(count), note, tap]).filter(Boolean).join(" ");
+
+/** A note said shorter: whole, then without its last parts ("· 36 power · 2 tapped", "· 36 power"), then none. */
+export function shorterNotes(note: string | null | undefined): (string | null)[] {
+  if (!note) return [null];
+  const parts = note.split(" · ").filter(Boolean), out: (string | null)[] = [];
+  for (let n = parts.length; n >= 1; n--) out.push(parts.slice(0, n).join(" · "));
+  return [...out, null];
+}
 
 /** Places every ask's label (in order: mine first, then by seat), or leaves it to the count chip (absent from the map). */
 export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure: Measure = estimate): Map<string, PlacedLabel> {
@@ -84,15 +96,17 @@ export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure:
     const want = a.mine ? LABEL_PX.mine : LABEL_PX.theirs;
     let done: PlacedLabel | null = null;
     find: for (const slide of [0, 0.125, -0.125, 0.25, -0.25])
-      for (const note of a.note ? [a.note, null] : [null])
+      // The name whole before its note; its note shorter before the name is shortened (a shortened name can say another
+      // card: "Cat Beast" is not "Beast").
       for (const name of shorter(a.name))
+      for (const [note, tap] of [...shorterNotes(a.note).map((n) => [n, a.tap] as const), [null, null] as const])
         for (let px = want; px >= LABEL_PX.floor; px--) {
-          const tw = measure(labelText(name, a.count, a.tap, note, !!a.times), px), bw = tw + LABEL_PX.pad * px, bh = LABEL_PX.tall * px;
+          const tw = measure(labelText(name, a.count, tap, note, !!a.times, !!a.countFirst), px), bw = tw + LABEL_PX.pad * px, bh = LABEL_PX.tall * px;
           if (bw > room) continue;
           const mid = cx + slide * w, box: Box = [mid - bw / 2, card[1] - bh + OVERLAP, mid + bw / 2, card[1] + OVERLAP];
           if (box[1] < 0 || obstacles.some((o) => o.id !== a.id && meets(o.box, box))) continue;
           obstacles.push({ id: a.id, box });
-          done = { name, px, slide, ...(a.note !== undefined ? { note } : {}) };
+          done = { name, px, slide, ...(a.note !== undefined ? { note } : {}), ...(tap !== a.tap ? { tap } : {}) };
           break find;
         }
     if (done) placed.set(a.id, done);

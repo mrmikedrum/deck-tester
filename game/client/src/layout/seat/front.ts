@@ -24,10 +24,12 @@ export const LEAF = {
   places: 4,
   frontPx: { lo: 60, hi: 72 },
   side: 0.35,
-  /** The front's feet, in from the near edge. */
-  foot: 0.3,
-  /** The slip: how far it reaches onto the floor, and the room the lip keeps at its inner end. */
-  slip: { from: 0.12, d: 1.3 },
+  /** The slip: a strip of vellum laid square along the leaf's near border, inside it (about 30 px deep). */
+  slip: { from: 0.06, d: 0.92 },
+  /** The front's feet, in from the near edge: just behind the slip. */
+  foot: 1.1,
+  /** A card on the lip: floor scale, as my own creatures. */
+  lipPx: 72,
   /** Past these, things fold: creatures and walkers standing, other permanents lying singly. */
   compact: { standing: 4, lying: 3 },
 } as const;
@@ -41,6 +43,9 @@ interface FrontMemory {
   readonly seen: number[];
   /** The card on the lip. */
   readonly lip: number | null;
+  /** The turn and whose it was at the last plan: the lip holds only what arrived since this seat's turn began. */
+  readonly turn?: number;
+  readonly active?: string | null;
 }
 
 /** Identical to the eye but for tapped and summoning sickness: the cards one regiment holds (the model's `sig`, those two
@@ -147,12 +152,17 @@ function plan(input: SeatInput): SeatPlan {
 
   // What is new since the last plan, and so the lip: the newest that does not stand in the front. It lies there until
   // the seat does something else (another arrival), and leaves when it does.
+  // Only what was seen to arrive counts: a board I sit down to, or one that jumped turns, has no news on its lips. And the
+  // lip empties when this seat's own turn begins.
   const seen = new Set(mem?.seen ?? []);
-  const fresh = mem ? bf.filter((c) => !seen.has(c.id) && !isMana(c)) : [];
+  const turn = input.turn ?? null, active = input.active ?? null;
+  const witnessed = !!mem && turn !== null && mem.turn !== undefined && turn - mem.turn <= 1 && turn >= mem.turn;
+  const fresh = witnessed ? bf.filter((c) => !seen.has(c.id) && !isMana(c)) : [];
   const frontCards = new Set(groups.filter((gr) => inFront.has(gr.key)).flatMap((gr) => gr.ids));
+  const turnBegan = active === board.seat && mem?.active !== board.seat;
   let lip: CardId | null = null;
   if (fresh.length) lip = fresh.filter((c) => !frontCards.has(c.id)).sort((a, b) => b.id - a.id)[0]?.id ?? null;
-  else if (mem?.lip != null && onSeat.has(mem.lip as CardId) && !frontCards.has(mem.lip as CardId) && !attached.has(mem.lip as CardId)) lip = mem.lip as CardId;
+  else if (witnessed && !turnBegan && mem?.lip != null && onSeat.has(mem.lip as CardId) && !frontCards.has(mem.lip as CardId) && !attached.has(mem.lip as CardId)) lip = mem.lip as CardId;
 
   // Cards acting now leave whatever they were in: each is a unit of its own, on the lip (a fighter goes on to the combat
   // row from there).
@@ -177,10 +187,12 @@ function plan(input: SeatInput): SeatPlan {
   const aFlat = Math.max(clearBehind(g, r, LEAF.foot, sFront), behind(g, r, frontTop - 2 * g.u, -span / 2), behind(g, r, frontTop - 2 * g.u, span / 2)) + 0.05;
 
   const units: Unit[] = [];
-  const unit = (key: string, role: UnitRole, members: CardId[], pl: Placement, o: { title?: string | null; mixed?: boolean; acting?: boolean; well?: boolean; note?: string; times?: boolean } = {}): void => {
+  const unit = (key: string, role: UnitRole, members: CardId[], pl: Placement, o: { title?: string | null; mixed?: boolean; acting?: boolean; well?: boolean; note?: string; times?: boolean; countFirst?: boolean; heaviest?: boolean } = {}): void => {
     if (!members.length) return;
-    // A pile shows a ready card where it has one: its tapped ones lie turned at its end.
-    const ready = members.filter((id) => !need(id).tapped), tapped = members.filter((id) => need(id).tapped);
+    // A pile shows a ready card where it has one (a muster its heaviest): its tapped ones lie turned at its end.
+    const w = (id: CardId) => weightOf([need(id)]);
+    const ms = o.heaviest ? members.slice().sort((a, b) => w(b) - w(a) || a - b) : members;
+    const ready = ms.filter((id) => !need(id).tapped), tapped = ms.filter((id) => need(id).tapped);
     const order = o.well ? members : [...ready, ...tapped];
     const top = order[0]!;
     units.push({
@@ -194,6 +206,7 @@ function plan(input: SeatInput): SeatPlan {
       mixed: !!o.mixed,
       ...(o.note && order.length > 1 ? { note: o.note } : {}),
       ...(o.times ? { times: true } : {}),
+      ...(o.countFirst ? { countFirst: true } : {}),
       acting: !!o.acting,
       tapped: o.well ? false : need(top).tapped,
       placement: pl,
@@ -215,7 +228,7 @@ function plan(input: SeatInput): SeatPlan {
   // The flat row: the well, the works (one pile past three), the muster.
   const backCreatures = groups.filter((gr) => gr.role === "creature" && !inFront.has(gr.key)).flatMap(out);
   const works = [...groups.filter((gr) => gr.role === "walker" && !inFront.has(gr.key)).flatMap(out), ...support.map((c) => c.id).filter((id) => !actingSet.has(id) && id !== lip)];
-  const flat: { key: string; role: UnitRole; ids: CardId[]; title?: string; mixed?: boolean; well?: boolean; note?: string }[] = [];
+  const flat: { key: string; role: UnitRole; ids: CardId[]; title?: string; mixed?: boolean; well?: boolean; note?: string; muster?: boolean }[] = [];
   const manaIds = mana.map((c) => c.id);
   if (manaIds.length) flat.push({ key: `m${board.seat}`, role: "mana", ids: manaIds, well: true });
   // At most four things lie in the back row: past that the works are one pile.
@@ -225,19 +238,17 @@ function plan(input: SeatInput): SeatPlan {
   if (backCreatures.length) {
     const cs = backCreatures.map(need), fliers = cs.filter((c) => c.keywords.some((k) => k.toLowerCase() === "flying")).length;
     const note = `· ${cs.reduce((t, c) => t + Math.max(0, c.power ?? 0), 0)} power${fliers ? ` · ${fliers} flier${fliers > 1 ? "s" : ""}` : ""}`;
-    flat.push({ key: `u${board.seat}`, role: "creature", ids: backCreatures, ...(backCreatures.length > 1 ? { title: `More ${backCreatures.length}`, mixed: true, note } : {}) });
+    // ("8 more · 14 power": the count leads, so it never reads as eight of the card on top.)
+    flat.push({ key: `u${board.seat}`, role: "creature", ids: backCreatures, muster: true, ...(backCreatures.length > 1 ? { title: `more ${backCreatures.length}`, mixed: true, note } : {}) });
   }
   // A pile far off lying flat would have to be huge to be 44 px tall from my chair: the back row leans up a little. Each
   // thing takes its own width (a turned one a card's height), and the row is centred.
-  const turned = (ids: CardId[], well: boolean) => !well && ids.every((id) => need(id).tapped);
-  const widths = flat.map((f) => (turned(f.ids, !!f.well) ? CH : CW) + 0.12);
-  const room = span / Math.max(1e-6, widths.reduce((t, w) => t + w, 0));
-  const flatAt = (i: number, sc: number): V3 => {
-    const total = widths.reduce((t, w) => t + w * sc, 0);
-    return at(-total / 2 + widths.slice(0, i).reduce((t, w) => t + w * sc, 0) + (widths[i]! * sc) / 2, aFlat);
-  };
-  const sFlat = Math.min(room, Math.max(sizeFor(g, at(0, aFlat), "lean", FLOOR.any), ...flat.map((_, i) => sizeFor(g, flatAt(i, 1.6), "lean", FLOOR.any))));
-  flat.forEach((f, i) => unit(f.key, f.role, f.ids, { pos: flatAt(i, sFlat), scale: sFlat, posture: "lean" }, { ...(f.title ? { title: f.title } : {}), mixed: !!f.mixed, well: !!f.well, ...(f.note ? { note: f.note } : {}) }));
+  // Each takes an equal slot of the row, its card in the middle, so its sign or tab has the slot's width to itself and never
+  // lands on a neighbour.
+  const slot = span / Math.max(1, flat.length);
+  const flatAt = (i: number): V3 => at(-span / 2 + (i + 0.5) * slot, aFlat);
+  const sFlat = Math.min(slot / (CH + 0.12), Math.max(sizeFor(g, at(0, aFlat), "lean", FLOOR.any), ...flat.map((_, i) => sizeFor(g, flatAt(i), "lean", FLOOR.any))));
+  flat.forEach((f, i) => unit(f.key, f.role, f.ids, { pos: flatAt(i), scale: sFlat, posture: "lean" }, { ...(f.title ? { title: f.title } : {}), mixed: !!f.mixed, well: !!f.well, ...(f.note ? { note: f.note } : {}), ...(f.muster ? { countFirst: true, heaviest: true } : {}) }));
   // Where the back row's tops end on screen: the plaque and the piles behind it stand from there.
   const backTop = Math.min(...units.filter((x) => x.placement.posture === "lean").map((x) => bounds(unitShape(g.proj, "", x, false).face).t), g.proj.project(at(0, aFlat + CH * sFlat)).y);
   const yBack = backTop - 3 * g.u;
@@ -246,7 +257,7 @@ function plan(input: SeatInput): SeatPlan {
   // (Every lip at its leaf's right end: the across leaf's and the right one's never meet in the gap between them.)
   const inner = 1;
   const lipCards = [...(lip !== null ? [lip] : []), ...acting];
-  const sLip = sizeFor(g, at(inner * (W / 2 - 1), -1.2), "lean", FLOOR.any);
+  const sLip = sizeFor(g, at(inner * (W / 2 - 1), -1.6), "lean", LEAF.lipPx);
   const aLip = -(CH * sLip + 0.12);
   lipCards.forEach((id, i) => {
     const c = need(id);
@@ -274,10 +285,9 @@ function plan(input: SeatInput): SeatPlan {
     const pos: V3 = { x: plate.pos.x + 2.2 * sP, y: plate.pos.y, z: plate.pos.z - 0.06 * sP };
     commander = { card: board.fixtures.commander, placement: { pos, scale: Math.max(0.9 * sP, floorScale(g, pos, FLOOR.any, false, 0.9 * sP)), posture: "stand" } };
   }
-  // The slip lies on the floor under the leaf's near edge, leaving the lip its end.
-  const lipRoom = CW * sLip + 0.3;
-  const slipW = W - lipRoom;
-  const slipC = at(-inner * (lipRoom / 2), -LEAF.slip.from - LEAF.slip.d / 2);
+  // The slip lies square along the leaf's near border, inside its width: the leaf's last ink.
+  const slipW = W - 2 * LEAF.side + 0.2;
+  const slipC = at(0, LEAF.slip.from + LEAF.slip.d / 2);
   const fixtures: Fixtures = {
     page: { pos: at(0, D / 2), w: W, d: D, yaw: r.yaw },
     plate,
@@ -288,7 +298,7 @@ function plan(input: SeatInput): SeatPlan {
   const memory: LayoutMemory = {
     v: 1,
     paradigm: "front",
-    fit: { front: front.map((k) => (k !== null && groups.some((gr) => gr.key === k) ? k : null)), ids, seen: board.cards.map((c) => c.id), lip } satisfies FrontMemory,
+    fit: { front: front.map((k) => (k !== null && groups.some((gr) => gr.key === k) ? k : null)), ids, seen: board.cards.map((c) => c.id), lip, ...(turn !== null ? { turn } : {}), active } satisfies FrontMemory,
   };
   const folded = units.reduce((t, u) => t + u.members.length - 1, 0);
   return new Ledger(board.cards.map((c) => c.id)).seal({

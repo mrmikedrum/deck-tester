@@ -218,10 +218,11 @@ export type Draw =
       readonly tapNote: string | null;
       /** Its title as placed on screen (labels.ts): the name it says, its text size (CSS px) and its slide along the top
        * edge (a share of the card's width); null where it gives way to the count chip, or has no title. */
-      readonly label: { readonly name: string; readonly px: number; readonly slide: number; readonly note?: string | null } | null;
+      readonly label: { readonly name: string; readonly px: number; readonly slide: number; readonly note?: string | null; readonly tap?: string | null } | null;
       /** What its tab says after its count ("· 36"), and whether the count reads "×9" (focus-first's tabs). */
       readonly note?: string | null;
       readonly times?: boolean;
+      readonly countFirst?: boolean;
       /** Its seat's colour (a well's sign notch, a standee's stripe). */
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */

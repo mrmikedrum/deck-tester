@@ -164,6 +164,9 @@ export interface TableInput {
   readonly spread?: SeatId | null;
   /** Focus-first: the combat is the table's focus (the clash): its fighters stand large on the floor. */
   readonly clash?: boolean;
+  /** The turn and whose it is. */
+  readonly turn?: number;
+  readonly active?: SeatId | null;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
 }
@@ -240,7 +243,7 @@ export function planTable(input: TableInput): TablePlan {
   const vp = input.viewport, projector = pinhole(tpl.camera, vp), reserve = reservations(vp, input.mode, input.safe);
   const mk = (i: number): Omit<SeatInput, "pressure"> => {
     const { seat, board } = input.seats[i]!, slot = tpl.slots[i]!;
-    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null };
+    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null, ...(input.turn !== undefined ? { turn: input.turn } : {}), ...(input.active !== undefined ? { active: input.active } : {}) };
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);
@@ -365,7 +368,9 @@ function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, pla
   const step = items.some((s) => s.answers) ? 1.12 : 0.9;
   const fitW = (M.r - M.l - 16) / (CW * (step * items.length + 0.1));
   const mid = Math.max((FLOOR.any * 1.1) / CW, Math.min(240, M.b - M.t, fitW));
-  const hPx = Math.max((FLOOR.any * 1.1) / CW, mid * 0.75), cy = (M.t + M.b) / 2, x0 = M.l + 16 + (hPx * CW) / 2, raise = STACK_POSE.raise;
+  // (Focus-first sets it aside at the floor's right end, stepping left; today's table at the open middle's left.)
+  const dir = tpl.leaves ? -1 : 1;
+  const hPx = Math.max((FLOOR.any * 1.1) / CW, mid * 0.75), cy = (M.t + M.b) / 2, x0 = dir > 0 ? M.l + 16 + (hPx * CW) / 2 : M.r - 16 - (hPx * CW) / 2, raise = STACK_POSE.raise;
   const at0 = proj.onTable(x0 * u, cy * u, raise);
   const along = (p: V3, d: V3, t: number): V3 => ({ x: p.x + d.x * t, y: p.y + d.y * t, z: p.z + d.z * t });
   const per = Math.abs(proj.project(along(at0, proj.up, 0.5)).y - proj.project(along(at0, proj.up, -0.5)).y) / u;
@@ -374,7 +379,7 @@ function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, pla
   const need = Math.max(FLOOR.any * u, TAP_PX) * 1.12;
   const wide = (c: V3): number => Math.abs(proj.project(along(c, proj.right, 0.5)).x - proj.project(along(c, proj.right, -0.5)).x);
   // Card i stands `off` to the right of the top, and back and up by its share `rise` of its full step (i back, i up).
-  const centre = (off: number, i: number, rise: number): V3 => along(along({ ...at0, z: at0.z - 0.5 * i * rise }, proj.right, off), proj.up, i * 0.1 * sc0 * rise);
+  const centre = (off: number, i: number, rise: number): V3 => along(along({ ...at0, z: at0.z - 0.5 * i * rise }, proj.right, dir * off), proj.up, i * 0.1 * sc0 * rise);
   const quadOf = (c: V3, sc: number): Quad => {
     const pt = (a: number, b: number): Point => proj.project(along(along(c, proj.right, a * sc), proj.up, b * sc));
     return [pt(-CW / 2, -CH / 2), pt(CW / 2, -CH / 2), pt(CW / 2, CH / 2), pt(-CW / 2, CH / 2)];
@@ -406,7 +411,7 @@ function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, pla
       rise = lo;
     }
     const quad = quadOf(centre(off, i, rise), sc), b = bounds(quad);
-    if (prev && (b.r > right || b.b > foot)) {
+    if (prev && ((dir > 0 ? b.r > right : b.l < Math.max(M.l * u, safe.left)) || b.b > foot)) {
       spill = true;
       return card(prev.quad, true);
     }
