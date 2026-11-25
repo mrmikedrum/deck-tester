@@ -260,7 +260,9 @@ function plan(input: SeatInput): SeatPlan {
   // (Every lip at its leaf's right end: the across leaf's and the right one's never meet in the gap between them.)
   const inner = 1;
   const lipCards = [...(lip !== null ? [lip] : []), ...acting];
-  const sLip = sizeFor(g, at(inner * (W / 2 - 1), -1.6), "lean", LEAF.lipPx);
+  // (Where the table finds it crowding my page's front row, it comes a size smaller: never under the pile floor.)
+  const lipPx = input.pressure >= 2 ? FLOOR.any : input.pressure >= 1 ? FLOOR.theirs : LEAF.lipPx;
+  const sLip = sizeFor(g, at(inner * (W / 2 - 1), -1.6), "lean", lipPx);
   // Its top stays below the leaf's near edge on screen: a card on the lip never lies over the slip.
   const edgeY = g.proj.project(at(inner * (W / 2 - 1), 0)).y;
   let aLip = -(CH * sLip + 0.12);
