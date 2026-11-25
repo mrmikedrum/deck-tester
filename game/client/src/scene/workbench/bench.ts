@@ -3,9 +3,8 @@
 // measured on the iPad (docs/game-arrangement-engine.md §7.3): open it there from the Home Screen or Safari, wait for
 // "done", and send the results (Copy, or `window.__bench` through the Web Inspector).
 import { after, frame, now } from "../../platform";
-import { planTable, tableInputOf } from "../../layout";
 import type { TablePlan } from "../../layout";
-import { VIEWPORT, benchInputs, planFrame } from "./bench-inputs";
+import { VIEWPORT, WARM, benchInputs, course, planFrame, planMatOnly } from "./bench-inputs";
 import type { Frame, Named } from "./bench-inputs";
 
 const design = import.meta.glob<unknown>("../../../../../tests/fixtures/boards/design-pass.json", { import: "default" });
@@ -35,9 +34,6 @@ interface Row {
 
 const quantile = (xs: readonly number[], p: number): number => xs[Math.min(xs.length - 1, Math.floor(p * xs.length))] ?? NaN;
 
-function matOnly(f: Frame, prev: TablePlan | null): TablePlan {
-  return planTable(tableInputOf(f.model, { viewport: VIEWPORT, mode: "normal", memory: prev?.memory ?? null, settling: f.settling }));
-}
 
 interface EngineDid {
   readonly units: number;
@@ -52,34 +48,38 @@ const did = (p: TablePlan): EngineDid => {
   return { units: f?.units.length ?? 0, candidates: f?.report.candidates ?? 0, audits: f ? f.report.audits + f.report.poses.length : 0, overflow: !!p.shadow?.result?.overflow, error: !!p.shadow?.error };
 };
 
-/** Per-plan times over `PLANS` plans of `input`'s frames in order (memory carried), and batch means. */
+/** Per-plan times over `PLANS` plans of `input` in the shared course (bench-inputs.ts `course`: what Node times), after
+ *  WARM to warm the JIT, and batch means over the same course. */
 async function time(input: Named, plan: (f: Frame, prev: TablePlan | null) => TablePlan): Promise<{ stats: Stats; plans: EngineDid[] }> {
-  const fs = input.frames;
-  let prev: TablePlan | null = null;
-  for (let i = 0; i < 20; i++) prev = plan(fs[i % fs.length]!, prev);
+  const warm = course(input);
+  for (let i = 0; i < WARM; i++) {
+    const [f, prev] = warm.next();
+    warm.keep(plan(f, prev));
+    if (i % 50 === 49) await nextFrame();
+  }
   const times: number[] = [], plans: EngineDid[] = [];
-  prev = null;
-  for (let i = 0; i < Math.max(PLANS, fs.length); i++) {
-    if (i % fs.length === 0) prev = null;
+  const c = course(input);
+  for (let i = 0; i < Math.max(PLANS, input.frames.length); i++) {
+    const [f, prev] = c.next();
     const t0 = now();
-    const p = plan(fs[i % fs.length]!, prev);
+    const p = plan(f, prev);
     times.push(now() - t0);
     plans.push(did(p));
-    prev = p;
+    c.keep(p);
     if (i % 50 === 49) await nextFrame(); // let the page breathe (and draw progress)
   }
   const batches: number[] = [];
-  prev = null;
-  for (let b = 0; b < 8; b++) {
+  const b = course(input);
+  for (let k = 0; k < 8; k++) {
     const t0 = now();
     for (let i = 0; i < BATCH; i++) {
-      if ((b * BATCH + i) % fs.length === 0) prev = null;
-      prev = plan(fs[(b * BATCH + i) % fs.length]!, prev);
+      const [f, prev] = b.next();
+      b.keep(plan(f, prev));
     }
     batches.push((now() - t0) / BATCH);
     await nextFrame();
   }
-  const s = [...times].sort((a, b) => a - b);
+  const s = [...times].sort((x, y) => x - y);
   return { stats: { median: quantile(s, 0.5), p90: quantile(s, 0.9), worst: s.at(-1) ?? NaN, batchMean: batches.reduce((t, x) => t + x, 0) / batches.length }, plans };
 }
 
@@ -120,7 +120,7 @@ export async function bench(root: HTMLElement): Promise<void> {
     for (const input of inputs) {
       $("b-status").textContent = `Timing ${input.name} (${input.what})…`;
       await wait(50);
-      const on = await time(input, planFrame), off = await time(input, matOnly);
+      const on = await time(input, planFrame), off = await time(input, planMatOnly);
       const most = (g: (d: EngineDid) => number) => Math.max(0, ...on.plans.map(g));
       const row: Row = {
         input: input.name,

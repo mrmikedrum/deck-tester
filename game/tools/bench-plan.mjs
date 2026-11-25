@@ -11,8 +11,7 @@ import "./ts-hooks.mjs";
 import { readFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 
-const { benchInputs, planFrame, VIEWPORT } = await import("../client/src/scene/workbench/bench-inputs.ts");
-const { planTable, tableInputOf } = await import("../client/src/layout/index.ts");
+const { WARM, benchInputs, course, planFrame, planMatOnly, VIEWPORT } = await import("../client/src/scene/workbench/bench-inputs.ts");
 
 const args = process.argv.slice(2);
 const json = args.includes("--json");
@@ -32,31 +31,29 @@ const engineOf = (plan) => {
   return { policy: s?.policy, error: !!s?.error, overflow: !!s?.result?.overflow, units: f?.units.length ?? 0, candidates: f?.report.candidates ?? 0, audits: f ? f.report.audits + f.report.poses.length : 0, violations: f?.report.violations.length ?? 0, parted: f ? f.report.poses.reduce((t, p) => t + p.violations.length, 0) : 0 };
 };
 
-/** Plan every frame of an input in order, `runs` plans in all, carrying memory; per-plan times. */
-function time(input, shadow) {
+/** `runs` plans of an input in the shared course (bench-inputs.ts `course`), after WARM to warm the JIT; per-plan times. */
+function time(input, plan) {
   const times = [], plans = [];
-  let prev = null, i = 0;
-  const one = (f) =>
-    shadow
-      ? planFrame(f, prev)
-      : planTable(tableInputOf(f.model, { viewport: VIEWPORT, mode: "normal", memory: prev?.memory ?? null, settling: f.settling }));
-  for (let w = 0; w < 150; w++) prev = one(input.frames[w % input.frames.length]); // warm the JIT
-  prev = null;
+  const warm = course(input);
+  for (let w = 0; w < WARM; w++) {
+    const [f, prev] = warm.next();
+    warm.keep(plan(f, prev));
+  }
+  const c = course(input);
   for (let r = 0; r < Math.max(runs, input.frames.length); r++) {
-    const f = input.frames[i++ % input.frames.length];
-    if (i % input.frames.length === 1) prev = null; // each pass over a sequence starts fresh
+    const [f, prev] = c.next();
     const t0 = performance.now();
-    const plan = one(f);
+    const p = plan(f, prev);
     times.push(performance.now() - t0);
-    plans.push(engineOf(plan));
-    prev = plan;
+    plans.push(engineOf(p));
+    c.keep(p);
   }
   return { times, plans };
 }
 
 const rows = [];
 for (const input of inputs) {
-  const on = time(input, true), off = time(input, false);
+  const on = time(input, planFrame), off = time(input, planMatOnly);
   const e = on.plans;
   const n = (k) => Math.max(...e.map((x) => x[k]));
   rows.push({

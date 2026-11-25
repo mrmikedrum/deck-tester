@@ -35,6 +35,34 @@ export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
 
 export const VIEWPORT = { w: 1180, h: 820 } as const;
 
+/** The same frame planned by `mat` alone, memory carried the same way: what the shadow leaf adds is the difference. */
+export function planMatOnly(f: Frame, prev: TablePlan | null): TablePlan {
+  return planTable(tableInputOf(f.model, { viewport: VIEWPORT, mode: "normal", memory: prev?.memory ?? null, settling: f.settling }));
+}
+
+/** Plans to warm the JIT before timing, in every runner. */
+export const WARM = 150;
+
+/**
+ * The order every runner plans an input in, and the memory each plan carries (the Node bench and the bench page share
+ * it, so the device gate times what Node times): the frames in order, round and round; a sequence starts each pass
+ * fresh, a single frame is planned again and again from its own last plan.
+ */
+export function course(input: Named): { next(): readonly [Frame, TablePlan | null]; keep(plan: TablePlan): void } {
+  const fs = input.frames;
+  let i = 0, prev: TablePlan | null = null;
+  return {
+    next() {
+      const k = i++ % fs.length;
+      if (k === 0 && fs.length > 1) prev = null;
+      return [fs[k]!, prev] as const;
+    },
+    keep(plan) {
+      prev = plan;
+    },
+  };
+}
+
 // ---- a seeded table, decoded through the protocol like any snapshot -------------------------------------------------
 
 const rng = (seed: number) => {
