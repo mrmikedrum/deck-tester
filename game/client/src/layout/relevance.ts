@@ -195,7 +195,17 @@ export type ReadFacts =
   | { readonly q: "threat"; readonly power: number; readonly creatures: number; readonly flyingPower: number; readonly keywords: readonly string[] }
   | { readonly q: "strike"; readonly untapped: number; readonly biggest: Body | null; readonly fliers: number; readonly airborne: boolean; readonly fliersBiggest: Body | null }
   | { readonly q: "tally"; readonly power: number; readonly air: number }
-  | { readonly q: "fight"; readonly power: number; readonly unblocked: number; readonly who: Body | null; readonly whoName: string | null; readonly target: "you" | string }
+  | {
+      readonly q: "fight";
+      readonly power: number;
+      readonly creatures: number;
+      /** -1 before blocks; else how many attackers nobody blocked, and their power. */
+      readonly unblocked: number;
+      readonly unblockedPower: number;
+      readonly who: Body | null;
+      readonly whoName: string | null;
+      readonly target: "you" | string;
+    }
   | { readonly q: "sweep"; readonly loses: number; readonly power: number; readonly mine: boolean };
 
 /**
@@ -212,7 +222,7 @@ export function readOf(board: readonly BoardCard[], seat: SeatId, mine: boolean,
       if (q.q === "aim" || (!folded && cs.length < 6) || !cs.length) return null;
       return { q: "rest", power: powerOf(cs), creatures: cs.length, flyingPower: powerOf(cs.filter(flies)), biggest: biggestOf(cs), keywords: keywordsIn(cs) };
     case "threat": {
-      if (seat !== q.seat) return null;
+      if (seat !== q.seat || !cs.length) return null;
       const r = cs.filter(ready);
       return { q: "threat", power: powerOf(r), creatures: r.length, flyingPower: powerOf(r.filter(flies)), keywords: keywordsIn(r) };
     }
@@ -229,7 +239,7 @@ export function readOf(board: readonly BoardCard[], seat: SeatId, mine: boolean,
       const at = cs.filter((c) => q.attackers.includes(c.id));
       const free = at.filter((c) => !q.blocked.includes(c.id));
       const lone = free.length === 1 ? free[0]! : null;
-      return { q: "fight", power: powerOf(at), unblocked: q.blocked.length ? free.length : -1, who: lone ? bodyOf(lone) : null, whoName: lone ? lone.name : null, target: names?.defender ?? "you" };
+      return { q: "fight", power: powerOf(at), creatures: at.length, unblocked: q.blocked.length ? free.length : -1, unblockedPower: powerOf(free), who: lone ? bodyOf(lone) : null, whoName: lone ? lone.name : null, target: names?.defender ?? "you" };
     }
     case "sweep": {
       const hit = cs.filter((c) => q.reaches.includes(c.id));
@@ -250,12 +260,13 @@ export type TagFacts =
       readonly small: boolean;
       readonly answer: { readonly n: number; readonly word: AnswerWord; readonly biggest: Body | null } | null;
     }
-  | { readonly t: "column"; readonly title: "binds" | "engines" | "shelf"; readonly count: number; readonly walkers: number };
+  /** A column says what leads it, then how many more: "2 walkers · 6 more", "Binds everyone 8 · 1 more", "Engines 5". */
+  | { readonly t: "column"; readonly lead: "walkers" | "binds" | "engines"; readonly leading: number; readonly more: number };
 
-export type AnswerWord = "ready" | "untapped" | "flying" | "legal" | "lost";
+export type AnswerWord = "ready" | "untapped" | "flying" | "legal";
 
 const answerWord = (q: Question): AnswerWord | null =>
-  q.q === "threat" ? "ready" : q.q === "strike" ? (q.airborne ? "flying" : "untapped") : q.q === "aim" ? "legal" : q.q === "sweep" ? "lost" : null;
+  q.q === "threat" ? "ready" : q.q === "strike" ? (q.airborne ? "flying" : "untapped") : q.q === "aim" ? "legal" : null;
 
 /** A fold's tag facts: its members, the stance each takes under the question. */
 export function tagOf(t: "regiment" | "tail", members: readonly BoardCard[], q: Question, answered: (c: BoardCard) => boolean): TagFacts {

@@ -34,16 +34,17 @@ export function readWords(f: ReadFacts): readonly [string, string | null] {
     case "tally":
       return [`Attacking · ${f.power} power${f.air ? ` · ${f.air} in the air` : ""}`, null];
     case "fight": {
-      const first = `Attacks ${f.target === "you" ? "you" : f.target} · ${f.power} power`;
+      const first = `Attacks ${f.target === "you" ? "you" : f.target} · ${f.power} power · ${plural(f.creatures, "creature")}`;
       if (f.unblocked < 0) return [first, null];
-      return [`${f.unblocked} unblocked`, f.whoName && f.who ? `${f.whoName.split(",")[0]} ${body(f.who)}` : null];
+      if (!f.unblocked) return ["All blocked", null];
+      return [`${f.unblockedPower} power unblocked`, f.whoName && f.who ? `${f.whoName.split(",")[0]} ${body(f.who)}` : plural(f.unblocked, "attacker")];
     }
     case "sweep":
       return [f.mine ? `You lose ${f.loses}` : `Loses ${f.loses} · ${f.power} power`, null];
   }
 }
 
-const ANSWER = { ready: "ready", untapped: "untapped", flying: "can block fliers", legal: "targetable", lost: "lost" } as const;
+const ANSWER = { ready: "ready", untapped: "untapped", flying: "fly or reach", legal: "targetable" } as const;
 
 /** A fold's tag: a regiment's name and body (its count is on its die), a tail's sum, a column's title; under a question,
  * its part of the answer. */
@@ -58,9 +59,10 @@ export function tagWords(t: TagFacts): string {
       if (t.small) return `Small ${t.count} · ${t.power} power`;
       return [`${t.count} more`, `${t.power} power`, ...(t.biggest ? [`biggest ${body(t.biggest)}`] : []), ...(t.fliers ? [`${t.fliers} ${t.fliers === 1 ? "flies" : "fly"}`] : [])].join(" · ");
     }
-    case "column":
-      if (t.title === "shelf") return `Shelf ${t.count}${t.walkers ? ` · ${t.walkers} walker${t.walkers > 1 ? "s" : ""}` : ""}`;
-      return `${t.title === "binds" ? "Binds everyone" : "Engines"} ${t.count}`;
+    case "column": {
+      const lead = t.lead === "walkers" ? plural(t.leading, "walker") : `${t.lead === "binds" ? "Binds everyone" : "Engines"} ${t.leading}`;
+      return t.more ? `${lead} · ${t.more} more` : lead;
+    }
   }
 }
 

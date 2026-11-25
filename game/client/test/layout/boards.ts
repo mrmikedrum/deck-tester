@@ -62,6 +62,8 @@ export function card(o: CardInput): BoardCard {
     sick: false,
     loyalty: null,
     reach: "self",
+    manaSource: false,
+    counted: false,
     ...rest,
     attachedTo: attachedTo == null ? null : cid(attachedTo),
   };

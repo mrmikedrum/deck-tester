@@ -117,6 +117,8 @@ function boardCard(e: Entry, id: number): BoardCard {
     sick: false,
     loyalty: null,
     reach: "self",
+    manaSource: e.kind === "rock",
+    counted: false,
     attachedTo: null,
   };
 }

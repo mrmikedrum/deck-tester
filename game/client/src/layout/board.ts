@@ -7,6 +7,7 @@ import {
   isLand,
   isLegendary,
   isManaRock,
+  isManaSource,
   isPlaneswalker,
   isSpecialLand,
   isTreasure,
@@ -79,6 +80,10 @@ export interface BoardCard {
   readonly loyalty: number | null;
   /** Whether its text reaches other players (`tableReach`): the shelf's "Binds everyone" column. */
   readonly reach: "table" | "self";
+  /** It makes mana (`isManaSource`, a rock or not): their well holds it. */
+  readonly manaSource: boolean;
+  /** It carries counters: a noncreature with counters stands on its own, its chip showing. */
+  readonly counted: boolean;
   /** The permanent this one is attached to (an Aura, Equipment). A host not on this board makes it a card of its own. */
   readonly attachedTo: CardId | null;
 }
@@ -139,6 +144,8 @@ export function boardCard(c: Card): BoardCard {
     sick: c.sick,
     loyalty: c.loyalty,
     reach: tableReach(c),
+    manaSource: isManaSource(c),
+    counted: Object.values(c.counters).some((n) => n > 0),
     attachedTo: c.attachedTo,
   };
 }
