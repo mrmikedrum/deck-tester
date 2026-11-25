@@ -2,7 +2,7 @@
 // client. The current client is read through `window.__h`, the new entry through `window.__deckmaster`.
 // ---- The one locator: where a thing is on screen -----------------------------------------------------------------------
 // {card: id}  a card on the table or on the stack (a pile counts for any of its cards)
-// {plate: pid} a player's life plate ("you","ana","bo","cy")
+// {plate: pid} a player's life plate ("you","ana","bo","cy"); in the new entry, its nameplate in the chrome
 // {stack: id} a spell on the stack, by its card id
 // {hand: id}  a card in the hand fan (DOM)
 // {pile: pid} the biggest pile on a player's side (the most cards; new entry only)
@@ -29,6 +29,16 @@ function locateNew(w) {
     return null;
   }
   const PIDS = ["you", "ana", "bo", "cy"], who = w.plate != null ? w.plate : w.pile, seat = who != null ? dm.seats()[PIDS.indexOf(who)] : null;
+  if (w.plate != null) {                                   // a nameplate is chrome: its button, where nothing covers it
+    const el = document.querySelector(`.l-plate[data-plate="${CSS.escape(String(seat))}"]`);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    for (const f of [0.3, 0.5, 0.15, 0.7, 0.85]) {
+      const x = r.left + r.width * f, y = r.top + r.height / 2, top = document.elementFromPoint(x, y);
+      if (top && top.closest(".l-plate") === el) return { x, y };
+    }
+    return null;
+  }
   const canvas = document.getElementById("stage");
   if (w.open) {                                            // the open table: the canvas, nothing picked, clear of the stack
     const quads = [...(dm.stack() || []).map(s => s.quad), ...dm.hits().filter(g => g.kind === "stack").map(g => g.quad)].filter(Boolean);

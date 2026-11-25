@@ -110,15 +110,15 @@ group("the stack as the table's focus", () => {
 });
 
 group("leaning in", () => {
-  it("carries every piece of the seat up and squared to me; its plaque's tap is carried with it", () => {
+  it("carries every piece of the seat up and squared to me; its plaque's place goes with it, its taps are the chrome's", () => {
     const seat = [...board.plan.seats.keys()][2]!;
     const view = rest(board, at({ layer: "lean", seat }));
     const plate = board.plan.hits.groups.find((g) => g.id === `plate:${seat}`)!;
     const d = view.drawn.get(plate.id)!;
     expect(d.now.pos.y).toBeGreaterThan(3);
-    const moved = view.drawn.get(plate.id)!;
-    const c = board.plan.projector.project({ ...moved.now.pos, y: moved.now.pos.y + 0.3 * moved.now.s });
-    expect(pickDrawn(board.plan, view.drawn, c)?.id).toBe(plate.id);
+    // The nameplate is chrome (chrome/plates.tsx): a tap on the canvas never reaches the plaque's place.
+    const c = board.plan.projector.project({ ...d.now.pos, y: d.now.pos.y + 0.3 * d.now.s });
+    expect(pickDrawn(board.plan, view.drawn, c)?.id).not.toBe(plate.id);
   });
 });
 

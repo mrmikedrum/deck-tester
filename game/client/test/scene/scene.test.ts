@@ -114,7 +114,7 @@ describe("picking", () => {
           const view = drawnViews.at(-1)!;
           for (const g of step.plan.hits.groups) {
             const d = view.drawn.get(g.id);
-            if (!d?.pickable || moving) continue;
+            if (!d?.pickable || moving || g.kind === "plate") continue;
             const c = centre(movedQuad(step.plan.projector, g.quad, d));
             const home = centre(g.quad);
             if (Math.hypot(c.x - home.x, c.y - home.y) > 40 && hitTest(step.plan, c)?.id !== g.id && scene.pick(c)?.id === g.id) moving = { id: g.id, at: c };
@@ -131,8 +131,11 @@ describe("picking", () => {
         }
         if (moving) break;
         for (let k = 0; k < 1250 && report.active; k++) report = scene.show(frameOf(step, []), (t += 16));
-        const p = centre(step.plan.hits.groups[0]!.quad);
-        expect(scene.pick(p)?.id).toBe(hitTest(step.plan, p)?.id);
+        // (The first group that is not a seat's plate: the nameplates are the chrome's, and take their own taps.)
+        const g = step.plan.hits.groups.find((x) => x.kind !== "plate") ?? step.plan.hits.groups[0]!;
+        const p = centre(g.quad);
+        const table = { ...step.plan, hits: { ...step.plan.hits, groups: step.plan.hits.groups.filter((x) => x.kind !== "plate") } };
+        expect(scene.pick(p)?.id).toBe(hitTest(table, p)?.id);
       }
       if (moving) break;
     }

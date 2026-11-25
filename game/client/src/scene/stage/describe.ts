@@ -204,8 +204,9 @@ export function describe(input: DescribeInput): Description {
       members: command,
       face: null,
       ...placed(seat, platePose(sp.fixtures.plate)),
-      // (Under a sift's shade it goes: a plaque draws over everything, and would over the sifted cards.)
-      look: { ...LOOK, fade: leanSeat && leanSeat !== seat && !mine ? 0.6 : 0, glow: plateMark ? 1 : 0, alpha: sifting ? 0 : 1 },
+      // The nameplate is the chrome's now (chrome/plates.tsx): this piece is not drawn, but stays as the place a player's
+      // arcs and lanes land on.
+      look: { ...LOOK, fade: leanSeat && leanSeat !== seat && !mine ? 0.6 : 0, glow: plateMark ? 1 : 0, alpha: 0 },
       form: `plate|${seat}`,
       mods: canonical(spec) + (plateMark ?? ""),
       mark: plateMark,

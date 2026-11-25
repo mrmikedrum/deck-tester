@@ -1106,13 +1106,13 @@
 /* ==== narrative lane: the log strip, the log and loss sheets, the loss notice (chrome/log.tsx) ===================
    Ported from live.css (.l-feed, .l-log, .l-recap). Their tints are chrome/style/surfaces.ts's. */
 @layer chrome {
-  /* The strip: along the screen's top edge beside the Game button, above every page's back band. Aged parchment a
-     shade darker than the sheets, in ink: a note in the margin, lighter than the board. */
+  /* The strip: under the Game button, below the row of nameplates along the top. Aged parchment a shade darker than
+     the sheets, in ink: a note in the margin, lighter than the board. */
   .l-feed {
     position: absolute;
     z-index: 25;
-    left: calc(102 * var(--u) + var(--safe-left, 0px));
-    top: calc(8 * var(--u) + var(--safe-top, 0px));
+    left: calc(12 * var(--u) + var(--safe-left, 0px));
+    top: calc(62 * var(--u) + var(--safe-top, 0px));
     width: min(29vw, calc(322 * var(--u)));
     min-height: 44px;
     display: grid;
@@ -1287,6 +1287,267 @@
   .watching .held .hcard.playable {
     box-shadow: var(--card-shadow);
     translate: none;
+  }
+
+  /* ---- The nameplates: chrome, square to the screen, always lit ------------------------------------------------ */
+  /* A bronze plate (sigil, name, life) with a vellum tab of icons beside it. Opponents' hang from the top over their
+     leaves, mine stands at the bottom. Over every look, so the plate that opened one closes it. */
+  .l-plates {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+  }
+  .l-plate {
+    position: absolute;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    pointer-events: auto;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
+  }
+  /* The plate on the left hangs from its left edge, clear of the Game button; the one on the right from its right. */
+  .l-plate.left {
+    transform: none;
+  }
+  .l-plate.right {
+    transform: translateX(-100%);
+  }
+  .l-plate .bronze {
+    display: flex;
+    align-items: center;
+    gap: calc(8 * var(--u));
+    padding: 0 calc(6 * var(--u)) 0 calc(10 * var(--u));
+    border-radius: 5px 0 0 5px;
+    background: var(--plaque);
+    box-shadow: var(--plaque-shadow), var(--btn-edge);
+    color: var(--btn-act-ink);
+    text-shadow: var(--btn-act-ink-shadow);
+  }
+  .l-plate .sigil {
+    width: calc(18 * var(--u));
+    height: calc(18 * var(--u));
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--seat) 55%, #fff), var(--seat) 60%, color-mix(in srgb, var(--seat) 60%, #000));
+    box-shadow: 0 0 0 1.5px #1a0f05;
+  }
+  .l-plate .name {
+    font: 400 calc(19 * var(--u)) var(--serif);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .l-plate .life {
+    min-width: calc(34 * var(--u));
+    padding: calc(2 * var(--u)) calc(6 * var(--u));
+    border-radius: 3px;
+    background: #1a110a;
+    color: #fff4dc;
+    font: 700 calc(19 * var(--u)) var(--ui);
+    text-align: center;
+  }
+  .l-plate .tab {
+    display: flex;
+    align-items: center;
+    gap: calc(10 * var(--u));
+    padding: 0 calc(10 * var(--u));
+    border-radius: 0 5px 5px 0;
+    background: var(--sheet);
+    box-shadow: inset 0 0 0 1px rgba(60, 40, 15, 0.55);
+    color: var(--ink);
+    font: 700 calc(16 * var(--u)) var(--ui);
+  }
+  .l-plate .fig {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(3 * var(--u));
+    white-space: nowrap;
+  }
+  .l-icon {
+    width: calc(18 * var(--u));
+    height: calc(18 * var(--u));
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .l-icon .strike {
+    stroke-width: 2.2;
+  }
+  /* Its turn: a gilt edge. An option (a player I can choose): the ember ring; chosen: gold leaf. */
+  .l-plate.turn .bronze,
+  .l-plate.turn .tab {
+    box-shadow: var(--plaque-shadow), var(--btn-edge), 0 0 0 2px #e0a62c, 0 0 14px rgba(241, 200, 106, 0.55);
+  }
+  .l-plate.option .bronze,
+  .l-plate.option .tab {
+    box-shadow: var(--plaque-shadow), var(--ring-ask);
+  }
+  .l-plate.selected .bronze,
+  .l-plate.selected .tab {
+    box-shadow: var(--plaque-shadow), 0 0 0 3px #e0a62c, 0 0 18px rgba(241, 200, 106, 0.8);
+  }
+  .l-plate.out {
+    filter: grayscale(0.8) brightness(0.7);
+  }
+  .l-plate:focus-visible {
+    outline: 2px solid var(--sig-option);
+    outline-offset: 3px;
+  }
+
+  /* ---- The nameplate focus: a page turned up from the plate, in the seat's ink ----------------------------------- */
+  .l-seat-scrim {
+    position: absolute;
+    inset: 0;
+    pointer-events: auto;
+    display: grid;
+    justify-items: center;
+    align-items: start;
+    padding-top: calc(62 * var(--u) + var(--safe-top, 0px));
+    background: var(--scrim);
+    animation: g-fade 0.15s ease-out;
+  }
+  .l-seat {
+    position: relative;
+    box-sizing: border-box;
+    width: min(calc(880 * var(--u)), calc(100vw - 32px));
+    max-height: calc(100dvh - 140 * var(--u));
+    overflow: auto;
+    padding: calc(22 * var(--u)) calc(28 * var(--u)) calc(18 * var(--u));
+    border-radius: 3px;
+    color: var(--ink);
+    background: var(--mounts), var(--sheet-quiet);
+    box-shadow: var(--sheet-shadow), inset 0 0 0 calc(8 * var(--u)) transparent;
+    outline: 2px solid color-mix(in srgb, var(--seat) 80%, #000);
+    outline-offset: calc(-10 * var(--u));
+  }
+  .l-seat header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 0 calc(44 * var(--u)) calc(12 * var(--u)) 0;
+    padding-bottom: calc(8 * var(--u));
+    border-bottom: 1px solid var(--sheet-rule-strong);
+  }
+  .l-seat h3 {
+    margin: 0;
+    font: 400 calc(30 * var(--u)) / 1.1 var(--serif);
+  }
+  .l-seat header .life {
+    font: 700 calc(26 * var(--u)) var(--ui);
+  }
+  .l-seat .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: calc(28 * var(--u));
+  }
+  .l-seat .lines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: calc(14 * var(--u));
+  }
+  .l-seat .lines li {
+    display: grid;
+    grid-template-columns: calc(26 * var(--u)) 1fr;
+    gap: calc(12 * var(--u));
+    align-items: start;
+  }
+  .l-seat .lines .l-icon {
+    width: calc(24 * var(--u));
+    height: calc(24 * var(--u));
+  }
+  .l-seat .lines b {
+    display: block;
+    font: 700 calc(18 * var(--u)) var(--ui);
+  }
+  .l-seat .lines small {
+    display: block;
+    color: var(--ink-2);
+    font-size: calc(13 * var(--u));
+  }
+  .l-seat .lines li.none b {
+    color: var(--ink-2);
+  }
+  .l-seat .zones {
+    display: grid;
+    gap: calc(14 * var(--u));
+    align-content: start;
+  }
+  .l-seat h4 {
+    margin: 0 0 calc(6 * var(--u));
+    font: 400 calc(18 * var(--u)) var(--serif);
+  }
+  .l-seat h4 b {
+    margin-left: calc(8 * var(--u));
+    font: 700 calc(16 * var(--u)) var(--ui);
+  }
+  .l-seat .row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: calc(12 * var(--u));
+  }
+  /* Picked up: printed cards, fanned a little, as held in a hand. */
+  .l-picked {
+    display: flex;
+    align-items: flex-end;
+  }
+  .l-picked .pc {
+    flex: none;
+    width: calc(74 * var(--u));
+    aspect-ratio: 488 / 680;
+    margin-right: calc(-22 * var(--u));
+    border-radius: calc(5 * var(--u));
+    background: var(--card-art-ground) center / cover;
+    box-shadow: var(--card-shadow);
+  }
+  .l-seat .gy .pc {
+    width: calc(84 * var(--u));
+    margin-right: calc(-14 * var(--u));
+  }
+  .l-picked .pc.back,
+  .l-library {
+    background: radial-gradient(circle, #c9a25c 0 8%, #6a4a20 9%, transparent 10%), radial-gradient(ellipse at 50% 45%, rgba(120, 70, 30, 0.25), rgba(0, 0, 0, 0.5)), #2a170c;
+  }
+  .l-picked small {
+    margin-left: calc(30 * var(--u));
+    white-space: nowrap;
+    color: var(--ink-2);
+  }
+  .l-library {
+    width: calc(64 * var(--u));
+    aspect-ratio: 488 / 680;
+    border-radius: calc(5 * var(--u));
+    box-shadow: 0 calc(var(--n) * 1px) 0 #5a3e22, calc(var(--n) * 0.4px) calc(var(--n) * 1px + 2px) 8px rgba(0, 0, 0, 0.5);
+  }
+  .l-zone-empty {
+    width: calc(64 * var(--u));
+    aspect-ratio: 488 / 680;
+    display: grid;
+    place-items: center;
+    border: 2px dashed var(--sheet-rule-strong);
+    border-radius: calc(5 * var(--u));
+    color: var(--ink-2);
+    font-size: calc(12 * var(--u));
+  }
+  .l-seat .note,
+  .l-seat .also {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: calc(13 * var(--u));
+  }
+  .l-seat .l-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: calc(16 * var(--u));
   }
 }
 /* ==== end of the narrative lane's block ============================================================================ */

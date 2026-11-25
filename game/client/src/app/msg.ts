@@ -21,6 +21,8 @@ export type InputMsg = (
   | { readonly t: "restore"; readonly stamp: Stamp; readonly layer: LayerId }
   /** Open a layer of the app's own: the inspector on a card, the Game menu, the hand as a list, the log, the losses. */
   | { readonly t: "open"; readonly stamp: Stamp; readonly layer: OpenLayer; readonly card: CardId | null }
+  /** From a nameplate focus: that seat's board, brought nearer (the nameplate closes, the table leans in on it). */
+  | { readonly t: "board"; readonly stamp: Stamp; readonly seat: string }
   /** The player closed the loss notice beside the decision. */
   | { readonly t: "dismissRecap"; readonly stamp: Stamp }
   /** Another page of the sift up: the sift of `group` (the hit group whose pager was pressed). */
@@ -53,6 +55,7 @@ export function rankOf(m: Msg): number {
     case "newGame":
     case "listDecks":
     case "dismissRecap":
+    case "board":
     case "siftPage":
     case "hover":
       return 0;

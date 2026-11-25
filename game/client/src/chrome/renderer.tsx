@@ -27,6 +27,7 @@ import { Hand } from "./hand";
 import { Inspector } from "./inspector";
 import { LogSheet, LogStrip, LossSheet } from "./log";
 import { BackBar, Chips, GameButton, HandList, Menu, Mulligan, SiftBar, ViewHand } from "./layers";
+import { Plates, SeatFocus } from "./plates";
 import { Prompt, WaitingPrompt } from "./prompt";
 import { isOrder } from "./send";
 import type { Send } from "./send";
@@ -91,7 +92,7 @@ function controlOf(target: EventTarget | null): HTMLElement | null {
 const originOf = (el: Element | null): string | null => el?.closest<HTMLElement>("[data-fk]")?.dataset["fk"] ?? null;
 
 /** The chrome's own layers: modal, drawn over the table. */
-const MODAL: ReadonlySet<ChromeLayer> = new Set<ChromeLayer>(["sheet", "inspector", "mulligan", "menu", "hand", "log", "losses"]);
+const MODAL: ReadonlySet<ChromeLayer> = new Set<ChromeLayer>(["sheet", "inspector", "mulligan", "menu", "hand", "log", "losses", "seat"]);
 /** A sheet of the chrome's own on top: the prompt steps back. */
 const SHEETS: ReadonlySet<ChromeLayer> = new Set<ChromeLayer>(["sheet", "menu", "hand", "log", "losses"]);
 
@@ -298,6 +299,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
           hand: view.handSheet !== null,
           log: view.logSheet !== null,
           losses: view.losses !== null,
+          seat: view.seatFocus !== null,
           stack: false,
           lean: false,
           sift: false,
@@ -376,6 +378,8 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
               ) : null;
             case "losses":
               return view.losses ? <LossSheet key="losses" rows={view.losses} style={style} onClose={() => send({ t: "dismiss" })} /> : null;
+            case "seat":
+              return view.seatFocus ? <SeatFocus key="seat" view={view.seatFocus} send={send} style={style} /> : null;
             default:
               return null;
           }
@@ -414,6 +418,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
                 {drawLayer(l)}
               </div>
             ))}
+            {view.waiting === null ? <Plates plates={view.plates} open={view.seatFocus?.seat ?? null} send={send} /> : null}
             <div class={view.toast !== null ? "l-toast on" : "l-toast"} role="status" aria-live="polite">
               {toast}
             </div>
