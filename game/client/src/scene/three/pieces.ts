@@ -9,7 +9,6 @@
 // the static table's page and plate share the builders here.
 import {
   AdditiveBlending,
-  BufferAttribute,
   Color,
   Group,
   Mesh,
@@ -17,22 +16,30 @@ import {
   MeshStandardMaterial,
   PlaneGeometry,
   RepeatWrapping,
+  Vector3,
 } from "three";
 import type { Material, Object3D, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
 import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
-import { PILE_STEP, siftRoll } from "../stage/poses";
+import { pileHeight, siftRoll } from "../stage/poses";
 import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard } from "./card";
+import { Block, CastShadow, Contact, blockHeight } from "./slab";
 import type { CardObject, CardOptions } from "./card";
 import { ashFx, burstFx, chosenFx, emberFx, sigilFx, spellFx, wellFx } from "./fx";
 import type { Effect, FxKit } from "./fx";
 import type { Host } from "./host";
 import { setLook, setSignal } from "./materials";
 import type { Lease } from "./textures";
+
+const { slab } = materials;
+const FOOT = new Vector3();
+
+/** Stands (or is propped nearly upright): its stock runs behind it and its shadow is the lamp's, cast behind it. */
+const uprightOf = (p: Extract<Draw, { t: "unit" }>["posture"]): boolean => p === "stand" || p === "prop";
 
 /** Sizes the pieces are drawn at (old h.js), world units: a card is 1 tall. */
 const SIZE = {
@@ -74,9 +81,6 @@ export interface Clock {
 /** How strong a piece's effects are at its dim (h.js: to a quarter in the background of a side leaned in on). */
 const fxLevel = (fade: number): number => Math.round((1 - 0.75 * Math.min(1, fade / 0.92)) * 50) / 50;
 
-/** Where the sun is (theme lights): a standee's shadow falls away from it, sheared by this much per unit of height. */
-const SUN = materials.lights.sun.at;
-const SHEAR = { x: -SUN.x / SUN.y, z: -SUN.z / SUN.y } as const;
 
 const VELLUM_TILE = 9;
 
@@ -188,7 +192,7 @@ class CardPart {
   /** `shaded`: tapped without the turn (a spent well's card, a sifted tapped card). */
   look(tap: number, fade: number, mark: ActorView["mark"], glow: number, shaded = false): void {
     this.obj.body.rotation.z = -tap * (Math.PI / 2);
-    setLook(this.obj.material, { tap: tap > 0.5 || shaded ? 1 : 0, dim: fade });
+    setLook(this.obj.material, { tap: tap > 0.5 || shaded ? 1 : 0, dim: fade, turn: tap });
     setSignal(this.obj.material, this.host.rim, glow > 0.5 ? mark : null);
   }
   dispose(): void {
@@ -288,27 +292,6 @@ class MarkFx {
   }
 }
 
-/** A standee's shadow: the card cast onto the page by the sun, a sheared card shape running back and right of its foot. */
-function standeeShadow(env: PieceEnv, tapped: boolean, lean: number): { mesh: Mesh; lease: Lease } {
-  const w = tapped ? CH : CW,
-    y0 = tapped ? CH / 2 - CW / 2 : 0,
-    y1 = tapped ? CH / 2 + CW / 2 : CH;
-  const cast = (y: number) => ({ x: y * Math.cos(lean) * SHEAR.x, z: -y * Math.sin(lean) + y * Math.cos(lean) * SHEAR.z });
-  const near = cast(y0),
-    far = cast(y1),
-    len = Math.max(0.05, near.z - far.z);
-  const geo = new PlaneGeometry((w * 128) / 80, (len * 192) / 144);
-  const pos = geo.getAttribute("position") as BufferAttribute;
-  for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) + (pos.getY(i) / len) * (far.x - near.x));
-  const lease = env.host.painter.shade();
-  const sh = materials.surface.shade;
-  const m = new Mesh(geo, new MeshBasicMaterial({ map: lease.texture, color: sh.colour, transparent: true, opacity: sh.opacity, depthWrite: false, toneMapped: false }));
-  m.rotation.x = -Math.PI / 2;
-  m.renderOrder = 0;
-  m.position.set((near.x + far.x) / 2, sh.lift, (near.z + far.z) / 2);
-  return { mesh: m, lease };
-}
-
 /**
  * A pile's tapped copy shows this share of a card's height past the front card's right edge (a creature's place is 1.06
  * card heights: this much still clears a turned neighbour's stats); a well's lies turned 15°.
@@ -318,6 +301,12 @@ const WELL_TURN = Math.PI / 12;
 
 class UnitView implements PieceView {
   readonly group = new Group();
+  /** What lies under the cards and turns with the pile's tap: its block and its contact shadow. */
+  private readonly pile = new Group();
+  private block: Block | null = null;
+  private contact: Contact | null = null;
+  private readonly cast: CastShadow;
+  private lift = 0;
   private cards: CardPart[] = [];
   private dress: CardPart[] = [];
   private dressKey = "";
@@ -328,7 +317,6 @@ class UnitView implements PieceView {
   private readonly ground: Ground;
   private readonly marks: MarkFx;
   private ash: Effect | null = null;
-  private shadow: { mesh: Mesh; lease: Lease; tapped: boolean } | null = null;
   private well: { effect: Effect; key: string } | null = null;
   private wellSign: Decal | null = null;
   private wellAlts: Decal[] = [];
@@ -338,6 +326,9 @@ class UnitView implements PieceView {
     v: ActorView,
   ) {
     const d = v.draw as Extract<Draw, { t: "unit" }>;
+    this.group.add(this.pile);
+    this.cast = new CastShadow(env.host);
+    this.group.add(this.cast.mesh);
     this.ground = new Ground(this.group);
     this.marks = new MarkFx(env.fx, this.ground.group, d.seed, d.unit !== "well", d.posture !== "stand");
     // A standee stands in the ash it was cast into, on its shadow (h.js `standee`: the first card only).
@@ -361,41 +352,50 @@ class UnitView implements PieceView {
     const well = d.well;
     const copies = Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown)));
     // Each copy stands for members of the pile and wears their state (while members are still arriving, the first).
-    const plan = d.copies.slice(0, copies);
-    const copyKey = plan.map((c) => (c.tapped ? "t" : "r")).join("") + `|${copies}|${d.posture}`;
-    if (this.cards.length !== copies || this.copyKey !== copyKey) {
+    const plan = d.copies.length ? d.copies.slice(0, copies) : [{ face: null, tapped: false }];
+    const copyKey = plan.map((c) => (c.tapped ? "t" : "r")).join("") + `|${copies}|${d.posture}|${d.mixed}`;
+    if (this.cards.length !== this.drawnOf(plan, d).length || this.copyKey !== copyKey) {
       for (const c of this.cards) {
         this.group.remove(c.obj.group);
         c.dispose();
       }
       this.cards = [];
       this.copyKey = copyKey;
-      const mixed = plan.some((c) => c.tapped) && plan.some((c) => !c.tapped);
-      for (let i = 0; i < copies; i++) {
-        const cp = plan[i];
-        const c = new CardPart(this.host, cp?.face ?? v.face, { token: d.token });
+      this.lift = 0;
+      const drawn = this.drawnOf(plan, d);
+      const mixedTap = drawn.some((c) => c.tapped) && drawn.some((c) => !c.tapped);
+      const upright = uprightOf(d.posture);
+      const ready = drawn.filter((c) => !c.tapped).length;
+      drawn.forEach((cp, i) => {
+        const c = new CardPart(this.host, cp.face ?? v.face, { token: d.token });
         if (well) {
-          // A well's lands lie in a short stack, a little proud of the page, the top one first; its tapped ones at the
-          // bottom, turned 15° about the stack's middle (all of them, when every one is spent).
-          c.obj.group.position.set(0, 0, SIZE.well.proud + SIZE.well.step * (copies - 1 - i));
-          if (cp?.tapped) c.obj.group.rotation.z = -WELL_TURN;
-        } else if (mixed && cp?.tapped) {
+          // A well's lands lie in a short stack, the top one first; its tapped ones at the bottom, turned 15° about the
+          // stack's middle (all of them, when every one is spent). Each is one slab over the one under it.
+          c.obj.group.position.set(0, 0, slab.depth * (drawn.length - 1 - i));
+          if (cp.tapped) c.obj.group.rotation.z = -WELL_TURN;
+        } else if (mixedTap && cp.tapped) {
           // Behind the ready ones, turned as a lone tapped card is, a share of it showing past the front card's right
           // edge, feet on the front card's foot line (a standee leans back as a tapped one does).
-          const st = SIZE.copyStep, cx = CW / 2 + TAPPED_SHOW * CH - CH / 2, cy = -CH / 2 + CW / 2, z = st.z * i;
+          const cx = CW / 2 + TAPPED_SHOW * CH - CH / 2, cy = -CH / 2 + CW / 2, z = -slab.depth * (i - ready + 1);
           if (d.posture === "stand") {
             c.obj.group.rotation.x = -TAP_LEAN;
             c.obj.group.position.set(cx, cy - (CW / 2) * (1 - Math.cos(TAP_LEAN)), z - (CW / 2) * Math.sin(TAP_LEAN));
           } else c.obj.group.position.set(cx, cy, z);
         } else {
+          // Unlike cards are a staircase: each one slab under the one over it, turned a little past it, its edge showing.
           const st = SIZE.copyStep;
-          c.obj.group.position.set(st.x * i, st.y * i, st.z * i);
+          c.obj.group.position.set(st.x * i, st.y * i, upright ? -slab.depth * i : slab.depth * (ready - 1 - i));
+          c.obj.group.rotation.z = slab.stairTurn * i;
         }
-        c.obj.group.userData["tapped"] = !!cp?.tapped && (mixed || !!well);
+        c.obj.group.userData["tapped"] = cp.tapped && (mixedTap || !!well);
         this.cards.push(c);
         this.group.add(c.obj.group);
-      }
-    } else this.cards.forEach((c, i) => c.face(plan[i]?.face ?? v.face));
+      });
+    } else {
+      const drawn = this.drawnOf(plan, d);
+      this.cards.forEach((c, i) => c.face(drawn[i]?.face ?? v.face));
+    }
+    this.presence(v, d);
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
@@ -421,6 +421,51 @@ class UnitView implements PieceView {
       this.cards[0]!.obj.body.add(chip.mesh);
       this.chips.push(chip);
     });
+  }
+
+  /**
+   * The cards a unit draws whole: a well's short stack; a staircase of unlike cards; of identical cards only the top one
+   * (and a tapped copy behind it), the rest being the block under it.
+   */
+  private drawnOf(plan: readonly { face: FaceSpec | null; tapped: boolean }[], d: Extract<Draw, { t: "unit" }>): readonly { face: FaceSpec | null; tapped: boolean }[] {
+    if (d.well) return plan;
+    if (d.mixed) return plan.slice(0, slab.stairShow);
+    const top = plan.find((c) => !c.tapped) ?? plan[0];
+    const spent = plan.find((c) => c.tapped);
+    return [top, top !== spent ? spent : undefined].filter((c): c is { face: FaceSpec | null; tapped: boolean } => !!c);
+  }
+
+  /**
+   * The unit as a thing on the vellum: the block of the cards it does not draw whole under (lying) or behind (standing)
+   * the ones it does, its height its count; a lying unit rides on its block, its contact shadow under the lot.
+   */
+  private presence(v: ActorView, d: Extract<Draw, { t: "unit" }>): void {
+    const upright = uprightOf(d.posture);
+    const rest = Math.max(0, v.shown - this.cards.length);
+    const h = d.well || d.mixed ? blockHeight(rest, slab.depth) : blockHeight(rest);
+    const ready = this.cards.filter((c) => c.obj.group.userData["tapped"] !== true).length;
+    const base = TH / 2 - slab.depth;
+    if (h > 0 && !this.block) {
+      this.block = new Block(this.host, d.token);
+      this.pile.add(this.block.mesh);
+    }
+    this.block?.set(rest, h);
+    // Standing, the block stands behind the hindmost card; lying, under the lowest, and everything rides up on it.
+    if (this.block) this.block.mesh.position.z = upright ? base - slab.depth * Math.max(0, ready - 1) : base + h;
+    const lift = upright ? 0 : h;
+    if (lift !== this.lift) {
+      for (const c of this.cards) c.obj.group.position.z += lift - this.lift;
+      this.lift = lift;
+    }
+    if (!upright && !this.contact) {
+      this.contact = new Contact(this.host);
+      this.pile.add(this.contact.mesh);
+    }
+    if (this.contact) this.contact.mesh.position.z = base - 0.002;
+    // The cast shadow is the top card's (a block's top throws it past the block's far edge).
+    const top = this.cards[0];
+    if (top && this.cast.anchor.parent !== top.obj.body) top.obj.body.add(this.cast.anchor);
+    this.cast.anchor.position.z = TH / 2;
   }
 
   /**
@@ -475,7 +520,8 @@ class UnitView implements PieceView {
     }
     if (w && !this.well) {
       const effect = wellFx(this.env.fx, w.colours, d.seed, w.spent, CW, CH);
-      effect.object.position.set(0, 0, SIZE.well.glow);
+      // Its light lies on the vellum under the lands, spilling round them.
+      effect.object.position.set(0, 0, TH / 2 - slab.depth - 0.003);
       this.group.add(effect.object);
       this.well = { effect, key };
     }
@@ -500,7 +546,7 @@ class UnitView implements PieceView {
       const fit = w.theirs ? Math.min(1, ws.theirsFit / (lease.width * SIGN_U)) : w.small ? 0.8 : 1;
       sign.mesh.userData["fit"] = fit;
       const clear = ((lease.height * SIGN_U * fit) / 2) * Math.sin(ws.tilt) + 0.05;
-      sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear), z);
+      sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear) + this.lift, z);
       sign.mesh.renderOrder = 6;
       this.ground.group.add(sign.mesh);
       return sign;
@@ -537,25 +583,12 @@ class UnitView implements PieceView {
     this.marks.tick(clock, level);
     this.ash?.tick(clock.t, level, clock.still);
     this.well?.effect.tick(clock.t, level, clock.still);
-    if (d.posture === "stand") {
-      const tapped = s.tap > 0.5;
-      if (!this.shadow || this.shadow.tapped !== tapped) {
-        this.dropShadow();
-        const sh = standeeShadow(this.env, tapped, this.env.pitch + (tapped ? TAP_LEAN : 0));
-        this.shadow = { ...sh, tapped };
-        this.ground.group.add(sh.mesh);
-      }
-      (this.shadow.mesh.material as MeshBasicMaterial).opacity = materials.surface.shade.opacity * (1 - 0.6 * s.fade);
-    }
-  }
-
-  private dropShadow(): void {
-    if (!this.shadow) return;
-    this.ground.group.remove(this.shadow.mesh);
-    this.shadow.mesh.geometry.dispose();
-    (this.shadow.mesh.material as Material).dispose();
-    this.shadow.lease.release();
-    this.shadow = null;
+    // The block and the contact shadow turn with the pile; the cast shadow is the lamp's own.
+    this.pile.rotation.z = d.well ? 0 : -s.tap * (Math.PI / 2);
+    this.block?.tone(1 - 0.75 * s.fade);
+    this.contact?.fade(1 - 0.5 * s.fade);
+    this.cast.fade(1 - 0.6 * s.fade);
+    this.cast.ground = this.ground.group.getWorldPosition(FOOT).y - slab.depth * s.s;
   }
 
   dispose(): void {
@@ -568,7 +601,9 @@ class UnitView implements PieceView {
     this.marks.clear();
     this.ash?.dispose();
     this.well?.effect.dispose();
-    this.dropShadow();
+    this.block?.dispose();
+    this.contact?.dispose();
+    this.cast.dispose();
   }
 }
 
@@ -587,8 +622,9 @@ class ZoneView implements PieceView {
   readonly group = new Group();
   private readonly lean = new Group();
   private readonly body = new Group();
-  private readonly boxGeo = new PlaneGeometry(1, 1);
-  private readonly box: Mesh;
+  private readonly block: Block;
+  private readonly contact: Contact;
+  private readonly cast: CastShadow;
   private top: CardPart | null = null;
   private sign: Decal | null = null;
   private chip: Decal | null = null;
@@ -605,26 +641,31 @@ class ZoneView implements PieceView {
     this.body.position.z = -CH / 2;
     this.lean.add(this.body);
     this.group.add(this.lean);
-    // The cards under the top one: the pile's side, as tall as it is deep (a box's front face).
-    this.box = covers(new Mesh(this.boxGeo, host.kit.shared.edge));
-    this.box.position.z = CH / 2;
-    this.body.add(this.box);
+    // The cards under the top one: a block of stock, its height its count, its strata on its walls.
+    this.block = new Block(host, false);
+    this.contact = new Contact(host);
+    this.cast = new CastShadow(host);
+    this.group.add(this.cast.mesh);
     this.patch(v);
   }
 
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "zone" }>;
     const n = v.shown;
-    const h = Math.max(0.004, n * PILE_STEP);
-    this.box.scale.set(CW, h, 1);
-    this.box.position.y = h / 2;
+    const h = pileHeight(n);
     if (!this.top) {
       this.top = new CardPart(this.host, v.face);
       this.top.obj.group.rotation.x = -Math.PI / 2;
       if (d.zone === "exile") this.top.obj.group.rotation.z = SIZE.exileTurn;
       this.body.add(this.top.obj.group);
+      this.top.obj.group.add(this.block.mesh, this.contact.mesh, this.cast.anchor);
+      this.cast.anchor.position.z = TH / 2;
     } else this.top.face(v.face);
-    this.top.obj.group.position.y = h + TH / 2;
+    // The top card's stock rests on the block, the block on the vellum.
+    this.top.obj.group.position.y = h + slab.depth - TH / 2;
+    this.block.set(Math.max(0, n - 1), h);
+    this.block.mesh.position.z = TH / 2 - slab.depth;
+    this.contact.mesh.position.z = TH / 2 - slab.depth - h - 0.002;
     const word = d.zone === "graveyard" ? "Graveyard" : "Exile";
     const key = `${word} ${n}|${d.colour}`;
     if (key === this.key) return;
@@ -658,6 +699,8 @@ class ZoneView implements PieceView {
 
   look(v: ActorView): void {
     this.top?.look(0, v.sample.fade, v.mark, v.sample.glow);
+    this.cast.fade(1 - 0.6 * v.sample.fade);
+    this.cast.ground = this.group.getWorldPosition(FOOT).y;
     this.sign?.tone(1 - 0.8 * v.sample.fade);
   }
 
@@ -665,7 +708,9 @@ class ZoneView implements PieceView {
     this.top?.dispose();
     this.sign?.dispose();
     this.chip?.dispose();
-    this.boxGeo.dispose();
+    this.block.dispose();
+    this.contact.dispose();
+    this.cast.dispose();
   }
 }
 

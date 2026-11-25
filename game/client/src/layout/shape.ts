@@ -33,7 +33,8 @@ export interface Shape {
   readonly members: readonly CardId[];
 }
 
-const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
+/** How far a posture is propped toward the camera, as a share of the way to facing it. A lean lies flat on the vellum. */
+const TILT = { prop: 0.85, lean: 0, flat: 0 } as const;
 
 /** Plates draw last and without a depth test: over everything. */
 const PLATE_ORDER = 1e6;

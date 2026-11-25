@@ -5,6 +5,43 @@ import { fx } from "../tokens";
 /** A card in world units: it is 1 tall. (Layout's CW, CH and TH are the same numbers; a test holds them equal.) */
 export const card = { w: 0.716, h: 1, thickness: 0.014, corner: 0.045, curveSegments: 4, faceLift: 0.0008 } as const;
 
+/**
+ * A card as a playing piece on the table (the scene's, never layout's: layout's TH stays the card's true thickness). It
+ * is drawn as a slab of cream stock, far thicker than a real card, its depth running down from the face, so a card
+ * lying on the vellum has a lit near edge and a stack of them is a block whose height is its count.
+ */
+export const slab = {
+  /** The stock under a face, world units (about 3 px at table size). */
+  depth: 0.03,
+  /** The stock's colour: lit by the lamp, so its near edge catches the light and its sides fall into shade. */
+  stock: 0xe2d3ac,
+  tokenStock: 0xcdbf98,
+  roughness: 0.85,
+  /** What each card under the top one adds to a block, and the most a block rises (a quarter of a card). */
+  step: 0.018,
+  cap: 0.25,
+  /** A zone's block (a library, a graveyard): finer, so a library of 67 is the tallest thing on its leaf. */
+  zoneStep: 0.0075,
+  zoneCap: 0.4,
+  /** Strata on a block's walls: one line per card, never closer together than this (world units). */
+  strataMin: 0.016,
+  /** A mixed pile is a staircase: each card one slab higher than the one under it, turned this much past it. */
+  stairTurn: 0.035,
+  stairShow: 5,
+  /** The contact shadow under a lying card or block: this much larger than it, this dark. */
+  contact: { grow: 1.1, opacity: 0.62 },
+  /**
+   * The cast shadow: the card's soft silhouette projected onto the vellum it rests on (planar, so it is exact for any
+   * posture), its shade, how dark, and where the lamp it is cast from stands: on my side, above and to the left, low
+   * enough that a standing card's shadow clears its own top and falls back and to the right, away from me.
+   */
+  cast: { colour: 0x1e1004, opacity: 0.5, from: { x: -8, y: 11, z: 10 } },
+  /** A standing card's foot rests on the vellum: its lowest corner this far off it. */
+  standOff: 0.004,
+  /** The lamp's line along the near edge of a face (a share of the card), and how bright. */
+  highlight: { w: 0.012, k: 0.22 },
+} as const;
+
 /** What a card's edge burns with, by signal: the band's width in uv (a fraction of the card). */
 export const rim = {
   /** No signal: the rim is dark and thin. */
