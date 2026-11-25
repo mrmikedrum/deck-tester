@@ -1,10 +1,11 @@
 // attack: tap creatures to toggle them at the current defender; tap another player's plate (or a planeswalker) to make
 // it the defender, which re-aims the picks so far; drag a creature onto a player or a planeswalker to attack it.
-// "Everyone attacks" picks every creature at the current defender; Clear; "Attack (n)" or "No attack" sends.
+// "All attack" picks every creature at the current defender; Clear; "Attack (n)" or "No attack" sends.
 import type { AttackDecision, CardId } from "../../protocol";
 import { seatId } from "../../model";
 import type { Target as ModelTarget } from "../../model";
 import { cardOf, hasSeat } from "../facts";
+import { shortCard } from "../text";
 import { aim, defaultDefender, everyone, retarget, toggleAttacker } from "../interactions/pair";
 import { base, btn } from "./kind";
 import type { Btn, Kind } from "./kind";
@@ -20,17 +21,18 @@ export const attack: Kind<AttackDecision> = {
     value: 0,
     mode: null,
   }),
+  // The lit creatures say what may attack; one hint before the first pick, where the drag is not obvious.
   words(c) {
-    const n = c.draft.sel.length, to = c.draft.attackTo;
-    const name = typeof to === "number" ? (cardOf(c.f, to as CardId)?.display ?? "") : (to ?? "");
-    return { headline: n ? `Attacking with ${n}. Tap more, or drag one to another player` : `Tap creatures to attack ${name}, or drag them to a player` };
+    const to = c.draft.attackTo;
+    const name = typeof to === "number" ? shortCard(cardOf(c.f, to as CardId)?.display ?? "") : (to ?? "");
+    return { headline: "Declare attackers", ...(c.draft.sel.length ? {} : { hint: `Tap: ${name} · drag: another player` }) };
   },
   buttons(c) {
     const { d, draft } = c, n = draft.sel.length;
     const out: Btn[] = [btn("attack", n ? `Attack (${n})` : "No attack", () => ({ answer: { answer: [...draft.sel] } }), { tone: "primary" })];
     if (n) out.unshift(btn("clear", "Clear", () => ({ draft: { ...draft, sel: [] } })));
     if (new Set(d.refs.map((r) => r.card)).size > n)
-      out.unshift(btn("everyone", "Everyone attacks", () => ({ draft: { ...draft, sel: everyone(d.refs, draft.attackTo) } })));
+      out.unshift(btn("everyone", "All attack", () => ({ draft: { ...draft, sel: everyone(d.refs, draft.attackTo) } })));
     return out;
   },
   marks(c, m) {

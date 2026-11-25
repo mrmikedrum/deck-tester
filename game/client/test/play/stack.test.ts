@@ -1,6 +1,6 @@
-// The prompt's stack summary and context, in the old client's words (live.js `stackSummary` and `status`), over the
-// corpus: a stack of three with a spell aimed at my creature, the top resolving, a spell aimed at a player, triggers,
-// my own spell's targets being chosen, and the cards whose wording the old summary shortened.
+// The prompt's stack summary and headline over the corpus: one line an item, numbered, only for two or more (a lone
+// item is the card held up); a stack of three with a spell aimed at my creature, the top resolving, a spell aimed at a
+// player, triggers, and my own spell's targets being chosen.
 import { describe, expect, it } from "vitest";
 import { promptOf } from "../../src/play/prompt";
 import type { PromptOf } from "../../src/play/prompt";
@@ -21,57 +21,44 @@ const opened = (env: Parameters<Table["open"]>[0]): Table => {
   t.open(env);
   return t;
 };
-/** A row as the old markup read: `<order> <title> · <who>`, then the effect. */
-const lines = (p: PromptOf): string[] => p.stack.map((r) => `${r.order} ${r.title} · ${r.who} | ${r.effect}`);
+/** A row as the chrome sets it: "1 Doom Blade → Serra Angel". */
+const lines = (p: PromptOf): string[] => p.stack.map((r) => `${r.n} ${r.title}${r.at ? ` → ${r.at}` : ""}`);
 
 describe("the stack summary, top first", () => {
-  it("a stack of three: the next to resolve first; an opponent's spell aimed at my creature is a pending threat", () => {
+  it("a stack of three: numbered, top first; an opponent's spell aimed at my creature in red", () => {
     const p = prompt(opened(STACK_OF_THREE));
-    expect(lines(p)).toEqual([
-      "Next if all pass Doom Blade · Dack | Aimed at Serra Angel. Destroy target nonblack creature.",
-      "Pending threat Doom Blade · Atraxa | Aimed at your Grizzly Bears. Destroy target nonblack creature.",
-      "Pending Thorn of the Black Rose · You | Deathtouch",
-    ]);
+    expect(lines(p)).toEqual(["1 Doom Blade → Serra Angel", "2 Doom Blade → your Grizzly Bears", "3 Thorn of the Black Rose"]);
     expect(p.stack.map((r) => r.aimed)).toEqual([false, true, false]);
-    expect(p.headline).toBe("You can respond");
-    expect(p.context).toBeNull(); // a play decision has none (the chrome shows the summary while the stack layer is up)
+    // Dack's Doom Blade on top, at Atraxa's Serra Angel: what is cast, in game terms; one response, two buttons.
+    expect(p.headline).toBe("Dack casts Doom Blade");
+    expect(p.context).toBeNull();
   });
 
-  it("the top resolves: the threat is next, in red", () => {
+  it("the top resolves: the threat is next, in red, and the headline names what it targets", () => {
     const t = opened(STACK_OF_THREE);
     t.open(RESOLVING);
     const p = prompt(t);
-    expect(lines(p)).toEqual([
-      "Next if all pass Doom Blade · Atraxa | Aimed at your Grizzly Bears. Destroy target nonblack creature.",
-      "Pending Thorn of the Black Rose · You | Deathtouch",
-    ]);
+    expect(lines(p)).toEqual(["1 Doom Blade → your Grizzly Bears", "2 Thorn of the Black Rose"]);
     expect(p.stack[0]!.aimed).toBe(true);
     expect(p.tone).toBe("threat");
+    expect(p.headline).toBe("Atraxa's Doom Blade targets your Grizzly Bears");
   });
 
-  it("a spell aimed at a player", () => {
+  it("a lone item has no summary: the card is held up", () => {
     const p = prompt(opened(AT_A_PLAYER));
-    expect(lines(p)).toEqual([
-      "Next if all pass Lightning Bolt · You | Aimed at Princess. Lightning Bolt deals 3 damage to any target.",
-    ]);
-    expect(p.stack[0]!.item).toBe(682);
+    expect(p.stack).toEqual([]);
+    expect(p.headline).toBe("");
   });
 
-  it("triggers: each named as its card's ability, its effect the trigger's first sentence", () => {
-    expect(lines(prompt(opened("023-play-monarch.json")))).toEqual([
-      "Next if all pass Rancor's ability · You | When Rancor is put into a graveyard from the battlefield, return Rancor to its owner's hand.",
-      "Pending Soul Warden's ability · You | Whenever another creature enters, you gain 1 life.",
-      "Pending Soul's Attendant's ability · You | Whenever another creature enters, you may gain 1 life.",
-    ]);
-    // "Thorn of the Black Rose" is "Thorn" (live.js `shortCard`)
-    expect(prompt(opened("017-play-mana-pool.json")).stack[0]!.title).toBe("Thorn's ability");
+  it("triggers: each its card's ability, short names", () => {
+    expect(lines(prompt(opened("023-play-monarch.json")))).toEqual(["1 Rancor ability", "2 Soul Warden ability", "3 Soul's Attendant ability"]);
   });
 
   it("an empty stack: no summary, and the context is the choice's own again", () => {
     for (const n of ["016-order-mana-pool.json", "026-play-monarch.json"]) expect(prompt(opened(n)).stack).toEqual([]);
     const p = prompt(opened("024-targets-monarch.json"));
     expect(p.stack).toEqual([]);
-    expect(p.headline).toBe("Choose a target");
+    expect(p.headline).toBe("Target");
     expect(p.context).toBe("this deals 3 damage to any target.");
   });
 });
@@ -90,24 +77,16 @@ describe("choosing my own spell's targets", () => {
       }),
     );
 
-  it("the top row says so, then names the picks; the stack note says the same", () => {
+  it("the headline says what is chosen for what; no note (the arc draws as targets are picked)", () => {
     const t = choosing();
-    expect(lines(prompt(t))).toEqual(["Next if all pass Thorn of the Black Rose · You | Choosing targets"]);
-    expect(t.p.controls.stackNote).toBe("Choosing targets");
-    // The context is kept with a stack (live.js `context`: the spell asking): the chrome shows it once the stack layer
-    // is set aside.
-    expect(prompt(t).context).toBe("Thorn of the Black Rose");
+    expect(prompt(t).headline).toBe("Up to 2 targets for Thorn of the Black Rose");
+    expect(prompt(t).stack).toEqual([]);
     t.tapSeat("Princess");
-    expect(lines(prompt(t))).toEqual([
-      "Next if all pass Thorn of the Black Rose · You | Aimed at Princess. Deathtouch",
-    ]);
-    expect(t.p.controls.stackNote).toBe("Aimed at Princess.");
-    t.tapSeat("You");
-    expect(prompt(t).stack[0]!.effect).toBe("Aimed at Princess and you. Deathtouch");
+    expect(prompt(t).headline).toBe("Up to 2 targets for Thorn of the Black Rose");
   });
 });
 
-describe("the wording the old summary shortened", () => {
+describe("a spell aimed at mine", () => {
   /** The Bolt of 025, recast as another spell aimed at my Soul Warden (820). */
   const recast = (name: string, text: string) =>
     opened(
@@ -126,58 +105,9 @@ describe("the wording the old summary shortened", () => {
       }),
     );
 
-  it("Swords to Plowshares names its target", () => {
-    const p = prompt(
-      recast("Swords to Plowshares", "Exile target creature. Its controller gains life equal to its power."),
-    );
-    expect(lines(p)).toEqual([
-      "Next if all pass Swords to Plowshares · Princess | Exile your Soul Warden. Its controller gains life equal to its power.",
-    ]);
-    expect(p.stack[0]!.aimed).toBe(true);
-  });
-
-  it("a counterspell names what it counters; Arcane Denial is shortened", () => {
-    const p = prompt(recast("Arcane Denial", ""));
-    expect(p.stack[0]!.effect).toBe(
-      "Counter your Soul Warden. Next upkeep, its controller may draw up to two. You draw one.",
-    );
-  });
-
-  it("a target the table does not show is an unrecorded target", () => {
-    const t = opened(
-      edited(AT_A_PLAYER, (v) => {
-        (v["stack"] as Record<string, unknown>[])[0]!["targets"] = [99999];
-      }),
-    );
-    expect(prompt(t).stack[0]!.effect).toBe("Aimed at unrecorded target. Lightning Bolt deals 3 damage to any target.");
-  });
-});
-
-describe("who chose an item of mine (live.js `playChoice`, `st.actor`)", () => {
-  it("the play I sent labels the spell it brings to the stack, once; a refused one labels nothing", () => {
-    const t = opened("023-play-monarch.json");
-    t.pick(2); // Lightning Bolt
-    expect(t.lastSend()?.body).toMatchObject({ answer: [2] });
-    t.settled("applied");
-    t.open("024-targets-monarch.json");
-    t.open(AT_A_PLAYER);
-    expect(prompt(t).stack.map((r) => r.who)).toEqual(["You · Your choice"]);
-
-    const refused = opened("023-play-monarch.json");
-    refused.pick(2);
-    refused.settled("refused");
-    refused.open("024-targets-monarch.json");
-    refused.open(AT_A_PLAYER);
-    expect(prompt(refused).stack.map((r) => r.who)).toEqual(["You"]);
-  });
-
-  it("a cut back to an earlier position forgets the labels", () => {
-    const t = opened("023-play-monarch.json");
-    t.pick(2);
-    t.settled("applied");
-    t.open("024-targets-monarch.json");
-    t.open(AT_A_PLAYER);
-    t.open(AT_A_PLAYER, { continuity: "rewind" });
-    expect(prompt(t).stack.map((r) => r.who)).toEqual(["You"]);
+  it("Swords to Plowshares: the headline names it and what it targets, in red; OK acknowledges it", () => {
+    const p = prompt(recast("Swords to Plowshares", "Exile target creature. Its controller gains life equal to its power."));
+    expect(p.headline).toBe("Princess's Swords to Plowshares targets your Soul Warden");
+    expect(p.tone).toBe("threat");
   });
 });

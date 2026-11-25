@@ -1,5 +1,6 @@
 // 6. pay, 7. on-table targets/choose (a. mixed vs same-name piles), 8. sheet decisions (order, repeat, number).
 const { test, expect, snapshot, withDecision, find, locate, pending } = require("./harness.js");
+const { label } = require("./labels.js");
 
 const you = (s, n, k = 0) => find(s, "You", n, k);
 const grid = t => t.sheet().locator(".l-grid button");
@@ -13,11 +14,11 @@ test.describe("pay", () => {
   test("tap sources, then Pay sends them in the order tapped", async ({ table }) => {
     const s = snapshot("main");
     await table.open(simple(s));
-    expect(await table.buttons()).toEqual(["Auto-pay", "Let Forge decide"]);
+    expect(await table.buttons()).toEqual(["Auto-pay", label("Let Forge decide")]);
     await table.tapCard(you(s, "Mystic Sanctuary").id);
     await table.tapCard(you(s, "Otawara, Soaring City").id);
     await table.tapCard(you(s, "Island", 3).id);
-    expect(await table.buttons()).toEqual(["Undo", "Pay", "Let Forge decide"]);
+    expect(await table.buttons()).toEqual(["Undo", "Pay", label("Let Forge decide")]);
     expect(table.answers()).toEqual([]);
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2, 1, 3]);
@@ -94,7 +95,7 @@ test.describe("targets and choices on the table", () => {
   test("more than one wanted: taps pick, Done is disabled below min and sends the picks", async ({ table }) => {
     const s = snapshot("main");
     await table.open(choice(s, { min: 2, max: 3 }));
-    expect(await table.buttons()).toEqual(["List", "None", "Let Forge decide"]);
+    expect(await table.buttons()).toEqual(["List", "None", label("Let Forge decide")]);
     expect(await table.button("None").isDisabled()).toBe(true);
     await table.tapCard(OPTS(s)[2].id);
     expect(table.answers()).toEqual([]);

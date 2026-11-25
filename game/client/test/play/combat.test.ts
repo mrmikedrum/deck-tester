@@ -27,12 +27,13 @@ describe("attack", () => {
   it("tap a creature to pick it at the first opponent; Attack (n) sends; the draft is drawn as lanes (corpus 037)", () => {
     const t = new Table();
     t.open(ATTACK);
-    expect(t.buttons()).toEqual(["Everyone attacks", "No attack", "Let Forge decide"]);
-    expect(t.p.controls.prompt?.headline).toBe("Tap creatures to attack Atraxa, or drag them to a player");
+    expect(t.buttons()).toEqual(["All attack", "No attack", "Auto"]);
+    expect(t.p.controls.prompt?.headline).toBe("Declare attackers");
+    expect(t.p.controls.prompt?.hint).toBe("Tap: Atraxa · drag: another player");
     expect(t.p.board.marks.seats.get("Atraxa" as never)).toBe("selected");
     t.tapCard(871);
-    expect(t.buttons()).toEqual(["Clear", "Attack (1)", "Let Forge decide"]);
-    expect(t.p.controls.prompt?.headline).toBe("Attacking with 1. Tap more, or drag one to another player");
+    expect(t.buttons()).toEqual(["Clear", "Attack (1)", "Auto"]);
+    expect([t.p.controls.prompt?.headline, t.p.controls.prompt?.hint]).toEqual(["Declare attackers", null]);
     expect(t.p.board.combat).toEqual({ attacks: [{ attacker: 871, defender: { seat: "Atraxa" } }], blocks: [] });
     expect(t.p.board.marks.cards.get(871 as CardId)).toBe("selected");
     expect(t.answers()).toEqual([]);
@@ -48,7 +49,7 @@ describe("attack", () => {
     t.tapCard(871);
     expect(t.buttons()).toContain("Attack (1)");
     t.press("Clear");
-    expect(t.buttons()).toEqual(["Everyone attacks", "No attack", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["All attack", "No attack", "Auto"]);
     expect(t.p.board.combat).toBeNull();
     t.press("No attack");
     expect(t.answers()).toEqual([[]]);
@@ -69,7 +70,7 @@ describe("attack", () => {
     const t = new Table();
     t.open(ATTACK);
     t.tapCard(873);
-    expect(t.p.controls.prompt?.headline).toBe("Tap creatures to attack Chandra Nalaar, or drag them to a player");
+    expect(t.p.controls.prompt?.hint).toBe("Tap: Chandra Nalaar · drag: another player");
     t.tapCard(871);
     expect(t.p.board.combat?.attacks).toEqual([{ attacker: 871, defender: { card: 873 } }]);
     t.press("Attack (1)");
@@ -80,15 +81,15 @@ describe("attack", () => {
     const t = new Table();
     t.open(ATTACK);
     expect(t.tapSeat("You")).toEqual([{ kind: "unclaimed" }]);
-    expect(t.p.controls.prompt?.headline).toMatch(/attack Atraxa/);
+    expect(t.p.controls.prompt?.hint).toMatch(/Tap: Atraxa/);
   });
 
-  it("\"Everyone attacks\" picks every creature at the current defender and is gone once all are picked (037 extended)", () => {
+  it("\"All attack\" picks every creature at the current defender and is gone once all are picked (037 extended)", () => {
     const t = new Table();
     t.open(twoAttackers());
     t.tapSeat("Princess");
-    t.press("Everyone attacks");
-    expect(t.buttons()).toEqual(["Clear", "Attack (2)", "Let Forge decide"]);
+    t.press("All attack");
+    expect(t.buttons()).toEqual(["Clear", "Attack (2)", "Auto"]);
     t.press("Attack (2)");
     expect(t.answers()).toEqual([[5, 11]]);
   });
@@ -116,7 +117,7 @@ describe("attack", () => {
   it("the first defender is the first opponent still in the game (037 extended, Atraxa eliminated)", () => {
     const t = new Table();
     t.open(twoAttackers((v) => void (v["players"] = (v["players"] as { name: string }[]).filter((p) => p.name !== "Atraxa"))));
-    expect(t.p.controls.prompt?.headline).toMatch(/attack Dack/);
+    expect(t.p.controls.prompt?.hint).toMatch(/Tap: Dack/);
     t.tapCard(871);
     t.press("Attack (1)");
     expect(t.answers()).toEqual([[3]]);
@@ -159,10 +160,10 @@ describe("block", () => {
   it("a blocker with a single legal pairing picks it with one tap (corpus 033)", () => {
     const t = new Table();
     t.open(BLOCK);
-    expect(t.buttons()).toEqual(["No blocks", "Let Forge decide"]);
-    expect(t.p.controls.prompt?.headline).toBe("Tap a creature, then the attacker it blocks (or drag it there)");
+    expect(t.buttons()).toEqual(["No blocks", "Auto"]);
+    expect([t.p.controls.prompt?.headline, t.p.controls.prompt?.hint]).toEqual(["Declare blockers", "Tap a creature, then its attacker"]);
     t.tapCard(818);
-    expect(t.buttons()).toEqual(["Clear", "Block (1)", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["Clear", "Block (1)", "Auto"]);
     expect(t.p.board.combat).toEqual({ attacks: [], blocks: [{ blocker: 818, attacker: 872 }] });
     t.press("Block (1)");
     expect(t.answers()).toEqual([[1]]);
@@ -173,7 +174,7 @@ describe("block", () => {
     t.open(BLOCK);
     t.tapCard(818);
     t.tapCard(818);
-    expect(t.buttons()).toEqual(["No blocks", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["No blocks", "Auto"]);
     t.tapCard(820);
     t.press("Clear");
     t.press("No blocks");
@@ -184,8 +185,8 @@ describe("block", () => {
     const t = new Table();
     t.open(choices());
     t.tapCard(818);
-    expect(t.buttons()).toEqual(["Clear", "No blocks", "Let Forge decide"]);
-    expect(t.p.controls.prompt?.headline).toBe("Now tap the attacker for Grizzly Bears to block");
+    expect(t.buttons()).toEqual(["Clear", "No blocks", "Auto"]);
+    expect(t.p.controls.prompt?.hint).toBe("Grizzly Bears: tap an attacker");
     // holding: only the attackers it can block stay lit, in red
     const m = t.p.board.marks.cards;
     expect([m.get(872 as CardId), m.get(834 as CardId), m.get(237 as CardId)]).toEqual(["danger", "danger", undefined]);
@@ -206,7 +207,7 @@ describe("block", () => {
     t.tapCard(821);
     const fx = t.tapCard(872);
     expect(ofKind(fx, "toast")).toEqual([{ kind: "toast", text: "That creature can't block that attacker" }]);
-    expect(t.buttons()).toEqual(["Clear", "No blocks", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["Clear", "No blocks", "Auto"]);
     t.tapCard(237);
     t.press("Block (1)");
     expect(t.answers()).toEqual([[4]]);

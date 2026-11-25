@@ -1,6 +1,7 @@
 // 2. `play` decisions: Pass, dragging a hand card up, tapping glowing permanents, direct mana, rapid input, cancelled drags.
 //    (also d. duplicate input, e. pointer cancellation, b. mana activation)
 const { test, expect, snapshot, withDecision, find, inHand, opponentSpell, sleep, locate, pending } = require("./harness.js");
+const { label } = require("./labels.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
 const passLabel = async t => (await t.page.locator(".l-buttons .l-pass").first().innerText()).trim();
@@ -15,8 +16,8 @@ test.describe("the pass button", () => {
     ["attackers aimed at me", s => withDecision(s, { ...PASS }, v => {
       v.active = "Marath"; v.phase = "COMBAT_DECLARE_ATTACKERS";
       v.combat = { attackers: [{ id: find(s, "Marath", "Herd Baloth").id, defender: "You" }], blockers: [] };
-    }), "Pass toward blocks"],
-    ["an opponent's spell on the stack", s => withDecision(s, { ...PASS }, v => { v.active = "Dack"; opponentSpell(v, "Swords to Plowshares", [find(s, "Marath", "Herd Baloth").id]); }), "Pass priority"],
+    }), label("Pass toward blocks")],
+    ["an opponent's spell on the stack", s => withDecision(s, { ...PASS }, v => { v.active = "Dack"; opponentSpell(v, "Swords to Plowshares", [find(s, "Marath", "Herd Baloth").id]); }), label("Pass priority")],
   ];
   for (const [name, make, label] of cases) {
     test(`${name}: "${label}" sends [1]`, { tag: "@cast" }, async ({ table }) => {
@@ -28,16 +29,16 @@ test.describe("the pass button", () => {
   }
   test("with plays on offer the pass button keeps its label and the plays get their own button", { tag: "@cast" }, async ({ table }) => {
     await table.open("main");
-    expect(await table.buttons()).toEqual(["Choose a play (6)", "Let Forge decide", "To combat"]);
+    expect(await table.buttons()).toEqual([label("Choose a play (6)"), label("Let Forge decide"), "To combat"]);
     await table.press("To combat");
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
   // Discrepancy with the doc's wording: with a spell on the stack AND a "Let Forge decide" button (an option exists, or the
-  // spell is mine) the pass button is labelled plain "Pass", not "Pass priority".
+  // spell is mine) the pass button is labelled plain "Pass", not "Pass priority". (The new entry: "Resolve", a choice.)
   test("an opponent's spell and a response on offer: the pass button reads \"Pass\"", { tag: "@cast" }, async ({ table }) => {
     const s = snapshot("threat");
     await table.open(s);
-    expect(await passLabel(table)).toBe("Pass");
+    expect(await passLabel(table)).toBe(label("Pass", "Resolve"));
     await table.pass();
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
@@ -116,7 +117,7 @@ test.describe("tapping what glows", () => {
   });
   test("\"Choose a play\" lists everything; the list never sends by itself", async ({ table }) => {
     await table.open("main");
-    await table.press("Choose a play (6)");
+    await table.press(label("Choose a play (6)"));
     expect(await table.sheetTitle()).toBe("Everything you can play");
     expect(await table.sheet().locator("button.l-opt").count()).toBe(6);
     expect(table.answers()).toEqual([]);

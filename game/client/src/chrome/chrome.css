@@ -75,7 +75,7 @@
     text-align: center;
   }
   .l-where {
-    font: 600 calc(15 * var(--u)) / 1.15 var(--ui);
+    font: italic 400 calc(12 * var(--u)) / 1.2 var(--serif);
     color: var(--ink-2);
   }
   .l-what {
@@ -130,9 +130,11 @@
     pointer-events: none;
   }
 
-  /* Buttons, three tiers and one rule each. Primary (the answer): bronze with an ember lit in it, cream text.
-     Secondary: a bronze rim round a flat, quiet bronze inset carrying the ink label. Tertiary (letting Forge decide):
-     an ink-ruled pill in the parchment's own tone. */
+  /* Buttons: one family of cast plates, two bronzes. Every control in the prompt, the sheets and on the table's edge is a
+     rectangle of bronze with a top highlight and a bottom lip, so a wide plate still has thickness. Primary (the answer,
+     one per prompt): dark bronze with an ember lit only as an inner line, cream engraved type. Secondary (everything
+     else that acts): a bronze rim round a flat tan inset carrying the ink label. Destructive (starting a new game over
+     one in progress): the inset enamelled oxblood. */
   .l-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -146,54 +148,66 @@
   }
   .l-buttons button,
   .l-row button,
-  .l-number button {
-    min-height: max(40px, calc(40 * var(--u)));
-    padding: 0 calc(15 * var(--u));
-    border-radius: 6px;
+  .l-number button,
+  .l-menu,
+  .l-hand-view,
+  .l-stackchip,
+  .l-sift .pager button,
+  .l-back button {
+    position: relative;
+    min-height: 44px;
+    padding: 0 calc(16 * var(--u));
     border: 0;
+    border-radius: 5px;
     cursor: pointer;
     background: var(--btn-inset), var(--plaque);
-    box-shadow: var(--plaque-shadow);
+    box-shadow: var(--plaque-shadow), var(--btn-edge);
     color: var(--btn-ink);
     font: 400 calc(16 * var(--u)) var(--serif);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
     text-shadow: var(--btn-ink-lift);
+    transition:
+      transform 80ms,
+      box-shadow 80ms;
   }
   .l-buttons button.act,
   .l-row .l-done {
+    min-width: calc(96 * var(--u));
     color: var(--btn-act-ink);
     text-shadow: var(--btn-act-ink-shadow);
+    font-size: calc(17 * var(--u));
     background: var(--btn-act);
-    box-shadow: var(--plaque-shadow), var(--btn-act-glow);
+    box-shadow: var(--plaque-shadow), var(--btn-edge), var(--btn-act-glow);
   }
-  .l-buttons button.ghost,
-  .l-row .l-ghost {
-    min-height: 34px;
-    padding: 0 calc(13 * var(--u));
-    border-radius: 999px;
-    background: var(--btn-ghost);
-    box-shadow: var(--btn-ghost-rule);
-    color: var(--ink);
-    font: 400 calc(14.5 * var(--u)) var(--serif);
-    letter-spacing: 0.02em;
-    text-shadow: none;
-  }
-  @media (hover: hover) {
-    .l-buttons button.ghost:hover:not(:disabled),
-    .l-row .l-ghost:hover:not(:disabled) {
-      background: var(--btn-ghost-hover);
-    }
-  }
-  .l-buttons button:disabled,
-  .l-row button:disabled,
-  .l-number button:disabled {
-    opacity: 0.35;
-    cursor: default;
+  .l-row button.danger {
+    color: var(--btn-act-ink);
+    text-shadow: var(--btn-act-ink-shadow);
+    background: var(--btn-danger), var(--plaque);
   }
   .l-buttons button:active:not(:disabled),
   .l-row button:active:not(:disabled),
-  .l-number button:active:not(:disabled) {
-    transform: translateY(1px);
+  .l-number button:active:not(:disabled),
+  .l-menu:active,
+  .l-hand-view:active,
+  .l-stackchip:active,
+  .l-sift .pager button:active:not(:disabled),
+  .l-back button:active {
+    transform: translateY(2px);
+    box-shadow: var(--plaque-press), var(--btn-edge), var(--btn-pressed);
+  }
+  .l-buttons button.act:active:not(:disabled),
+  .l-row .l-done:active:not(:disabled) {
+    box-shadow: var(--plaque-press), var(--btn-edge), var(--btn-pressed), var(--btn-act-glow-pressed);
+  }
+  /* Unlit, still bronze: not an opacity fade. */
+  .l-buttons button:disabled,
+  .l-row button:disabled,
+  .l-number button:disabled,
+  .l-sift .pager button:disabled {
+    cursor: default;
+    filter: var(--btn-off);
+    box-shadow: var(--plaque-press);
+    color: color-mix(in srgb, currentColor 45%, transparent);
   }
   .l-buttons button:focus-visible,
   .l-row button:focus-visible,
@@ -202,26 +216,6 @@
   .l-card:focus-visible {
     outline: 3px solid var(--sig-selected);
     outline-offset: 2px;
-  }
-  .l-play-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-  }
-  .l-play-buttons:has(.l-stack-rules):has(.l-delegate, .auto) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
-  }
-  .l-play-buttons button {
-    min-width: 0;
-    padding-inline: calc(6 * var(--u));
-  }
-  .l-play-buttons .l-choice {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    padding-block: calc(7 * var(--u));
-  }
-  .l-play-buttons button:is(.l-stack-rules, .l-delegate) {
-    padding-inline: calc(5 * var(--u));
   }
   .l-choice-label,
   .l-response-names {
@@ -237,12 +231,6 @@
     max-height: calc(48 * var(--u));
     overflow: auto;
     font: 600 calc(13.5 * var(--u)) / 1.3 var(--ui);
-  }
-  /* Every button in the prompt and the sheets is a 44px target, the pills too. */
-  .l-prompt .l-buttons button,
-  .l-row button,
-  .l-number button {
-    min-height: 44px;
   }
   .l-number button {
     min-width: 44px;
@@ -260,9 +248,9 @@
     position: absolute;
     left: 0;
     bottom: 0;
-    height: 4px;
+    height: 3px;
     width: 100%;
-    background: var(--bone-3);
+    background: var(--sig-option);
     transform-origin: left;
     pointer-events: none;
   }
@@ -462,7 +450,7 @@
     gap: calc(16 * var(--u));
   }
   .l-number button.end {
-    opacity: 0.45;
+    filter: var(--btn-off);
   }
   .l-number output {
     font: 700 calc(44 * var(--u)) var(--num);
@@ -748,17 +736,6 @@
     pointer-events: auto;
     left: calc(12 * var(--u) + var(--safe-left, 0px));
     top: calc(10 * var(--u) + var(--safe-top, 0px));
-    min-height: 44px;
-    padding: 0 calc(16 * var(--u));
-    border-radius: 6px;
-    border: 0;
-    background: var(--btn-inset), var(--plaque);
-    box-shadow: var(--plaque-shadow);
-    color: var(--btn-ink);
-    font: 400 calc(16 * var(--u)) var(--serif);
-    letter-spacing: 0.04em;
-    text-shadow: var(--btn-ink-lift);
-    cursor: pointer;
   }
   .l-hand-view {
     position: absolute;
@@ -767,14 +744,6 @@
     left: calc(14 * var(--u) + var(--safe-left, 0px));
     bottom: calc(222 * var(--u) + var(--safe-bottom, 0px));
     width: max-content;
-    min-height: 44px;
-    padding: 0 calc(12 * var(--u));
-    background: var(--sheet);
-    color: var(--ink);
-    border: 1px solid var(--hand-view-rule);
-    border-radius: 6px;
-    font: 400 calc(15 * var(--u)) / 1.1 var(--serif);
-    cursor: pointer;
   }
   /* Top right, clear of the seats' plaques (the across seat's sits top centre): the chips, then the back bar. */
   .l-corner {
@@ -794,18 +763,6 @@
   /* A layer set aside: a slip at the top that brings it back. */
   .l-stackchip {
     pointer-events: auto;
-    min-height: 44px;
-    padding: calc(6 * var(--u)) calc(16 * var(--u));
-    border: 0;
-    border-radius: 3px;
-    background: var(--sheet-quiet);
-    color: var(--ink);
-    box-shadow: var(--sheet-shadow);
-    outline: 1px solid var(--sheet-rule);
-    outline-offset: -4px;
-    font: italic 400 calc(17 * var(--u)) var(--serif);
-    letter-spacing: 0.02em;
-    cursor: pointer;
   }
   /* A sift's caption, just above its cards: what the pile is, how to use it, its pages, the way back. */
   .l-sift {
@@ -848,18 +805,8 @@
   }
   .l-sift .pager button {
     min-width: 44px;
-    min-height: 44px;
-    border: 0;
-    border-radius: 6px;
-    background: var(--plaque);
-    box-shadow: var(--plaque-shadow);
-    color: var(--btn-ink);
-    font: 600 calc(22 * var(--u)) var(--serif);
-    cursor: pointer;
-  }
-  .l-sift .pager button:disabled {
-    opacity: 0.4;
-    cursor: default;
+    padding: 0 calc(10 * var(--u));
+    font-size: calc(22 * var(--u));
   }
   .l-sift .g-close {
     position: static;
@@ -877,17 +824,7 @@
     font: italic 400 calc(18 * var(--u)) var(--serif);
     letter-spacing: 0.02em;
   }
-  .l-back button {
-    min-height: 44px;
-    padding: 0 16px;
-    border-radius: 6px;
-    border: 0;
-    background: var(--plaque);
-    box-shadow: var(--plaque-shadow);
-    color: var(--btn-ink);
-    font: 600 calc(16 * var(--u)) var(--serif);
-    cursor: pointer;
-  }
+
   .l-menu:focus-visible,
   .l-hand-view:focus-visible,
   .l-stackchip:focus-visible,
@@ -1330,31 +1267,20 @@
     padding: calc(3 * var(--u)) calc(5 * var(--u));
     border-bottom: 1px solid var(--stackinfo-rule);
   }
-  .l-stackinfo li:first-child {
-    background: var(--stackinfo-next);
-    box-shadow: inset 2px 0 0 var(--stackinfo-next-edge);
-  }
   .l-order {
     color: var(--ink-2);
     font: 700 calc(11 * var(--u)) var(--ui);
     margin-right: calc(3 * var(--u));
   }
-  .l-stackinfo b {
-    font-weight: 700;
-  }
-  .l-stackinfo span {
-    font-style: italic;
-    color: var(--ink-2);
-  }
   .l-stackinfo .aimed {
     color: var(--sig-danger-ink);
   }
-  /* While the table moves the prompt waits on it: its buttons step back to plain ink, and the hand's plays go unlit. */
+  /* While the table moves the prompt waits on it: its buttons go unlit (still pressable where they are enabled), and the
+     hand's plays go unlit. */
   .l-prompt.moving .l-buttons button {
-    color: var(--ink-2);
-    background: var(--btn-ghost);
-    text-shadow: none;
-    box-shadow: var(--moving-rule);
+    filter: var(--btn-off);
+    box-shadow: var(--plaque-press);
+    color: color-mix(in srgb, currentColor 70%, transparent);
   }
   .watching .held .hcard.playable {
     box-shadow: var(--card-shadow);

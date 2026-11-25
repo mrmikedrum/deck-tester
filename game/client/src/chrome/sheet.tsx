@@ -14,7 +14,7 @@ import type { CardLook, StackRow } from "./view";
 /** More cards than this share two balanced rows (live.js `chooser`). */
 const TWO_ROWS_OVER = 6;
 
-const ROW_TONE: Readonly<Record<Button["tone"], string>> = { primary: "l-done", secondary: "", ghost: "l-ghost" };
+const ROW_TONE: Readonly<Record<Button["tone"], string>> = { primary: "l-done", secondary: "" };
 
 interface SheetProps {
   readonly sheet: SheetView;

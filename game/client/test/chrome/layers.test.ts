@@ -206,8 +206,8 @@ describe("the stack's rules and the fixtures", () => {
     expect(texts(".l-rules > b")).toEqual(["Swords to Plowshares · Dack", "Phantasmal Image · You"]);
   });
   it("a chip restores its layer; the back bar goes back to the table", () => {
-    show({ chips: [{ layer: "stack", label: "Stack: 2" }], back: "Ana's side", layers: [{ layer: "lean", restore: null }] });
-    expect(texts(".l-stackchip")).toEqual(["Stack: 2"]);
+    show({ chips: [{ layer: "stack", label: "Stack 2" }], back: "Ana's side", layers: [{ layer: "lean", restore: null }] });
+    expect(texts(".l-stackchip")).toEqual(["Stack 2"]);
     expect($(".l-back span")?.textContent).toBe("Ana's side");
     click($(".l-stackchip"));
     click($(".l-back button"));

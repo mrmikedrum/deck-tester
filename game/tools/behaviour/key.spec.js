@@ -2,6 +2,7 @@
 const { execFileSync } = require("child_process");
 const path = require("path");
 const { test, expect, snapshot, withDecision, find, keyOf } = require("./harness.js");
+const { label } = require("./labels.js");
 
 const ROOT = path.join(__dirname, "../../..");
 const pythonKeys = ds => JSON.parse(execFileSync("python3", ["-c",
@@ -22,7 +23,7 @@ test("the key sent equals keyOf and the Python key()", { tag: "@cast" }, async (
   for (const d of DECISIONS) {
     const s = withDecision(base, d.kind === "play" ? { ...d, refs: [{}, { card: find(base, "You", "Island").id }] } : d);
     await table.open(s);
-    if (d.kind === "play") await table.pass(); else { await table.page.keyboard.press("Escape"); await table.press("Let Forge decide"); }
+    if (d.kind === "play") await table.pass(); else { await table.page.keyboard.press("Escape"); await table.press(label("Let Forge decide")); }
     const a = await table.answered(1);
     sent.push(a.at(-1).key); sentDecisions.push(s.decision);
     table.log = [];

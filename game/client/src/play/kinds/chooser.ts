@@ -36,7 +36,7 @@ export function chooserSheet(c: Ctx<Choice>): SheetView & { readonly buttons: re
     };
   });
   const buttons: Btn[] = [];
-  if (draft.sel.length) buttons.push(btn("sheet-clear", "Clear", () => ({ draft: { ...draft, sel: [] } }), { tone: "ghost", role: "clear" }));
+  if (draft.sel.length) buttons.push(btn("sheet-clear", "Clear", () => ({ draft: { ...draft, sel: [] } }), { role: "clear" }));
   buttons.push(
     btn("sheet-done", doneLabel(draft.sel, d), () => ({ answer: { answer: [...draft.sel] } }), {
       tone: "primary",

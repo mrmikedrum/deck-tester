@@ -100,7 +100,7 @@ export function release(s: State, upTo: number | "all"): State {
 function restoredLine(back: Back, model: TableModel): { notice: string; draft: Draft } {
   const me = model.viewer.perspective;
   const whose = model.active === null || model.active === me ? "your" : whoName(model, model.active);
-  const notice = `Back to ${whose} earlier ${phaseName(model.phase).toLowerCase()}`;
+  const notice = `Back to ${whose} ${phaseName(model.phase).toLowerCase()}`;
   const aside = back.aside.map((a) => {
     const name = (a.source?.face.name ?? "") + (a.item.spell ? "" : "’s ability");
     const targets = a.targets

@@ -3,16 +3,18 @@
 // "Block (n)" or "No blocks" sends.
 import type { BlockDecision } from "../../protocol";
 import { cardOf } from "../facts";
+import { shortCard } from "../text";
 import { block as pairBlock, tapBlocker } from "../interactions/pair";
 import { base, btn } from "./kind";
 import type { Btn, Kind } from "./kind";
 
 export const block: Kind<BlockDecision> = {
   ...base<BlockDecision>(),
+  // One hint before the first pick; holding a blocker, which one.
   words(c) {
-    const { draft } = c, n = draft.sel.length;
-    if (draft.holding !== null) return { headline: `Now tap the attacker for ${cardOf(c.f, draft.holding)?.display ?? ""} to block` };
-    return { headline: n ? `Blocking with ${n}` : "Tap a creature, then the attacker it blocks (or drag it there)" };
+    const { draft } = c;
+    if (draft.holding !== null) return { headline: "Declare blockers", hint: `${shortCard(cardOf(c.f, draft.holding)?.display ?? "")}: tap an attacker` };
+    return { headline: "Declare blockers", ...(draft.sel.length ? {} : { hint: "Tap a creature, then its attacker" }) };
   },
   buttons(c) {
     const { draft } = c, n = draft.sel.length;

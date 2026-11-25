@@ -36,6 +36,16 @@ export function Inspector({
           {hold ? <AutoPass hold={hold} fill={fill} send={send} /> : null}
           <h3>{v.name}</h3>
           <div class="owner">{v.owner}</div>
+          {v.stack?.length ? (
+            <div class="l-onstack">
+              <div class="label">On the stack</div>
+              {v.stack.map((line, i) => (
+                <div key={i}>
+                  <Pips text={line} />
+                </div>
+              ))}
+            </div>
+          ) : null}
           {v.chips.length ? (
             <div class="chips">
               {v.chips.map((c, i) => (

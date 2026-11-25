@@ -125,7 +125,7 @@ export function Menu({ view: v, send, style }: { view: MenuView; send: Send; sty
           </>
         )}
         <div class="l-row">
-          <button type="button" class="l-done" disabled={!decks?.length} onClick={start}>
+          <button type="button" class={v.inProgress ? "danger" : "l-done"} disabled={!decks?.length} onClick={start}>
             Start
           </button>
         </div>
@@ -246,8 +246,8 @@ export function BackBar({ text, send }: { text: string; send: Send }): JSX.Eleme
 }
 
 /**
- * A sift up (h.js `sift`'s caption), just above its cards: what the pile is and how many, how to use it, the way back;
- * and, for a pile bigger than a page, its pages.
+ * A sift up (h.js `sift`'s caption), just above its cards: what the pile is and how many, the way back; and, for a pile
+ * bigger than a page, its pages.
  */
 export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Element {
   return (
@@ -257,7 +257,6 @@ export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Ele
           {view.title}
           {view.tapped ? <i> · {view.tapped} tapped</i> : null}
         </b>
-        <small>Tap a card to look at it; tap away to put them back</small>
       </span>
       {view.range !== null ? (
         <span class="pager">

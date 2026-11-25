@@ -21,11 +21,11 @@ describe("the pass button", () => {
           v["phase"] = "COMBAT_DECLARE_ATTACKERS";
           v["combat"] = { attackers: [{ id: 834, defender: "You" }], blockers: [] };
         }),
-      "Pass toward blocks",
+      "To blocks",
     ],
-    ["an opponent's ability on the stack, nothing to answer it (corpus 030)", () => raw("030-play-watching.json"), "Pass priority"],
-    ["an opponent's spell and responses on offer (corpus 048): plain Pass", () => raw("048-play-three-players.json"), "Pass"],
-    ["my own spell on top (corpus 013): plain Pass", () => raw("013-play-stack.json"), "Pass"],
+    ["an opponent's ability on the stack, nothing to answer it (corpus 030): OK", () => raw("030-play-watching.json"), "OK"],
+    ["an opponent's spell and responses on offer (corpus 048): Resolve", () => raw("048-play-three-players.json"), "Resolve"],
+    ["my own spell on top (corpus 013): Resolve", () => raw("013-play-stack.json"), "Resolve"],
   ];
   it.each(cases)("%s: labelled by phase, last, and sends [1]", (_, env, label) => {
     const t = new Table();
@@ -36,7 +36,7 @@ describe("the pass button", () => {
     expect(t.answers()).toEqual([[1]]);
   });
 
-  it("attackers aimed at me: the headline says so and the hint explains passing", () => {
+  it("attackers aimed at me: the headline says who attacks with how many; no hint", () => {
     const t = new Table();
     t.open(
       edited("026-play-monarch.json", (v) => {
@@ -45,16 +45,26 @@ describe("the pass button", () => {
         v["combat"] = { attackers: [{ id: 834, defender: "You" }], blockers: [] };
       }),
     );
-    expect(t.p.controls.prompt?.headline).toBe("Before blocks");
-    expect(t.p.controls.prompt?.hint).toBe("Passing advances toward your chance to block.");
+    expect(t.p.controls.prompt?.headline).toBe("Atraxa attacks you with 1");
+    expect(t.p.controls.prompt?.hint).toBeNull();
   });
 
   it("with plays on offer the pass button keeps its label and the plays get their own button (corpus 009)", () => {
     const t = new Table();
     t.open("009-play-commander-zone.json");
-    expect(t.buttons()).toEqual(["Choose a play (3)", "Let Forge decide", "To combat"]);
-    expect(t.p.controls.prompt?.headline).toBe("Available plays");
+    expect(t.buttons()).toEqual(["All plays (3)", "Auto", "To combat"]);
+    // What can be played is lit: no headline, no instructions.
+    expect(t.p.controls.prompt?.headline).toBe("");
+    expect(t.p.controls.prompt?.hint).toBeNull();
     expect(t.p.controls.prompt?.where).toBe("Turn 2 · Your main phase");
+  });
+});
+
+describe("the prompt's other words", () => {
+  it("mana floating is its symbols: \"Floating {W}{R}\" (corpus 017)", () => {
+    const t = new Table();
+    t.open("017-play-mana-pool.json");
+    expect(t.p.controls.prompt?.floating).toBe("Floating {W}{R}");
   });
 });
 
@@ -155,11 +165,10 @@ describe("what glows on the table", () => {
     expect(t.answers()).toEqual([[14]]);
   });
 
-  it("an inspector action sends while the stack's rules sheet is open under it (corpus 014)", () => {
+  it("an inspector action sends with a spell up (corpus 014); there is no Stack rules button (the card is held up)", () => {
     const t = new Table();
     t.open("014-play-opponent-spell-targets-me-stack-targets-card.json");
-    t.press("Stack rules");
-    expect(t.p.controls.sheet?.kind).toBe("stack");
+    expect(t.buttons()).not.toContain("Stack rules");
     expect(t.p.controls.cardActions.get(822 as never)?.map((a) => a.option)).toEqual([2]);
     t.pick(2, 822);
     expect(t.answers()).toEqual([[2]]);
@@ -177,8 +186,8 @@ describe("what glows on the table", () => {
   it("mana is not a play: it is neither counted nor listed (corpus 058: 13 options, 4 plays)", () => {
     const t = new Table();
     t.open("058-play-poison.json");
-    expect(t.buttons()[0]).toBe("Choose a play (4)");
-    t.press("Choose a play (4)");
+    expect(t.buttons()[0]).toBe("All plays (4)");
+    t.press("All plays (4)");
     const items = t.p.controls.sheet!.items;
     expect(items).toHaveLength(4);
     expect(items.every((i) => i.option >= 12)).toBe(true); // options 2-11 are mana abilities
@@ -209,7 +218,7 @@ describe("what glows on the table", () => {
   it("\"Choose a play\" lists everything and never sends by itself; a pick sends it (corpus 009)", () => {
     const t = new Table();
     t.open("009-play-commander-zone.json");
-    t.press("Choose a play (3)");
+    t.press("All plays (3)");
     const sheet = t.p.controls.sheet!;
     expect(sheet.title).toBe("Everything you can play");
     expect(sheet.items.map((i) => i.label)).toEqual(["Play Plains", "Play Forest", "Play Karn's Bastion"]);
@@ -227,11 +236,11 @@ describe("what glows on the table", () => {
     expect(t.answers()).toEqual([[2]]);
   });
 
-  it("several responses open \"Choose a response\" (corpus 048)", () => {
+  it("several responses: \"Respond (7)\" opens them (corpus 048)", () => {
     const t = new Table();
     t.open("048-play-three-players.json");
-    t.press("Choose a response (7)");
-    expect(t.p.controls.sheet?.title).toBe("Choose a response");
+    t.press("Respond (7)");
+    expect(t.p.controls.sheet?.title).toBe("Respond");
     expect(t.p.controls.sheet?.items).toHaveLength(7);
   });
 

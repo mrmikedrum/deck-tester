@@ -84,7 +84,7 @@ describe("the log strip and the log, over the first game", () => {
 
   it("my spell goes on the stack: the prompt watches it on its way, and the strip tells the cast", () => {
     const st = through("013-play-stack.json");
-    expect(st.watch).toEqual({ headline: "On the way to the stack", arriving: [11], toStack: true, sweeping: false });
+    expect(st.watch).toEqual({ headline: "", arriving: [11], toStack: true, sweeping: false });
     expect(st.lines[0]).toBe("You cast Thorn of the Black Rose");
     st.played();
     expect(st.watch).toBeNull();
@@ -99,7 +99,7 @@ describe("the log strip and the log, over the first game", () => {
 
   it("the top resolves: what it did waits for the motion, then the log has Forge's line and the result", () => {
     const st = through("015-play-opponent-spell-targets-me.json");
-    expect(st.s.notices.map((n) => n.motion)).toEqual(["Cards are leaving the stack"]);
+    expect(st.s.notices.map((n) => n.motion)).toEqual(["Doom Blade resolves"]);
     expect(st.watch).toBeNull(); // the stack is still open: its summary shows, not the motion
     const told = () => st.sheet.groups[0]!.rows.map((r) => r.text);
     expect(told()).not.toContain("Doom Blade - Destroy Serra Angel.");
@@ -114,7 +114,7 @@ describe("the log strip and the log, over the first game", () => {
 
   it("the stack empties: the prompt watches the spell enter; the strip then has the result's headline alone", () => {
     const st = through("016-order-mana-pool.json");
-    expect(st.watch?.headline).toBe("Thorn of the Black Rose is entering");
+    expect(st.watch?.headline).toBe("Thorn of the Black Rose enters");
     st.played();
     expect(st.watch).toBeNull();
     expect(st.lines).toEqual(["Grizzly Bears went to the graveyard"]);
@@ -122,7 +122,7 @@ describe("the log strip and the log, over the first game", () => {
 
   it("triggers go on the stack under the top one's name", () => {
     const st = through("017-play-mana-pool.json");
-    expect(st.s.notices.at(-1)!.motion).toBe("Thorn's ability is going on the stack");
+    expect(st.s.notices.at(-1)!.motion).toBe("Your Thorn ability");
     expect(st.watch?.arriving).toEqual([560, 559, 558]);
   });
 
@@ -143,14 +143,14 @@ describe("the log strip and the log, over the first game", () => {
 describe("losses on someone else's turn", () => {
   it("my creature exiled on Atraxa's turn: a loss notice once it has been seen, kept through the turn", () => {
     const st = through("033-block-attack-on-planeswalker-they-attack.json");
-    expect(st.watch?.headline).toBe("Atraxa's attackers are moving in");
+    expect(st.watch?.headline).toBe("Atraxa attacks");
     expect(st.recap).toBeNull(); // not told before it is seen
     st.played();
-    expect(st.recap).toEqual({ title: "Your loss", summary: "Thorn of the Black Rose · to exile" });
+    expect(st.recap).toEqual({ title: "Lost: Thorn of the Black Rose (exile) ›", summary: "" });
     st.see(modelNamed("034-order-blocked-poison.json"));
-    expect(st.watch?.headline).toBe("Combat damage · combatants are moving");
+    expect(st.watch?.headline).toBe("Combat damage");
     st.played();
-    expect(st.recap).toEqual({ title: "Your loss", summary: "Thorn of the Black Rose · to exile" });
+    expect(st.recap).toEqual({ title: "Lost: Thorn of the Black Rose (exile) ›", summary: "" });
     st.see(modelNamed("035-play-face-down.json")).played();
     expect(st.recap).toBeNull(); // a new turn
     expect(narrative.lossReport(st.s)).toEqual([
@@ -165,7 +165,7 @@ describe("losses on someone else's turn", () => {
 
   it("several at once are counted by where they went, a token by its leaving play", () => {
     const st = through("038-play-watching.json", { playLast: true });
-    expect(st.recap).toEqual({ title: "2 of your cards left play", summary: "1 to the graveyard · 1 token left play" });
+    expect(st.recap).toEqual({ title: "Lost 2: Face-down, Soldier Token ›", summary: "" });
     expect(
       narrative
         .lossReport(st.s)
@@ -215,7 +215,7 @@ describe("a counterspell resolves", () => {
   it("while it moves the strip says the counterspell is resolving; then what was countered and what it saved", () => {
     const st = new Story().see(before).played().see(after);
     expect(st.watch).toEqual({
-      headline: "The counter resolves · spells are leaving the stack",
+      headline: "Doom Blade is countered",
       arriving: [],
       toStack: false,
       sweeping: false,
@@ -277,7 +277,7 @@ describe("Sunfall resolves on Atraxa's turn", () => {
   it("the prompt watches the sweep in red; the strip then has Sunfall's headline and the caster's Incubator", () => {
     const st = new Story().see(before).played().see(after);
     expect(st.watch).toEqual({
-      headline: "Sunfall is exiling creatures",
+      headline: "Sunfall resolves",
       arriving: [],
       toStack: false,
       sweeping: true,
@@ -287,7 +287,7 @@ describe("Sunfall resolves on Atraxa's turn", () => {
       "Sunfall exiled creatures",
       "Atraxa's Incubator · 2 +1/+1 counters",
     ]);
-    expect(st.recap).toEqual({ title: "Your loss", summary: "Grizzly Bears · to exile" });
+    expect(st.recap).toEqual({ title: "Lost: Grizzly Bears (exile) ›", summary: "" });
   });
 });
 
@@ -340,7 +340,7 @@ describe("what waits, and for how long", () => {
     const said = new Set([
       ...m.log.map((e) => logText(e.text)),
       "Turn 6 · Atraxa",
-      "Back to Atraxa's earlier main phase.",
+      "Back to Atraxa's main phase.",
     ]);
     expect(st.s.entries.map((e) => e.said).filter((x) => !said.has(x))).toEqual([]);
     expect(st.strip.heading).toBe("Turn 6 · Atraxa");
@@ -361,7 +361,7 @@ describe("what waits, and for how long", () => {
     };
     st.s = narrative.recapped(st.s, [recap, recap], st.model!);
     expect(st.s.notices).toEqual([]);
-    expect(st.recap).toEqual({ title: "Your loss", summary: "Grizzly Bears · to the graveyard" });
+    expect(st.recap).toEqual({ title: "Lost: Grizzly Bears (graveyard) ›", summary: "" });
     expect(st.s.missed.length).toBe(2);
     // a sweep's cards that are not mine are not my losses
     const sweep: Recap = { ...recap, why: "sweep", cards: [832 as never] };

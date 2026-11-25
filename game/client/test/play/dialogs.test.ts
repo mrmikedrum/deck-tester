@@ -9,7 +9,7 @@ import type { StopId } from "../../src/play";
 import { Table, askedAgain, decoded, ofKind, raw, withDecision } from "./rig";
 
 describe("mulligan and confirm", () => {
-  it("mulligan: Keep n sends [1], Mulligan [2]; over the table with the hand away; never \"Let Forge decide\" (corpus 007)", () => {
+  it("mulligan: Keep n sends [1], Mulligan [2]; over the table with the hand away; never \"Auto\" (corpus 007)", () => {
     const t = new Table();
     t.open("007-mulligan-commander-zone.json");
     const p = t.p.controls.prompt!;
@@ -28,7 +28,7 @@ describe("mulligan and confirm", () => {
   it("confirm: Yes sends [1], No sends [2] (corpus 019)", () => {
     const t = new Table();
     t.open("019-confirm-monarch.json");
-    expect(t.buttons()).toEqual(["Stack rules", "Yes", "No", "Let Forge decide"]);
+    expect(t.buttons()).toEqual(["Yes", "No", "Auto"]);
     expect(t.p.controls.prompt?.headline).toBe("Use this?");
     t.press("Yes");
     expect(t.answers()).toEqual([[1]]);
@@ -38,19 +38,19 @@ describe("mulligan and confirm", () => {
     expect(u.answers()).toEqual([[2]]);
   });
 
-  it("\"Let Forge decide\" sends the decision's id, its game's gen and its key with defer, and no picks (corpus 019)", () => {
+  it("\"Auto\" sends the decision's id, its game's gen and its key with defer, and no picks (corpus 019)", () => {
     const t = new Table();
     t.open("019-confirm-monarch.json");
-    t.press("Let Forge decide");
+    t.press("Auto");
     const body = t.lastSend()!.body;
     expect(body).toEqual({ id: 88, gen: 1, key: expect.any(String), defer: true });
     expect(body.key).toBe(decoded(raw("019-confirm-monarch.json")).decision!.key);
   });
 
-  it("\"Let Forge decide\" on a play sends defer, not [1] (corpus 009)", () => {
+  it("\"Auto\" on a play sends defer, not [1] (corpus 009)", () => {
     const t = new Table();
     t.open("009-play-commander-zone.json");
-    t.press("Let Forge decide");
+    t.press("Auto");
     expect(t.answers()).toEqual(["defer"]);
   });
 
@@ -71,15 +71,15 @@ describe("mulligan and confirm", () => {
     ["confirm (019)", "019-confirm-monarch.json", true],
     ["attack (037)", "037-attack-poison.json", true],
     ["block (033)", "033-block-attack-on-planeswalker-they-attack.json", true],
-  ])("%s offers \"Let Forge decide\": %s", (_, env, offered) => {
+  ])("%s offers \"Auto\": %s", (_, env, offered) => {
     const t = new Table();
     t.open(env);
-    expect(t.buttons().includes("Let Forge decide")).toBe(offered);
+    expect(t.buttons().includes("Auto")).toBe(offered);
   });
-  it("an unknown kind offers \"Let Forge decide\" too", () => {
+  it("an unknown kind offers \"Auto\" too", () => {
     const t = new Table();
     t.open(UNKNOWN());
-    expect(t.buttons()).toContain("Let Forge decide");
+    expect(t.buttons()).toContain("Auto");
   });
 });
 
@@ -87,10 +87,10 @@ describe("refusals and the answer in flight", () => {
   it("while an answer is out the prompt is busy: \"…\", no answering buttons, nothing lit, no sheet", () => {
     const t = new Table();
     t.open("013-play-stack.json");
-    t.press("Pass");
+    t.press("Resolve");
     const c = t.p.controls;
     expect(c.prompt).toMatchObject({ headline: "…", busy: true });
-    expect(t.buttons()).toEqual(["Stack rules"]);
+    expect(t.buttons()).toEqual([]);
     expect(c.cardActions.size).toBe(0);
     expect(t.p.board.marks.hand.size).toBe(0);
   });
@@ -247,7 +247,7 @@ describe("refusals and the answer in flight", () => {
   it("an auto-pass and a press racing send one answer", () => {
     const t = new Table();
     t.open("030-play-watching.json");
-    t.press("Pass priority");
+    t.press("OK");
     t.advance(5000);
     expect(t.sends()).toHaveLength(1);
   });
@@ -283,7 +283,7 @@ describe("stale acts, deadlines and replies", () => {
     expect(t.pick(1)).toEqual([]); // pass is no card's action
     expect(t.pick(99)).toEqual([]);
     expect(t.pick(Number.NaN)).toEqual([]);
-    t.press("Choose a play (3)");
+    t.press("All plays (3)");
     expect(t.pick(1)).toEqual([]); // not on the open sheet
   });
 
@@ -354,7 +354,7 @@ describe("new games, restarts and rewinds", () => {
   it("a new game closes an open sheet (corpus 009 then 007)", () => {
     const t = new Table();
     t.open("009-play-commander-zone.json");
-    t.press("Choose a play (3)");
+    t.press("All plays (3)");
     t.open("009-play-commander-zone.json", { continuity: "newGame" });
     expect(t.p.controls.sheet).toBeNull();
   });
@@ -440,10 +440,10 @@ describe("a spectator (mayAnswer false)", () => {
   ] as never[];
 
   it.each([
-    ["037-attack-poison.json", "Tap creatures to attack Atraxa, or drag them to a player"],
+    ["037-attack-poison.json", "Declare attackers"],
     ["019-confirm-monarch.json", "Use this?"],
     ["016-order-mana-pool.json", "Triggers onto the stack, first in resolves last"],
-    ["030-play-watching.json", "No responses offered"],
+    ["030-play-watching.json", "Atraxa's Gideon Jura ability"],
     ["036-number-poison.json", "X for Fireball"],
   ])("%s: the headline, no buttons, no sheet, nothing lit, never a send", (env, headline) => {
     const t = new Table();
@@ -473,7 +473,7 @@ describe("dismiss", () => {
   it("closes play's own sheet first, then sets aside a chooser; with neither it is the app's (a layer, the mulligan)", () => {
     const t = new Table();
     t.open("009-play-commander-zone.json");
-    t.press("Choose a play (3)");
+    t.press("All plays (3)");
     expect(t.dismiss()).toEqual([]);
     expect(t.p.controls.sheet).toBeNull();
     expect(t.dismiss()).toEqual([{ kind: "unclaimed" }]);
