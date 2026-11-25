@@ -12,9 +12,10 @@ Code: `game/client/src/layout/arrange/` (paths below are under `game/client/src/
 and today's layout code it replaces in steps (`layout/seat.ts`, `layout/plan.ts`, `layout/seat/{fit,fold,geometry,mat}.ts`,
 `layout/focus.ts`, `layout/combat.ts`, `play/reach.ts`, `scene/stage/pick.ts`, `model/predicates.ts`).
 
-**Status:** the first slice's steps 1 to 5 are built (§6.1); the across leaf is planned in the shadow of `mat` and
-nothing the player sees has switched. The gate before step 6 is the iPad timing (§7.3). What the slice changed from
-this design, and why, is in "Round 3" below; where they differ, the code and Round 3 win.
+**Status:** the first slice's steps 1 to 6 are built (§6.1): the across leaf is drawn, tapped and audited through the
+engine, and a fight is gathered (the combat part of step 11, brought forward). The side leaves and my side are still
+`mat`'s. What the slice changed from this design, and why, is in "Round 3" and "Round 4" below; where they differ, the
+code and those rounds win.
 
 ## Changes after review
 
@@ -91,6 +92,15 @@ asked for something different, the code does the following. Sections below keep 
 | **Lineage** (§3) | A vanished unit's id goes first to the part holding its old top, then by overlap and arrival, never by key order. | Review. |
 | **What is kept between plans** (§7.3's remedies) | `arrange` is kept by its whole input (`memo.ts`: a hash of every field, memory hashed once per memory object), so a container whose input is unchanged costs its key; rows are kept per container geometry, audits per drawn arrangement. All are pure memoization: a kept answer is the one computing it gives, and a test holds it. The walk reuses units and layouts until an edit runs, and moves groups out of an overflowing standing band in one batch (a test shows it changes nothing). | The iPad's first numbers (§7.3). |
 | **Interfaces** | `Policy.tidy` is a function of the clock, the turn and phase the last plan saw and whether the ranking changed; `Policy.seat` takes no moment; `order` and `formation` wait for the containers that need them. `Container` adds `safe` and `floors.tapPx`; `Row` adds `quarter`; `Arrangement` adds `policy` and `report.{policyInvalid, violations, poses}`; `PolicyMemory` adds `bases`, `held` and `folds`. An overflow of actors names every card no place could hold. | What the slice used. |
+
+### Round 4: the across leaf drawn, and the gathering (Nov 25)
+
+| What | Built | Why |
+|---|---|---|
+| **Step 6 as an adapter** | The arrangement becomes the across seat's plan (`layout/arrange/adapter.ts`), so the scene, picking, the table's audit, the lean-in and the combat row read it unchanged. Each unit carries the engine's pose for its top card (its own axes, untapped, and its turn: 1 a quarter, 1/6 a notch, drawn by the renderer's tap turn) and its place as its hit quad at rest. Play reaches through those hit groups with its existing rules (a pile's tap opens today's sift or lean-in). The engine's memory rides in the layout memory; the table never refolds the engine's leaf. | One seam for every consumer, and the player-facing switch kept small. Not yet: posing every card from its `CardPlace` (a fan is drawn as today's pile; a stack's thickness is the renderer's), the count markers (dice), captions and the spread. |
+| **The far strip** | Plate, zone piles and the waiting commander stand along the far strip's near edge; further back they leave the screen's top. Zone piles at their floor size still crowd the top of the leaf. | Plates as chrome on a rail (the visual spec) belong to the no-middle template (step 8). |
+| **The gathering** (§2.8, step 11's combat part) | `layout/arrange/gathering.ts`: formations (an attacker with its blockers in front, between it and who it attacks), in the order the attackers stood on their page. When I am in the combat it is a focus on a plane carried toward the eye (the largest of steps 2 to 1.2 at which it fits one tier, then two; it stands at least 2.4 over the table), reached over everything but the plates; between opponents, table size in the open middle. One placement, audited apart from the table it covers, so it never triggers fold rounds; what has no room fights from its page. No paging yet. `mat`'s combat row stays for a table without the engine. | The iPad: `mat`'s row cost about 91 ms on the combat of twelve (14 full audits, six fold rounds). |
+| **The stack at rest** | The engine's leaf reaches nearer than `mat`'s page, so the open middle is shorter: on the dense board three of the four stack cards have no room at rest (reached as the focus and through the sheet). The leaf's page now starts at its front row's feet, which keeps the top card clear. | A regression until the mats part for the stack (step 8). |
 
 ## 0. Shape of the thing
 
@@ -789,10 +799,12 @@ Tuning the poses is the composer's and the designer's; the engine needs only the
 
 ### 6.1 The first slice: build order
 
-Steps 1 to 5 are built (`layout/arrange/`): `contract.ts`, `card.ts` (step 1); `frame.ts`, `scale.ts`, `moment.ts`
+Steps 1 to 6 are built (`layout/arrange/`): `contract.ts`, `card.ts` (step 1); `frame.ts`, `scale.ts`, `moment.ts`
 (step 2); `solver.ts`, `rows.ts`, `draw.ts`, `audit.ts`, `validate.ts`, `leaf.ts` (step 3); `policies/` (step 4);
 `shadow.ts`, with `TableInput.shadow` and `TablePlan.shadow`, the goldens in `test/layout/arrange/__goldens__/`, and
-the timings (step 5). Step 6 waits on the iPad numbers.
+the timings (step 5); `adapter.ts`, drawn when `shadow.draw` is set, as the app sets it (step 6, Round 4). The gathering
+(`gathering.ts`) is step 11's combat part, brought forward. Step 7 (the swap proved on one board through the same
+renderer) is covered by the policy tests and goldens; a debug switch to flip policies in the app is not built.
 
 Keep the table composer, focus and navigation controllers. One opponent leaf (the across seat) goes end to end on the
 engine, and both `ready-tapped` and `works` run on it through the same renderer and gesture path. The other seats
@@ -988,6 +1000,24 @@ search over placements (step 11 replaces it). The bench's "the leaf changed" col
 from scratch every plan. Whole `planTable`, Node (load average 10), median: the design pass's turn 15 0.99 with the
 shadow leaf, 1.24 with it changed every plan, 0.73 `mat` alone; dense 0.87, 1.12, 0.76; the combat of twelve 4.96,
 5.21, 4.62.
+
+**After the optimizations, the iPad (Nov 25, build a8e4819)**, median / worst ms: the design pass's turn 15, 7 / 9 with
+the engine's leaf, 8 / 11 with it changed every plan, 6 / 8 `mat` alone; dense 7 / 9, 8 / 11, 6 / 9; the combat of
+twelve 92 / 98 (still `mat`'s row then), 93 / 101, 91 / 100. The engine adds about 1 to 2 ms per changed leaf: the gate
+passed.
+
+**With the gathering** (Node, load average 3, median / p90 / worst ms; "as the app plans": the engine's across leaf
+drawn and a fight gathered):
+
+| Input | As the app plans | The leaf changed every plan | `mat` alone (its combat row) |
+|---|---|---|---|
+| The design pass's turn 15 | 0.85 / 1.02 / 1.64 | 1.20 / 1.57 / 4.14 | 0.73 / 0.86 / 1.01 |
+| Dense | 1.27 / 1.44 / 2.06 | 1.55 / 1.82 / 2.32 | 0.75 / 0.89 / 1.38 |
+| 40 distinct names | 0.69 / 0.80 / 1.28 | 0.91 / 1.11 / 1.96 | 0.65 / 0.75 / 1.17 |
+| A combat of twelve | 0.70 / 0.83 / 1.10 | 1.00 / 1.39 / 4.46 | 5.07 / 5.92 / 10.70 |
+| 30 snapshots in sequence | 0.87 / 1.12 / 2.80 | 1.25 / 1.71 / 6.91 | 0.89 / 1.94 / 3.88 |
+
+The dense board's extra half millisecond is the stack spilling (Round 4): the stack's focus searches for room.
 
 **A worker** (planning off the main thread, the scene drawing the last committed plan) is the structural answer to
 jank, and not small: layout is pure and its input is plain data, but the plan carries a `Projector` with functions
