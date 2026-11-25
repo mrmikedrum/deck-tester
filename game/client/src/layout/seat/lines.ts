@@ -1,4 +1,4 @@
-import { FLOOR } from "../board";
+import { FLOOR, TAP_PX } from "../board";
 import type { BoardCard } from "../board";
 import { Ledger } from "../ledger";
 import type { Fixtures, LayoutMemory, Muster, Note, Placement, SeatInput, SeatLayout, SeatPlan, Unit } from "../seat";
@@ -308,10 +308,15 @@ function plan(input: SeatInput): SeatPlan {
   /** The spent row from its near edge: its scale (a lying card as wide as a creature's floor), and its far edge. */
   const spentGeo = (a0: number) => {
     const sS = scaleAt(g, at(g, r, 0, a0 + 0.5), px);
-    return { sS, far: a0 + CW * sS + (me ? 0 : 0.38) };
+    // (Its heap is one tap, as tall as a finger needs: behind a thin heap the row keeps that room, its sign in it.)
+    const y0 = footY(g, at(g, r, 0, a0));
+    let far = a0 + CW * sS + (me ? 0 : 0.38);
+    while (!me && y0 - footY(g, at(g, r, 0, far)) < TAP_PX + 14 && far < r.d) far += 0.05;
+    return { sS, far };
   };
   const supportGeo = (a0: number) => {
-    const foot = a0 + 0.1, s = Math.max(0.9, scaleAt(g, at(g, r, 0, foot), FLOOR.any));
+    // (A few px over the floor: on a turned side page a card's face is skewed, and its finger's square must fit inside it.)
+    const foot = a0 + 0.1, s = Math.max(0.9, scaleAt(g, at(g, r, 0, foot), FLOOR.any + (r.yaw ? 6 : 0)));
     return { foot, s, top: topY(g, at(g, r, 0, foot), s, CH, "lean") };
   };
   const sup = me ? [] : support();
@@ -525,12 +530,22 @@ function plan(input: SeatInput): SeatPlan {
     // Past its room the support stands in columns of title bars (the front whole, the ones behind showing their names),
     // as deep as the page has room under the slip; what is left folds by kind.
     const asRun = (d: Draft): Run => ({ ids: d.ids, rep: cards.need(d.rep), w: 0, acting: false });
+    // (A tapped one lies turned, as wide as a card is tall: its place is that wide, so no neighbour meets its foot.)
+    const shownOf = (d: Draft): CardId => (d.ids.length > 1 && d.title ? d.ids[Math.min(d.ids.length, 8) - 1]! : d.rep);
+    const wide = (d: Draft): number => (cards.need(shownOf(d)).tapped ? CH * s * 1.06 : per);
     const colsOf = (D: number) => {
-      const row = fold(cards, drafts, cap * (1 + D), likeS, keep, named, "Others");
-      const k = Math.min(cap, row.length), cs: Draft[][] = Array.from({ length: k }, () => []);
-      row.forEach((d, i) => cs[i % k]!.push(d));
-      const step = Math.min(per, sp.w / Math.max(1, k)), u0 = sp.uc - ((k - 1) * step) / 2;
-      const placed = cs.map((c, i) => ({ u: u0 + i * step, f: fileOf(g, r, u0 + i * step, foot, s, c.map(asRun), FLOOR.any, "lean", SUPPORT_SHOW), c }));
+      let k = Math.min(cap, drafts.length), cs: Draft[][] = [];
+      for (; k >= 1; k--) {
+        const row = fold(cards, drafts, k * (1 + D), likeS, keep, named, "Others");
+        const n = Math.min(k, row.length);
+        cs = Array.from({ length: n }, () => []);
+        row.forEach((d, i) => cs[i % n]!.push(d));
+        if (cs.reduce((t, c) => t + wide(c[0]!), 0) <= sp.w + 1e-6) break;
+      }
+      const ws = cs.map((c) => wide(c[0]!)), total = ws.reduce((t, w) => t + w, 0);
+      let acc = sp.uc - total / 2;
+      const us = ws.map((w) => ((acc += w), acc - w / 2));
+      const placed = cs.map((c, i) => ({ u: us[i]!, f: fileOf(g, r, us[i]!, foot, s, c.map(asRun), FLOOR.any, "lean", SUPPORT_SHOW), c }));
       const top = Math.min(...placed.map(({ u, f }) => { const l = f[f.length - 1]!; return topY(g, at(g, r, u, l.a), l.s, CH, "lean"); }));
       return { placed, top };
     };
@@ -555,7 +570,8 @@ function plan(input: SeatInput): SeatPlan {
         acting: false,
         tapped: cards.need(top).tapped,
         // (Propped a little, as my own support is: it lies back out of the way, its name still facing me.)
-        placement: { pos: at(g, r, u, p.a), scale: p.s, posture: "lean" },
+        // (A tapped one stands nearly upright, so turned it is still as tall as a finger needs.)
+        placement: { pos: at(g, r, u, p.a), scale: p.s, posture: cards.need(top).tapped ? "prop" : "lean" },
         ...(c.length > 1 ? { file: { id: fileId, rank: i } } : {}),
       });
     }));

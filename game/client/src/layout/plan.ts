@@ -10,7 +10,7 @@ import { mat } from "./seat/mat";
 import { combatRow, fighters, rowUnits } from "./combat";
 import type { CombatPairs } from "./combat";
 import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry";
-import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
+import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape, unitShape } from "./shape";
 import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
 import type { TableTemplate } from "./template";
@@ -238,7 +238,7 @@ export function planTable(input: TableInput): TablePlan {
     const row = rowUnits(plans, fight);
     const staying = [...plans.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine).filter((x) => !row.has(x.group))), ...stack.map((s) => s.shape)];
     const options = combat && row.size
-      ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u), obstacles: staying })
+      ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u, layout !== mat), obstacles: staying })
       : [plans];
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
     let best: { shapes: Shape[]; v: Violation[]; placed: SeatPlan[] } | null = null;
@@ -255,10 +255,12 @@ export function planTable(input: TableInput): TablePlan {
   let c = compose();
   for (let round = 0; c.v.length && round < MAX_PRESSURE; round++) {
     // (A fighter's own trouble in the row is not its seat's: folding the seat would not move it.)
-    const bad = new Set(c.v.filter((x) => !c.row.has(x.group)).map((x) => x.seat));
+    // (Nor is a card's trouble that only fighters in the row cause: folding its seat would not move them.)
+    const byRow = (x: Violation): boolean => layout !== mat && !!x.over?.length && x.over.every((g) => c.row.has(g));
+    const bad = new Set(c.v.filter((x) => !c.row.has(x.group) && !byRow(x)).map((x) => x.seat));
     // (A layout other than mat stands things that may reach over a neighbour, battle lines' files: the seat drawn over
     // the card folds too.)
-    if (layout !== mat) for (const x of c.v) if (!c.row.has(x.group)) for (const s of x.by ?? []) if (s !== null && s !== x.seat) bad.add(s);
+    if (layout !== mat) for (const x of c.v) if (!c.row.has(x.group) && !byRow(x)) for (const s of x.by ?? []) if (s !== null && s !== x.seat) bad.add(s);
     let moved = false;
     plans.forEach((p, i) => {
       if (!bad.has(p.seat) || p.report.lastResort) return;
@@ -314,7 +316,7 @@ function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, pla
   const items = [...input.stack].reverse();
   if (!items.length) return [];
   const u = designUnit(input.viewport);
-  const M = openMiddle(tpl, proj, plans, u);
+  const M = openMiddle(tpl, proj, plans, u, !!input.layout && input.layout !== mat);
   const step = items.some((s) => s.answers) ? 1.12 : 0.9;
   const fitW = (M.r - M.l - 16) / (CW * (step * items.length + 0.1));
   const mid = Math.max((FLOOR.any * 1.1) / CW, Math.min(240, M.b - M.t, fitW));
@@ -466,7 +468,7 @@ function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plan
         }
   // A crowded table: the open middle, as large as it holds clear of what the stack aims at (the old search's last way).
   if (!found) {
-    const M = openMiddle(tpl, proj, plans, u), least = (FLOOR.any * 1.1) / CW;
+    const M = openMiddle(tpl, proj, plans, u, !!input.layout && input.layout !== mat), least = (FLOOR.any * 1.1) / CW;
     let h = Math.min(STACK_FOCUS.floor, M.b - M.t + 12);
     for (; h > least; h -= 4) if (!aimed.some((a) => meets(a, boxAt(h, false, (M.l + M.r) / 2, (M.t + M.b) / 2)))) break;
     found = { h: Math.max(least, h), row: false, x: (M.l + M.r) / 2, y: (M.t + M.b) / 2 };
@@ -490,7 +492,12 @@ function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plan
 }
 
 /** The open table in the middle, in design units: below the page across, between the side pages, above my creatures' tops. */
-function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], u: number): { l: number; r: number; t: number; b: number } {
+function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], u: number, byCards = false): { l: number; r: number; t: number; b: number } {
+  // (A page that is its whole slot, battle lines', is open vellum at its sides: there the cards bound the middle.)
+  const cardsBox = (p: SeatPlan) => {
+    const bs = p.units.filter((x) => !x.fighting).map((x) => bounds(unitShape(proj, p.seat, x, false).face));
+    return bs.length ? { xs: bs.flatMap((b) => [b.l / u, b.r / u]), ys: bs.flatMap((b) => [b.t / u, b.b / u]) } : null;
+  };
   const pageBox = (p: SeatPlan) => {
     const f = p.fixtures.page, slot = tpl.slots[plans.indexOf(p)]!;
     const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
@@ -508,7 +515,8 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
       b = Math.min(b, proj.project({ x: p.pos.x, y: p.pos.y + Math.cos(proj.pitch) * CH * p.scale, z: p.pos.z - Math.sin(proj.pitch) * CH * p.scale }).y / u);
     }
   t = t || 60;
-  return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };
+  const side = (p: SeatPlan) => (byCards ? (cardsBox(p) ?? { xs: [], ys: [] }) : pageBox(p));
+  return { l: left ? Math.max(60, ...side(left).xs) : 60, r: right ? Math.min(1120, ...side(right).xs) : 1120, t: t + 10, b: b - 10 };
 }
 
 function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"]): HitGroups {

@@ -35,6 +35,8 @@ export interface Shape {
   readonly file?: string;
   /** A head reached only through its file's tail: no patch of its own. */
   readonly tailed?: boolean;
+  /** Its file's front (rank 0, standing on the line): the card a tail borrows from. */
+  readonly front?: boolean;
 }
 
 const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
@@ -104,11 +106,13 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     kind: "unit",
     seat,
     ...q,
-    order: p.pos.z,
+    // (A card lying turned reaches only half its width toward me from its middle: that is its near edge.)
+    order: p.posture === "flat" && u.tapped ? p.pos.z - ((CH - CW) / 2) * p.scale : p.pos.z,
     floor: creature ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
     members: u.members,
     ...(u.file ? { file: u.file.id } : {}),
     ...(u.file && u.file.rank > 0 && !u.raised && !u.fighting ? { tailed: true } : {}),
+    ...(u.file && u.file.rank === 0 && !u.fighting ? { front: true } : {}),
   };
 }
 
@@ -124,7 +128,7 @@ export function tailShapes(seat: string, units: readonly Shape[]): Shape[] {
   for (const s of units) if (s.file && s.tailed) by.set(s.file, [...(by.get(s.file) ?? []), s]);
   const out: Shape[] = [];
   for (const [file, heads] of by) {
-    const front = units.filter((s) => s.file === file && !s.tailed).sort((x, y) => y.order - x.order)[0];
+    const front = units.find((s) => s.file === file && s.front);
     const hb = heads.map((h) => bounds(h.face));
     const l = Math.min(...hb.map((b) => b.l)), r = Math.max(...hb.map((b) => b.r)), t = Math.min(...hb.map((b) => b.t));
     const fb = front ? bounds(front.face) : null;
@@ -241,6 +245,8 @@ export interface Violation {
   readonly limit: number;
   /** For a cover: the seats of what is drawn over it. */
   readonly by?: readonly (string | null)[];
+  /** What is drawn over it (a cover) or takes the taps it lacks (a patch): their groups. */
+  readonly over?: readonly string[];
 }
 
 /** Nothing covers more than this share of a name strip or foot, or of a face (intent.md "Hard limits"). */
@@ -297,17 +303,17 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     };
     if (s.kind !== "plate" && s.kind !== "tail") {
       const nm = covered(s.name, 7, 2), ft = covered(s.foot, 7, 2), fc = covered(s.face, 7, 7);
-      const by = [...new Set(over.filter((o) => overlaps(box.get(o)!, bb)).map((o) => o.seat))];
-      if (nm > COVER.strip) out.push({ rule: "covers-name", group: s.group, seat: s.seat, measured: nm, limit: COVER.strip, by });
-      if (ft > COVER.strip) out.push({ rule: "covers-foot", group: s.group, seat: s.seat, measured: ft, limit: COVER.strip, by });
-      if (fc > COVER.face) out.push({ rule: "covers-face", group: s.group, seat: s.seat, measured: fc, limit: COVER.face, by });
+      const by = [...new Set(over.map((o) => o.seat))], overG = over.map((o) => o.group);
+      if (nm > COVER.strip) out.push({ rule: "covers-name", group: s.group, seat: s.seat, measured: nm, limit: COVER.strip, by, over: overG });
+      if (ft > COVER.strip) out.push({ rule: "covers-foot", group: s.group, seat: s.seat, measured: ft, limit: COVER.strip, by, over: overG });
+      if (fc > COVER.face) out.push({ rule: "covers-face", group: s.group, seat: s.seat, measured: fc, limit: COVER.face, by, over: overG });
     }
     // tappable: a window of tap x tap px that the hit test gives to this group
     // (A plaque is not a card or a pile: intent.md's patch rule is for those. It still draws over what it stands on.)
     // (A head is reached through its file's tail, which is measured instead.)
     if (s.tailed) continue;
     const best = s.kind === "plate" ? tap : tapPatch(s, near, area, tap);
-    if (best < tap - 1e-6) out.push({ rule: "tap-patch", group: s.group, seat: s.seat, measured: best, limit: tap });
+    if (best < tap - 1e-6) out.push({ rule: "tap-patch", group: s.group, seat: s.seat, measured: best, limit: tap, over: near.map((o) => o.group) });
   }
   return out;
 }
