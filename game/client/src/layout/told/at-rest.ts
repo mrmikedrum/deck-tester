@@ -35,10 +35,15 @@ export interface InkAtRest {
   readonly stretch: number;
   /** On screen at rest, for the audit and a slip's hit group. */
   readonly shape: Shape;
+  /** A slip with no clear place on the table (the fight stands where it would lie): it is not drawn, and the prompt
+   *  says it instead. */
+  readonly away?: boolean;
 }
 
 /** How far a slip lies in over its page's front edge (world): on the page's margin, short of the front row's feet. */
 const TUCK = 0.5;
+/** A pile's title tab, as a share of its card's height above its top edge (seat/geometry `TAB_H`). */
+const TAB_SHARE = 0.26;
 /** A slip's margin round its words, in ems. */
 const PAD = { x: 0.7, y: 0.45 } as const;
 
@@ -101,26 +106,47 @@ export interface AnswersInput {
 export function answersAtRest(o: AnswersInput): InkAtRest[] {
   const out: InkAtRest[] = [];
   const planOf = new Map(o.plans.map((p) => [p.seat, p]));
+  // What a slip keeps clear of: everything drawn, and the title tabs piles wear over their top edges (the scene's).
+  const byGroup = new Map(o.shapes.map((x) => [x.group, x]));
+  const tabs: Shape[] = o.plans.flatMap((p) =>
+    p.units.flatMap((u): Shape[] => {
+      const sh = byGroup.get(u.id);
+      if (!sh || u.account || u.kind === "well" || u.members.length < 2) return [];
+      const [, , tr, tl] = sh.face, up = { x: (tl.x - sh.face[0].x) * TAB_SHARE, y: (tl.y - sh.face[0].y) * TAB_SHARE };
+      const face: Quad = [tl, tr, { x: tr.x + up.x, y: tr.y + up.y }, { x: tl.x + up.x, y: tl.y + up.y }];
+      return [{ ...sh, group: `${u.id}:tab`, face, name: face, foot: face, floor: 0 }];
+    }),
+  );
+  const obstacles = [...o.shapes, ...tabs];
   for (const s of slipsOf(o.boards, o.ask, o.combat, o.perspective)) {
     const page = planOf.get(s.seat)?.fixtures.page;
     if (!page) continue;
     // The page's front edge, toward me, at its middle; the slip comes out from under it.
-    // A side page's slip slides along its edge toward the table's middle, where its turned edge stands highest.
+    // A side page's slip first slides along its edge toward the table's middle, where its turned edge stands highest;
+    // then the middle of the edge, then its far end.
     const f = frameOf(page.yaw), side = Math.sign(-page.pos.x) * (Math.abs(page.pos.x) > 1 ? 1 : 0);
-    const make = (tall: boolean, lines: readonly string[]): InkAtRest => {
-      // (It lies square to the table, as a slip dropped on it would: its words level, tucked under the turned edge.)
+    const make = (tall: boolean, lines: readonly string[], where: number): InkAtRest => {
+      // (It lies square to the table, as a slip dropped on it would: its words level, on the turned edge.)
       const probe = block(o.projector, `slip:${s.seat}`, "slip", s.seat, lines, s.ids, at(page.pos, f, 0, -page.d / 2 + TUCK), 0, INK_PX.slip, true, false, tall);
-      const slide = side * Math.max(0, page.w / 2 - probe.w / 2 - 0.5);
+      const slide = where * Math.max(0, page.w / 2 - probe.w / 2 - 0.5);
       return slide ? block(o.projector, `slip:${s.seat}`, "slip", s.seat, lines, s.ids, at(page.pos, f, slide, -page.d / 2 + TUCK), 0, INK_PX.slip, true, false, tall) : probe;
     };
-    const clear = (x: InkAtRest, any = false): boolean => !audit([...o.shapes, x.shape], o.projector.viewport, { only: (y) => y === x.shape }).some((v) => any || v.rule !== "tap-patch");
+    // A tall slip must have its finger's patch; a short one only keep its words clear.
+    const clear = (x: InkAtRest, tall: boolean): boolean => !audit([...obstacles, x.shape], o.projector.viewport, { only: (y) => y === x.shape }).some((v) => tall || v.rule !== "tap-patch");
     // Tall enough to tap where that is clear; else as deep as its words, on one line or, narrower, two clauses a line.
     const clauses = s.lines.join(" · ").split(" · ");
     const narrow = clauses.length > 2 ? [clauses.slice(0, 2).join(" · "), clauses.slice(2).join(" · ")] : s.lines;
-    const tries = [make(true, s.lines), make(false, s.lines), make(false, narrow)];
-    out.push(tries.find((x, i) => clear(x, i > 0)) ?? tries[1]!);
+    const wheres = side ? [side, 0, -side] : [0, -1, 1];
+    const tries: { x: InkAtRest; tall: boolean }[] = [
+      ...wheres.map((w) => ({ x: make(true, s.lines, w), tall: true })),
+      ...wheres.map((w) => ({ x: make(false, s.lines, w), tall: false })),
+      ...wheres.map((w) => ({ x: make(false, narrow, w), tall: false })),
+    ];
+    const found = tries.find((t) => clear(t.x, t.tall));
+    out.push(found ? found.x : { ...tries[wheres.length]!.x, away: true });
   }
-  if (o.combat?.attacks.length) {
+  // (While I pick my attackers the prompt says my sums; the landing is written once an attack is declared.)
+  if (o.combat?.attacks.length && o.ask?.kind !== "attack") {
     const lanes = combatLanes(planOf, o.perspective, o.combat);
     for (const l of landings(o.boards, o.combat)) {
       const ends = lanes.filter((x) => x.defending === l.seat && "at" in x.to).map((x) => (x.to as { at: V3 }).at);

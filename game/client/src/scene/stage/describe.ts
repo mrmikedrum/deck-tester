@@ -278,6 +278,7 @@ export function describe(input: DescribeInput): Description {
 
   // The answers the moment asks, in red on the table: words only (a slip's tap reaches its cards through its hit group).
   for (const a of plan.answers) {
+    if (a.away) continue;
     const spec: AnswerSpec = { kind: a.kind, lines: a.lines, w: a.w, d: a.d, em: a.em, stretch: a.stretch, row: ROW.line };
     pieces.set(a.id, {
       id: a.id,

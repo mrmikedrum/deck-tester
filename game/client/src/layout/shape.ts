@@ -113,10 +113,9 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
 }
 
 /**
- * An account: ink lying in its page's plane, w x d back from the middle of its near edge, turned with the page. Its name
- * strip is its first (furthest) sixth and its foot its nearest, so nothing may stand over its tally or its last line more
- * than a card's strip may be covered; it has no card floor, but its furthest line must meet the ink floor
- * (told/ink.ts `INK_PX.line`).
+ * An account: ink lying in its page's plane, w x d back from the middle of its near edge, turned with the page. Every
+ * line is what it says, so its name and foot are the whole block (nothing may cover a fifth of it); it has no card floor,
+ * but its furthest line must meet the ink floor (told/ink.ts `INK_PX.line`).
  */
 function inkShape(proj: Projector, seat: string, u: Unit, at: At): Shape {
   const { block } = u.account!, p = u.placement.pos;
@@ -129,9 +128,10 @@ function inkShape(proj: Projector, seat: string, u: Unit, at: At): Shape {
     group: u.id,
     kind: "unit",
     seat,
+    // (Every line of it is what it says: its name and foot are the whole block, so nothing may cover a fifth of it.)
     face: win(0, 1),
-    name: win(5 / 6, 1),
-    foot: win(0, 1 / 6),
+    name: win(0, 1),
+    foot: win(0, 1),
     order: p.z,
     floor: 0,
     width: Math.abs(pt(0.5, 0.5).x - pt(-0.5, 0.5).x),

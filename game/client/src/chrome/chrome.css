@@ -88,6 +88,7 @@
   .l-sum {
     font: 400 calc(15 * var(--u)) / 1.2 var(--serif);
     color: var(--sig-danger-ink);
+    white-space: pre-line;
   }
   .l-ctx {
     font: 400 calc(14 * var(--u)) / 1.3 var(--serif);

@@ -79,6 +79,19 @@ function handOf(s: AppState, model: TableModel, scene: SceneReport | null): Hand
 }
 
 /**
+ * The prompt's own sums are the told table's (the base page's prompt says nothing new); and a slip the table had no
+ * clear place for (the fight stands where it would lie) is said there instead, under them, by its seat.
+ */
+function promptSums(s: AppState, controls: ReturnType<typeof play.present>["controls"]): ReturnType<typeof play.present>["controls"] {
+  const p = controls.prompt;
+  if (!p) return controls;
+  if (s.layout !== "told") return p.sum ? { ...controls, prompt: { ...p, sum: null } } : controls;
+  const away = (s.plan?.answers ?? []).filter((a) => a.away && a.kind === "slip").map((a) => `${s.model?.seat(a.seat!)?.name ?? a.seat}: ${a.lines.join(" · ")}`);
+  if (!away.length) return controls;
+  return { ...controls, prompt: { ...p, sum: [p.sum, ...away].filter(Boolean).join("\n") } };
+}
+
+/**
  * live.js `status`'s `rewind`: back at an earlier position, the prompt on a play decision I may answer now says so
  * (the cue, then "Your decision · <phase>"), unless the table is moving or Sunfall is up, which the old prompt said first.
  */
@@ -143,7 +156,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null): Chrom
     viewport: s.viewport,
     reserve: s.reserve,
     // (The sums are the told table's: the base page's prompt says nothing new.)
-    controls: s.layout === "told" || !controls.prompt?.sum ? controls : { ...controls, prompt: { ...controls.prompt, sum: null } },
+    controls: promptSums(s, controls),
     hand: model ? handOf(s, model, scene) : { cards: [], away: true, respond: false, carried: [], fresh: [] },
     looks: looksOf(s, model),
     named: namedOf(s),

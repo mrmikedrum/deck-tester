@@ -289,11 +289,12 @@ export function planTable(input: TableInput): TablePlan {
   // The answers lie on the table at rest; they are audited (their letters' floor, nothing over their words, a slip's
   // patch) but never fold a seat. A slip without a patch of its own has no hit group: its words still stand.
   const answers = input.ask !== undefined && (input.ask || combat) ? answersAtRest({ ask: input.ask ?? null, combat, boards: input.seats.map((x) => x.board), plans: final, perspective: input.seats[0]!.seat, projector, shapes }) : [];
-  const inkV = answers.length ? audit([...shapes, ...answers.map((a) => a.shape)], vp, { area, only: (x) => x.group.includes(":") && answers.some((a) => a.shape === x) }) : [];
+  const drawn = answers.filter((a) => !a.away);
+  const inkV = drawn.length ? audit([...shapes, ...drawn.map((a) => a.shape)], vp, { area, only: (x) => x.group.includes(":") && drawn.some((a) => a.shape === x) }) : [];
   const unreachable = new Set(inkV.filter((x) => x.rule === "tap-patch").map((x) => x.group));
   // (A slip is words, not a card or a pile: without a patch it is no shortcut, which is no limit broken.)
   v = [...v, ...inkV.filter((x) => x.rule !== "tap-patch")];
-  const hits = hitGroups(final, shapes, stack, answers.filter((a) => a.kind === "slip" && a.ids.length && !unreachable.has(a.id)));
+  const hits = hitGroups(final, shapes, stack, drawn.filter((a) => a.kind === "slip" && a.ids.length && !unreachable.has(a.id)));
   const stackUp = stackFocus(input, tpl, projector, final, shapes, reserve, reserve.safe);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
