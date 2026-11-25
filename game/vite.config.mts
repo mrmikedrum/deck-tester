@@ -76,6 +76,8 @@ export default defineConfig({
       input: {
         index: resolve(import.meta.dirname, "client/index.html"),
         workbench: resolve(import.meta.dirname, "client/workbench.html"),
+        // The render study: a standalone page, not part of the app (scene/study).
+        "render-study": resolve(import.meta.dirname, "client/render-study.html"),
       },
     },
   },
