@@ -76,6 +76,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     stack,
     combat,
     ...(o.layout ? { layout: o.layout } : {}),
-    ...(o.ask !== undefined ? { ask } : {}),
+    ...(o.ask !== undefined ? { ask, declaring: model.phase === "COMBAT_DECLARE_ATTACKERS" || model.phase === "COMBAT_DECLARE_BLOCKERS" } : {}),
   };
 }

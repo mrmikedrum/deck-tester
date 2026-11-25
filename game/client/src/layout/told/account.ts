@@ -46,6 +46,8 @@ export interface AccountEntry {
   readonly text: string;
   /** One mark per card, ready ones first: true for a tapped one (a turned stroke). */
   readonly marks: readonly boolean[];
+  /** Its cards out in a fight just now: a hollow mark each, after the others (not counted in its text). */
+  readonly out: number;
   /** The combat keywords every card of a kind holds, in words ("fly"); null for none. */
   readonly trait: string | null;
   readonly ids: readonly CardId[];
@@ -68,6 +70,8 @@ export interface AccountOptions {
   readonly lines?: number;
   /** The most characters a line of works may hold. */
   readonly width?: number;
+  /** Written cards out of the page for now (in a fight): they keep their entry's place as hollow marks. */
+  readonly out?: ReadonlySet<CardId>;
 }
 
 /**
@@ -168,39 +172,45 @@ function worksOf(cards: readonly BoardCard[], lines: number, width: number): Cla
  * by name. Past its lines, the smallest kinds join the rest; works take the lines left, then "+N".
  */
 export function accountOf(board: SeatBoard, written: ReadonlySet<CardId>, o: AccountOptions = {}): Account {
-  const budget = o.lines ?? ACCOUNT_LINES, width = o.width ?? 40;
+  const budget = o.lines ?? ACCOUNT_LINES, width = o.width ?? 40, away = o.out ?? new Set<CardId>();
   const creatures = board.cards.filter((c) => c.creature);
-  const out = board.cards.filter((c) => written.has(c.id));
-  const wc = out.filter((c) => c.creature), wo = out.filter((c) => !c.creature);
+  const out = board.cards.filter((c) => written.has(c.id) || away.has(c.id));
+  const wc = out.filter((c) => c.creature), wo = out.filter((c) => !c.creature && !away.has(c.id));
   if (!out.length) return { tally: null, traits: [], entries: [], works: [], written: [], lines: 0 };
-  const tally: Tally | null = creatures.length ? { power: power(creatures), creatures: creatures.length, ids: creatures.map((c) => c.id) } : null;
-  const traits = traitsOf(creatures);
+  // The tally and traits speak for the page only once a creature is written: before that the cards say it themselves.
+  const tally: Tally | null = wc.length ? { power: power(creatures), creatures: creatures.length, ids: creatures.map((c) => c.id) } : null;
+  let traits = wc.length ? traitsOf(creatures) : [];
 
-  // Kinds of identical written creatures, the most first (then the strongest); single cards are the unlike rest.
+  // Kinds of identical written creatures, in the order they first came (so an entry never moves when counts change);
+  // single cards are the unlike rest. A card out in a fight stays in its entry as a hollow mark, not in its count.
   const by = new Map<string, BoardCard[]>();
   for (const c of [...wc].sort((a, b) => a.id - b.id)) by.set(kindOf(c), [...(by.get(kindOf(c)) ?? []), c]);
-  let kinds = [...by.values()].filter((g) => g.length > 1).sort((a, b) => b.length - a.length || power(b) - power(a) || a[0]!.id - b[0]!.id);
+  let kinds = [...by.values()].filter((g) => g.length > 1);
   let rest = [...by.values()].filter((g) => g.length === 1).flat();
-  const fixed = (tally ? 1 : 0) + traits.length;
-  // Works keep a line where there are any; the smallest kinds join the rest until the lines hold.
-  const lines = (): number => fixed + kinds.length + (rest.length ? 1 : 0) + (wo.length ? 1 : 0);
+  const lines = (): number => (tally ? 1 : 0) + traits.length + kinds.length + (rest.length ? 1 : 0) + (wo.length ? 1 : 0);
+  // Past its lines: the traits give way first (the cards standing show theirs), then, only then, the last kinds join the rest.
+  while (traits.length && lines() > budget) traits = traits.slice(0, -1);
   while (kinds.length && lines() > budget) {
     rest = [...rest, ...kinds[kinds.length - 1]!];
     kinds = kinds.slice(0, -1);
   }
+  const fixed = (tally ? 1 : 0) + traits.length;
+  const here = (g: readonly BoardCard[]) => g.filter((c) => !away.has(c.id));
+  const hollow = (g: readonly BoardCard[]) => g.filter((c) => away.has(c.id)).length;
   const entries: AccountEntry[] = kinds.map((g) => ({
     kind: "kind",
-    text: `${g[0]!.name}${size(g[0]!)} ×${g.length}`,
-    marks: marksOf(g),
+    text: `${g[0]!.name}${size(g[0]!)} ×${here(g).length}`,
+    marks: marksOf(here(g)),
+    out: hollow(g),
     trait: kindTrait(g),
-    ids: ready(g).map((c) => c.id),
+    ids: ready(here(g)).map((c) => c.id),
   }));
   if (rest.length === 1) {
     const c = rest[0]!;
-    entries.push({ kind: "one", text: `${c.name}${size(c)}`, marks: marksOf(rest), trait: kindTrait(rest), ids: [c.id] });
+    entries.push({ kind: "one", text: `${c.name}${size(c)}`, marks: marksOf(here(rest)), out: hollow(rest), trait: kindTrait(rest), ids: here(rest).map((x) => x.id) });
   } else if (rest.length) {
-    const sorted = [...rest].sort(byImportance);
-    entries.push({ kind: "more", text: `${rest.length} more · ${power(rest)} power`, marks: marksOf(sorted), trait: null, ids: ready(sorted).map((c) => c.id) });
+    const sorted = [...here(rest)].sort(byImportance);
+    entries.push({ kind: "more", text: `${sorted.length} more · ${power(sorted)} power`, marks: marksOf(sorted), out: hollow(rest), trait: null, ids: ready(sorted).map((c) => c.id) });
   }
   const works = worksOf(wo, Math.max(wo.length ? 1 : 0, budget - fixed - entries.length), width);
   const order = [...entries.flatMap((e) => e.ids), ...works.flatMap((w) => w.ids)];

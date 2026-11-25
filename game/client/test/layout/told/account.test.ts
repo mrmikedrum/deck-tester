@@ -51,8 +51,9 @@ describe("the account at turn 15", () => {
       "42 power · 21 creatures",
       "11 fly (21 power)",
       "Atraxa deathtouch, lifelink",
-      "Thopter 1/1 ×8 ▮▮▮▮▮▮▬▬ fly",
+      // (Kinds go in the order they first came, so an entry never moves when counts change: the Constructs came first.)
       "Construct 0/0 ×3 ▮▮▬",
+      "Thopter 1/1 ×8 ▮▮▮▮▮▮▬▬ fly",
       "6 more · 9 power ▮▮▮▮▮▮",
       "Throne of Geth · Incubator ×3 · +2", // works go by arrival: the Incubators came before Paladin Class
     ]);

@@ -15,7 +15,8 @@ import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
 import { answersAtRest } from "./told/at-rest";
 import type { InkAtRest } from "./told/at-rest";
-import type { Ask } from "./told/answers";
+import type { Ask, LandingWords } from "./told/answers";
+import { landings } from "./told/answers";
 import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
@@ -162,6 +163,8 @@ export interface TableInput {
   /** What the moment asks (told/answers.ts): its answers are written on the table in red. Null asks nothing but still
    *  writes where an attack lands; absent writes no answers at all. */
   readonly ask?: Ask | null;
+  /** Attackers or blockers are being declared (no damage dealt yet): where the attack lands is said. */
+  readonly declaring?: boolean;
 }
 
 export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack";
@@ -211,8 +214,11 @@ export interface TablePlan {
   readonly violations: readonly Violation[];
   /** The combat it stood in the open middle (`Unit.fighting`), or null. */
   readonly combat: CombatPairs | null;
-  /** The answers written on the table (slips, the landing, notes): only while the moment asks. */
+  /** The answers written on the table (each page's heading, block notes): only while the moment asks. */
   readonly answers: readonly InkAtRest[];
+  /** What each attacked seat takes unblocked, said on its plaque beside its life while attackers and blockers are
+   *  declared (the told table only). */
+  readonly landings: readonly LandingWords[];
 }
 
 function fnv(s: string): number {
@@ -228,12 +234,12 @@ export function planTable(input: TableInput): TablePlan {
   const tpl = input.template ?? tableTemplate(input.seats.length);
   const layout = input.layout ?? mat;
   const vp = input.viewport, projector = pinhole(tpl.camera, vp), reserve = reservations(vp, input.mode, input.safe);
+  const combat = input.combat ?? null, fight = fighters(combat);
   const mk = (i: number): Omit<SeatInput, "pressure"> => {
     const { seat, board } = input.seats[i]!, slot = tpl.slots[i]!;
-    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null };
+    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, fighting: fight, settling: input.settling, memory: input.memory?.get(seat) ?? null };
   };
   const inputs = input.seats.map((_, i) => mk(i));
-  const combat = input.combat ?? null, fight = fighters(combat);
   const plans: SeatPlan[] = inputs.map((i) => planSeat(layout, i, { fighting: fight }));
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
@@ -286,21 +292,20 @@ export function planTable(input: TableInput): TablePlan {
   for (const s of c.stack)
     if (s.spilled) v = [...v, { rule: "no-room", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
-  // The answers lie on the table at rest; they are audited (their letters' floor, nothing over their words, a slip's
-  // patch) but never fold a seat. A slip without a patch of its own has no hit group: its words still stand.
-  const answers = input.ask !== undefined && (input.ask || combat) ? answersAtRest({ ask: input.ask ?? null, combat, boards: input.seats.map((x) => x.board), plans: final, perspective: input.seats[0]!.seat, projector, shapes }) : [];
-  const drawn = answers.filter((a) => !a.away);
-  const inkV = drawn.length ? audit([...shapes, ...drawn.map((a) => a.shape)], vp, { area, only: (x) => x.group.includes(":") && drawn.some((a) => a.shape === x) }) : [];
-  const unreachable = new Set(inkV.filter((x) => x.rule === "tap-patch").map((x) => x.group));
-  // (A slip is words, not a card or a pile: without a patch it is no shortcut, which is no limit broken.)
+  // The answers lie on the table at rest; they are audited (their letters' floor, nothing over their words) but never fold
+  // a seat. (Words, not cards or piles: they need no patch of their own.) Where an attack lands is said on the plaques,
+  // while attackers and blockers are declared: once damage is dealt it is gone.
+  const answers = input.ask !== undefined && (input.ask || combat) ? answersAtRest({ ask: input.ask ?? null, combat, boards: input.seats.map((x) => x.board), plans: final, perspective: input.seats[0]!.seat, projector }) : [];
+  const inkV = answers.length ? audit([...shapes, ...answers.map((a) => a.shape)], vp, { area, only: (x) => answers.some((a) => a.shape === x) }) : [];
   v = [...v, ...inkV.filter((x) => x.rule !== "tap-patch")];
-  const hits = hitGroups(final, shapes, stack, drawn.filter((a) => a.kind === "slip" && a.ids.length && !unreachable.has(a.id)));
+  const landed = input.ask !== undefined && input.declaring ? landings(input.seats.map((x) => x.board), combat) : [];
+  const hits = hitGroups(final, shapes, stack);
   const stackUp = stackFocus(input, tpl, projector, final, shapes, reserve, reserve.safe);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  const said = answers.map((a) => `${a.id}:${a.lines.join("/")}:${a.pos.x.toFixed(3)},${a.pos.z.toFixed(3)}`).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${said}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, answers };
+  const said = [...answers.map((a) => `${a.id}:${a.lines.join("/")}:${a.pos.x.toFixed(3)},${a.pos.z.toFixed(3)}`), ...landed.map((l) => `${l.seat}>${l.text}`)].join(";");
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${said}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, answers, landings: landed };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle
@@ -525,7 +530,7 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };
 }
 
-function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"], slips: readonly InkAtRest[] = []): HitGroups {
+function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"]): HitGroups {
   const groups: HitGroup[] = [];
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
@@ -542,8 +547,6 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   }
   // The stack, top first, by its depth like any card; under the plates.
   for (const s of stack) if (s.reachable) groups.push({ id: `stack:${s.key}`, kind: "stack", seat: null, members: [s.card], quad: s.quad, order: shape(`stack:${s.key}`).order });
-  // A slip opens the cards it speaks of, as a summary does.
-  for (const a of slips) groups.push({ id: a.id, kind: "summary", seat: a.seat, members: a.ids, quad: a.shape.face, order: a.shape.order });
   const rev = fnv(groups.map((x) => `${x.id}:${x.members.join(",")}`).join(";"));
   return { rev, groups };
 }

@@ -24,6 +24,8 @@ export interface PlateSpec {
   readonly ring: "none" | "option" | "selected";
   /** Url of the commander's art, when ready. */
   readonly art: string | null;
+  /** What an attack on this seat would deal unblocked, said in red beside its life while the attack is declared. */
+  readonly threat?: string;
 }
 
 export function paintPlate(
@@ -147,6 +149,18 @@ export function paintPlate(
   x.fillText(life, lx + lw / 2, cy + 3);
   x.fillStyle = "#f0dcae";
   x.fillText(life, lx + lw / 2, cy + 1);
+  // The threat beside it, in red, as large: what reaches this life if nothing more is blocked.
+  let nameEnd = lx;
+  if (p.threat) {
+    x.textAlign = "right";
+    x.font = `400 96px ${SERIF}`;
+    const tw = x.measureText(p.threat).width;
+    x.fillStyle = "rgba(0,0,0,.55)";
+    x.fillText(p.threat, lx - 14, cy + 3);
+    x.fillStyle = "#e0402a";
+    x.fillText(p.threat, lx - 14, cy + 1);
+    nameEnd = lx - 28 - tw;
+  }
   x.textAlign = "left";
   // The name, on a band of quieter brass: the patina is burnished off where the lettering is cut, so no blotch crosses it.
   const band = x.createLinearGradient(0, Y + I, 0, Y + Hh - I);
@@ -155,18 +169,18 @@ export function paintPlate(
   band.addColorStop(0.82, "rgba(176,138,78,.72)");
   band.addColorStop(1, "rgba(176,138,78,0)");
   x.fillStyle = band;
-  x.fillRect(160, Y + I, lx - 172, Hh - 2 * I);
+  x.fillRect(160, Y + I, nameEnd - 172, Hh - 2 * I);
   const name = p.name + (p.monarch ? " ♛" : "");
   let fs = 66;
   x.font = `400 ${fs}px ${SERIF}`;
-  while (fs > 40 && x.measureText(name).width > lx - 196) {
+  while (fs > 40 && x.measureText(name).width > nameEnd - 196) {
     fs -= 2;
     x.font = `400 ${fs}px ${SERIF}`;
   }
   engrave(name, 178, cy + 4);
   if (p.turn) {
     // whose turn: a lit ember set into the plaque
-    const ex = lx - 30;
+    const ex = nameEnd - 30;
     x.beginPath();
     x.arc(ex, cy, 16, 0, Math.PI * 2);
     x.fillStyle = "#1a0c02";

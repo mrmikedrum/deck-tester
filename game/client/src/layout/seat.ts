@@ -77,6 +77,19 @@ export interface Fixtures {
   readonly zones: readonly { readonly zone: "graveyard" | "exile"; readonly placement: Placement }[];
   /** The commander standing beside the plaque while it is in the command zone (h.js `banner`). */
   readonly commander?: { readonly card: CardId; readonly placement: Placement };
+  /** Where the moment's answer is written on this page (seat/told.ts): one line under the plaque, kept free. */
+  readonly heading?: InkSlot;
+}
+
+/** A line's room for ink lying on a page: its middle, size and turn (world), an em in world depth and the letters'
+ *  stretch (seat.ts `InkBlock`). */
+export interface InkSlot {
+  readonly pos: V3;
+  readonly w: number;
+  readonly d: number;
+  readonly yaw: number;
+  readonly em: number;
+  readonly stretch: number;
 }
 
 /** A summary: what a folded or last-resort unit holds, in the terms that matter. */
@@ -105,6 +118,8 @@ export interface SeatInput {
   readonly viewport: Viewport;
   /** Cards acting now (combat, aimed at): they leave their piles while they act. */
   readonly involved: ReadonlySet<CardId>;
+  /** Of those, the cards in a fight (attacking, blocking): a layout may hold its page still while they are out. */
+  readonly fighting?: ReadonlySet<CardId>;
   /** True while cards are still flying off the battlefield (the app's virtual clock says so): the page holds its shape. */
   readonly settling: boolean;
   /** The previous plan's memory: kept places, held rows. Ignored when it was written by another paradigm. */

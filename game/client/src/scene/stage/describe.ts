@@ -197,7 +197,9 @@ export function describe(input: DescribeInput): Description {
     }
 
     const plateMark = cues.marks.seats.get(seat) ?? null;
-    const spec = plateOf(model, seat, plateMark);
+    // Where an attack lands, its sum beside the life it threatens (the told table, while it is declared).
+    const landing = plan.landings.find((l) => l.seat === seat);
+    const spec = { ...plateOf(model, seat, plateMark), ...(landing ? { threat: landing.text } : {}) };
     // The rest of the command zone (a partner) is shown by its plate (the seal's art); it is counted there.
     const command = model.zone(seat, "command").filter((id) => id !== cmd?.card);
     put({
@@ -278,8 +280,7 @@ export function describe(input: DescribeInput): Description {
 
   // The answers the moment asks, in red on the table: words only (a slip's tap reaches its cards through its hit group).
   for (const a of plan.answers) {
-    if (a.away) continue;
-    const spec: AnswerSpec = { kind: a.kind, lines: a.lines, w: a.w, d: a.d, em: a.em, stretch: a.stretch, row: ROW.line };
+    const spec: AnswerSpec = { kind: a.kind, lines: a.lines, w: a.w, d: a.d, em: a.em, stretch: a.stretch, row: ROW.line, align: a.align };
     pieces.set(a.id, {
       id: a.id,
       kind: "ink",

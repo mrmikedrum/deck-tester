@@ -56,7 +56,7 @@ export class Painter {
   }
   /** An answer in red: a slip, a landing numeral, a note. */
   answer(spec: AnswerSpec): Lease {
-    return this.cache.lease("answer|" + canonical(spec), (c) => paintAnswer(c, spec, this.env.surfaces.vellum));
+    return this.cache.lease("answer|" + canonical(spec), (c) => paintAnswer(c, spec));
   }
   back(): Lease {
     return this.cache.lease("back", (c) => paintBack(c, this.env));

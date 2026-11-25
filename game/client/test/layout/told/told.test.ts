@@ -60,14 +60,15 @@ function asked(name: string, beat: number | "first", more: (p: TableInput) => Pa
   const input = { ...tableInputOf(m, { viewport: VPS[0]!, ask: askOf(snap.value.decision, true) }), layout: told };
   return { m, p: planTable({ ...input, ...more(input) }) };
 }
-const said = (p: TablePlan, id: string): string | undefined => p.answers.find((a) => a.id === id)?.lines.join(" / ");
+const said = (p: TablePlan, seat: string): string | undefined => p.answers.find((a) => a.id === `heading:${seat}`)?.lines.join(" / ");
 
 describe("answers", () => {
-  it("while I attack, each seat I may attack gets its slip: what may block, in facts a player would check", () => {
+  it("while I attack, each seat I may attack gets its heading: what may block, in facts a player would check", () => {
     const { p } = asked("attack15", 0);
-    expect(said(p, "slip:Marath")).toBe("26 untapped · no fliers or reach · biggest 5/5");
-    expect(said(p, "slip:Atraxa")).toBe("17 untapped · 9 fly · Atraxa deathtouch");
-    expect(said(p, "slip:Dack")).toBe("10 untapped · 5 fly · biggest 4/6");
+    // (One line under the plaque: the clauses that fit, in their order.)
+    expect(said(p, "Marath")).toBe("26 untapped · no fliers or reach");
+    expect(said(p, "Atraxa")).toBe("17 untapped · 9 fly · Atraxa deathtouch");
+    expect(said(p, "Dack")).toBe("10 untapped · 5 fly · biggest 4/6");
     expect(p.violations).toEqual([]);
   });
 
@@ -80,15 +81,17 @@ describe("answers", () => {
 
   it("a sweep on the stack says what each page loses", () => {
     const { p } = asked("wipe15", 0);
-    expect(said(p, "slip:Marath")).toBe("Loses 33 creatures");
-    expect(said(p, "slip:Atraxa")).toBe("Loses 21 creatures");
-    expect(said(p, "slip:Dack")).toBe("Loses 13 creatures");
-    expect(p.answers.some((a) => a.seat === seatId("You") && a.kind === "slip")).toBe(false);
+    expect(said(p, "Marath")).toBe("Loses 33 creatures");
+    expect(said(p, "Atraxa")).toBe("Loses 21 creatures");
+    expect(said(p, "Dack")).toBe("Loses 13 creatures");
+    expect(p.answers.some((a) => a.seat === seatId("You") && a.kind === "heading")).toBe(false);
   });
 
-  it("an attack on me is written where it lands: the power arriving unblocked", () => {
-    const { p } = asked("alpha15", 0);
-    expect(said(p, "landing:You")).toMatch(/^\d+$/);
+  it("an attack is said on the plaque it threatens while it is declared, and gone once damage is dealt", () => {
+    expect(asked("block15", 1).p.landings).toEqual([expect.objectContaining({ seat: seatId("You"), text: "35" })]);
+    expect(asked("alpha15", 0).p.landings.map((l) => l.text)).toEqual(["35"]);
+    expect(asked("alpha15", 1).p.landings.map((l) => l.text)).toEqual(["12"]);
+    expect(asked("alpha15", 2).p.landings).toEqual([]);
   });
 
   it("the base page writes nothing", () => {

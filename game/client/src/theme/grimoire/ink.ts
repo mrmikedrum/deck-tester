@@ -22,7 +22,7 @@ export const INK = {
 export type InkLineSpec =
   | { readonly t: "tally"; readonly power: number; readonly rest: string }
   | { readonly t: "trait"; readonly text: string }
-  | { readonly t: "entry"; readonly text: string; readonly marks: readonly boolean[]; readonly trait: string | null }
+  | { readonly t: "entry"; readonly text: string; readonly marks: readonly boolean[]; readonly out?: number; readonly trait: string | null }
   | { readonly t: "works"; readonly text: string };
 
 export interface InkSpec {
@@ -89,10 +89,10 @@ export function paintAccount(canvas: Canvas, spec: InkSpec): void {
     x.fillText(l.text, 0, base, room);
     if (l.t !== "entry") return;
     let at = Math.min(room, x.measureText(l.text).width) + E * 0.55;
-    marks(x, l.marks, at, base, E, room);
+    marks(x, l.marks, l.out ?? 0, at, base, E, room);
     if (l.trait) {
-      const n = l.marks.length, tapped = l.marks.filter(Boolean).length;
-      at += (n - tapped) * (MARK.w + MARK.gap) * E + tapped * (MARK.h + MARK.gap) * E + (tapped && tapped < n ? E * 0.3 : 0) + E * 0.35;
+      const n = l.marks.length, tapped = l.marks.filter(Boolean).length, gone = l.out ?? 0;
+      at += (n - tapped + gone) * (MARK.w + MARK.gap) * E + tapped * (MARK.h + MARK.gap) * E + (tapped && tapped < n ? E * 0.3 : 0) + (gone ? E * 0.3 : 0) + E * 0.35;
       ink(INK.faint, 0.85);
       x.font = `italic 400 ${E}px ${font.serif}`;
       if (at < room) x.fillText(l.trait, at, base, room - at);
@@ -103,8 +103,9 @@ export function paintAccount(canvas: Canvas, spec: InkSpec): void {
   x.shadowBlur = 0;
 }
 
-/** The marks of an entry: ready ones upright, then a little space, then tapped ones turned, on the line's baseline. */
-function marks(x: Ctx, ms: readonly boolean[], at: number, base: number, E: number, room: number): void {
+/** The marks of an entry: ready ones upright, then a little space, then tapped ones turned, on the line's baseline; then
+ *  a hollow one for each card out in a fight, where it will come back. */
+function marks(x: Ctx, ms: readonly boolean[], out: number, at: number, base: number, E: number, room: number): void {
   x.fillStyle = INK.sepia;
   x.globalAlpha = 0.85;
   let p = at;
@@ -116,11 +117,21 @@ function marks(x: Ctx, ms: readonly boolean[], at: number, base: number, E: numb
     x.fillRect(p, base - h, w, h);
     p += w + MARK.gap * E;
   });
+  if (out) p += E * 0.3;
+  x.lineWidth = Math.max(1, E * 0.07);
+  x.strokeStyle = INK.sepia;
+  for (let i = 0; i < out; i++) {
+    const w = MARK.w * E, h = MARK.h * E;
+    if (p + w > room) break;
+    x.strokeRect(p + x.lineWidth / 2, base - h + x.lineWidth / 2, w - x.lineWidth, h - x.lineWidth);
+    p += w + MARK.gap * E;
+  }
 }
 
-/** An answer in red: a slip of vellum lying on the table under its page's edge, a landing numeral, or a note. */
+/** An answer in red, in the vellum: a page's heading under its plaque, or a note at an attacker's foot. */
 export interface AnswerSpec {
-  readonly kind: "slip" | "landing" | "note";
+  readonly kind: "heading" | "note";
+  readonly align: "left" | "centre";
   readonly lines: readonly string[];
   readonly w: number;
   readonly d: number;
@@ -130,33 +141,16 @@ export interface AnswerSpec {
   readonly row: number;
 }
 
-export function paintAnswer(canvas: Canvas, spec: AnswerSpec, vellum: CanvasImageSource | null): void {
+export function paintAnswer(canvas: Canvas, spec: AnswerSpec): void {
   const ppu = Math.min(INK_EM_PX / spec.em, MAX_SIDE / Math.max(spec.w, spec.d)), E = spec.em * ppu, k = 1 / spec.stretch;
   const W = Math.max(4, Math.round(spec.w * ppu)), H = Math.max(4, Math.round(spec.d * ppu));
   const x = begin(canvas, W, H);
   x.clearRect(0, 0, W, H);
-  if (spec.kind === "slip") {
-    // A torn slip of vellum, its own shadow under it where it lies a hair off the table.
-    const m = Math.min(W, H) * 0.06;
-    x.shadowColor = "rgba(20,10,0,.55)";
-    x.shadowBlur = m * 1.2;
-    x.shadowOffsetY = m * 0.3;
-    x.fillStyle = (vellum && x.createPattern(vellum, "repeat")) || "#e8dcc0";
-    x.beginPath();
-    x.moveTo(m, m);
-    for (let i = 1; i <= 8; i++) x.lineTo(m + ((W - 2 * m) * i) / 8, m + (i % 2 ? m * 0.25 : 0));
-    x.lineTo(W - m, H - m);
-    x.lineTo(m, H - m);
-    x.closePath();
-    x.fill();
-    x.shadowColor = "transparent";
-    x.fillStyle = "rgba(255,245,220,.35)";
-    x.fill();
-  }
   const lines = spec.lines, n = lines.length;
   const size = E;
   x.setTransform(k, 0, 0, 1, 0, 0);
-  x.textAlign = "center";
+  const left = spec.align === "left";
+  x.textAlign = left ? "left" : "center";
   x.textBaseline = "alphabetic";
   x.fillStyle = INK.red;
   x.globalAlpha = 0.95;
@@ -164,7 +158,7 @@ export function paintAnswer(canvas: Canvas, spec: AnswerSpec, vellum: CanvasImag
   x.shadowBlur = E * 0.04;
   x.font = `400 ${size}px ${font.serif}`;
   const band = n * spec.row * E, top = (H - band) / 2;
-  lines.forEach((l, i) => x.fillText(l, W / k / 2, top + (i + 0.5) * spec.row * E + size * 0.33, W / k - E * 0.6));
+  lines.forEach((l, i) => x.fillText(l, left ? 0 : W / k / 2, top + (i + 0.5) * spec.row * E + size * 0.33, W / k - (left ? 0 : E * 0.6)));
   x.setTransform(1, 0, 0, 1, 0, 0);
   x.globalAlpha = 1;
   x.shadowBlur = 0;
