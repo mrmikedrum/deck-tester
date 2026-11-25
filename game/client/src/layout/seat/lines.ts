@@ -253,15 +253,21 @@ function plan(input: SeatInput): SeatPlan {
   if (me && spent.length) {
     const sS = scaleAt(g, at(g, r, whole.uc, aLine - 0.6), FLOOR.mine);
     const a0 = aLine - 0.06 - CW * sS;
-    let hi = whole.hi;
+    // (It keeps beside my support and wells, whatever their depth: on screen a well nearer me reaches up over it. Left of
+    // them, under the start of my line, where there is room; else right of them.)
+    let hi = whole.hi, right = whole.lo;
     for (const u of units) {
       const at0 = regionOf(r, u.placement.pos), half = (CW * u.placement.scale) / 2;
-      if (at0.a - 0.2 < a0 + CW * sS && at0.a + CH * u.placement.scale > a0) hi = Math.min(hi, at0.u - half - 0.3);
+      hi = Math.min(hi, at0.u - half - 0.3);
+      right = Math.max(right, at0.u + half + 0.3);
     }
-    // (Measured a little inside its near edge: it lies above the hand, which only its shadow reaches.)
     // (It starts under my line's left end, clear of the hand's button in the corner.)
     const lo = Math.max(bandSpan(g, r, true, a0 + 0.2).lo, whole.lo + whole.w * 0.12);
-    layoutSpent(a0, sS, { lo, hi, w: Math.max(CH * sS, hi - lo), uc: (lo + Math.max(hi, lo + CH * sS)) / 2 }, false, true);
+    const rhi = bandSpan(g, r, true, a0 + 0.2).hi;
+    const leftOk = hi - lo >= Math.min(spent.length, 2) * CH * sS * 1.05 || hi - lo >= rhi - right;
+    const span0 = leftOk ? { lo, hi } : { lo: right, hi: rhi };
+    const w0 = Math.max(CH * sS, span0.hi - span0.lo);
+    layoutSpent(a0, sS, { lo: span0.lo, hi: span0.lo + w0, w: w0, uc: span0.lo + w0 / 2 }, false, true);
   }
   const sFloor = scaleAt(g, at(g, r, span.uc, aLine), px);
   const K = Math.max(1, Math.min(me ? MOST.me : MOST.them, Math.floor(span.w / (sFloor * CW * PITCH))));

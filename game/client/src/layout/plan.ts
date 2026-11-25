@@ -256,11 +256,17 @@ export function planTable(input: TableInput): TablePlan {
   for (let round = 0; c.v.length && round < MAX_PRESSURE; round++) {
     // (A fighter's own trouble in the row is not its seat's: folding the seat would not move it.)
     // (Nor is a card's trouble that only fighters in the row cause: folding its seat would not move them.)
-    const byRow = (x: Violation): boolean => layout !== mat && !!x.over?.length && x.over.every((g) => c.row.has(g));
+    // (What stands in the combat row as placed: a fighter keeps its unit id, so the row's own count by those.)
+    const fightingNow = new Set(c.placed.flatMap((p) => p.units.filter((u) => u.fighting).map((u) => u.id)));
+    const inRow = (g: string): boolean => c.row.has(g) || fightingNow.has(g);
+    const byRow = (x: Violation): boolean => layout !== mat && !!x.over?.length && x.over.every(inRow);
     const bad = new Set(c.v.filter((x) => !c.row.has(x.group) && !byRow(x)).map((x) => x.seat));
     // (A layout other than mat stands things that may reach over a neighbour, battle lines' files: the seat drawn over
     // the card folds too.)
-    if (layout !== mat) for (const x of c.v) if (!c.row.has(x.group) && !byRow(x)) for (const s of x.by ?? []) if (s !== null && s !== x.seat) bad.add(s);
+    // (Never for a fighter standing over it: folding the fighter's seat would not move the row.)
+    if (layout !== mat)
+      for (const x of c.v)
+        if (!c.row.has(x.group) && !byRow(x) && !(x.over ?? []).some(inRow)) for (const s of x.by ?? []) if (s !== null && s !== x.seat) bad.add(s);
     let moved = false;
     plans.forEach((p, i) => {
       if (!bad.has(p.seat) || p.report.lastResort) return;
