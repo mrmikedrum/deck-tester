@@ -18,7 +18,7 @@ import {
   PlaneGeometry,
   RepeatWrapping,
 } from "three";
-import type { Material, Texture } from "three";
+import type { Material, Object3D, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
 import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
@@ -113,6 +113,16 @@ export interface LabelTag {
   readonly overlap?: number;
 }
 const LABEL_OVERLAP = 3;
+/**
+ * A sign's lesser forms (a well's, a zone's), on its mesh: hidden until the renderer falls back on one where the sign
+ * would meet another label (view.ts `settleSigns`): the sign on one line (its second dropped, never shrunk under the
+ * floor), then its count as a chip on its card's face, which cannot meet anything.
+ */
+export const SIGN_ALTS = "signAlts";
+export interface SignAlts {
+  readonly line: Mesh | null;
+  readonly chip: Mesh | null;
+}
 const labelled = (d: { mesh: Mesh }, lease: Lease, fonts: readonly number[], want?: number): void =>
   void (d.mesh.userData[LABEL] = { fonts, h: lease.height, ...(want ? { want } : {}) } satisfies LabelTag);
 const covers = (o: Mesh): Mesh => ((o.userData[COVERS] = true), o);
@@ -321,6 +331,7 @@ class UnitView implements PieceView {
   private shadow: { mesh: Mesh; lease: Lease; tapped: boolean } | null = null;
   private well: { effect: Effect; key: string } | null = null;
   private wellSign: Decal | null = null;
+  private wellAlts: Decal[] = [];
 
   constructor(
     private readonly env: PieceEnv,
@@ -473,20 +484,32 @@ class UnitView implements PieceView {
       this.wellSign.dispose();
       this.wellSign = null;
     }
+    for (const a of this.wellAlts) {
+      a.mesh.removeFromParent();
+      a.dispose();
+    }
+    this.wellAlts = [];
     if (!w) return;
-    const lease = this.host.painter.sign({ text: w.sign, colour: w.theirs ? d.seatColour : null, sub: w.sub });
-    const sign = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
-    labelled(sign, lease, w.sub ? [SIGN_FONT.text, SIGN_FONT.sub] : [SIGN_FONT.text], LABEL_PX.theirs);
-    const ws = SIZE.wellSign;
-    sign.mesh.rotation.x = -Math.PI / 2 + ws.tilt;
-    // Its size in the world: theirs fits the card's width; mine is a sign's own size, a little smaller in a long row.
-    const fit = w.theirs ? Math.min(1, ws.theirsFit / (lease.width * SIGN_U)) : w.small ? 0.8 : 1;
-    sign.mesh.userData["fit"] = fit;
-    const z = w.theirs ? ws.theirs : ws.mine[w.alt ? 1 : 0];
-    const clear = ((lease.height * SIGN_U * fit) / 2) * Math.sin(ws.tilt) + 0.05;
-    sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear), z);
-    sign.mesh.renderOrder = 6;
-    this.ground.group.add(sign.mesh);
+    const ws = SIZE.wellSign, z = w.theirs ? ws.theirs : ws.mine[w.alt ? 1 : 0];
+    const signOf = (sub: string | null): Decal => {
+      const lease = this.host.painter.sign({ text: w.sign, colour: w.theirs ? d.seatColour : null, sub });
+      const sign = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
+      labelled(sign, lease, sub ? [SIGN_FONT.text, SIGN_FONT.sub] : [SIGN_FONT.text], LABEL_PX.theirs);
+      sign.mesh.rotation.x = -Math.PI / 2 + ws.tilt;
+      // Its size in the world: theirs fits the card's width; mine is a sign's own size, a little smaller in a long row.
+      const fit = w.theirs ? Math.min(1, ws.theirsFit / (lease.width * SIGN_U)) : w.small ? 0.8 : 1;
+      sign.mesh.userData["fit"] = fit;
+      const clear = ((lease.height * SIGN_U * fit) / 2) * Math.sin(ws.tilt) + 0.05;
+      sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear), z);
+      sign.mesh.renderOrder = 6;
+      this.ground.group.add(sign.mesh);
+      return sign;
+    };
+    const sign = signOf(w.sub), line = w.sub ? signOf(null) : null;
+    const chip = this.cards[0] ? countChip(this.host, w.sign, this.cards[0].obj.body) : null;
+    this.wellAlts = [line, chip].filter((x): x is Decal => x !== null);
+    for (const a of this.wellAlts) a.mesh.visible = false;
+    sign.mesh.userData[SIGN_ALTS] = { line: line?.mesh ?? null, chip: chip?.mesh ?? null } satisfies SignAlts;
     this.wellSign = sign;
   }
 
@@ -503,11 +526,11 @@ class UnitView implements PieceView {
     for (const c of this.dress) c.look(0, s.fade, null, 0);
     this.sign?.tone(1 - 0.8 * s.fade);
     this.ground.follow(s.rx);
-    if (this.wellSign) {
-      // Mine are a sign's own size in the world, whatever the well's scale; theirs fit the card.
-      const fit = this.wellSign.mesh.userData["fit"] as number;
-      this.wellSign.mesh.scale.setScalar(d.well?.theirs ? fit : fit / Math.max(1e-3, s.s));
-      this.wellSign.tone(1 - 0.8 * s.fade);
+    for (const sign of this.wellSign ? [this.wellSign, ...this.wellAlts] : []) {
+      // Mine are a sign's own size in the world, whatever the well's scale; theirs fit the card. (The chip has no fit.)
+      const fit = sign.mesh.userData["fit"] as number | undefined;
+      if (fit !== undefined) sign.mesh.scale.setScalar(d.well?.theirs ? fit : fit / Math.max(1e-3, s.s));
+      sign.tone(1 - 0.8 * s.fade);
     }
     const level = fxLevel(s.fade);
     this.marks.set(v.mark);
@@ -540,12 +563,22 @@ class UnitView implements PieceView {
     for (const c of this.dress) c.dispose();
     this.sign?.dispose();
     this.wellSign?.dispose();
+    for (const a of this.wellAlts) a.dispose();
     for (const c of this.chips) c.dispose();
     this.marks.clear();
     this.ash?.dispose();
     this.well?.effect.dispose();
     this.dropShadow();
   }
+}
+
+/** A sign's count ("Mountain ×4", "Graveyard 3": its last number) as a chip on its card's face, where the counter chips sit. */
+function countChip(host: Host, sign: string, on: Object3D): Decal {
+  const n = /(\d+)\s*$/.exec(sign)?.[1] ?? "";
+  const chip = new Decal(host.painter.chip({ text: `×${n}`, ink: colour.ink, sub: null }), SIZE.chip, SIZE.chip, { renderOrder: 6 });
+  chip.mesh.position.set(SIZE.chipAt.x, SIZE.chipAt.y, SIZE.chipAt.z);
+  on.add(chip.mesh);
+  return chip;
 }
 
 // ---- a zone pile ----------------------------------------------------------------------------------------------------
@@ -558,6 +591,7 @@ class ZoneView implements PieceView {
   private readonly box: Mesh;
   private top: CardPart | null = null;
   private sign: Decal | null = null;
+  private chip: Decal | null = null;
   private key = "";
 
   constructor(
@@ -611,6 +645,11 @@ class ZoneView implements PieceView {
     this.sign.mesh.scale.set(w * k, hh * k, 1);
     this.sign.mesh.rotation.x = -Math.PI / 2 + SIZE.zoneSignTilt;
     this.sign.mesh.position.set(0, h + 0.06, d.mine ? 0.3 : 0.12);
+    this.chip?.mesh.removeFromParent();
+    this.chip?.dispose();
+    this.chip = countChip(this.host, `${n}`, this.top.obj.body);
+    this.chip.mesh.visible = false;
+    this.sign.mesh.userData[SIGN_ALTS] = { line: null, chip: this.chip.mesh } satisfies SignAlts;
   }
 
   front(): Mesh | null {
@@ -625,6 +664,7 @@ class ZoneView implements PieceView {
   dispose(): void {
     this.top?.dispose();
     this.sign?.dispose();
+    this.chip?.dispose();
     this.boxGeo.dispose();
   }
 }

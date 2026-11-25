@@ -104,6 +104,14 @@ export const FLOOR = { mine: 72, theirs: 56, any: 44 } as const;
  * unit, a finger does not. Below 1180x820 it is larger than the 44 design px floor, so sizing meets both.
  */
 export const TAP_PX = 44;
+/**
+ * A pile's title on screen (CSS px, like a finger: it never scales with the design unit): its text on my page and the
+ * others', never under the floor; its sign's height and padding over its text's; how far it overlaps its card's top
+ * edge. The scene draws titles at these sizes (stage/labels.ts); layout keeps that room above a pile for one.
+ */
+export const TITLE_PX = { mine: 13, theirs: 12, floor: 11, tall: 96 / 60, pad: 52 / 60, overlap: 3 } as const;
+/** A title tab's height above its card's top edge on another's page, CSS px. */
+export const TAB_PX = TITLE_PX.tall * TITLE_PX.theirs - TITLE_PX.overlap;
 
 /** A permanent's layout facts, from the model's predicates. */
 export function boardCard(c: Card): BoardCard {

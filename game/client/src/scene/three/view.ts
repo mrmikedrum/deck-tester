@@ -9,8 +9,8 @@ import { Arc, FxKit, Ribbon, strikeFx } from "./fx";
 import type { Effect } from "./fx";
 import type { Host } from "./host";
 import { ABOVE } from "./focus-pass";
-import { COVERS, GROUND, GhostPiece, LABEL, artWanted, createPiece, placeGroup } from "./pieces";
-import type { LabelTag } from "./pieces";
+import { COVERS, GROUND, GhostPiece, LABEL, SIGN_ALTS, artWanted, createPiece, placeGroup } from "./pieces";
+import type { LabelTag, SignAlts } from "./pieces";
 import { CW } from "../../layout/seat/geometry";
 import { LABEL_PX } from "../stage/labels";
 import type { Clock, PieceEnv, PieceView } from "./pieces";
@@ -372,8 +372,11 @@ export class StageRenderer {
 
   /**
    * The signs that lie on the page (a well's, a zone's) where they are drawn now, kept off every other label and every
-   * other card's name strip and foot: slid along their row by up to a quarter of a card, then set at the floor's 11 px.
-   * (A pile's title is placed by the stage's ledger, labels.ts; these are known only once drawn.)
+   * other card's name strip and foot: slid along their row by up to a quarter of a card, at their size, then smaller
+   * while every line holds the floor's 11 px; a two-line sign then on one line (its second line would cross the floor
+   * first), at its size and at the floor; and failing all, its count as a chip on its card's face (`SIGN_ALTS`), which
+   * cannot meet anything. Never drawn where it meets another. (A pile's title is placed by the stage's ledger, labels.ts;
+   * these are known only once drawn.)
    */
   private settleSigns(): void {
     const cam = this.host.camera, size = this.host.size;
@@ -393,6 +396,15 @@ export class StageRenderer {
       return boxOf([at(-pw, -ph, 0, m), at(pw, -ph, 0, m), at(pw, ph, 0, m), at(-pw, ph, 0, m)]);
     };
     const fixed: { id: string; box: Box }[] = [], signs: { id: string; m: Mesh; tag: LabelTag }[] = [];
+    // Each sign starts the frame whole, its lesser forms put away.
+    for (const [, e] of this.pieces)
+      e.view?.group.traverse((o) => {
+        const alts = o.userData[SIGN_ALTS] as SignAlts | undefined;
+        if (!alts) return;
+        o.visible = true;
+        if (alts.line) alts.line.visible = false;
+        if (alts.chip) alts.chip.visible = false;
+      });
     for (const [id, e] of this.pieces) {
       if (!e.view || !e.view.group.visible) continue;
       const front = e.kind === "unit" ? e.view.front?.() : null;
@@ -410,33 +422,53 @@ export class StageRenderer {
         else fixed.push({ id, box: planeBox(m) });
       });
     }
+    // Its sizes, largest first, at which its smallest line still holds the floor.
+    const sizes = (tag: LabelTag): number[] => {
+      const want = tag.want ?? LABEL_PX.floor, least = Math.min(...tag.fonts) / Math.max(...tag.fonts);
+      return [...new Set([want, LABEL_PX.floor])].filter((px) => px * least >= LABEL_PX.floor - 1e-6).map((px) => px / want);
+    };
+    // (In its parent's units a card is CW wide: a slide of an eighth of a card a step, a quarter at most.)
+    const step = CW / 8;
     for (const s of signs) {
-      const base = (s.m.userData["baseX"] as number | undefined) ?? s.m.position.x;
-      s.m.userData["baseX"] = base;
-      const clear = (): boolean => {
-        s.m.updateMatrixWorld(true);
-        const box = planeBox(s.m);
-        return !fixed.some((f) => f.id !== s.id && meets(f.box, box)) ? (fixed.push({ id: s.id, box }), true) : false;
+      const alts = s.m.userData[SIGN_ALTS] as SignAlts | undefined;
+      const line = alts?.line ?? null, lineTag = line?.userData[LABEL] as LabelTag | undefined;
+      const forms = [...sizes(s.tag).map((k) => ({ m: s.m, k })), ...(line && lineTag ? sizes(lineTag).map((k) => ({ m: line, k })) : [])];
+      const show = (m: Mesh | null): void => {
+        s.m.visible = m === s.m;
+        if (line) line.visible = m === line;
       };
-      // (In its parent's units a card is CW wide: a slide of an eighth of a card a step, a quarter at most.)
-      const step = CW / 8;
       let done = false;
-      for (const k of [1, LABEL_PX.floor / (s.tag.want ?? LABEL_PX.floor)]) {
-        if (k !== 1) s.m.scale.multiplyScalar(k);
+      for (const { m, k } of forms) {
+        show(m);
+        const base = (m.userData["baseX"] as number | undefined) ?? m.position.x;
+        m.userData["baseX"] = base;
+        const sx = m.scale.x, sy = m.scale.y;
+        m.scale.x = sx * k;
+        m.scale.y = sy * k;
         for (const dx of [0, 1, -1, 2, -2]) {
-          s.m.position.x = base + dx * step;
-          if (clear()) {
-            done = true;
-            break;
-          }
+          m.position.x = base + dx * step;
+          m.updateMatrixWorld(true);
+          const box = planeBox(m);
+          if (fixed.some((f) => f.id !== s.id && meets(f.box, box))) continue;
+          fixed.push({ id: s.id, box });
+          done = true;
+          break;
         }
         if (done) break;
+        m.scale.x = sx;
+        m.scale.y = sy;
+        m.position.x = base;
+        m.updateMatrixWorld(true);
       }
-      if (!done) {
-        s.m.position.x = base;
-        s.m.updateMatrixWorld(true);
-        fixed.push({ id: s.id, box: planeBox(s.m) });
+      if (done) continue;
+      if (alts?.chip) {
+        show(null);
+        alts.chip.visible = true;
+        continue;
       }
+      // (A sign with no lesser form left: drawn whole where it stands, for the audit to see.)
+      show(s.m);
+      fixed.push({ id: s.id, box: planeBox(s.m) });
     }
   }
 

@@ -5,13 +5,15 @@
 // (smaller to 11 px, then its qualifiers dropped, then its name ellipsized to five letters; the count never), then slid
 // along its card's top edge by up to a quarter of a card; failing all, it gives way to the count chip on the card's
 // face, which cannot collide. Pure: positions are the plan's quads at rest.
+import { TITLE_PX } from "../../layout";
 import type { HitGroup, TablePlan } from "../../layout";
 import type { SeatId } from "../../model";
 
-/** Text sizes (CSS px): mine, theirs, the floor; and a sign's height over its text's (the painted sign's canvas). */
-export const LABEL_PX = { mine: 13, theirs: 12, floor: 11, tall: 96 / 60, pad: 52 / 60 } as const;
+/** Text sizes (CSS px): mine, theirs, the floor; and a sign's height over its text's (the painted sign's canvas). Layout's,
+ * which keeps the room above a pile for its title. */
+export const LABEL_PX = TITLE_PX;
 /** A label may overlap its own card's top edge by this much, and meet anything else by no more than this (px). */
-const OVERLAP = 3, MEET = 2;
+const OVERLAP = TITLE_PX.overlap, MEET = 2;
 /** Between a label and the next unit in its row (px). */
 const GAP = 6;
 
