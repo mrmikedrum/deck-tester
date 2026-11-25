@@ -35,8 +35,8 @@ export interface InkAtRest {
   readonly stretch: number;
   /** On screen at rest, for the audit and a slip's hit group. */
   readonly shape: Shape;
-  /** A slip with no clear place on the table (the fight stands where it would lie): it is not drawn, and the prompt
-   *  says it instead. */
+  /** A slip with no clear place on the table while a fight stands where it would lie: it is not drawn, and the prompt
+   *  says it instead (where it answers what I am doing). */
   readonly away?: boolean;
   /** It answers what I am doing to its seat now (slips: told/answers.ts `SlipWords.aimed`). */
   readonly aimed?: boolean;
@@ -147,7 +147,10 @@ export function answersAtRest(o: AnswersInput): InkAtRest[] {
     ];
     const found = tries.find((t) => clear(t.x, t.tall));
     const aimed = s.aimed ? { aimed: true } : {};
-    out.push(found ? { ...found.x, ...aimed } : { ...tries[wheres.length]!.x, away: true, ...aimed });
+    // (Only the fight takes a slip's place: with none on the table it stays, as clear as it can be, and the audit says
+    // what lies over it.)
+    const fight = !!o.combat?.attacks.length;
+    out.push(found ? { ...found.x, ...aimed } : { ...tries[wheres.length]!.x, ...(fight ? { away: true } : {}), ...aimed });
   }
   // (While I pick my attackers the prompt says my sums; the landing is written once an attack is declared.)
   if (o.combat?.attacks.length && o.ask?.kind !== "attack") {
