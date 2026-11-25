@@ -16,6 +16,8 @@ import { tableTemplate } from "./template";
 import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
+import { shadowPlan } from "./arrange/shadow";
+import type { ShadowInput, ShadowPlan } from "./arrange/shadow";
 
 // Planning a seat with the hard-limit audit and a fold-harder retry, and planning the table: four seats, plates, the
 // stack at rest, and what a tap can reach.
@@ -156,6 +158,8 @@ export interface TableInput {
   readonly layout?: SeatLayout;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
+  /** Arrange this seat's leaf with the arrangement engine beside `mat`, recorded in `TablePlan.shadow` (debug only). */
+  readonly shadow?: ShadowInput;
 }
 
 export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack";
@@ -212,6 +216,8 @@ export interface TablePlan {
   readonly violations: readonly Violation[];
   /** The combat it stood in the open middle (`Unit.fighting`), or null. */
   readonly combat: CombatPairs | null;
+  /** The arrangement engine's plan of one leaf beside `mat`'s, when asked (`TableInput.shadow`): never drawn. */
+  readonly shadow?: ShadowPlan;
 }
 
 function fnv(s: string): number {
@@ -291,7 +297,9 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat };
+  const at = input.shadow ? input.seats.findIndex((x) => x.seat === input.shadow!.seat) : -1;
+  const shadow = input.shadow && at >= 0 ? shadowPlan(input.shadow, tpl.slots[at]!, projector, reserve.safe) : undefined;
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, ...(shadow ? { shadow } : {}) };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle

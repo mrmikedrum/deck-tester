@@ -10,6 +10,8 @@ import type { CardId, Insets, SeatId, Viewport } from "./types";
 import { engineCombat, fighters, mergeCombat } from "./combat";
 import type { CombatPairs } from "./combat";
 import type { TableModel } from "../model";
+import { shadowInputOf } from "./arrange/shadow";
+import type { ShadowOptions } from "./arrange/shadow";
 
 export interface TableInputOptions {
   readonly viewport: Viewport;
@@ -23,6 +25,8 @@ export interface TableInputOptions {
   readonly involved?: ReadonlySet<CardId>;
   /** A combat draft (play's `cues.combat`, as plain pairs): drawn over the engine's combat, its fighters in the row. */
   readonly combat?: CombatPairs | null;
+  /** Plan the across leaf with the arrangement engine too (debug only; `TablePlan.shadow`). */
+  readonly shadow?: ShadowOptions;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -57,5 +61,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     memory: o.memory ?? null,
     stack,
     combat,
+    ...(o.shadow && model.seats.length === 4 ? { shadow: shadowInputOf(model, model.seats[2]!.id, involved, o.settling ?? false, o.shadow) } : {}),
   };
 }

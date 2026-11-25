@@ -17,3 +17,4 @@ export type { TableInputOptions } from "./table-input";
 export type { PlanSeatOptions, StackEntry, StackAtRest, TableInput, GroupKind, HitGroup, HitGroups, TablePlan } from "./plan";
 export { LEAN_LIFT, SIFT_PAGE, carry, leanOf, siftOf, siftPages, siftQuad } from "./focus";
 export type { Lean } from "./focus";
+export type { ShadowInput, ShadowOptions, ShadowPlan } from "./arrange/shadow";
