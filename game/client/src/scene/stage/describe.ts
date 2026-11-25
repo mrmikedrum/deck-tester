@@ -313,7 +313,7 @@ export function describe(input: DescribeInput): Description {
 }
 
 /** A seat said as its player would say it, once it has ten creatures or more: "35 creatures · 92 power", "no fliers ·
- * biggest 5/5". Clipped to the plaque's side away from its piles. Sums of printed facts. */
+ * biggest 5/5". Clipped beside the plaque away from its piles, or above it (side 0). Sums of printed facts. */
 const MUSTER_FROM = 10;
 function musterOf(model: TableModel, seat: SeatId, sp: TablePlan["seats"] extends ReadonlyMap<SeatId, infer P> ? P : never): { lines: [string, string]; side: number } | null {
   const cs = model.zone(seat, "battlefield").map((id) => model.cards.get(id)).filter((c): c is Card => !!c && c.power !== null && /Creature/.test(c.face.type));
@@ -323,7 +323,8 @@ function musterOf(model: TableModel, seat: SeatId, sp: TablePlan["seats"] extend
   const px = sp.fixtures.plate.pos.x, z = sp.fixtures.zones[0]?.placement.pos.x ?? sp.fixtures.commander?.placement.pos.x;
   return {
     lines: [`${cs.length} creatures · ${power} power`, `${fliers ? `${fliers} flying` : "no fliers"} · biggest ${big.power}/${big.toughness}`],
-    side: z === undefined ? 1 : z > px ? -1 : 1,
+    // (Beside the plaque across; above it at the sides, where beside it would run off the screen.)
+    side: placeOf(model, seat) !== "across" ? 0 : z === undefined ? 1 : z > px ? -1 : 1,
   };
 }
 

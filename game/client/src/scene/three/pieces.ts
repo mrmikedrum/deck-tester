@@ -1016,9 +1016,8 @@ class PlateView implements PieceView {
     // The red die: what is aimed at this seat, standing at the plaque's right end, over everything as the plaque is.
     if (d.red && !this.red) {
       this.red = new Die(this.host, "red", 0.42, 0.18, true);
-      // (On the plaque's top edge, right of its middle, leaning back with it.)
-      this.red.group.rotation.x = -Math.PI / 2;
-      this.red.group.position.set(SIZE.plate.w * 0.22, SIZE.plate.y + SIZE.plate.h / 2 - 0.05, 0.12);
+      // (Set on the plaque's top edge, right of its middle, its numeral turned to me as the plaque is.)
+      this.red.group.position.set(SIZE.plate.w * 0.22, SIZE.plate.y + SIZE.plate.h / 2, 0.02);
       this.plate.pivot.add(this.red.group);
     } else if (!d.red && this.red) {
       this.plate.pivot.remove(this.red.group);
@@ -1038,7 +1037,10 @@ class PlateView implements PieceView {
       const fit = Math.min(1, 2.8 / (lease.width * SIGN_U * 1.35));
       const decal = new Decal(lease, lease.width * SIGN_U * 1.35 * fit, lease.height * SIGN_U * 1.35 * fit, { depthTest: false, renderOrder: 10 });
       labelled(decal, lease, [SIGN_FONT.text, SIGN_FONT.sub]);
-      decal.mesh.position.set(d.muster.side * (SIZE.plate.w / 2 + 0.08 + (lease.width * SIGN_U * 1.35 * fit) / 2), SIZE.plate.y, 0);
+      const mw = lease.width * SIGN_U * 1.35 * fit, mh = lease.height * SIGN_U * 1.35 * fit;
+      if (d.muster.side) decal.mesh.position.set(d.muster.side * (SIZE.plate.w / 2 + 0.08 + mw / 2), SIZE.plate.y, 0);
+      // (Above it, clear of the red die that stands on its top edge in a combat.)
+      else decal.mesh.position.set(-SIZE.plate.w * 0.12, SIZE.plate.y + SIZE.plate.h / 2 + 0.42 + mh / 2, 0);
       this.plate.pivot.add(decal.mesh);
       this.muster = { decal, key: mk };
     }
@@ -1378,7 +1380,8 @@ class SiftView implements PieceView {
     const d = v.draw as Extract<Draw, { t: "sift" }>;
     if (d.count && d.count > 1) {
       this.die = new Die(host, d.tapped ? "iron" : "bone", 0.3, 0.12);
-      this.die.group.position.set(CW / 2 - 0.16, -CH / 2 + 0.3, TH / 2 + 0.002);
+      // (In the art, right of its middle: clear of the name and of the foot's P/T.)
+      this.die.group.position.set(CW / 2 - 0.17, 0.02, TH / 2 + 0.002);
       this.die.group.traverse((o) => (o.renderOrder = 17));
       this.dieN = d.count;
       this.card.obj.body.add(this.die.group);

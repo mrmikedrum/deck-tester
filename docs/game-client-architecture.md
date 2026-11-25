@@ -462,6 +462,12 @@ false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
 today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
 cards, needs `planTable` work too.
 
+The `die` adapter (design prototype, `?layout=die`) is built on the mat's fit (`planWith` and its `MatStyle` hooks: its
+own classification, creature fold, band specs and standing lean). Cards of one kin (`sig` without tapped and sickness)
+lie as one unit with `Unit.tray` (ready and tapped members, a top card or tally card, a lip); standouts stand at a fixed
+25° lean (`Placement.lean`). The audit measures a tray by its footprint (lip to tapped band, `TRAY_PRINT`), its draw order
+its middle, and keeps its card's name strip and foot clear; its dice and lip are its own.
+
 ## play: the decision controller
 
 A pure reducer. It owns the current decision and its `StopId`, the player's draft, what lights up, the prompt and its

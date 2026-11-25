@@ -60,6 +60,7 @@ const openTable = `(() => { const cv = __h.renderer().domElement, r = __h.stackR
   for (let y = 40; y < innerHeight - 40; y += 12) for (let x = 40; x < innerWidth - 40; x += 12) pts.push([x, y]);
   pts.sort((a, b) => Math.hypot(a[0] - innerWidth / 2, a[1] - innerHeight / 2) - Math.hypot(b[0] - innerWidth / 2, b[1] - innerHeight / 2));
   return pts.find(([x, y]) => document.elementFromPoint(x, y) === cv && !__h.pickAt(x, y) && !(r && x > r.left - 20 && x < r.right + 20 && y > r.top - 20 && y < r.bottom + 20)) || [innerWidth / 2, innerHeight / 2]; })()`;
+const BEAST15 = BOARDS.at(-1).view.players.find(p => p.name === "Marath").battlefield.find(c => c.name === "Beast").id;
 const stackMiddle = `(() => { const r = __h.stackRect(); return r ? [(r.left + r.right) / 2, (r.top + r.bottom) / 2] : [innerWidth / 2, innerHeight / 2]; })()`;
 
 module.exports = [
@@ -71,6 +72,16 @@ module.exports = [
             { at: 1500 * BOARDS.length + 2800, label: "close it", js: "__h.unsift(); __h.focusOn(null)" }] },
     BOARDS[0], BOARDS.slice(1), { [BOARDS.length - 1]: { gesture: { tap: { plate: "ana" } } }, [BOARDS.length]: { gesture: { tap: { pile: "ana" } } },
       [BOARDS.length + 1]: { gesture: [{ key: "Escape" }, { key: "Escape" }] } }),
+  // Turn 15: lean in on Marath, then open his Beast swarm (one printed card a state, each with its die), then his Ranks.
+  bothEntries({ name: "swarm15", live: BOARDS.at(-1), ms: 6000, audit: false,
+    about: "On turn 15 I lean in on Marath's side, tap his pile of Beast tokens to look at it, close it, then tap his biggest pile and close it.",
+    beats: [{ at: 300, label: "lean in on Marath", js: '__h.focusOn("ana")' },
+            { at: 1600, label: "tap Marath's Beasts", js: siftBiggest("ana") },
+            { at: 3000, label: "close it", js: "__h.unsift()" },
+            { at: 3600, label: "tap Marath's biggest pile", js: siftBiggest("ana") },
+            { at: 5000, label: "close it", js: "__h.unsift(); __h.focusOn(null)" }] },
+    BOARDS.at(-1), [null, null, null, null, null], { 0: { gesture: { tap: { plate: "ana" } } }, 1: { gesture: { tap: { card: BEAST15 } } }, 2: { gesture: { key: "Escape" } },
+      3: { gesture: { tap: { pile: "ana" } } }, 4: { gesture: [{ key: "Escape" }, { key: "Escape" }] } }),
   bothEntries({ name: "turns", live: "main", ms: 6000, audit: true, about: "The turn passes around the table: from my main phase to Atraxa's turn, then Dack's turn where Dack casts a spell, then back to me.",
     beats: [{ at: 300, label: "Atraxa's turn begins", js: take(STATES.theirs, 2) },
             { at: 2300, label: "Dack's turn: Dack casts Swords to Plowshares on my Meloku", js: take(STATES.threat, 3) },

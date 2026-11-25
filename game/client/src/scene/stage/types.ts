@@ -231,7 +231,8 @@ export type Draw =
       readonly t: "plate";
       readonly spec: PlateSpec;
       readonly red?: number | null;
-      /** The seat said as its player would say it (the `die` layout's muster card), and the side of the plaque it is clipped to. */
+      /** The seat said as its player would say it (the `die` layout's muster card), and the side of the plaque it is
+       * clipped to (-1, 1; 0 above it). */
       readonly muster?: { readonly lines: readonly [string, string]; readonly side: number } | null;
     }
   | {
