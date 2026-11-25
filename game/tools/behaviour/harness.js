@@ -156,7 +156,9 @@ class Table {
   // The new entry takes a snapshot in its next frame, not in the fetch callback: there its animation frames run at the
   // same virtual time (step(0)) until it asks again, so even a push that may not move the clock is taken at once.
   async settle(mayStep = true) {
-    for (let i = 0; i < 600 && !this.idle; i++) {
+    // A board rebuild under software rendering can take several seconds on a loaded runner.
+    const deadline = performance.now() + 30_000;
+    for (let i = 0; !this.idle && performance.now() < deadline; i++) {
       await sleep(15);
       if (NEW && this.frozen) await this.catchUp();
       if (mayStep && this.frozen && i > 100 && i % 10 === 0) await this.step(100);
