@@ -112,7 +112,8 @@ export function surfaces(): readonly (readonly [string, string])[] {
       "--card-playable",
       `0 0 0 2px color-mix(in srgb, ${signal.option} 95%, transparent), 0 0 28px rgba(255,120,30,.75), 0 0 8px rgba(255,170,80,.6), -4px 2px 14px rgba(0,0,0,.55)`,
     ],
-    ["--card-playable-label", "#f7dea1"],
+    // A bunched hand card's cost ribbon: vellum, lifted off the card under it.
+    ["--ribbon-shadow", "inset 0 0 0 1px rgba(40,25,8,.55), 0 1px 3px rgba(0,0,0,.45)"],
     ["--card-drawn", "0 0 0 2px rgba(247,225,171,.9), 0 0 24px 4px rgba(226,193,132,.6)"],
     ["--peek-ground", "#111"],
     ["--peek-shadow", "0 20px 50px rgba(0,0,0,.7)"],

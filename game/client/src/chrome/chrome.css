@@ -999,7 +999,7 @@
     touch-action: none;
     box-sizing: border-box;
     border: 2px solid var(--card-stock-edge);
-    overflow: hidden;
+    transition: translate 0.2s ease-out;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
@@ -1010,6 +1010,41 @@
     left: calc(var(--hw) / -2);
     bottom: 0;
   }
+  /* The card's face: the stand-in painted face under the printed image, clipped to the card's corners. */
+  .l-hand-face {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  /* The printed card fills the card; its own black border is the edge (no border of ours). */
+  .hcard.printed {
+    border: 0;
+    background: var(--peek-ground);
+  }
+  .l-hand-print {
+    position: absolute;
+    inset: 0;
+    background: center / 100% 100% no-repeat;
+    pointer-events: none;
+  }
+  /* A bunched card's cost: a small vellum ribbon hanging above its top-left corner, outside the image. */
+  .l-hand-cost {
+    position: absolute;
+    left: calc(4 * var(--u));
+    bottom: calc(100% + 2px);
+    display: flex;
+    gap: 1px;
+    padding: 2px 4px 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--sheet-quiet);
+    box-shadow: var(--ribbon-shadow);
+    font-size: 10.5px; /* pips of 12 px */
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+  }
   .hcard:focus-visible {
     outline: 3px solid var(--sig-selected);
     outline-offset: 2px;
@@ -1017,6 +1052,10 @@
   .hcard.dragging {
     cursor: grabbing;
     box-shadow: var(--card-lifted-shadow);
+  }
+  /* Past the play line: let go and it plays. */
+  .hcard.dragging.ready {
+    box-shadow: 0 0 0 3px var(--sig-gilt-rim), var(--card-lifted-shadow);
   }
   /* A released card, held where it was let go until the table takes it. */
   .l-loose .hcard {
@@ -1081,12 +1120,11 @@
   .hcard.dragging .l-hand-label {
     width: 100%;
   }
-  /* A card you can play: its edge is lit by embers, not ringed. */
-  .hcard.playable {
+  /* A card you can play: its edge is lit by embers, not ringed, and it rises a little, as a player pushes up what they
+     can play. */
+  .hcard.playable:not(.dragging) {
     box-shadow: var(--card-playable);
-  }
-  .hcard.playable .l-hand-label {
-    background: var(--card-playable-label);
+    translate: 0 calc(-6 * var(--u));
   }
   /* New arrivals catch the lamplight as they join the fan. */
   .hcard.drawn::after {
@@ -1111,7 +1149,7 @@
   .g-peek {
     position: absolute;
     z-index: 120;
-    width: 260px;
+    width: 260px; /* the frame sets it: max(260px, 300u) */
     aspect-ratio: 488 / 680;
     border-radius: 12px;
     background: var(--peek-ground) center / cover;
@@ -1320,9 +1358,7 @@
   }
   .watching .held .hcard.playable {
     box-shadow: var(--card-shadow);
-  }
-  .watching .held .hcard.playable .l-hand-label {
-    background: none;
+    translate: none;
   }
 }
 /* ==== end of the narrative lane's block ============================================================================ */

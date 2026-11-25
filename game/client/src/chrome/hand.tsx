@@ -23,10 +23,30 @@ interface HandProps {
 
 const px = (n: number): string => `${Math.round(n * 100) / 100}px`;
 const deg = (n: number): string => `${Math.round(n * 1000) / 1000}deg`;
-// A name strip is as wide as the fan gives it, rounded up; a name breaks only between words, and where a bunched card's
-// strip is narrower than its longest word the name shrinks to fit (`--label-k`), ellipsized at the floor (`tight`).
+// A card is its printed image. Under it, as the stand-in while the image loads or where there is none, the painted face:
+// the art under a name strip as wide as the fan gives it, rounded up; a name breaks only between words, and where a
+// bunched card's strip is narrower than its longest word the name shrinks to fit (`--label-k`), ellipsized at the floor
+// (`tight`). The image covers it as soon as it decodes, with no motion.
 
 function Face({ card, tight = false }: { card: HandCard; tight?: boolean }): JSX.Element {
+  return (
+    <div class="l-hand-face">
+      <StandIn card={card} tight={tight} />
+      {card.image ? <div class="l-hand-print" style={`background-image:url("${card.image}")`} /> : null}
+    </div>
+  );
+}
+
+/** A bunched card's cost, on a small vellum ribbon above its top-left corner. */
+function Ribbon({ cost }: { cost: string }): JSX.Element {
+  return (
+    <div class="l-hand-cost" aria-hidden="true">
+      <Pips text={cost} />
+    </div>
+  );
+}
+
+function StandIn({ card, tight }: { card: HandCard; tight: boolean }): JSX.Element {
   return (
     <>
       <div class="l-hand-art" style={card.art ? `background-image:url("${card.art}")` : undefined} />
@@ -73,7 +93,16 @@ export function Hand(p: HandProps): JSX.Element {
       <div class="held" style={`left:${px(p.ox)};bottom:${px(p.vh - p.oy)}`}>
         {p.frame.cards.map((d) => {
           const c = lookOf(d.id, cards, p.looks);
-          const cls = ["hcard", c.playable ? "playable" : "", d.reading ? "reading" : "", d.dragging ? "dragging" : "", fresh.has(d.id) ? "drawn" : ""];
+          const cls = [
+            "hcard",
+            c.image ? "printed" : "",
+            c.playable ? "playable" : "",
+            d.reading ? "reading" : "",
+            d.dragging ? "dragging" : "",
+            d.ready ? "ready" : "",
+            fresh.has(d.id) ? "drawn" : "",
+          ];
+          const bunched = !d.dragging && p.frame.focus !== d.id && d.label < p.cardW * 0.8;
           const scale = d.scale !== 1 ? ` scale(${d.scale})` : "";
           return (
             <div
@@ -91,6 +120,7 @@ export function Hand(p: HandProps): JSX.Element {
               }}
             >
               <Face card={c} tight={d.fit.tight} />
+              {bunched && c.cost ? <Ribbon cost={c.cost} /> : null}
             </div>
           );
         })}
@@ -106,7 +136,7 @@ export function Hand(p: HandProps): JSX.Element {
         <div
           class="g-peek"
           aria-hidden="true"
-          style={`left:${px(p.frame.peek.left)};top:${px(p.frame.peek.top)};background-image:url("${peek.image}")`}
+          style={`left:${px(p.frame.peek.left)};top:${px(p.frame.peek.top)};width:${px(p.frame.peek.width)};background-image:url("${peek.image}")`}
         />
       ) : null}
     </div>

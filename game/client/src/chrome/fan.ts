@@ -1,9 +1,9 @@
 // The hand's fan: where each held card rests, as a pure function of the cards, the fan's focus (a fractional index,
 // sprung) and the design unit. Ported from live.js `poses` with every tuned number named.
 //
-// The fan is held in the bottom-left corner. The card under the focus opens to show in full while the rest bunch up to
-// their name's shoulder (just wide enough to read the longest word of the name); a card being thumbed over lifts; the
-// fan leans with the push of a turn. Positions are CSS px relative to the fan's origin (the middle of the fan's
+// The fan is held in the bottom-left corner. The card under the focus opens to show in full while the rest bunch up,
+// each showing a strip of its printed card (frame colour, the start of its name, a sliver of art); a card being thumbed
+// over lifts; the fan leans with the push of a turn. Positions are CSS px relative to the fan's origin (the middle of the fan's
 // bottom edge); each card's element sits centred on the origin, pivoting on its bottom middle.
 
 /** A card's width in design units, the fan's span in card widths, the widest gap (an opened card) in card widths. */
@@ -13,8 +13,9 @@ export const CARD_ASPECT = 680 / 488;
 /** The fan's origin: this far in from the left of the hand's reserve, plus half the fan, and up from its bottom (u). */
 export const HAND_INSET = { left: 18, bottom: 8 } as const;
 
-/** A bunched card shows its name this wide: the longest word plus this padding (px). */
-const SHOULDER_PAD = 11;
+/** A bunched card shows this share of its width while the hand fits the span (more where there is room); past that
+ * every strip shrinks evenly, to no less than the floor. */
+export const STRIP = { share: 0.3, floor: 0.1 } as const;
 /** While thumbing, the opened gap takes up to this share of the span. */
 const THUMB_SHARE = 0.46;
 /** Responding, the playable cards share the room the others give up, plus this much (u). */
@@ -26,9 +27,11 @@ const LEAN_SHIFT = 0.05;
 const LEAN_TILT = 3;
 /** How much the lean reaches cards away from the focus: base + (1 - base) * e^-distance. */
 const LEAN_REACH = 0.4;
-/** The fan's arc: the end cards drop this share of a card width and tilt this many degrees. */
-const ARC_DROP = 0.025;
-const ARC_TILT = 1.5;
+/** The fan's arc: the end cards drop this share of a card width and tilt this many degrees, and every card leans this
+ * many degrees left, as a hand is held. */
+const ARC_DROP = 0.05;
+const ARC_TILT = 4;
+const ARC_BIAS = -1.5;
 /** The card being thumbed over rises this share of a card width and tips this many degrees with the turn. */
 const THUMB_LIFT = 0.07;
 const THUMB_TIP = 2;
@@ -44,7 +47,7 @@ export const LABEL_MIN_PX = 8;
 const Z_BASE = 10;
 
 export interface FanInput {
-  /** The cards' names, in hand order (the shoulders are measured from them). */
+  /** The cards' names, in hand order. */
   readonly names: readonly string[];
   /** Which cards have a play (only read while responding). */
   readonly playable: readonly boolean[];
@@ -58,8 +61,6 @@ export interface FanInput {
   readonly respond: boolean;
   /** The design unit, CSS px. */
   readonly u: number;
-  /** A word's width in the label font (`labelFont(u)`), CSS px. */
-  readonly measure: (word: string) => number;
 }
 
 export interface FanPose {
@@ -115,15 +116,11 @@ export function fan(input: FanInput): FanPose[] {
   const gaps = n - 1; // gap i lies between card i and card i + 1
   const open = (i: number): number => Math.max(0, 1 - Math.abs(i - f));
   const weights = Array.from({ length: gaps }, (_, i) => (input.thumbing ? open(i) : 0));
-  const shoulders = names.slice(0, gaps).map((name) => {
-    const words = name.split(/\s+/).filter(Boolean);
-    const longest = words.length ? Math.max(...words.map((word) => input.measure(word))) : 0;
-    return Math.min(wide, SHOULDER_PAD + longest);
-  });
+  const shoulders = Array.from({ length: gaps }, () => W * STRIP.share);
   const sum = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0);
   const opened = sum(weights), needed = sum(shoulders);
   const rest = shoulders.map((w) =>
-    Math.min(wide, needed > span ? (w * span) / needed : w + (span - needed) / shoulders.length),
+    Math.min(wide, needed > span ? Math.max(W * STRIP.floor, (w * span) / needed) : w + (span - needed) / shoulders.length),
   );
   const reserved = Math.min(wide, span * THUMB_SHARE) * opened;
   const response = input.respond && !input.thumbing ? input.playable.slice(0, gaps).map(Boolean) : [];
@@ -145,7 +142,7 @@ export function fan(input: FanInput): FanPose[] {
     return {
       x: x0 - mid + extra - lean * W * LEAN_SHIFT * near,
       y: k * k * W * ARC_DROP - lift * W * THUMB_LIFT,
-      rot: k * ARC_TILT - lean * LEAN_TILT * near + lift * THUMB_TIP * dirn,
+      rot: ARC_BIAS + k * ARC_TILT - lean * LEAN_TILT * near + lift * THUMB_TIP * dirn,
       z: Z_BASE + i,
       label: Math.max(0, (step[i] ?? W) - LABEL_INSET),
     };

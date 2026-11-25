@@ -221,9 +221,9 @@ describe("paging", () => {
 });
 
 describe("hold, hover and the wheel", () => {
-  it("holding a card peeks at it, above the finger and inside the screen", () => {
+  it("holding a card peeks at it about life size (300 design px wide), above the finger and inside the screen", () => {
     g({ g: "hold", on: id(2), kind: "touch", x: 60, y: 700, at: t });
-    expect(step().peek).toEqual({ id: id(2), left: 10, top: 300 });
+    expect(step().peek).toEqual({ id: id(2), left: 10, top: 700 - (300 * 680) / 488 - 38, width: 300 });
     g({ g: "holdEnd", on: id(2), at: t });
     expect(step().peek).toBeNull();
   });

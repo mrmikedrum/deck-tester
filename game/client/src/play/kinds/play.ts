@@ -11,7 +11,8 @@ import type { SheetItem } from "../types";
 import { base, btn } from "./kind";
 import type { Btn, Ctx, Kind, Reaction } from "./kind";
 
-const HAND_PLAY_DY = -90;
+/** A hand card let go this far up (px, negative is up) over the table is played. */
+export const HAND_PLAY_DY = -90;
 
 /** live.js `optsFor`: every option whose ref is this card (mana abilities included). */
 export const optsFor = (d: PlayDecision, id: CardId | null | undefined): number[] =>

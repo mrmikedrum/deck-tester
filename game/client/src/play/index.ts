@@ -14,5 +14,6 @@ export const initial: State = seal(INITIAL);
 export { step } from "./step";
 export { present } from "./present";
 export { AUTO_PASS_MS } from "./auto";
+export { HAND_PLAY_DY } from "./kinds/play";
 export { cardsWanted } from "./needs";
 export type * from "./types";
