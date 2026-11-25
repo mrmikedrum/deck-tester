@@ -579,9 +579,9 @@ class BuildOnStartTest(unittest.TestCase):
         config = (game.ROOT / "game" / "vite.config.mts").read_text()
         listed = re.search(r"const BUILD_INPUTS = \[(.*?)\];", config, re.S).group(1)
         self.assertEqual(tuple(re.findall(r'"([^"]+)"', listed)), game.STAMP_INPUTS)
-        motion = (game.ROOT / "game" / "client" / "src" / "scene" / "workbench" / "motion.ts").read_text()
         here = game.ROOT / "game" / "client" / "src" / "scene" / "workbench"
-        for glob in re.findall(r'import\.meta\.glob[^(]*\("([^"]+)"', motion):
+        sources = "".join(p.read_text() for p in sorted(here.glob("*.ts")))
+        for glob in re.findall(r'import\.meta\.glob[^(]*\("([^"]+)"', sources):
             target = os.path.relpath(os.path.normpath(here / glob), game.ROOT / "game").replace(os.sep, "/")
             self.assertTrue(any(target == rel or target.startswith(rel + "/") for rel in game.STAMP_INPUTS), target)
 
