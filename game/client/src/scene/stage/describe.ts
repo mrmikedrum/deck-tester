@@ -80,9 +80,13 @@ export function describe(input: DescribeInput): Description {
     return l ? { pose: l, base: p } : { pose: p };
   };
   /** How far a seat's things dim (h.js `dimTo`), or 0. Under the stack's scrim nothing dims again. */
+  // The pages a question is about (`ranks`: their cards take a stance); the others step back into the dark a clear step.
+  const asked = new Set([...plan.seats].filter(([, sp]) => sp.units.some((u) => u.stance === "forward" || u.stance === "down")).map(([seat]) => seat));
+  const unasked = (seat: SeatId): boolean => asked.size > 0 && !asked.has(seat) && seat !== me;
   const dimOf = (seat: SeatId): number => {
     if (leanSeat) return seat === me ? DIM.leanMine : seat === leanSeat ? 0 : DIM.leanOther;
     if (stackUp) return 0;
+    if (unasked(seat)) return DIM.unasked;
     if (softSeat && seat !== softSeat && seat !== me) return DIM.soft;
     return 0;
   };
@@ -103,7 +107,7 @@ export function describe(input: DescribeInput): Description {
     // The page (h.js floors): lit on its turn or focus, in shadow out of it, dimmer under the stack.
     const page = sp.fixtures.page;
     const lit = leanSeat ? leanSeat === seat : softSeat ? softSeat === seat : mine && model.active === me;
-    const tone = (lit ? 1.1 : 1) * (leanSeat && leanSeat !== seat && !mine ? 0.72 : 1);
+    const tone = (lit || (asked.has(seat) && !mine) ? 1.1 : 1) * (leanSeat && leanSeat !== seat && !mine ? 0.72 : 1) * (!leanSeat && !stackUp && unasked(seat) ? 0.7 : 1);
     const pageDraw: Draw = { t: "page", place, mine, seed: 7 + seat.length * 131 + seat.charCodeAt(0), turn: model.active === seat };
     put({
       id: `page:${seat}`,
@@ -135,7 +139,7 @@ export function describe(input: DescribeInput): Description {
         form: `read|${seat}`,
         mods: `${lines[0]}|${lines[1] ?? ""}|${rd.w.toFixed(3)}|${rd.d.toFixed(3)}`,
         mark: null,
-        draw: { t: "read", lines, w: rd.w, d: rd.d, tilt: rd.tilt, colour: colourOf(model, seat), sum: rd.facts.q === "rest" || rd.facts.q === "threat" ? [rd.facts.power, rd.facts.creatures] : null },
+        draw: { t: "read", lines, w: rd.w, d: rd.d, tilt: rd.tilt, colour: colourOf(model, seat), sum: rd.facts.q === "rest" || rd.facts.q === "threat" ? [rd.facts.power, rd.facts.creatures] : null, turn: model.turn },
         needsMembers: false,
       });
     }
@@ -359,7 +363,9 @@ export function siftCards(model: TableModel, plan: TablePlan, group: string): Si
   const m = /^zone:(graveyard|exile):(.+)$/.exec(group);
   const zone = m ? (m[1] as "graveyard" | "exile") : null;
   let ids: CardId[] = zone ? [...model.zone(g.seat!, zone)] : [...g.members];
-  if (!zone) {
+  // (A page's read keeps the order the question gave its creatures; a tail its own, best answer first.)
+  const ordered = g.kind === "read" || plan.seats.get(g.seat as SeatId)?.units.find((u) => u.id === group)?.look === "tail";
+  if (!zone && !ordered) {
     const by = new Map<string, CardId[]>();
     for (const id of ids) {
       const k = model.cards.get(id)?.name ?? "";
@@ -478,7 +484,8 @@ function unitPiece(
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
   const { copies, tapNote } = copiesOf(model, u);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
-  const title = u.tag ? tagWords(u.tag) : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
+  // (A regiment's count is on its die: its tab, where it has one, is its tag alone.)
+  const title = u.tag ? tagWords(u.tag) : u.look === "regiment" ? null : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
   const lit = new Set(u.lit ?? []);
   const fan =
     u.fan && (u.look === "tail" || u.look === "column")
@@ -487,7 +494,11 @@ function unitPiece(
           cards: u.fan
             .map((id) => model.cards.get(id))
             .filter((c): c is Card => !!c)
-            .map((c) => ({ face: faceOfCard(model, c, markOf(c.id) ?? null), tapped: c.tapped, lit: lit.has(c.id) })),
+            .map((c, i) => {
+              // (Under the top card a tail's card is a sliver: no name to read there, its power and toughness on a chip.)
+              const face = faceOfCard(model, c, markOf(c.id) ?? null), sliver = u.look === "tail" && i > 0;
+              return { face: sliver ? { ...face, name: "", text: "" } : face, tapped: c.tapped, lit: lit.has(c.id), pt: sliver && c.power !== null ? `${c.power}/${c.toughness ?? 0}` : null };
+            }),
         }
       : null;
   const draw: Draw = {
@@ -510,6 +521,7 @@ function unitPiece(
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
     ...(u.look === "regiment" ? { die: u.members.length } : {}),
+    ...(u.stance ? { stance: u.stance } : {}),
     ...(fan ? { fan } : {}),
   };
   return {
@@ -522,7 +534,7 @@ function unitPiece(
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}|${u.look ?? ""}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.die ?? "", fan ? fan.cards.map((c) => faceKey(c.face) + c.tapped + c.lit).join(",") : ""].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.die ?? "", fan ? fan.cards.map((c) => faceKey(c.face) + c.tapped + c.lit + (c.pt ?? "")).join(",") : "", u.stance ?? ""].join("#"),
     mark,
     draw,
     needsMembers: true,
@@ -615,8 +627,9 @@ function wellLook(model: TableModel, u: Unit, mine: boolean): Omit<WellLook, "al
     // `ranks`: what matters about their mana leads, what makes it under.
     const lands = cards.filter(isLand).length,
       tr = cards.filter(isTreasure).length;
-    const [sign, sub] = wellWords(n - tapped, lands, n - lands - tr, tr);
-    return { sign, sub, colours, spent, shown, theirs: true };
+    // One line: what is open. What makes it is its sift's to say.
+    const [sign] = wellWords(n - tapped, lands, n - lands - tr, tr);
+    return { sign, sub: null, colours, spent, shown, theirs: true };
   }
   if (!mine && !u.title) {
     const lands = cards.filter(isLand).length,

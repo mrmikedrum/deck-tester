@@ -265,6 +265,8 @@ const PILE_ZONE = /^zone:(graveyard|exile):/;
  * cards in it (h.js: a pile sifts; a zone with cards sifts what it holds). */
 function sifts(s: AppState, g: HitGroup): boolean {
   if (g.kind === "pile" || g.kind === "well" || g.kind === "summary") return g.members.length > 1;
+  // A page's read opens its creatures, as the question orders them (`ranks`).
+  if (g.kind === "read") return g.members.length > 0;
   const z = g.kind === "zone" && g.seat !== null ? PILE_ZONE.exec(g.id)?.[1] : undefined;
   return z !== undefined && (s.model?.zone(g.seat!, z as "graveyard" | "exile").length ?? 0) > 0;
 }
@@ -294,7 +296,7 @@ function tapDefault(tx: Tx, on: play.Target): void {
     return;
   }
   const me = tx.s.model?.viewer.perspective;
-  if ((g?.kind === "plate" || g?.kind === "read") && g.seat !== null && g.seat !== me && !isOpen(f, "sift")) {
+  if (g?.kind === "plate" && g.seat !== null && g.seat !== me && !isOpen(f, "sift")) {
     const leaning = f.layers.find((e) => e.layer === "lean")?.seat === g.seat;
     tx.s = { ...tx.s, focus: leaning ? close(f, "lean") : open(f, entry("lean", { seat: g.seat, restore: tx.origin ?? null })) };
     return;

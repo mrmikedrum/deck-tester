@@ -9,6 +9,7 @@ import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, Si
 import { SIFT_PAGE, siftOf, siftPages } from "../layout";
 import type { TablePlan } from "../layout";
 import { siftCards } from "../scene/stage/describe";
+import { readWords, tagWords, wellWords } from "../narrative";
 import type { SeatPlace } from "../theme";
 import type { FocusState } from "./focus";
 import type { AppState } from "./state";
@@ -150,6 +151,12 @@ export function menuOf(s: AppState): MenuView {
  * The caption of a sift up (h.js `sift`): a graveyard or exile by whose it is, a pile by its one name or its kind, with
  * how many and how many are tapped; its pages when it has more than `SIFT_PAGE`. Null when the plan has no such group.
  */
+/** What makes a well's mana: "Lands 14 · 2 rocks". */
+function wellMakers(cards: readonly Card[]): string {
+  const lands = cards.filter((c) => /\bLand\b/.test(c.face.type)).length, tr = cards.filter((c) => c.token && /Treasure/.test(c.name)).length;
+  return wellWords(0, lands, cards.length - lands - tr, tr)[1];
+}
+
 export function siftViewOf(model: TableModel, plan: TablePlan, group: string, page: number): SiftView | null {
   const all = siftCards(model, plan, group);
   if (!all || !all.ids.length) return null;
@@ -160,7 +167,12 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
   const names = new Set(cards.map((c) => c.face.name));
   const kind = cards.every((c) => /\bLand\b/.test(c.face.type)) ? "lands" : cards.every(isCreature) ? "creatures" : "cards";
   const what = all.zone ? `${whose} ${all.zone}` : names.size === 1 ? [...names][0]! : `${whose} ${kind}`;
-  const title = n > 1 ? `${what} ×${n}` : what;
+  // (`ranks`: a read's sift is titled with the read's words; a fold's with its tag; their well with what makes its mana.)
+  const g = plan.hits.groups.find((x) => x.id === group);
+  const unit = g && g.seat ? plan.seats.get(g.seat as SeatId)?.units.find((u) => u.id === group) : undefined;
+  const read = g?.kind === "read" && g.seat ? plan.seats.get(g.seat as SeatId)?.fixtures.read : undefined;
+  const own = read ? readWords(read.facts).filter(Boolean).join(" · ") : unit?.tag ? tagWords(unit.tag) : unit?.look && unit.role === "mana" && cards.length ? wellMakers(cards) : null;
+  const title = own ? `${seat === model.viewer.perspective ? "Yours" : seatName(model, seat)} · ${own}` : n > 1 ? `${what} ×${n}` : what;
   const pages = siftPages(n), p = Math.max(0, Math.min(pages - 1, page));
   const from = p * SIFT_PAGE, to = Math.min(n, from + SIFT_PAGE);
   const places = siftOf(plan.viewport, all.tapped.slice(from, to));

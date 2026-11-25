@@ -57,7 +57,7 @@ const SIZE = {
   /** A well's lands lie a little proud of the page, its pool under them; at most this many show (h.js `well`). */
   well: { proud: 0.03, step: TH + 0.002, glow: 0.028, show: 4 },
   /** A well's sign (h.js: propped up 0.95 from flat, in front of mine, over the card on theirs), its world size. */
-  wellSign: { tilt: 0.95, mine: [-0.14, -0.66] as const, theirs: -CH * 0.32, up: 0.12, upFar: 0.2, theirsFit: CW * 1.15 },
+  wellSign: { tilt: 0.95, mine: [-0.14, -0.66] as const, theirs: -CH * 0.32, propped: 0.16, up: 0.12, upFar: 0.2, theirsFit: CW * 1.15 },
   /** Auras and Equipment peek out from behind their host, up and to the right, a size smaller (h.js `standee`). */
   dressing: { s: 0.8, x: 0.16, dx: 0.1, y: 0.34, dy: 0.2, z: -0.03, dz: -0.02, turn: -0.08 },
   /** A stack card's drop shadow (h.js `buildStack`), keeping it off the page. */
@@ -309,6 +309,8 @@ const WELL_TURN = Math.PI / 12;
 
 /** A fan's cards: a tail's sliver and a column's strip (shares of a card), how far each lies under the one before, its
  * turn off square (radians, at most), the shade on cards that do not answer; a regiment's die (world units). */
+/** The lamplight under a card standing forward: its size in card widths and heights, how far behind its foot. */
+const LAMP = { w: 1.9, d: 1.1, back: 0.3 } as const;
 const FAN = { sliver: RANKS.sliver, strip: RANKS.strip, under: 0.006, turn: 0.03, unlit: 0.38, die: 0.3 } as const;
 /** A seeded number in [-1, 1]. */
 const jitter = (n: number): number => {
@@ -319,6 +321,9 @@ const jitter = (n: number): number => {
 class UnitView implements PieceView {
   readonly group = new Group();
   private lit: boolean[] = [];
+  /** Forward (`ranks`): a pool of the lamp's light on the page under it. */
+  private halo: Effect | null = null;
+  private pts: Decal[] = [];
   private cards: CardPart[] = [];
   private dress: CardPart[] = [];
   private dressKey = "";
@@ -413,6 +418,8 @@ class UnitView implements PieceView {
       }
     } else this.cards.forEach((c, i) => c.face(plan[i]?.face ?? v.face));
     this.lit = fan ? fan.cards.map((c) => c.lit) : [];
+    this.slivers(d);
+    this.lamp(d);
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
@@ -447,6 +454,42 @@ class UnitView implements PieceView {
       this.cards[0]!.obj.body.add(chip.mesh);
       this.chips.push(chip);
     });
+  }
+
+  /** A tail's slivers: each card under the top shows its power and toughness on a chip in its strip, at its foot. */
+  private slivers(d: Extract<Draw, { t: "unit" }>): void {
+    for (const p of this.pts) {
+      p.mesh.parent?.remove(p.mesh);
+      p.dispose();
+    }
+    this.pts = [];
+    if (d.fan?.kind !== "tail") return;
+    const w = FAN.sliver * CW;
+    d.fan.cards.forEach((c, i) => {
+      const card = this.cards[i];
+      if (!c.pt || !card) return;
+      const chip = new Decal(this.host.painter.chip({ text: c.pt, ink: colour.ink, sub: null }), w * 0.96, w * 0.96, { renderOrder: 6 });
+      chip.mesh.position.set(CW / 2 - w / 2, -CH / 2 + w * 0.62, TH / 2 + 0.03);
+      card.obj.body.add(chip.mesh);
+      this.pts.push(chip);
+    });
+  }
+
+  /** Forward: a pool of warm lamplight on the page under the card, as a well glows under its lands. */
+  private lamp(d: Extract<Draw, { t: "unit" }>): void {
+    const on = d.stance === "forward" && !d.well;
+    if (on === !!this.halo) return;
+    if (this.halo) {
+      this.ground.group.remove(this.halo.object);
+      this.halo.dispose();
+      this.halo = null;
+      return;
+    }
+    const fx = wellFx(this.env.fx, ["W"], d.seed + 1, false, CW * LAMP.w, CH * LAMP.d);
+    fx.object.rotation.x = -Math.PI / 2;
+    fx.object.position.set(0, 0.012, -LAMP.back);
+    this.ground.group.add(fx.object);
+    this.halo = fx;
   }
 
   /**
@@ -522,7 +565,8 @@ class UnitView implements PieceView {
     // Its size in the world: theirs fits the card's width; mine is a sign's own size, a little smaller in a long row.
     const fit = w.theirs ? Math.min(1, ws.theirsFit / (lease.width * SIGN_U)) : w.small ? 0.8 : 1;
     sign.mesh.userData["fit"] = fit;
-    const z = w.theirs ? ws.theirs : ws.mine[w.alt ? 1 : 0];
+    // (A propped well, theirs at the back or in the row: its sign lies in front of its foot, where it is not under the card.)
+    const z = w.theirs ? (d.posture === "flat" ? ws.theirs : ws.propped) : ws.mine[w.alt ? 1 : 0];
     const clear = ((lease.height * SIGN_U * fit) / 2) * Math.sin(ws.tilt) + 0.05;
     sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear), z);
     sign.mesh.renderOrder = 6;
@@ -562,6 +606,7 @@ class UnitView implements PieceView {
     this.marks.tick(clock, level);
     this.ash?.tick(clock.t, level, clock.still);
     this.well?.effect.tick(clock.t, level, clock.still);
+    this.halo?.tick(clock.t, level, clock.still);
     if (d.posture === "stand") {
       const tapped = s.tap > 0.5;
       if (!this.shadow || this.shadow.tapped !== tapped) {
@@ -592,6 +637,8 @@ class UnitView implements PieceView {
     this.marks.clear();
     this.ash?.dispose();
     this.well?.effect.dispose();
+    this.halo?.dispose();
+    for (const p of this.pts) p.dispose();
     this.dropShadow();
   }
 }
@@ -975,23 +1022,27 @@ class ReadView implements PieceView {
   /** The sum last shown, and a change's difference while it is held (from when it was first drawn, s). */
   private sum: readonly [number, number] | null = null;
   private diff: { text: string; at: number | null } | null = null;
+  private turn = 0;
   constructor(
     private readonly host: Host,
     v: ActorView,
   ) {
     this.draw = v.draw as Extract<Draw, { t: "read" }>;
     this.sum = this.draw.sum;
+    this.turn = this.draw.turn;
     this.paint();
   }
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "read" }>;
     this.draw = d;
     // A number that changes holds its difference a moment: "50 power · 18 creatures (+18 · +5)".
-    if (d.sum && this.sum && (d.sum[0] !== this.sum[0] || d.sum[1] !== this.sum[1])) {
+    // (Only within a turn: across a turn's change the board is simply what it is now.)
+    if (d.sum && this.sum && d.turn === this.turn && (d.sum[0] !== this.sum[0] || d.sum[1] !== this.sum[1])) {
       const sign = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "±0");
       this.diff = { text: ` (${sign(d.sum[0] - this.sum[0])} · ${sign(d.sum[1] - this.sum[1])})`, at: null };
     } else if (!d.sum) this.diff = null;
     this.sum = d.sum;
+    this.turn = d.turn;
     this.paint();
   }
   private paint(): void {

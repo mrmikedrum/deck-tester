@@ -33,7 +33,7 @@ export const RANKS = {
   margin: 1.25,
   /** A tail shows at most this many cards; each one under the top shows this share of a card's width (its right-hand sliver). */
   tailShown: 4,
-  sliver: 0.2,
+  sliver: 0.3,
   /** A column shows at most this many cards; each under the top shows this share of a card's height (its name strip). */
   columnShown: 3,
   strip: 0.2,

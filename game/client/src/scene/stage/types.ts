@@ -224,7 +224,13 @@ export type Draw =
       readonly die?: number;
       /** A fan (`ranks`): a tail's cards lying shingled sideways, or a column's shingled away from me, top first; `lit`
        * where it answers the question. */
-      readonly fan?: { readonly kind: "tail" | "column"; readonly cards: readonly { readonly face: FaceSpec; readonly tapped: boolean; readonly lit: boolean }[] };
+      readonly fan?: {
+        readonly kind: "tail" | "column";
+        /** A tail's cards under its top show a sliver: their frame and their power/toughness (`pt`) on a chip. */
+        readonly cards: readonly { readonly face: FaceSpec; readonly tapped: boolean; readonly lit: boolean; readonly pt: string | null }[];
+      };
+      /** Its stance under the question (`ranks`): forward stands in a pool of lamplight. */
+      readonly stance?: "forward" | "ease" | "down";
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }
@@ -255,6 +261,8 @@ export type Draw =
       readonly colour: string;
       /** The sum it leads with (power, creatures), where it says one: a change shows its difference for a moment. */
       readonly sum: readonly [number, number] | null;
+      /** The turn it was read on. */
+      readonly turn: number;
     }
   | { readonly t: "hidden" }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */

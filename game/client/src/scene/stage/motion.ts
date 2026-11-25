@@ -114,6 +114,8 @@ export const DIM = {
   leanMine: 0.45,
   /** The others' things on another player's turn (`soft`: `0.4`). */
   soft: 0.4,
+  /** A page the question is not about (`ranks`), while another's cards answer it. */
+  unasked: 0.55,
   /** The table itself under a sift (`tableMesh` colour 0.42). */
   table: 0.42,
   /** In a fight, what doesn't fight: creatures (`0.45`), everything else on the pages (`0.7`) (h.js `targets`). */

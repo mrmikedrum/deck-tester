@@ -528,7 +528,10 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   // A page's read: a tap on it leans in on the seat, as its plaque does.
   for (const p of plans) {
     const id = `read:${p.seat}`, sh = byGroup.get(id);
-    if (p.fixtures.read && sh) groups.push({ id, kind: "read", seat: p.seat, members: [], quad: sh.face, order: sh.order });
+    // (Its members are the seat's creatures as the question orders them: what answers first, what lies down last.)
+    const rank = (u: Unit): number => (u.stance === "forward" ? 0 : u.stance === "down" ? 2 : 1);
+    const members = p.units.filter((u) => u.role === "creature").sort((a, b) => rank(a) - rank(b)).flatMap((u) => u.members);
+    if (p.fixtures.read && sh) groups.push({ id, kind: "read", seat: p.seat, members, quad: sh.face, order: sh.order });
   }
   for (const p of plans) {
     const c = p.fixtures.commander, id = `command:${p.seat}`;
