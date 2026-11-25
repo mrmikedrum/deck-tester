@@ -239,16 +239,21 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null, froze
   const needs = (ids: ReadonlySet<CardId>): number => accountOf(board, ids, { lines: 99, out }).entries.length;
   let block = inkBlock(g, r, board, allIds, out, lo, hi, behind, a1);
   let worksStand = false;
-  if (works.length && kinds.size * wkPitch <= hi - lo + 1e-6) {
-    const a0 = clearBehind(g, r, behind, wkS) + 0.1;
+  // One row of them, or two where the page is deep enough and nothing has to be written behind them.
+  const perRow = Math.max(1, Math.floor((hi - lo + 1e-6) / wkPitch));
+  const rowsNeeded = Math.ceil(kinds.size / perRow);
+  const aRow2 = clearBehind(g, r, behind, wkS) + 0.1;
+  const twoFit = rowsNeeded === 2 && !creatureIds.size && !out.size && clearBehind(g, r, aRow2, wkS) <= a1 + 1e-6;
+  if (works.length && (rowsNeeded === 1 || twoFit)) {
+    const a0 = rowsNeeded === 1 ? aRow2 : clearBehind(g, r, aRow2, wkS) + 0.1;
     const alone = creatureIds.size || out.size ? inkBlock(g, r, board, creatureIds, out, lo, hi, a0, a1) : null;
     if (!creatureIds.size && !out.size ? true : !!alone && alone.words.entries.length >= needs(creatureIds) && alone.block.d <= a1 - a0 + 1e-6) {
       worksStand = true;
       block = alone;
       let k = 0;
       for (const cs of kinds.values()) {
-        const u = lo + wkPitch * (k++ + 0.5);
-        units.push({ ...card("s", cs[0]!, { pos: at(u, behind), scale: wkS, posture: "prop" }, "support"), kind: cs.length > 1 ? "pile" : "card", members: cs.map((c) => c.id), dressing: dressingOf(cs.map((c) => c.id)) });
+        const row = Math.floor(k / perRow), u = lo + wkPitch * ((k++ % perRow) + 0.5);
+        units.push({ ...card("s", cs[0]!, { pos: at(u, row ? aRow2 : behind), scale: wkS, posture: "prop" }, "support"), kind: cs.length > 1 ? "pile" : "card", members: cs.map((c) => c.id), dressing: dressingOf(cs.map((c) => c.id)) });
       }
     }
   }
@@ -265,7 +270,7 @@ function written(input: SeatInput, open: SeatPlan, was: ToldMemory | null, froze
       mixed: true,
       acting: false,
       tapped: false,
-      placement: { pos: at((lo + hi) / 2, worksStand ? clearBehind(g, r, behind, wkS) + 0.1 : behind), scale: 1, posture: "flat" },
+      placement: { pos: at((lo + hi) / 2, worksStand ? aRow2 : behind), scale: 1, posture: "flat" },
       account: block,
     });
   }
