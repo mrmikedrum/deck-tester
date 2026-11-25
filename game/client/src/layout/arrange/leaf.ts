@@ -1,8 +1,8 @@
 // An opponent's leaf as a container (§1.1), shaped to the designer's no-middle table: the leaf reaches toward my
-// creatures (its front row stands at z ≈ −3.9 across), holds two standing rows and a lying row, and ends in a far strip
-// (library, graveyard, exile, the waiting commander) the builder keeps. Plates are chrome at the top of the screen,
-// over their leaf: a screen keepout. The template's no-middle variant (a later step) will own these numbers; the slice
-// builds the across leaf from today's slot with them.
+// creatures (its front row stands at z ≈ −3.9 across) and ends in a far strip (library, graveyard, exile, the waiting
+// commander) the builder keeps; how many rows fit between is the engine's to find from the space. Plates are chrome at
+// the top of the screen, over their leaf: a screen keepout. The template's no-middle variant (a later step) will own
+// these numbers; the slice builds the across leaf from today's slot with them.
 import type { Projector } from "../projector";
 import type { SeatSlot } from "../template";
 import type { Rect, SeatId } from "../types";
