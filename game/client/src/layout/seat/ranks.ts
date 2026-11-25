@@ -294,6 +294,9 @@ function plan(input: SeatInput): SeatPlan {
   const wide = aimWide(q, total);
   const stanceOfCard = (c: BoardCard): Stance | null => (wide ? null : stanceOf(c, seat, false, q));
   const answers = (c: BoardCard) => stanceOfCard(c) === "forward";
+  // A page the question is not about keeps its rest words: its tags say what they hold, not "0 ready".
+  const asked = board.cards.some((c) => stanceOfCard(c) !== null);
+  const qTag: Question = asked ? q : REST;
   const foldStance = (ids: readonly CardId[]): Stance => {
     const ss = ids.map((id) => stanceOfCard(need(id)));
     if (ss.includes("forward")) return "forward";
@@ -314,7 +317,7 @@ function plan(input: SeatInput): SeatPlan {
   const creatureUnit = (c: Cand, a: number, u: number, s: number, step: boolean): void => {
     const ids = c.ids, top = ids[0]!, look: UnitLook = ids.length > 1 ? "regiment" : "card";
     const st = c.acting ? "ease" : foldStance(ids);
-    const tag: TagFacts | undefined = look === "regiment" ? tagOf("regiment", ids.map(need), q, answers) : undefined;
+    const tag: TagFacts | undefined = look === "regiment" ? tagOf("regiment", ids.map(need), qTag, answers) : undefined;
     push({
       id: idOf(c.key),
       role: "creature",
@@ -367,7 +370,7 @@ function plan(input: SeatInput): SeatPlan {
           placement: { pos: at(u - tw / 2 + 0.1 + (CW * sT) / 2, aRanks), scale: sT, posture: "lean" },
           look: "tail",
           stance: foldStance(tailIds),
-          tag: tagOf("tail", tailIds.map(need), q, answers),
+          tag: tagOf("tail", tailIds.map(need), qTag, answers),
           fan: shown,
           lit: q.q === "rest" ? [] : tailFan.filter((id) => answers(need(id))),
           spread: { right: RANKS.sliver * (shown.length - 1), back: 0 },
