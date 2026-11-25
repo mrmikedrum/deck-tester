@@ -507,6 +507,12 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   const at = (pos: string) => plans.find((_, i) => tpl.slots[i]!.position === pos);
   const across = at("across"), left = at("left"), right = at("right"), near = at("near");
   let t = across ? Math.max(...pageBox(across).ys) : 60, b = near ? Math.min(...pageBox(near).ys) : 600;
+  // (What lies at the front of the page across, a tray's lip, can reach nearer me than its edge: the middle starts below it.)
+  for (const un of across?.units ?? [])
+    if (!un.fighting && un.footprint && un.placement.posture !== "stand") {
+      const p = un.placement, lip = proj.project({ x: p.pos.x, y: 0, z: p.pos.z - un.footprint.front * p.scale });
+      t = Math.max(t, lip.y / u + 6);
+    }
   for (const un of near?.units ?? [])
     if (un.role === "creature" && !un.fighting) {
       // (Its top as if it stood square to me, the tallest it shows; one lying reaches back to its far edge.)

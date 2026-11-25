@@ -289,7 +289,7 @@ const band =
     // (Theirs start where a tray's lip lies at a standee's foot: what stands in front of the row keeps clear of it.)
     // (Their places are a tray wide, a card and its rim: what lies tapped there lies spent, never turned.)
     // (Their standouts stand in the front row and their trays lie in the back row: it reaches a tray's depth behind its foot.)
-    if (k === "C") return me ? b : { ...b, per: TRAY_PRINT.w + 0.06, lead: b.lead - TRAY_PRINT.front / 2, step: Math.max(b.step, TRAY_D), tall: 1.04, tallLast: 1.14, upright: true, backLying: TRAY_PRINT.back };
+    if (k === "C") return me ? b : { ...b, per: TRAY_PRINT.w + 0.06, lead: b.lead - TRAY_PRINT.front / 2, leadOne: b.lead - TRAY_PRINT.front + 0.3, step: Math.max(b.step, TRAY_D), tall: 1.1, tallLast: 1.14, upright: true, backLying: TRAY_PRINT.back };
     // Their small band behind the creatures: support fanned and walkers lying, at any card's floor, measured upright.
     if (k === "S") return me ? { ...b, flat: true } : { ...b, flat: true, lying: true, upright: true, lead: 0.08, first: 0.08 + CH + 0.05, step: CH + 0.2, per: FAN_W.theirs + 0.12 };
     // (Their mana lies at the end of the small band: one stack of real lands on a tray.)

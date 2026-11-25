@@ -50,6 +50,8 @@ export interface BandSpec {
   upright?: boolean;
   /** Theirs: its back row lies flat (the `die` layout's trays behind its standouts), reaching this far behind its foot. */
   backLying?: number;
+  /** Its lead where it has one row: further in from the page's open edge, clear of what stands in the middle. */
+  leadOne?: number;
   /** How tall what stands in it is, for what must show behind it (the mat's: a card and its title tab). */
   tall?: number;
   /** As tall, behind its last row only: what lies in the band behind keeps clear of its tops with room for a tap. */
@@ -140,7 +142,7 @@ export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1
   if (flat) {
     const tall = ((at(0).y - g.proj.project({ x: pos.x, y: 0, z: pos.z - 0.5 }).y) * 2) / g.u;
     // (Never turned, it must still give a finger a square on a side page, where a card lying is a skewed trapezoid.)
-    w = Math.max(w, ((Math.max(FLOOR.any, tap) * (turned ? 1.12 : 1.25) * k) / tall) * (CW / CH), turned ? (px * 1.09 * k) / tall : 0);
+    w = Math.max(w, ((Math.max(FLOOR.any, tap) * (turned ? 1.12 : 1.2) * k) / tall) * (CW / CH), turned ? (px * 1.09 * k) / tall : 0);
   }
   return w / (CW * k);
 }

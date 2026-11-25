@@ -127,7 +127,17 @@ export const LIP_PX = { w: 512, h: 84, font: 64 } as const;
 
 /** A tray's brass lip: total power, then keyword icons, each with a count unless every member has it. */
 export function paintLip(canvas: Canvas, spec: LipSpec, s: Surfaces): void {
-  const { w: W, h: H } = LIP_PX, x = begin(canvas, W, H);
+  // (As wide as its words, never wider than its tray: a strip that says only what it says.)
+  const H = LIP_PX.h, IC = 64, pad = 22;
+  const probe = canvas.getContext("2d");
+  if (!probe) throw new Error("no 2d context");
+  probe.font = `700 ${LIP_PX.font}px ${font.num}`;
+  const icons = spec.icons.filter((i) => KEYWORD_ICONS[i.keyword]).slice(0, 3);
+  // (An icon as tall as the text, then its count bare: "26 power ✈ 2", never "+2".)
+  const iw = (i: (typeof icons)[number]) => IC + 4 + (i.count !== null ? probe.measureText(String(i.count)).width + 6 : 0);
+  const tw = probe.measureText(spec.text).width, total = tw + icons.reduce((t, i) => t + 14 + iw(i), 0);
+  const W = Math.min(LIP_PX.w, Math.ceil(total + 2 * pad));
+  const x = begin(canvas, W, H);
   x.fillStyle = pattern(x, s.bronze, kit.lip.brass);
   rr(x, 0, 0, W, H, 10);
   x.fill();
@@ -144,15 +154,10 @@ export function paintLip(canvas: Canvas, spec: LipSpec, s: Surfaces): void {
   x.stroke();
   x.font = `700 ${LIP_PX.font}px ${font.num}`;
   x.textBaseline = "middle";
-  const icons = spec.icons.filter((i) => KEYWORD_ICONS[i.keyword]).slice(0, 3);
-  // (An icon as tall as the text, then its count bare: "26 power ✈ 2", never "+2".)
-  const IC = 64;
-  const iw = (i: (typeof icons)[number]) => IC + 4 + (i.count !== null ? x.measureText(String(i.count)).width + 6 : 0);
-  const tw = x.measureText(spec.text).width, total = tw + icons.reduce((t, i) => t + 14 + iw(i), 0);
-  let at = Math.max(14, W / 2 - total / 2);
+  let at = Math.max(pad, W / 2 - total / 2);
   x.fillStyle = kit.lip.ink;
   x.textAlign = "left";
-  x.fillText(spec.text, at, H / 2 + 3, W - 28);
+  x.fillText(spec.text, at, H / 2 + 3, W - 2 * pad);
   at += tw + 14;
   for (const i of icons) {
     x.save();

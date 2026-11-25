@@ -570,7 +570,9 @@ class TrayParts {
     }
     // The tapped stack lies behind, shaded and turned a little, a band of it showing; alone it lies where the ready
     // stack would.
-    const hT = Math.min(nT, TRAY.most) * TH, hR = Math.min(n, TRAY.most) * TH, f = TRAY.floor + 0.004;
+    // (Their mana is a short stack: its count is on its dice, and it lies just in front of the plaque.)
+    const most = stack ? 4 : TRAY.most;
+    const hT = Math.min(nT, most) * TH, hR = Math.min(n, most) * TH, f = TRAY.floor + 0.004;
     const yT = n > 0 ? TRAY.band : 0;
     this.tappedBlock.visible = nT > 1;
     this.tappedBlock.scale.set(CW * 0.98, CH * 0.98, Math.max(1e-3, hT - TH));
@@ -611,11 +613,12 @@ class TrayParts {
       this.lip = null;
       if (t.lip) {
         const lease = this.host.painter.lip(t.lip);
-        this.lip = new Decal(lease, TRAY.w, TRAY.lip.h, { renderOrder: 6 });
+        // (The canvas is as wide as the words: the strip keeps their proportion, its height the tray's lip.)
+        this.lip = new Decal(lease, Math.min(TRAY.w, (TRAY.lip.h * lease.width) / lease.height), TRAY.lip.h, { renderOrder: 6 });
         this.lip.mesh.userData[LABEL] = { fonts: [LIP_PX.font], h: LIP_PX.h } satisfies LabelTag;
         this.lip.mesh.rotation.x = TRAY.lip.tilt;
-        // (Raised against the rim's front, its foot on the page.)
-        this.lip.mesh.position.set(0, TRAY.front - 0.03 - (TRAY.lip.h / 2) * Math.cos(TRAY.lip.tilt), (TRAY.lip.h / 2) * Math.sin(TRAY.lip.tilt) + 0.01);
+        // (Raised on the rim's front, its foot on the bronze: as far back as it can stand without hiding the card's foot.)
+        this.lip.mesh.position.set(0, TRAY.front + 0.05 - (TRAY.lip.h / 2) * Math.cos(TRAY.lip.tilt), (TRAY.lip.h / 2) * Math.sin(TRAY.lip.tilt) + 0.01);
         this.group.add(this.lip.mesh);
       }
     }

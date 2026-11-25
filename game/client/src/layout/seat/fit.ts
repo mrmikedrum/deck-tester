@@ -85,7 +85,7 @@ export interface FitCtx {
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 /** Behind a band that lies flat, the plaque's piles keep clear of it: propped from half a card in front of the plaque, or
  * lying behind its line. */
-const LYING_CLEAR = { propped: 0.5, flat: 0.15 } as const;
+const LYING_CLEAR = { propped: 0.5, flat: 0.3 } as const;
 
 const stats = (c: { name: string; power: number | null; toughness: number | null }): string => `${c.name}|${c.power}/${c.toughness}`;
 
@@ -274,7 +274,7 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
     let a = me ? back + GAP : EDGE;
     if (!me) b.L = { ...g.band("L", false, cPx), k: "L", n: 0, rows: 0, perRow: 0, cap: 0, s: 1, a0: 0, a1: 0 };
     for (const k of order) {
-      const B = band(k), cnt = n[k], lands = !me && k === "S" && !!n.L;
+      const B0 = band(k), B = B0.leadOne !== undefined && rows[k] === 1 ? { ...B0, lead: B0.leadOne } : B0, cnt = n[k], lands = !me && k === "S" && !!n.L;
       if (!cnt && !lands && !held[k]) {
         b[k] = { ...B, k, s: B.pref, n: 0, rows: 0, perRow: 0, a0: a, a1: a, cap: 0 };
         continue;
