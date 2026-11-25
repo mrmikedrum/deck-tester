@@ -27,6 +27,9 @@ function rest(stage: Stage, step: Step, t: number): { view: StageView; t: number
   return { view, t };
 }
 
+// Each run settles every step of a corpus game and taps a 12 px grid over it: seconds of work, longer on a loaded runner.
+const WHOLE_RUN_MS = 30_000;
+
 describe("picking what was drawn", () => {
   it.each(runs.map((r, i) => [`run ${i + 1}`, r] as const))("%s: at rest it is layout's hitTest, tap for tap", (_, run) => {
     const stage = new Stage();
@@ -36,7 +39,7 @@ describe("picking what was drawn", () => {
       t = r.t;
       for (const p of grid(step)) expect(pickDrawn(step.plan, r.view.drawn, p)?.id ?? null, `${step.name} at ${p.x},${p.y}`).toBe(hitTest(step.plan, p)?.id ?? null);
     }
-  });
+  }, WHOLE_RUN_MS);
 
   it("through a reflow a tap reaches the card where it is drawn, not the group whose destination is there", () => {
     let reached = 0;
