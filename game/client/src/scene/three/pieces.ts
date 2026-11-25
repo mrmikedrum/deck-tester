@@ -28,6 +28,7 @@ import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard } from "./card";
 import { Block, CastShadow, Contact, blockHeight } from "./slab";
+import { DICE_AT, Dice } from "./dice";
 import type { CardObject, CardOptions } from "./card";
 import { burstFx, chosenFx, emberFx, moteFx, sigilFx, spellFx, standFx, wellFx } from "./fx";
 import type { StandTone } from "./fx";
@@ -304,6 +305,7 @@ class UnitView implements PieceView {
   private readonly pile = new Group();
   private block: Block | null = null;
   private contact: Contact | null = null;
+  private dice: Dice | null = null;
   private readonly cast: CastShadow;
   private lift = 0;
   private cards: CardPart[] = [];
@@ -397,15 +399,23 @@ class UnitView implements PieceView {
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
-    // A pile whose title gave way (no room on screen) shows its count as a chip on its face.
-    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well;
+    // A block of identical cards says how many with dice on the vellum at its foot, never a tab or a chip on a card.
+    const counted = !well && !d.mixed && v.shown > 1;
+    if (counted && !this.dice) {
+      this.dice = new Dice(this.host, d.seed);
+      this.dice.group.position.set(DICE_AT.x, 0, DICE_AT.z);
+      this.ground.group.add(this.dice.group);
+    }
+    this.dice?.set(counted ? v.shown : 0);
+    // A mixed pile whose title gave way (no room on screen) shows its count as a chip on its face.
+    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well && !counted;
     const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
     if (key === this.key) return;
     this.key = key;
     this.sign?.dispose();
     if (this.sign) this.group.remove(this.sign.mesh);
     this.sign = null;
-    if (d.title && d.label && !well) this.sign = this.titleTab(d, turned);
+    if (d.title && d.label && !well && !counted) this.sign = this.titleTab(d, turned);
     for (const c of this.chips) {
       this.cards[0]!.obj.body.remove(c.mesh);
       c.dispose();
@@ -611,6 +621,7 @@ class UnitView implements PieceView {
     const lit = this.stand?.tone === "ember" ? 1 : s.tap > 0.5 || v.mark ? 0 : 1;
     this.stand?.effect.tick(clock.t, level * lit, clock.still);
     this.mote?.effect.tick(clock.t, level, clock.still);
+    this.dice?.tick(clock.t, clock.still);
     this.well?.effect.tick(clock.t, level, clock.still);
     // The block and the contact shadow turn with the pile; the cast shadow is the lamp's own.
     this.pile.rotation.z = d.well ? 0 : -s.tap * (Math.PI / 2);
@@ -634,6 +645,7 @@ class UnitView implements PieceView {
     this.block?.dispose();
     this.contact?.dispose();
     this.cast.dispose();
+    this.dice?.dispose();
   }
 }
 

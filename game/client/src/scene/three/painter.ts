@@ -15,6 +15,7 @@ import {
   paintPlate,
   paintShade,
   paintStrata,
+  paintDieFace,
   paintPrinted,
   paintSign,
   paintSlip,
@@ -77,6 +78,10 @@ export class Painter {
   /** One of the effects' sprites (embers, streaks, a well's light, ash, the sigil's brand, a pool of light). */
   fx(kind: FxSprite): Lease {
     return this.cache.lease("fx|" + kind, (c) => paintFxSprite(c, kind));
+  }
+  /** A die's face: pips (a d6) or a numeral. */
+  dieFace(pips: boolean, n: number): Lease {
+    return this.cache.lease(`die|${pips}|${n}`, (c) => paintDieFace(c, { pips, n }));
   }
   /** A block's wall, one card high (repeated by its material). */
   strata(): Lease {

@@ -116,3 +116,41 @@ export function paintStrata(canvas: Canvas): void {
   x.fillStyle = g;
   x.fillRect(0, 0, STRATA_PX.w, STRATA_PX.h);
 }
+
+export const DIE_PX = 128;
+
+/**
+ * One face of a die, bone with dark ink: `n` pips (a d6's face, 1 to 6) or a numeral (a d20's or a d10's). A numeral
+ * that could be read upside down (6, 9) is underlined.
+ */
+export function paintDieFace(canvas: Canvas, face: { readonly pips: boolean; readonly n: number }): void {
+  const x = begin(canvas, DIE_PX, DIE_PX);
+  const g = x.createRadialGradient(DIE_PX * 0.4, DIE_PX * 0.35, 4, DIE_PX / 2, DIE_PX / 2, DIE_PX * 0.75);
+  g.addColorStop(0, "#fbf3e0");
+  g.addColorStop(1, "#dccca6");
+  x.fillStyle = g;
+  x.fillRect(0, 0, DIE_PX, DIE_PX);
+  x.fillStyle = "#24160a";
+  if (face.pips) {
+    const at: Readonly<Record<number, readonly (readonly [number, number])[]>> = {
+      1: [[0.5, 0.5]],
+      2: [[0.27, 0.27], [0.73, 0.73]],
+      3: [[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]],
+      4: [[0.27, 0.27], [0.73, 0.27], [0.27, 0.73], [0.73, 0.73]],
+      5: [[0.25, 0.25], [0.75, 0.25], [0.5, 0.5], [0.25, 0.75], [0.75, 0.75]],
+      6: [[0.27, 0.22], [0.73, 0.22], [0.27, 0.5], [0.73, 0.5], [0.27, 0.78], [0.73, 0.78]],
+    };
+    for (const [px, py] of at[Math.max(1, Math.min(6, face.n))] ?? []) {
+      x.beginPath();
+      x.arc(px * DIE_PX, py * DIE_PX, DIE_PX * 0.095, 0, Math.PI * 2);
+      x.fill();
+    }
+    return;
+  }
+  const s = String(face.n);
+  x.font = `700 ${s.length > 1 ? 70 : 86}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+  x.textAlign = "center";
+  x.textBaseline = "middle";
+  x.fillText(s, DIE_PX / 2, DIE_PX / 2 + 4);
+  if (s === "6" || s === "9") x.fillRect(DIE_PX * 0.36, DIE_PX * 0.84, DIE_PX * 0.28, 6);
+}
