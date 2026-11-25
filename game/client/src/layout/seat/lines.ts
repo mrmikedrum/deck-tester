@@ -247,17 +247,21 @@ function plan(input: SeatInput): SeatPlan {
   // ---- the ready line and its files ----------------------------------------------------------------------------------
   const px = me ? FLOOR.mine : FLOOR.theirs;
   const whole = bandSpan(g, r, me, aLine);
-  // Mine: my page has no depth to spare between my line and my hand, so what I have tapped lies turned at the right end
-  // of my own line, pushed aside (shingled when it must), and the line's fronts take the rest.
-  let span = whole;
+  // Mine: what I have tapped lies turned in a row just my side of my line's feet, under its left half, in the band my
+  // support uses (my support keeps to the right of it), no larger than the cards standing over it.
+  const span = whole;
   if (me && spent.length) {
-    const sS = scaleAt(g, at(g, r, whole.hi - 1, aLine + 0.5), FLOOR.mine);
-    // (Room first for every ready run at the floor; the heap shingles into what is left.)
-    const sF = scaleAt(g, at(g, r, whole.uc, aLine), FLOOR.mine);
-    const fronts = Math.min(MOST.me, ready.length) * sF * CW * PITCH;
-    const wS = Math.max(CH * sS * 1.5, Math.min(spent.length * CH * sS * 1.05, whole.w - fronts - 0.3));
-    span = { lo: whole.lo, hi: whole.hi - wS - 0.3, w: whole.w - wS - 0.3, uc: (whole.lo + whole.hi - wS - 0.3) / 2 };
-    layoutSpent(aLine - 0.15, sS, { lo: whole.hi - wS, hi: whole.hi, w: wS, uc: whole.hi - wS / 2 });
+    const sS = scaleAt(g, at(g, r, whole.uc, aLine - 0.6), FLOOR.mine);
+    const a0 = aLine - 0.06 - CW * sS;
+    let hi = whole.hi;
+    for (const u of units) {
+      const at0 = regionOf(r, u.placement.pos), half = (CW * u.placement.scale) / 2;
+      if (at0.a - 0.2 < a0 + CW * sS && at0.a + CH * u.placement.scale > a0) hi = Math.min(hi, at0.u - half - 0.3);
+    }
+    // (Measured a little inside its near edge: it lies above the hand, which only its shadow reaches.)
+    // (It starts under my line's left end, clear of the hand's button in the corner.)
+    const lo = Math.max(bandSpan(g, r, true, a0 + 0.2).lo, whole.lo + whole.w * 0.12);
+    layoutSpent(a0, sS, { lo, hi, w: Math.max(CH * sS, hi - lo), uc: (lo + Math.max(hi, lo + CH * sS)) / 2 }, false, true);
   }
   const sFloor = scaleAt(g, at(g, r, span.uc, aLine), px);
   const K = Math.max(1, Math.min(me ? MOST.me : MOST.them, Math.floor(span.w / (sFloor * CW * PITCH))));
@@ -551,7 +555,7 @@ function plan(input: SeatInput): SeatPlan {
   });
 
   // ---- the spent row: tapped creatures lying turned, clear while they fit, else shingled; one heap to a tap ------------
-  function layoutSpent(a0: number, sS: number, within?: { lo: number; hi: number; w: number; uc: number }, compact = false): void {
+  function layoutSpent(a0: number, sS: number, within?: { lo: number; hi: number; w: number; uc: number }, compact = false, fromLeft = false): void {
     // (A commander or a legend lies first and clear of the heap: never a sliver in a shingle.)
     const legend = (x: Run) => x.rep.commander || x.rep.legendary;
     const order = spent.slice().sort((x, y) => Number(legend(y)) - Number(legend(x)) || (colOf2(x) ?? 1e3) - (colOf2(y) ?? 1e3) || y.w - x.w);
@@ -579,7 +583,8 @@ function plan(input: SeatInput): SeatPlan {
     }
     const xs = row.map((_, i) => (i < nClear ? i * clearStep : nClear * clearStep + (i - nClear) * step));
     const width = xs[xs.length - 1]! + len;
-    const u0 = sp.uc - width / 2 + len / 2;
+    // (Mine start under the left of my line, as it fills from there; theirs are centred.)
+    const u0 = fromLeft ? sp.lo + len / 2 : sp.uc - width / 2 + len / 2;
     const fileId = `${board.seat}:spent`;
     row.forEach((run, i) => {
       const c = at(g, r, u0 + xs[i]!, aC);
@@ -613,7 +618,7 @@ function plan(input: SeatInput): SeatPlan {
       const big = all.slice().sort((x, y) => (y.power ?? 0) - (x.power ?? 0))[0];
       notes.push({
         id: "spent",
-        at: at(g, r, sp.uc, me ? a0 + CW * sS + 0.3 : a0 + CW * sS + 0.16),
+        at: at(g, r, fromLeft ? sp.lo + Math.min(width, sp.w) / 2 : sp.uc, me ? a0 - 0.25 : a0 + CW * sS + 0.16),
         facts: {
           kind: "spent",
           count: all.length,
