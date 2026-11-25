@@ -105,6 +105,21 @@ module.exports = [
             { at: 2500, label: "I tap the table: the stack steps aside", js: tapAt(openTable) },
             { at: 4300, label: "I tap the small stack: it comes back", js: tapAt(stackMiddle) }] },
     PLAYS.counter.first, [PLAYS.counter.steps[0]], { 1: { gesture: { tap: { open: true } } }, 2: { gesture: { tap: { stack: PLAYS.counter.steps[0].view.stack[0].source.id } } } }),
+  // My attack decision at turn 15, picked by taps: Meloku alone (every attacker flies), then Faerie Mastermind, then
+  // Whirler Rogue (one on the ground). The engine sees no answer: the draft is the client's.
+  (() => {
+    const { first, steps } = PLAYS.attack15, mine = n => steps[0].view.players[0].battlefield.find(c => c.name === n).id;
+    const clip = bothEntries({ name: "strike15", live: first, ms: 7600, audit: true,
+      about: "On turn 15 Forge asks which of my creatures attack. I tap Meloku, then Faerie Mastermind, then Whirler Rogue, and send nothing yet.",
+      beats: [{ at: 300, label: "Forge asks me to declare attackers", js: take(steps[0], 2) },
+              { at: 2100, label: "I pick Meloku", js: "void 0" },
+              { at: 3900, label: "I pick Faerie Mastermind", js: "void 0" },
+              { at: 5700, label: "I pick Whirler Rogue", js: "void 0" }] },
+      first, [steps[0], null, null, null],
+      { 1: { gesture: { tap: { card: mine("Meloku the Clouded Mirror") } } }, 2: { gesture: { tap: { card: mine("Faerie Mastermind") } } }, 3: { gesture: { tap: { card: mine("Whirler Rogue") } } } }, false);
+    clip.entries = ["new"];
+    return clip;
+  })(),
   // Offline scenario jumps cut between unrelated boards: a dev tool, not a game moment. Record it by name if wanted.
   { name: "scenarios", manual: true, live: null, ms: 5000, setup: ['__h.loadScenario("early")'], about: "The game jumps ahead: from an early board to a mid-game board to a late-game board, each side gaining many permanents.",
     beats: [{ at: 300, label: "mid-game board", js: '__h.loadScenario("mid")' },

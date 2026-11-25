@@ -65,6 +65,8 @@ interface Mem {
   turn: number;
   /** The turn the last plan saw: a jump of more than one means turns went by unseen (a seat's untap step among them). */
   seen?: number;
+  /** The tail's cards: one not in it before lies on top. */
+  tail?: CardId[];
   /** The back band keeps room for the zones and the commander once they have come, so the plaque never slides. */
   nz: number;
   cmd: boolean;
@@ -75,7 +77,7 @@ const KEYWORDS = (c: BoardCard): string => [...c.keywords].map((k) => k.toLowerC
 const likeKey = (c: BoardCard): string => `${c.name}|${c.power ?? ""}/${c.toughness ?? ""}|${KEYWORDS(c)}|${c.token ? "t" : ""}`;
 
 function plan(input: SeatInput): SeatPlan {
-  if (input.board.mine) return mat.plan(input);
+  if (input.board.mine) return mine(input);
   const { board, region, projector, reserve, involved, pressure } = input;
   const q: Question = input.question ?? REST;
   const r: Region = region;
@@ -250,16 +252,8 @@ function plan(input: SeatInput): SeatPlan {
   // A place is as wide as a turned card where the fold holds a tapped one (its tapped copies lie turned behind it).
   const placeOf = (c: Cand) => (c.ids.some((id) => need(id).tapped) ? CH + 0.06 : CW + 0.1) * sR;
   const placeW = (CH + 0.06) * sR;
-  // The well lies at the back, beside the plaque on the side away from its piles, where the band has room; else at the
-  // second row's outer end.
   const nz = Math.max(Number(board.fixtures.graveyard > 0) + Number(board.fixtures.exile > 0), prev?.nz ?? 0);
   const cmdBack = board.fixtures.commandZone;
-  const zS0 = 0.9, zgap0 = Math.max(1.15, zS0 * CW + 0.4), half0 = 1.6 * PLATE_S, cmdOut0 = (2.2 + 0.32) * PLATE_S;
-  const eZ0 = Math.max(half0, cmdBack ? cmdOut0 + 0.05 : 0, nz ? (cmdBack ? cmdOut0 + 0.25 : half0 + 0.2) + nz * zgap0 : 0);
-  const sWb = mana.length ? sW : 0;
-  // (The page across reaches the top of the screen: there the well stays in the second row.)
-  // (Beside the plaque a well reaches past the page's back edge, high on the screen: it lies in the second row.)
-  const wellBack = false && side && mana.length > 0 && eZ0 + half0 + WELL_GAP + CW * sWb * 1.25 <= width;
   const tailWOf = (n: number) => (n ? CW * sT * (1 + RANKS.sliver * (Math.min(RANKS.tailShown, n) - 1)) + 0.2 : 0);
   const cardW = (id: CardId, sc: number) => (need(id).tapped ? CH : CW) * sc + 0.15;
   // Fold by width: the ranks give their own places to the tail first, then the columns merge, then the walkers join them.
@@ -278,7 +272,7 @@ function plan(input: SeatInput): SeatPlan {
       tailWOf(rk.tail.reduce((t, c) => t + c.ids.length, 0)) +
       (L.walkersIn ? 0 : walkers.reduce((t, c) => t + cardW(c.id, sS), 0)) +
       cols.reduce((t, c) => t + cardW(c.ids[0]!, c.s), 0) +
-      (mana.length && !wellBack ? CW * sW + 0.35 : 0);
+      (mana.length ? CW * sW + 0.35 : 0);
     rung = { ranks: rk, cols, walkersIn: L.walkersIn, w };
     if (w <= width) break;
   }
@@ -338,7 +332,11 @@ function plan(input: SeatInput): SeatPlan {
   type Item = { w: number; put: (u: number) => void };
   const row: Item[] = [];
   for (const c of ranks.own) row.push({ w: placeOf(c), put: (u) => creatureUnit(c, aRanks, u, sR, false) });
-  const tailFan = [...tailIds].sort((x, y) => Number(answers(need(y))) - Number(answers(need(x))) || restScore(need(y)) - restScore(need(x)) || x - y);
+  // The tail's top card is its best answer to the question; at rest, a card that has just arrived lies on top, whole, as a
+  // new card on a pile would; else the one that matters most.
+  const wasTail = new Set(prev?.tail ?? []);
+  const fresh = (id: CardId) => !!prev?.tail && !wasTail.has(id);
+  const tailFan = [...tailIds].sort((x, y) => Number(answers(need(y))) - Number(answers(need(x))) || Number(fresh(y)) - Number(fresh(x)) || restScore(need(y)) - restScore(need(x)) || x - y);
   const shown = tailFan.slice(0, RANKS.tailShown);
   if (tailIds.length) {
     const tw = tailWOf(tailIds.length);
@@ -390,11 +388,7 @@ function plan(input: SeatInput): SeatPlan {
         }),
     });
   }
-  const wellIds = (() => {
-    const rep = (mana.find((c) => c.land && !c.tapped) ?? mana.find((c) => c.land) ?? mana[0]!).id;
-    return [rep, ...mana.map((c) => c.id).filter((id) => id !== rep)];
-  });
-  if (mana.length && !wellBack) {
+  if (mana.length) {
     const rep = (mana.find((c) => c.land && !c.tapped) ?? mana.find((c) => c.land) ?? mana[0]!).id;
     const ids = [rep, ...mana.map((c) => c.id).filter((id) => id !== rep)];
     row.push({
@@ -433,19 +427,11 @@ function plan(input: SeatInput): SeatPlan {
   const zS = Math.max(0.8, floorScale(g, at(0, Math.min(plateA, r.d - PLATE_IN)), FLOOR.any, false, 0.8));
   const half = 1.6 * PLATE_S, cmdOut = (2.2 + 0.32) * PLATE_S, zs = zoneSide(false, r.x), zgap = Math.max(1.15, zS * CW + 0.4);
   const z0 = cmdBack ? cmdOut + 0.25 + zgap / 2 : half + 0.2 + zgap / 2, zonesU = [...Array(nz).keys()].map((i) => z0 + i * zgap);
-  // The band centred on the page: the plaque, its piles (and the commander) toward the middle, the well beyond it.
-  const sWell = wellBack ? scaleAt(plateA, FLOOR.any * 1.1, "prop") : 0, ww = wellBack ? CW * sWell : 0;
-  const far = half + (wellBack ? WELL_GAP + ww : 0);
+  // The band centred on the page: the plaque, its piles (and the commander) toward the middle.
+  const far = half;
   const eZ = Math.max(half, cmdBack ? cmdOut + 0.05 : 0, nz ? zonesU[nz - 1]! + zgap / 2 : 0), c0 = (-zs * (eZ - far)) / 2;
   const backW = eZ + far + 2 * SIDE;
 
-  if (wellBack) {
-    // Beside the plaque, away from its piles, lying flat: as large as it must be there.
-    const ids = wellIds();
-    const a = plateA, sc = sWell;
-    const u = c0 - zs * (half + WELL_GAP + (CW * sc) / 2);
-    push({ id: idOf("well"), role: "mana", kind: "well", members: ids, top: ids[0]!, tapped: false, placement: { pos: at(Math.max(-width / 2 + (CW * sc) / 2, Math.min(width / 2 - (CW * sc) / 2, u)), a), scale: sc, posture: "prop" }, look: "card" });
-  }
 
   // ---- fixtures: the page, the read, the plaque, the zones, the commander ---------------------------------------------
   const W = Math.min(r.w, Math.max(2 * SIDE + Math.max(places * per, rowW), backW, 6));
@@ -477,6 +463,7 @@ function plan(input: SeatInput): SeatPlan {
     ranks: order,
     turn: tidy ? turn : prev!.turn,
     seen: turn,
+    tail: tailIds,
     nz,
     cmd: cmdBack,
   };
@@ -490,9 +477,6 @@ function plan(input: SeatInput): SeatPlan {
     report: { folded: Math.max(0, tailIds.length - 1) + out.filter((u) => u.look === "regiment" || u.look === "column").reduce((t, u) => t + u.members.length - 1, 0), held: !tidy, pressure, overflow: plateA + PLATE_IN > r.d, lastResort: false },
   });
 }
-
-/** Between the plaque and the well beside it. */
-const WELL_GAP = 0.3;
 
 /** How deep on the page (from its near edge at depth `a`) a box propped `tilt` up must be to stand `px` tall on screen. */
 function readDepth(g: Geo, r: Region, a: number, px: number, tilt: number): number {
@@ -521,6 +505,28 @@ function groundBehind(g: Geo, r: Region, a: number, d: number, tilt: number): nu
     else hi = m;
   }
   return hi;
+}
+
+/**
+ * My page: `mat`'s places (the by-relevance grammar for my own board is stance alone so far). Under a question my
+ * creatures answer it as theirs do: what I can still use stands, what I cannot lies down where it stands.
+ */
+function mine(input: SeatInput): SeatPlan {
+  const p = mat.plan(input), q = input.question ?? REST;
+  if (q.q === "rest" || q.q === "stack") return p;
+  const by = new Map(input.board.cards.map((c) => [c.id, c]));
+  const stance = (u: Unit): Stance | null => {
+    if (u.role !== "creature" || u.acting || u.fighting) return null;
+    const ss = u.members.map((id) => by.get(id)).map((c) => (c ? (q.q === "threat" || q.q === "fight" ? (c.tapped ? "down" : q.q === "fight" && q.blockers.length && !q.blockers.includes(c.id) ? "down" : "forward") : stanceOf(c, input.seat, true, q)) : null));
+    if (ss.includes("forward")) return "forward";
+    return ss.length && ss.every((s) => s === "down") ? "down" : null;
+  };
+  const units = p.units.map((u) => {
+    const st = stance(u);
+    if (!st) return u;
+    return { ...u, stance: st, ...(st === "down" ? { placement: { ...u.placement, posture: "flat" as const } } : {}) };
+  });
+  return { ...p, units };
 }
 
 export const ranks: SeatLayout = { id: "ranks", plan };

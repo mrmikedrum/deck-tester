@@ -57,6 +57,8 @@ export type Question =
       readonly blockers: readonly CardId[];
     }
   | { readonly q: "aim"; readonly legal: readonly CardId[] }
+  /** A spell or ability on the stack aimed at something: its targets are the question, so every read goes quiet. */
+  | { readonly q: "stack" }
   | { readonly q: "sweep"; readonly reaches: readonly CardId[]; readonly caster: SeatId | null };
 
 export const REST: Question = { q: "rest" };
@@ -82,6 +84,7 @@ export function questionOf(model: TableModel, d: DecisionFacts): Question {
     if (reaches.length) return { q: "sweep", reaches, caster: top.controller };
   }
   if (d.kind === "targets" && d.options.length) return { q: "aim", legal: d.options };
+  if (top && top.targets.length) return { q: "stack" };
   if (d.kind === "attack") {
     const draft = d.draft;
     const airborne = draft.length > 0 && draft.every((id) => model.cards.get(id)?.keywords.some((k) => k.toLowerCase() === "flying"));
@@ -116,6 +119,8 @@ export function questionKey(q: Question): string {
       return `fight:${q.attacker}:${q.attackers.join(",")}:${q.blocked.join(",")}:${q.blockers.join(",")}`;
     case "aim":
       return `aim:${q.legal.join(",")}`;
+    case "stack":
+      return "stack";
     case "sweep":
       return `sweep:${q.reaches.length}`;
   }
@@ -147,6 +152,8 @@ export function stanceOf(c: BoardCard, seat: SeatId, mine: boolean, q: Question)
       return q.blockers.includes(c.id) ? "forward" : q.blockers.length ? "down" : null;
     case "aim":
       return q.legal.includes(c.id) ? "forward" : null;
+    case "stack":
+      return null;
     case "sweep":
       return q.reaches.includes(c.id) ? "forward" : null;
   }
@@ -198,6 +205,8 @@ export type ReadFacts =
 export function readOf(board: readonly BoardCard[], seat: SeatId, mine: boolean, q: Question, folded: boolean, names?: { readonly defender: string | null }): ReadFacts | null {
   const cs = board.filter((c) => c.creature);
   switch (q.q) {
+    case "stack":
+      return null;
     case "rest":
     case "aim":
       if (q.q === "aim" || (!folded && cs.length < 6) || !cs.length) return null;

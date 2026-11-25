@@ -53,7 +53,7 @@ const LANDSCAPE_4: readonly SeatSlot[] = [
 /** The template for `seats` seats in `form`, or a `NotTunedError`: other counts and portrait are not tuned yet. */
 export function tableTemplate(seats: number, form: Form = "landscape"): TableTemplate {
   if (seats === 4 && form === "landscape") {
-    return { form, seats, camera: CAMERA, slots: LANDSCAPE_4, growOnTurn: 1.1 };
+    return { form, seats, camera: CAMERA, slots: LANDSCAPE_4, growOnTurn: 1 };
   }
   throw new NotTunedError(seats, form);
 }
