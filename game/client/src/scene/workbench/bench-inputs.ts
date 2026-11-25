@@ -28,7 +28,8 @@ export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
       mode: "normal",
       memory: prev?.memory ?? null,
       settling: f.settling,
-      shadow: { memory: prev?.shadow?.result?.fit.memory ?? null },
+      // as the app plans: the across leaf drawn by the engine (its memory rides in the layout memory), fights gathered
+      shadow: { draw: true },
     }),
   );
 }
@@ -36,7 +37,7 @@ export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
 export const VIEWPORT = { w: 1180, h: 820 } as const;
 
 /**
- * The same plan as if the shadow leaf's cards had just changed: what the engine keeps between plans is forgotten (all but
+ * The same plan as if the engine's leaf's cards had just changed: what the engine keeps between plans is forgotten (all but
  * its rows, which follow the container's geometry), so the leaf is arranged from scratch. A snapshot that changes a seat
  * costs this; one that does not, `planFrame`'s.
  */
@@ -45,7 +46,7 @@ export function planFrameChanged(f: Frame, prev: TablePlan | null): TablePlan {
   return planFrame(f, prev);
 }
 
-/** The same frame planned by `mat` alone, memory carried the same way: what the shadow leaf adds is the difference. */
+/** The same frame planned by `mat` alone (its combat row too), memory carried the same way. */
 export function planMatOnly(f: Frame, prev: TablePlan | null): TablePlan {
   return planTable(tableInputOf(f.model, { viewport: VIEWPORT, mode: "normal", memory: prev?.memory ?? null, settling: f.settling }));
 }
@@ -186,7 +187,7 @@ export function benchInputs(designPass: unknown): Named[] {
     { name: "marath15", what: "the design pass's turn-15 table", frames: [{ model: design.get(15)!, settling: false }] },
     { name: "dense", what: "four seats, 40 permanents each, a stack of four", frames: [{ model: modelFrom(envelope(dense, { turn: 12, stack: 4 })), settling: false }] },
     { name: "unique", what: "40 distinct names per seat", frames: [{ model: modelFrom(envelope(seeded(11, 40, { unique: true }), { turn: 12 })), settling: false }] },
-    { name: "combat12", what: "a combat of 12 fighters (no gathering yet: mat's combat row)", frames: [{ model: modelFrom(envelope(dense, { turn: 12, combat })), settling: false }] },
+    { name: "combat12", what: "a combat of 12 fighters (the app: gathered; mat alone: its combat row)", frames: [{ model: modelFrom(envelope(dense, { turn: 12, combat })), settling: false }] },
     { name: "sequence30", what: "30 consecutive snapshots, memory carried, settling toggling", frames: seq },
   ];
 }

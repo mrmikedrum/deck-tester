@@ -19,6 +19,10 @@ import { designUnit } from "./types";
 import { shadowPlan } from "./arrange/shadow";
 import { arrangedSeat } from "./arrange/adapter";
 import { leafFrame } from "./arrange/leaf";
+import { gathering } from "./arrange/gathering";
+
+/** A focus's cards are reached over the whole table (under the plates). */
+const FOCUS_ORDER = 5e5;
 import type { ShadowInput, ShadowPlan } from "./arrange/shadow";
 
 // Planning a seat with the hard-limit audit and a fold-harder retry, and planning the table: four seats, plates, the
@@ -260,14 +264,26 @@ export function planTable(input: TableInput): TablePlan {
     const stack = stackAtRest(input, tpl, projector, plans, reserve.safe);
     const row = rowUnits(plans, fight);
     const staying = [...plans.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine).filter((x) => !row.has(x.group))), ...stack.map((s) => s.shape)];
-    const options = combat && row.size
-      ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u), obstacles: staying })
-      : [plans];
+    // With the engine's table, the fight is a gathering (one placement); otherwise mat's combat row (candidates).
+    const gathered =
+      combat && row.size && drawn >= 0 ? gathering({ combat, plans, perspective: input.seats[0]!.seat, projector, reserve, middle: openMiddle(tpl, projector, plans, geo.u), u: geo.u }) : null;
+    const options = gathered
+      ? [gathered.plans]
+      : combat && row.size
+        ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u), obstacles: staying })
+        : [plans];
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
     let best: { shapes: Shape[]; v: Violation[]; placed: SeatPlan[] } | null = null;
     for (const placed of options) {
-      const shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
-      const v = audit(shapes, vp, { area, only });
+      let shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
+      let v: Violation[];
+      if (gathered) {
+        // The gathering is audited apart, as a focus is: the table under it with it set aside, and its own cards among
+        // themselves. As a focus it is drawn and reached over the whole table.
+        const fighting = (x: Shape) => row.has(x.group);
+        v = [...audit(shapes.filter((x) => !fighting(x)), vp, { area, only }), ...audit(shapes.filter(fighting), vp, { area })];
+        if (gathered.focus) shapes = shapes.map((x) => (fighting(x) ? { ...x, order: x.order + FOCUS_ORDER } : x));
+      } else v = audit(shapes, vp, { area, only });
       if (!best || v.length < best.v.length) best = { shapes, v, placed };
       if (!v.length) break;
     }

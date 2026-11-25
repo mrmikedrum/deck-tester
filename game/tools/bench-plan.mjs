@@ -1,5 +1,5 @@
-// How long `planTable` takes (docs/game-client-architecture.md "Budgets": 8 ms on the iPad), with the arrangement
-// engine's shadow plan of the across leaf on and off, over the named inputs of docs/game-arrangement-engine.md §7.3
+// How long `planTable` takes (docs/game-client-architecture.md "Budgets": 8 ms on the iPad) as the app plans (the across
+// leaf drawn by the arrangement engine, a fight gathered) and with mat alone, over the named inputs of docs/game-arrangement-engine.md §7.3
 // (client/src/scene/workbench/bench-inputs.ts: the same tables the workbench's bench page times in Safari). A
 // measurement, not a test: it prints the median, p90 and worst per plan, and what the engine did.
 //
@@ -80,7 +80,7 @@ if (json) console.log(JSON.stringify({ node: process.version, viewport: VIEWPORT
 else {
   const ms = (x) => x.toFixed(2).padStart(6);
   console.log(`planTable at ${VIEWPORT.w}x${VIEWPORT.h}, Node ${process.version}, ${runs} plans per input (ms per plan; budget 8 on the iPad)`);
-  console.log("input        with the shadow leaf    the leaf changed        mat only                engine: estimates units violations");
+  console.log("input        as the app plans        the leaf changed        mat only                engine: estimates units violations");
   console.log("             median   p90 worst       median   p90 worst       median   p90 worst");
   for (const r of rows)
     console.log(

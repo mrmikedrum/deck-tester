@@ -1,5 +1,6 @@
 // The bench page (`workbench.html?only=bench`): `planTable` timed in this browser on the same named inputs as the Node
-// bench (tools/bench-plan.mjs), with the arrangement engine's shadow leaf on and off. It is how the 8 ms budget is
+// bench (tools/bench-plan.mjs): as the app plans (the across leaf drawn by the arrangement engine, a fight gathered), with
+// that leaf arranged from scratch every plan, and with mat alone. It is how the 8 ms budget is
 // measured on the iPad (docs/game-arrangement-engine.md §7.3): open it there from the Home Screen or Safari, wait for
 // "Done", and press "Send to Mac": the results go back to the machine serving the page (POST api/bench, kept under
 // .deckmaster/bench/). Over plain http on the network a browser offers no clipboard or share sheet, so the page also
@@ -124,7 +125,7 @@ export async function bench(root: HTMLElement): Promise<void> {
   const run = async () => {
     const rows: Row[] = [];
     const table = $("b-table");
-    table.innerHTML = `<tr><th align=left>input</th><th>with the shadow leaf: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>leaf changed: median</th><th>worst</th><th>batch mean</th><th>mat only: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
+    table.innerHTML = `<tr><th align=left>input</th><th>as the app plans: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>leaf changed: median</th><th>worst</th><th>batch mean</th><th>mat only: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
     for (const input of inputs) {
       $("b-status").textContent = `Timing ${input.name} (${input.what})…`;
       await wait(50);
