@@ -478,7 +478,7 @@ class UnitView implements PieceView {
       this.well.effect.dispose();
       this.well = null;
     }
-    if (w && !this.well) {
+    if (w && !this.well && !w.quiet) {
       const effect = wellFx(this.env.fx, w.colours, d.seed, w.spent, CW, CH);
       effect.object.position.set(0, 0, SIZE.well.glow);
       this.group.add(effect.object);
@@ -498,7 +498,8 @@ class UnitView implements PieceView {
     // Its size in the world: theirs fits the card's width; mine is a sign's own size, a little smaller in a long row.
     const fit = w.theirs ? Math.min(1, ws.theirsFit / (lease.width * SIGN_U)) : w.small ? 0.8 : 1;
     sign.mesh.userData["fit"] = fit;
-    const z = w.theirs ? ws.theirs : ws.mine[w.alt ? 1 : 0];
+    // (A quiet heap's sign lies below it, toward me, clear of its card.)
+    const z = w.quiet ? CH * 0.62 : w.theirs ? ws.theirs : ws.mine[w.alt ? 1 : 0];
     const clear = ((lease.height * SIGN_U * fit) / 2) * Math.sin(ws.tilt) + 0.05;
     sign.mesh.position.set(0, Math.max(z < 0 ? ws.upFar : ws.up, clear), z);
     sign.mesh.renderOrder = 6;
@@ -989,7 +990,7 @@ class PageView implements PieceView {
     const l = d.line;
     if (l) {
       const len = Math.hypot(l.x1 - l.x0, l.z1 - l.z0);
-      const geo = new PlaneGeometry(len, 0.09);
+      const geo = new PlaneGeometry(len, 0.12);
       const mat = new MeshBasicMaterial({ color: new Color(seatInk[d.place]), transparent: true, opacity: 0.95, depthWrite: false });
       const m = new Mesh(geo, mat);
       m.rotation.order = "YXZ";
@@ -998,6 +999,18 @@ class PageView implements PieceView {
       m.renderOrder = -1;
       this.marks.add(m);
       this.markParts.push(geo, mat);
+      // Short brass caps at its ends: a rule of its own, never taken for the page's border.
+      const capGeo = new PlaneGeometry(0.16, 0.34);
+      const capMat = new MeshBasicMaterial({ color: new Color(colour.bronze).multiplyScalar(1.25), transparent: true, opacity: 0.95, depthWrite: false });
+      for (const [x, z] of [[l.x0, l.z0], [l.x1, l.z1]] as const) {
+        const cap = new Mesh(capGeo, capMat);
+        cap.rotation.order = "YXZ";
+        cap.rotation.set(-Math.PI / 2, -Math.atan2(l.z1 - l.z0, l.x1 - l.x0), 0);
+        cap.position.set(x, 0.005, z);
+        cap.renderOrder = -1;
+        this.marks.add(cap);
+      }
+      this.markParts.push(capGeo, capMat);
     }
     for (const n of d.notes ?? []) {
       const lease = this.host.painter.sign({ text: n.text, colour: null, sub: n.sub });

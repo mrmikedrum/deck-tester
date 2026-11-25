@@ -180,6 +180,8 @@ export interface WellLook {
   /** Mine: its sign stands further out, so neighbours' signs alternate and never meet; a little smaller in a long row. */
   readonly alt: boolean;
   readonly small: boolean;
+  /** A heap nobody looks at (a battle line's land heap): no light under it, its sign below it, not over its card. */
+  readonly quiet?: boolean;
 }
 
 /** What the view builds for a piece (descriptions, never three.js objects). */

@@ -576,14 +576,15 @@ function unitPiece(
   const face0 = top ? faceOfCard(model, top, mark) : null;
   // A head in a battle line says its numbers under its name, and how many copies it stands for.
   const faceOver: Partial<FaceSpec> | undefined = u.rearguard
-    ? { head: "plate", name: u.rearguard.lead, plate: `+${u.rearguard.more} · ${u.rearguard.power} power`, art: null, text: "" }
+    ? // (A rearguard is a tally, never a creature's head: how many stand behind, and their power.)
+      { head: "plate", name: `+${u.rearguard.count} behind`, plate: `${u.rearguard.power} power`, art: null, text: "", frame: "C", token: false, keywords: [] }
     : u.head
       ? { head: "plate", ...(u.members.length > 1 ? { count: u.members.length } : {}) }
       : undefined;
   const face = face0 && faceOver ? { ...face0, ...faceOver } : face0;
   const chips = top ? chipsOf(top) : [];
   const looked0 = u.kind === "well" ? wellLook(model, u, mine) : null;
-  const looked = looked0 && u.caption ? { ...looked0, sign: u.caption.text, sub: u.caption.sub } : looked0;
+  const looked = looked0 && u.caption ? { ...looked0, sign: u.caption.text, sub: u.caption.sub, quiet: true } : looked0;
   const well = looked ? { ...looked, sign: looked.theirs ? looked.sign : fitWellSign(plan, u.id, looked.sign, input.measure ?? estimate), ...row } : null;
   const dressed = u.dressing
     .map((id) => model.cards.get(id))

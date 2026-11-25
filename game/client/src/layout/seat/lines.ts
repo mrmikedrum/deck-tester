@@ -32,9 +32,11 @@ const PREF = { me: 1.45, them: 1.3 } as const;
 /** A shingled spent card shows at least this much of its left end (CSS px at the design unit). */
 const SHINGLE_PX = 50;
 /** Sharing a row with the support, the heap is compact: each card shows this much of its left end. */
-const COMPACT_PX = 24;
+const COMPACT_PX = 20;
 /** A support card behind another shows its name strip: this share of it. */
 const SUPPORT_SHOW = 0.3;
+/** A support card in a title column: this wide on screen (design px), a little over the floor. */
+const SUPPORT_COL_PX = 60;
 /** The land heap's scale floor (lying). */
 const HEAP_S = 1.0;
 
@@ -240,7 +242,7 @@ function plan(input: SeatInput): SeatPlan {
     units.push(...matPlan.units.filter((u) => u.role !== "creature"));
     const hi = theirs.length ? Math.min(...theirs.map((u) => regionOf(r, u.placement.pos).a)) : clearOfHand(g, r) + 0.6;
     aLine = Math.max(clearOfHand(g, r) + 0.1, hi);
-  } else aLine = r.position === "across" ? 0.5 : 0.7; // (clear of the page's border, so the line reads as its own rule)
+  } else aLine = r.position === "across" ? 0.5 : 0.7; // (clear of the page's border; its rule is heavier, with caps)
 
   // ---- the ready line and its files ----------------------------------------------------------------------------------
   const px = me ? FLOOR.mine : FLOOR.theirs;
@@ -493,7 +495,8 @@ function plan(input: SeatInput): SeatPlan {
       // One row: the spent heap compact at the outer end, the support beside it.
       const sS = spentGeo(a).sS, side = zoneSide(false, r.x);
       const m0 = at(g, r, whole.uc, a + 0.5), pxPer = (g.proj.project({ ...m0, x: m0.x + 0.5 }).x - g.proj.project({ ...m0, x: m0.x - 0.5 }).x) / g.u;
-      const wS = Math.min(whole.w * 0.45, CH * sS + (spent.length - 1) * (COMPACT_PX / pxPer));
+      // (The heap takes no more than a third: what acts on me, the support, needs the room to be named.)
+      const wS = Math.min(whole.w * 0.34, CH * sS + (spent.length - 1) * (COMPACT_PX / pxPer));
       const heap = side > 0 ? { lo: whole.lo, hi: whole.lo + wS } : { lo: whole.hi - wS, hi: whole.hi };
       const rest = side > 0 ? { lo: whole.lo + wS + 0.25, hi: whole.hi } : { lo: whole.lo, hi: whole.hi - wS - 0.25 };
       layoutSpent(a, sS, { ...heap, w: wS, uc: (heap.lo + heap.hi) / 2 }, true);
@@ -632,8 +635,6 @@ function plan(input: SeatInput): SeatPlan {
   function layoutSupport(geo: { foot: number; s: number }, within?: { lo: number; hi: number; w: number; uc: number }, limitY: number | null = null): void {
     const list = sup, { foot, s } = geo;
     const sp = within ?? bandSpan(g, r, false, foot);
-    const per = s * CW * 1.1;
-    const cap = Math.max(1, Math.floor(sp.w / per) - Math.max(0, input.pressure - depth0));
     const drafts: Draft[] = [];
     const seen = new Map<string, Draft>();
     for (const c of list) {
@@ -654,9 +655,15 @@ function plan(input: SeatInput): SeatPlan {
     const asRun = (d: Draft): Run => ({ ids: d.ids, rep: cards.need(d.rep), w: 0, acting: false });
     // (A tapped one lies turned, as wide as a card is tall: its place is that wide, so no neighbour meets its foot.)
     const shownOf = (d: Draft): CardId => (d.ids.length > 1 && d.title ? d.ids[Math.min(d.ids.length, 8) - 1]! : d.rep);
-    const wide = (d: Draft): number => (cards.need(shownOf(d)).tapped ? CH * s * 1.06 : per);
+    // In columns each card is a little larger than the floor, so that one name strip behind a front, with the front's top
+    // it borrows, is a finger's patch, and the front keeps one too.
+    // (Two names behind a front are a tall enough tail at nearly the floor's size: there the cards stay small.)
+    const colPx = (D: number) => (D === 1 ? SUPPORT_COL_PX : FLOOR.any + 6);
     const colsOf = (D: number) => {
-      let k = Math.min(cap, drafts.length), cs: Draft[][] = [];
+      const sc = D > 0 ? Math.max(s, scaleAt(g, at(g, r, sp.uc, foot), colPx(D))) : s, perC = sc * CW * 1.1;
+      const wide = (d: Draft): number => (cards.need(shownOf(d)).tapped ? CH * sc * 1.06 : perC);
+      const capC = Math.max(1, Math.floor(sp.w / perC) - Math.max(0, input.pressure - depth0));
+      let k = Math.min(capC, drafts.length), cs: Draft[][] = [];
       for (; k >= 1; k--) {
         const row = fold(cards, drafts, k * (1 + D), likeS, keep, named, "Others");
         const n = Math.min(k, row.length);
@@ -667,15 +674,22 @@ function plan(input: SeatInput): SeatPlan {
       const ws = cs.map((c) => wide(c[0]!)), total = ws.reduce((t, w) => t + w, 0);
       let acc = sp.uc - total / 2;
       const us = ws.map((w) => ((acc += w), acc - w / 2));
-      const placed = cs.map((c, i) => ({ u: us[i]!, f: fileOf(g, r, us[i]!, foot, s, c.map(asRun), FLOOR.any, "lean", SUPPORT_SHOW), c }));
+      const placed = cs.map((c, i) => ({ u: us[i]!, f: fileOf(g, r, us[i]!, foot, sc, c.map(asRun), D > 0 ? colPx(D) : FLOOR.any, "lean", SUPPORT_SHOW), c }));
       const top = Math.min(...placed.map(({ u, f }) => { const l = f[f.length - 1]!; return topY(g, at(g, r, u, l.a), l.s, CH, "lean"); }));
-      return { placed, top };
+      const folded = cs.some((c) => c.some((d) => !!d.title));
+      return { placed, top, folded };
     };
-    // (Only two deep: one name strip behind a front is too short a tail to tap at the floor's size. Under the table's
-    // pressure the columns go first.)
-    const D = drafts.length >= 3 * cap && input.pressure === 0 ? 2 : 0;
-    let layout = colsOf(D);
-    if (D > 0 && limitY !== null && layout.top < limitY) layout = colsOf(0);
+    // Past its room the support stands in title columns, one name deep or two, as long as they fit under the slip and
+    // fold nothing; only then does it fold by kind. (Under the table's pressure the columns go first.)
+    let layout = colsOf(0);
+    if (layout.folded && input.pressure === 0)
+      for (const D of [1, 2]) {
+        const t = colsOf(D);
+        if ((limitY === null || t.top >= limitY) && !t.folded) {
+          layout = t;
+          break;
+        }
+      }
     layout.placed.forEach(({ u, f, c }, ci) => f.forEach((p, i) => {
       const d = c[i]!;
       const top = d.ids.length > 1 && d.title ? d.ids[Math.min(d.ids.length, 8) - 1]! : d.rep;
@@ -709,13 +723,14 @@ function plan(input: SeatInput): SeatPlan {
     for (let it = 0; it < 22; it++) {
       const m = (lo + hi) / 2, p = at(g, r, 0, m);
       // (Across, the page's back edge is the screen's top: there the plaque may take the screen's top margin.)
-      const limit = r.position === "across" ? Math.max(g.proj.project(at(g, r, 0, r.d)).y - 30 * g.u, 6 * g.u) : edgeY + 10 * g.u;
+      const limit = r.position === "across" ? Math.max(g.proj.project(at(g, r, 0, r.d)).y - 30 * g.u, 6 * g.u) : edgeY + 6 * g.u;
       // (Across, the commander standing beside it stays on screen too.)
-      const beside = r.position !== "across" ? true : (!fx.commandZone || topY(g, p, 1.05) > 6 * g.u);
+      const beside = r.position !== "across" ? true : !fx.commandZone || topY(g, p, 1.05) > 6 * g.u;
       if (g.proj.project({ x: p.x, y: 0.84 * Math.cos(g.pitch) * PLATE_S, z: p.z - 0.84 * Math.sin(g.pitch) * PLATE_S }).y > limit && beside) lo = m;
       else hi = m;
     }
-    // (A side page has open table behind it: there the plaque stands on its back edge, its top over the margin.)
+    // (Across: inside the page, its top within the page's back edge as I see it. A side page has open table behind it,
+    // and every step of depth there is a head: there the plaque stands on the back edge, its top over the margin.)
     const aPlate = r.position === "across" ? Math.min(lo, r.d - PLATE_IN * 0.6) : r.d - 0.3;
     const plateFoot = at(g, r, 0, aPlate);
     // What stands in front keeps its top under the slip hanging from the plaque.

@@ -240,16 +240,18 @@ function paintPlated(x: Ctx, c: FaceSpec, env: FaceEnv, vellum: CanvasPattern | 
   x.lineWidth = 2;
   x.strokeStyle = "rgba(26,16,6,.8)";
   x.stroke();
-  // The name: one line, as large as fits; a long one by its first words ("Kami" of Whispered Hopes) rather than tiny.
-  const fits = (t: string, px: number): boolean => ((x.font = `700 ${px}px ${NUM}`), x.measureText(t).width <= nW);
-  let name = shortName(c.name);
-  if (!fits(name, 54)) {
-    const cut = name.split(/,| of | the /)[0]!.trim();
-    if (cut && cut !== name) name = cut;
-  }
-  let size = 66;
-  for (; size > 44; size -= 2) if (fits(name, size)) break;
+  // The name: one line, every head in one size; a long name is shortened to fit, never shrunk ("Kami" of Whispered
+  // Hopes, "Incubation Druid" whole), its last words dropped, at worst cut with an ellipsis.
+  const size = 60;
   x.font = `700 ${size}px ${NUM}`;
+  const fits = (t: string): boolean => x.measureText(t).width <= nW;
+  let name = shortName(c.name);
+  if (!fits(name)) {
+    const cut = name.split(/,| of | the /)[0]!.trim();
+    if (cut && fits(cut)) name = cut;
+  }
+  for (let words = name.split(" "); !fits(name) && words.length > 1; ) name = (words = words.slice(0, -1)).join(" ");
+  while (!fits(name) && name.length > 2) name = name.slice(0, -2) + "…";
   x.textBaseline = "middle";
   x.fillStyle = colour.ink;
   const y1 = top + h * 0.3,
