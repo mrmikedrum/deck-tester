@@ -8,7 +8,7 @@
 import { abilityText, entryText, isCreature, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
-import { CLASH, SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
+import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { seatReading } from "../../narrative";
@@ -34,6 +34,8 @@ export interface DescribeInput {
   readonly measure?: Measure;
   /** What I am doing, which chooses a leaf's slip's second line. */
   readonly reading?: ReadingContext;
+  /** The attackers blocked at this combat's blocks step (the clash's tally counts them blocked after their blockers die). */
+  readonly blocked?: readonly CardId[];
 }
 
 /** The hover lift: a card under the pointer comes up off its page (a guess; the old client peeked in HTML instead). */
@@ -130,8 +132,15 @@ export function describe(input: DescribeInput): Description {
       const dim = dimOf(seat);
       // (In the clash, my creatures that may still block stay lit in their places.)
       const ready = clash && mine && u.role === "creature" && !u.tapped;
+      // The clash's dim is deep: what does not fight or may not block fades as far as the spread's others, and a lip's card
+      // (news from before the combat) goes under it.
+      const deep = clash && !u.fighting && !ready ? CLASH_DIM : 0;
       const off = fighting && !u.fighting && !ready ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
-      const piece = unitPiece(input, seat, u, mine, Math.max(dim, off), lookOf, markOf, rows.get(u.id));
+      const piece0 = unitPiece(input, seat, u, mine, Math.max(dim, off, deep), lookOf, markOf, rows.get(u.id));
+      // On the leaves' table a fighter stands upright: tapped is a slight turn, its name level.
+      const tilt = plan.paradigm === "front" && u.fighting && model.cards.get(u.top)?.tapped ? FIGHT_TILT : null;
+      const hide = clash && !u.fighting && u.id.startsWith("l");
+      const piece = tilt !== null || hide ? { ...piece0, look: { ...piece0.look, ...(tilt !== null ? { tap: tilt } : {}), ...(hide ? { alpha: 0 } : {}) } } : piece0;
       // Leaned in, a card grows where it stands (about its foot) as well as with its page; taps are still measured from
       // where the plan put it.
       const grow = lean && lean.seat === seat && !u.fighting && lean.grow !== 1 ? lean.grow : 1;
@@ -225,7 +234,7 @@ export function describe(input: DescribeInput): Description {
 
     // A leaf's slip: its words, lying under the page's near edge (focus-first). None where there is nothing to say.
     const slip = sp.fixtures.slip;
-    if (slip && !mine && seat !== spread) {
+    if (slip && !mine && seat !== spread && !clash) {
       const folded = sp.units.some((u) => u.role === "creature" && u.members.length > 1);
       const lines = seatReading(model, seat, folded, input.reading ?? "rest");
       if (lines.length) {
@@ -317,6 +326,8 @@ export function describe(input: DescribeInput): Description {
   const asks: LabelAsk[] = [];
   for (const p of pieces.values()) {
     if (p.draw.t !== "unit" || !p.draw.title || p.draw.well) continue;
+    // (Under the clash's dim no tab is said but the fighters'.)
+    if (clash && !p.fight) continue;
     const m = /^(.*?)\s*(\d+)$/.exec(p.draw.title);
     if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote, note: p.draw.note ?? null, times: p.draw.times ?? false, countFirst: p.draw.countFirst ?? false });
   }
@@ -337,7 +348,7 @@ export function describe(input: DescribeInput): Description {
       const c = p.face !== null ? model.cards.get(p.face) : undefined;
       if (p.fight || p.kind === "plate" || (p.seat === me && p.kind === "unit" && c && isCreature(c) && !c.tapped)) above.add(p.id);
     }
-    const t = tallyOf(model, plan, cues);
+    const t = tallyOf(model, plan, cues, input.blocked ?? []);
     if (t) {
       pieces.set(t.id, t);
       above.add(t.id);
@@ -350,7 +361,8 @@ export function describe(input: DescribeInput): Description {
   return {
     pieces,
     home,
-    lanes: lean ? [] : lanesOf(model, plan, cues, pieces),
+    // (In the clash, one lane per unblocked regiment, from its front card: the blocked pairs say who meets whom.)
+    lanes: lean ? [] : lanesOf(model, plan, cues, pieces).filter((l) => !clash || !plan.clashMarks || plan.clashMarks.lanes.includes(l.from)),
     aims,
     tableTone: sifting ? DIM.table : 1,
     scrim: stackUp ? SCRIM.alpha : spread || clash ? SCRIM.alpha * 0.85 : 0,
@@ -359,19 +371,27 @@ export function describe(input: DescribeInput): Description {
   };
 }
 
-/** The tally (focus-first's clash): how much is coming at me, and once blocks stand, how much is unblocked; for my own
- *  attack, at whom. A slip standing over the clash, beside the log strip, under the plate rail's middle. */
-function tallyOf(model: TableModel, plan: TablePlan, cues: BoardCues): Piece | null {
+/** The clash's dim on what does not take part, as deep as the spread's on the other leaves; a tapped fighter's turn. */
+const CLASH_DIM = 0.62;
+const FIGHT_TILT = 0.09;
+
+/**
+ * The tally (focus-first's clash): a brass plaque on the floor beside the unblocked attackers. How much is coming at me,
+ * then once blocks stand how much is unblocked, then at the damage step how much was dealt (the attackers blocked at the
+ * blocks step stay blocked, though their blockers have died); for my own attack, at whom. Gone with the combat.
+ */
+function tallyOf(model: TableModel, plan: TablePlan, cues: BoardCues, wasBlocked: readonly CardId[]): Piece | null {
   const combat = mergeCombat(engineCombat(model), cues.combat);
-  if (!combat || !combat.attacks.length) return null;
+  if (!combat || !combat.attacks.length || !plan.clashMarks) return null;
   const me = model.viewer.perspective;
   const pow = (id: CardId) => Math.max(0, model.cards.get(id)?.power ?? 0);
-  const blocked = new Set(combat.blocks.map((b) => b.attacker));
+  const blocked = new Set([...combat.blocks.map((b) => b.attacker), ...wasBlocked]);
+  const damage = /DAMAGE/.test(model.phase);
   const atMe = combat.attacks.filter((a) => ("seat" in a.defender ? a.defender.seat === me : model.cards.get(a.defender.card)?.controller === me));
   let text: string;
   if (atMe.length) {
-    const all = atMe.reduce((t, a) => t + pow(a.attacker), 0);
-    text = blocked.size ? `${atMe.filter((a) => !blocked.has(a.attacker)).reduce((t, a) => t + pow(a.attacker), 0)} unblocked` : `${all} at you`;
+    const open = atMe.filter((a) => !blocked.has(a.attacker)).reduce((t, a) => t + pow(a.attacker), 0);
+    text = damage ? `${open} dealt` : blocked.size ? `${open} unblocked` : `${atMe.reduce((t, a) => t + pow(a.attacker), 0)} at you`;
   } else {
     const by = new Map<string, number>();
     for (const a of combat.attacks) {
@@ -379,11 +399,12 @@ function tallyOf(model: TableModel, plan: TablePlan, cues: BoardCues): Piece | n
       const who = "seat" in a.defender ? (model.seat(a.defender.seat)?.name ?? String(a.defender.seat)) : (model.cards.get(a.defender.card)?.face.name ?? "");
       by.set(who, (by.get(who) ?? 0) + pow(a.attacker));
     }
-    text = [...by.entries()].map(([who, n]) => `${n} at ${who.split(",")[0]}`).join(" · ") || "all blocked";
+    text = [...by.entries()].map(([who, n]) => `${n} ${damage ? "dealt to" : "at"} ${who.split(",")[0]}`).join(" · ") || "all blocked";
   }
-  const u = Math.min(plan.viewport.w / 1180, plan.viewport.h / 820);
-  const pos = plan.projector.onTable(CLASH.tally.x * u, CLASH.tally.y * u, 0.6);
-  const spec = { lines: [{ text, tone: "ink" as const }], colour: "#b08a4a", w: 2.6, d: 0.9 };
+  // A seat plaque's size, standing on the floor square to me.
+  const w = 3.2, d = 0.82, p = plan.clashMarks.tally, pitch = plan.projector.pitch;
+  const pos = { x: p.x, y: (d / 2) * Math.cos(pitch) + 0.02, z: p.z - (d / 2) * Math.sin(pitch) };
+  const spec = { lines: [{ text, tone: "ink" as const }], colour: "#7a1c1c", w, d, brass: true };
   return {
     id: "tally",
     kind: "slip",

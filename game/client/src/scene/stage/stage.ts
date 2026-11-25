@@ -101,6 +101,7 @@ interface DescribedFrom {
   readonly focus: string;
   readonly hover: string | null;
   readonly reading: SceneFrame["reading"];
+  readonly blocked: SceneFrame["blocked"];
   readonly desc: Description;
 }
 
@@ -232,9 +233,9 @@ export class Stage {
   private describe(frame: SceneFrame): Description {
     const focus = tableFocusKey(frame.focus);
     const d = this.described;
-    if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover && d.reading === frame.reading) return d.desc;
-    const desc = describe({ model: frame.model, plan: frame.plan, cues: frame.cues, focus: frame.focus, hover: frame.hover, ...(this.opts.measure ? { measure: this.opts.measure } : {}), ...(frame.reading ? { reading: frame.reading } : {}) });
-    this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, reading: frame.reading, desc };
+    if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover && d.reading === frame.reading && d.blocked === frame.blocked) return d.desc;
+    const desc = describe({ model: frame.model, plan: frame.plan, cues: frame.cues, focus: frame.focus, hover: frame.hover, ...(this.opts.measure ? { measure: this.opts.measure } : {}), ...(frame.reading ? { reading: frame.reading } : {}), ...(frame.blocked ? { blocked: frame.blocked } : {}) });
+    this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, reading: frame.reading, blocked: frame.blocked, desc };
     return desc;
   }
 

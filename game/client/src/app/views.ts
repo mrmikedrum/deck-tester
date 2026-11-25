@@ -34,9 +34,11 @@ export function sceneFrame(s: AppState): SceneFrame | null {
     hover: s.hover,
     commit: s.commit,
     reducedMotion: s.reducedMotion,
-    ...(s.paradigm === "front" ? { reading: narrative.readingContext(s.model, s.session.decision?.kind ?? null) } : {}),
+    ...(s.paradigm === "front" ? { reading: narrative.readingContext(s.model, s.session.decision?.kind ?? null), blocked: s.focus.clashBlocked ?? NO_IDS } : {}),
   };
 }
+
+const NO_IDS: readonly CardId[] = [];
 
 /** A spread's head (focus-first): the seat's force, and what it holds back. */
 function sheetHead(model: TableModel, seat: SeatId): string {

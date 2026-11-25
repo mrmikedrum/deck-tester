@@ -83,6 +83,8 @@ export interface SceneFrame {
   readonly reducedMotion?: boolean;
   /** What I am doing, which chooses what a leaf's slip says on its second line (focus-first). */
   readonly reading?: ReadingContext;
+  /** The attackers blocked so far in this combat (focus-first's tally). */
+  readonly blocked?: readonly CardId[];
 }
 
 /**

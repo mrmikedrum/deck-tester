@@ -387,105 +387,121 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
 
 // ---- the clash (focus-first) ----------------------------------------------------------------------------------------
 
-/** The clash's rows on screen (design px): the far row's feet, the gap to the near row's tops, the span across, and the
- *  largest face width. Under the plate rail, over my own creatures' tops. */
-export const CLASH = { farFoot: 272, gap: 10, l: 34, r: 1146, max: 108, between: 12, fan: 0.32, tally: { x: 640, y: 64 } } as const;
+/** The clash's rows on screen (design px): the far row's feet, the gap to the near row's tops, the span across, the face
+ *  widths (attackers 96 or more, my blockers 72 or more), and how far each card of an unblocked regiment steps. */
+export const CLASH = { farFoot: 268, gap: 8, l: 40, r: 1140, far: { lo: 96, hi: 112 }, nearK: 0.82, nearLo: 72, between: 16, stack: 0.09 } as const;
+
+/** A card's facts the clash names its regiments by. */
+export interface FighterFacts {
+  readonly like: string;
+  readonly name: string;
+  readonly power: number;
+}
+
+/** The clash as planned: the seats with their fighters placed, where the tally stands, and the regiments that carry a lane. */
+export interface Clash {
+  readonly plans: SeatPlan[];
+  /** Where the tally plaque stands (on the floor beside the unblocked attackers, else under the pairs' row). */
+  readonly tally: V3;
+  /** The unblocked attackers' front units: the only lanes drawn in the clash. */
+  readonly lanes: readonly string[];
+}
 
 /**
- * A combat as the table's focus (focus-first's clash): the fighters come to the floor at its scale, one column for each
- * attack: the side that is not mine in the far row (their attackers, or the blockers set against mine), mine in the near
- * row toe to toe with them. As large as the span allows, up to CLASH.max. The units keep their ids, so each walks from
- * its place to its place in the clash. Null when nothing fights.
+ * A combat as the table's focus (focus-first's clash). Every fighter stands upright at the floor's scale (tapped shows as a
+ * slight turn, never a quarter turn). Two groups, never interleaved: the blocked pairs in the middle, the side that is not
+ * mine in the far row and mine toe to toe in front of it; the unblocked attackers gathered to one side as regiments by kind
+ * (one stack with a tab, "Beast ×2 · 8"), with any single ones. The units keep their ids, so each walks from its place.
  */
-export function clashRow(plans: readonly SeatPlan[], combat: CombatPairs, perspective: SeatId, proj: Projector, g: Geo, like: (id: CardId) => string): SeatPlan[] | null {
+export function clashRow(plans: readonly SeatPlan[], combat: CombatPairs, perspective: SeatId, proj: Projector, g: Geo, facts: (id: CardId) => FighterFacts): Clash | null {
   const units = fightUnits(plans, fighters(combat));
   if (!units.size) return null;
   const u = g.u, mine = (id: CardId) => units.get(id)?.seat === perspective;
-  // Columns, in the order the attackers stood: who attacks me first.
-  const cols: { far: Unit[]; near: Unit[]; fan?: true }[] = [];
+  const sx = (id: CardId) => proj.project(units.get(id)?.unit.placement.pos ?? { x: 0, y: 0, z: 0 }).x;
   const used = new Set<string>();
-  const add = (list: Unit[], id: CardId) => {
+  const take = (id: CardId): Unit | null => {
     const f = units.get(id);
-    if (f && !used.has(f.unit.id)) {
-      used.add(f.unit.id);
-      list.push(f.unit);
-    }
+    if (!f || used.has(f.unit.id)) return null;
+    used.add(f.unit.id);
+    return f.unit;
   };
-  const attacks = [...combat.attacks].sort(
-    (a, b) => Number("seat" in b.defender && b.defender.seat === perspective) - Number("seat" in a.defender && a.defender.seat === perspective) || proj.project(units.get(a.attacker)?.unit.placement.pos ?? { x: 0, y: 0, z: 0 }).x - proj.project(units.get(b.attacker)?.unit.placement.pos ?? { x: 0, y: 0, z: 0 }).x,
-  );
-  // Identical unblocked attackers stand as one fanned column (every edge showing, so the count is seen).
-  const fans = new Map<string, { far: Unit[]; near: Unit[]; fan: true }>();
+  interface Col { far: Unit[]; near: Unit[]; stack?: { ids: CardId[]; far: boolean } }
+  const pairs: Col[] = [], loose: Col[] = [];
+  const attacks = [...combat.attacks].sort((a, b) => sx(a.attacker) - sx(b.attacker));
+  const blockedIds = new Set(combat.blocks.map((b) => b.attacker));
   for (const a of attacks) {
-    const col = { far: [] as Unit[], near: [] as Unit[] };
-    const side = (id: CardId) => (mine(id) ? col.near : col.far);
-    const blocked = combat.blocks.some((b) => b.attacker === a.attacker);
-    if (!blocked) {
-      const fu = units.get(a.attacker);
-      const key = `${fu?.seat}|${"seat" in a.defender ? a.defender.seat : a.defender.card}|${fu?.unit.tapped}|${like(a.attacker)}`;
-      const had = fans.get(key);
-      if (had) {
-        add(mine(a.attacker) ? had.near : had.far, a.attacker);
-        continue;
-      }
-      const fc = { ...col, fan: true as const };
-      fans.set(key, fc);
-      add(mine(a.attacker) ? fc.near : fc.far, a.attacker);
-      cols.push(fc);
-      continue;
-    }
-    add(side(a.attacker), a.attacker);
-    for (const b of combat.blocks) if (b.attacker === a.attacker) add(side(b.blocker), b.blocker);
-    if (col.far.length || col.near.length) cols.push(col);
+    if (!blockedIds.has(a.attacker)) continue;
+    const col: Col = { far: [], near: [] };
+    const put = (id: CardId) => { const un = take(id); if (un) (mine(id) ? col.near : col.far).push(un); };
+    put(a.attacker);
+    for (const b of combat.blocks) if (b.attacker === a.attacker) put(b.blocker);
+    if (col.far.length || col.near.length) pairs.push(col);
   }
+  // Unblocked: one regiment per kind (whose, at whom, which card), heaviest first.
+  const byKind = new Map<string, CardId[]>();
+  for (const a of attacks) {
+    if (blockedIds.has(a.attacker) || !units.has(a.attacker)) continue;
+    const k = `${units.get(a.attacker)!.seat}|${"seat" in a.defender ? a.defender.seat : a.defender.card}|${facts(a.attacker).like}`;
+    byKind.set(k, [...(byKind.get(k) ?? []), a.attacker]);
+  }
+  const kinds = [...byKind.values()].sort((x, y) => y.reduce((t, id) => t + facts(id).power, 0) - x.reduce((t, id) => t + facts(id).power, 0));
+  for (const ids of kinds) {
+    const us = ids.map(take).filter((x): x is Unit => !!x);
+    if (!us.length) continue;
+    const far = !mine(ids[0]!);
+    loose.push({ far: far ? us : [], near: far ? [] : us, stack: { ids, far } });
+  }
+  const cols = [...pairs, ...loose];
   if (!cols.length) return null;
-  const f = (un: Unit) => (un.tapped ? CH / CW : 1);
-  // A fan's width: one card and a strip of each other.
-  const rowW = (list: Unit[], fan: boolean) => (fan && list.length ? f(list[0]!) * (1 + CLASH.fan * (list.length - 1)) : list.reduce((t, x) => t + f(x), 0));
-  const colW = cols.map((c) => Math.max(rowW(c.far, !!c.fan), rowW(c.near, !!c.fan), 1));
-  const units1 = colW.reduce((t, w) => t + w, 0);
-  const w = Math.min(CLASH.max, (CLASH.r - CLASH.l - CLASH.between * (cols.length - 1)) / units1);
-  const total = units1 * w + CLASH.between * (cols.length - 1);
-  // A standing card's height on screen for a face `w` wide where it stands (its own shape: it leans back with the camera).
-  const placeAt = (x: number, footY: number) => {
+  // Widths in far-card units: a pair as wide as its wider row (a near card is a size smaller); a regiment one card and its steps.
+  const nk = CLASH.nearK;
+  const colW = cols.map((c) => (c.stack ? 1 + CLASH.stack * (c.stack.ids.length - 1) : Math.max(c.far.length, c.near.length * nk, 1)));
+  // (The unblocked stand apart from the pairs: a clear gap of half a card says "these get through".)
+  const apart = pairs.length && loose.length ? 56 : 0;
+  const gaps = CLASH.between * (cols.length - 1) + apart;
+  const w = Math.max(56, Math.min(CLASH.far.hi, (CLASH.r - CLASH.l - gaps) / colW.reduce((t, x) => t + x, 0)));
+  const wn = Math.max(CLASH.nearLo, w * nk);
+  const placeAt = (x: number, footY: number, px: number) => {
     const pos = proj.onTable(x * u, footY * u, 0);
-    const s = floorScale(g, pos, w / 1.09, false, 2);
-    return { pos, scale: s };
+    return { pos, scale: floorScale(g, pos, px / 1.09, false, 2) };
   };
-  const out = new Map<string, Unit>();
-  let x0 = (CLASH.l + CLASH.r) / 2 - total / 2;
-  cols.forEach((c, i) => {
-    const cw = colW[i]! * w;
-    const row = (list: Unit[], footY: number) => {
-      const used = rowW(list, !!c.fan) * w;
-      let x = x0 + (cw - used) / 2;
-      for (const un of list) {
-        const ww = f(un) * w, p = placeAt(x + ww / 2, footY);
-        // (Fanned, each a little nearer than the one before, so each lies over the last and every edge shows.)
-        const pos = c.fan ? { ...p.pos, z: p.pos.z + 0.02 * list.indexOf(un) } : p.pos;
-        out.set(un.id, { ...un, fighting: true, placement: { ...un.placement, pos, scale: p.scale } });
-        x += c.fan ? ww * CLASH.fan : ww;
-      }
-    };
-    row(c.far, CLASH.farFoot);
-    x0 += cw + CLASH.between;
-  });
-  // The near row: its tops a gap under the far row's feet.
-  const pr = placeAt(590, CLASH.farFoot + 100);
+  // The near row's feet: a gap under the far row's feet and a near card's height on.
+  const pr = placeAt(590, CLASH.farFoot + 120, wn);
   const top = proj.project({ x: pr.pos.x, y: Math.cos(proj.pitch) * CH * pr.scale, z: pr.pos.z - Math.sin(proj.pitch) * CH * pr.scale }).y / u;
-  const nearFoot = CLASH.farFoot + CLASH.gap + (CLASH.farFoot + 100 - top);
-  x0 = (CLASH.l + CLASH.r) / 2 - total / 2;
+  const nearFoot = CLASH.farFoot + CLASH.gap + (CLASH.farFoot + 120 - top);
+  const out = new Map<string, Unit>();
+  const stand = (un: Unit, x: number, footY: number, px: number, k = 0, extra: Partial<Unit> = {}) => {
+    const p = placeAt(x + k * CLASH.stack * px, footY, px);
+    out.set(un.id, { ...un, ...extra, tapped: false, fighting: true, placement: { ...un.placement, pos: { ...p.pos, z: p.pos.z - 0.03 * k }, scale: p.scale } });
+  };
+  const total = colW.reduce((t, x) => t + x * w, 0) + gaps;
+  let x0 = (CLASH.l + CLASH.r) / 2 - total / 2;
+  let tally: V3 | null = null;
+  const lanes: string[] = [];
   cols.forEach((c, i) => {
+    if (i === pairs.length && pairs.length) x0 += apart;
     const cw = colW[i]! * w;
-    const used = rowW(c.near, !!c.fan) * w;
-    let x = x0 + (cw - used) / 2;
-    for (const un of c.near) {
-      const ww = f(un) * w, p = placeAt(x + ww / 2, nearFoot);
-      const pos = c.fan ? { ...p.pos, z: p.pos.z + 0.02 * c.near.indexOf(un) } : p.pos;
-      out.set(un.id, { ...un, fighting: true, placement: { ...un.placement, pos, scale: p.scale } });
-      x += c.fan ? ww * CLASH.fan : ww;
+    if (c.stack) {
+      const list = c.stack.far ? c.far : c.near, px = c.stack.far ? w : wn, foot = c.stack.far ? CLASH.farFoot : nearFoot;
+      const f0 = facts(c.stack.ids[0]!), n = list.length, pow = c.stack.ids.reduce((t, id) => t + facts(id).power, 0);
+      list.forEach((un, k) => stand(un, x0 + px / 2, foot, px, k, k === 0 && n > 1 ? { title: `${f0.name} ${n}`, note: `· ${pow}`, times: true } : {}));
+      if (list[0]) lanes.push(list[0].id);
+      // The tally stands on the floor in front of the first unblocked regiment.
+      if (!tally) tally = proj.onTable((x0 + cw / 2) * u, (c.stack.far ? nearFoot - 30 : nearFoot + 24) * u, 0);
+    } else {
+      const row = (list: Unit[], px: number, foot: number) => {
+        let x = x0 + (cw - list.length * px) / 2;
+        for (const un of list) {
+          stand(un, x + px / 2, foot, px);
+          x += px;
+        }
+      };
+      row(c.far, w, CLASH.farFoot);
+      row(c.near, wn, nearFoot);
     }
     x0 += cw + CLASH.between;
   });
-  return plans.map((p) => (p.units.some((x) => out.has(x.id)) ? { ...p, units: p.units.map((x) => out.get(x.id) ?? x) } : p));
+  // With no unblocked attackers, the tally stands at the floor's right end.
+  tally ??= proj.onTable((CLASH.r - 60) * u, (nearFoot - 30) * u, 0);
+  return { plans: plans.map((p) => (p.units.some((x) => out.has(x.id)) ? { ...p, units: p.units.map((x) => out.get(x.id) ?? x) } : p)), tally, lanes };
 }

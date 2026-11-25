@@ -41,6 +41,8 @@ export interface FocusState {
   readonly stackKey: string;
   /** The combat the clash last came up for (focus-first): a new combat step brings it up again, even set aside. */
   readonly clashKey?: string;
+  /** The attackers blocked so far in that combat: still blocked at damage, when their blockers may have died. */
+  readonly clashBlocked?: readonly CardId[];
 }
 
 export const NO_FOCUS_STATE: FocusState = { layers: [], aside: [], stackKey: "" };
@@ -138,7 +140,7 @@ export const stackKeyOf = (model: TableModel | null): string => (model ? model.s
  */
 export function sync(
   f: FocusState,
-  o: { sheet: boolean; mulligan: boolean; stack: string; clash?: string; groups?: (id: string) => boolean; pages?: (id: string) => number },
+  o: { sheet: boolean; mulligan: boolean; stack: string; clash?: string; blocked?: readonly CardId[]; groups?: (id: string) => boolean; pages?: (id: string) => number },
   restore: string | null,
 ): FocusState {
   let next = f;
@@ -156,8 +158,11 @@ export function sync(
   // The clash (focus-first) comes up for a combat I am in, again at each new step of it, and goes when combat ends. It
   // sits under the stack (a spell cast in combat takes the table; the clash is back when the stack empties).
   const ck = o.clash ?? "";
+  const had = next.clashBlocked ?? [];
+  const more = ck ? (o.blocked ?? []).filter((id) => !had.includes(id)) : [];
+  if (more.length) next = { ...next, clashBlocked: [...had, ...more] };
   if (ck !== (next.clashKey ?? "")) {
-    if (!ck) next = { ...close(next, "clash"), clashKey: "" };
+    if (!ck) next = { ...close(next, "clash"), clashKey: "", clashBlocked: [] };
     else {
       const e = entry("clash");
       const base = { ...close(next, "clash"), clashKey: ck };
