@@ -563,7 +563,7 @@ function unitPiece(
     .filter((c): c is Card => !!c)
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
   // (On a leaf a pile's tapped copies are not drawn turned behind it: slivers that say nothing its tab's "↷2" does not.)
-  const { copies, tapNote } = copiesOf(model, u, plan.paradigm === "front" && !mine && u.placement.posture === "stand");
+  const { copies, tapNote } = copiesOf(model, u, plan.paradigm === "front" && !mine && u.placement.posture === "stand" && !u.fighting);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
   const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
   const draw: Draw = {
