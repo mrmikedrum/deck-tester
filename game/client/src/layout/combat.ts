@@ -139,7 +139,10 @@ export function combatRow(input: RowInput): SeatPlan[][] {
   };
   const sum = (us: readonly Unit[]): number => us.reduce((t, x) => t + wide(x), 0);
   const W = proj.viewport.w / u;
-  /** The fight laid out with these groups, in one row or two; null when it is wider than the open table it stands in. */
+  const margin = 16;
+  const tableX = (x: number): number => proj.onTable(x * u, M.b * u).x;
+  const left = tableX(margin), right = tableX(W - margin);
+  /** Lay out these groups in the open gap, or use the full screen when the fallback can cover other pieces. */
   const lay = (gs: readonly Group[], rows: boolean, fit: boolean): Map<string, { pos: V3; s: number }> | null => {
     const nearUnits = gs.flatMap((gr) => (mineAtk ? [gr.k] : gr.bs));
     const sNear = Math.max(1, ...nearUnits.map(s));
@@ -155,20 +158,24 @@ export function combatRow(input: RowInput): SeatPlan[][] {
       })
       .filter((x): x is readonly [number, number] => x !== null)
       .sort((a, b) => a[0] - b[0]);
-    let open: [number, number] = [16, 16], at = 16;
-    for (const [a, b] of [...cut, [W - 16, W - 16] as const]) {
-      if (a - at > open[1] - open[0]) open = [at, Math.min(a, W - 16)];
+    let open: [number, number] = [margin, margin], at = margin;
+    for (const [a, b] of [...cut, [W - margin, W - margin] as const]) {
+      if (a - at > open[1] - open[0]) open = [at, Math.min(a, W - margin)];
       at = Math.max(at, b);
     }
-    const gl = proj.onTable(open[0] * u, M.b * u).x, gr0 = proj.onTable(open[1] * u, M.b * u).x;
+    const gl = tableX(open[0]), gr0 = tableX(open[1]);
     const span = (gr: Group): number => (rows ? Math.max(wide(gr.k), sum(gr.bs)) : wide(gr.k) + sum(gr.bs));
     const packed = gs.reduce((t, gr) => t + span(gr), 0);
     if (fit && packed + 0.12 * Math.max(0, gs.length - 1) > gr0 - gl) return null;
     const gap = Math.max(0.12, Math.min(CW * 0.8, (gr0 - gl - packed) / Math.max(1, gs.length + 1)));
     const width = packed + gap * Math.max(0, gs.length - 1);
+    if (width > right - left) return null;
     const placed = new Map<string, { pos: V3; s: number }>();
     const put = (un: Unit, pos: V3) => placed.set(un.id, { pos, s: s(un) });
-    let x = (gl + gr0) / 2 - width / 2, tail = false;
+    const start = (gl + gr0 - width) / 2;
+    // Slide a row that spills out of its gap inside the screen edges when there is room.
+    let x = Math.max(left, Math.min(start, right - width));
+    let tail = false;
     for (const gr of gs) {
       // In one row, each blocker stands on the side of its attacker it comes from, so it steps up without crossing it;
       // but never beside the last pair's blocker, where two blockers between two attackers wouldn't say whose is whose.
@@ -215,15 +222,28 @@ export function combatRow(input: RowInput): SeatPlan[][] {
     const two = lay(groups, true, true);
     if (two) out.push(moved(two));
   }
+  const dropWidest = (gs: Group[]): void => {
+    const widest = gs.reduce((a, b) => (sum([b.k, ...b.bs]) > sum([a.k, ...a.bs]) ? b : a));
+    gs.splice(gs.indexOf(widest), 1);
+  };
+  const useTwoRows = (gs: readonly Group[]): boolean => gs.some((gr) => gr.bs.length > 0) && twoFit(gs);
   const some = [...groups];
   while (some.length > 1 && !out.length) {
-    const widest = some.reduce((a, b) => (sum([b.k, ...b.bs]) > sum([a.k, ...a.bs]) ? b : a));
-    some.splice(some.indexOf(widest), 1);
-    const fits = lay(some, blocked && twoFit(some) && some.some((gr) => gr.bs.length > 0), true);
+    dropWidest(some);
+    const fits = lay(some, useTwoRows(some), true);
     if (fits) out.push(moved(fits));
   }
-  // Nothing fits: as the old client stood it, wider than the gap (the audit reports what it covers).
-  out.push(moved(lay(groups, rows, false)!));
+  // A wider candidate can cover the gap's obstacles, with any groups beyond the screen fighting from their pages.
+  const wideRow = [...groups];
+  while (wideRow.length) {
+    const fits = lay(wideRow, useTwoRows(wideRow), false);
+    if (fits) {
+      out.push(moved(fits));
+      break;
+    }
+    dropWidest(wideRow);
+  }
+  if (!out.length) out.push([...plans]);
   return out;
 }
 

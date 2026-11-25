@@ -4,10 +4,12 @@
 // fighter never folds into a pile, not even into a seat's last resort. And the lanes: attacker to the defender's page
 // edge, to the planeswalker it attacks, or to the blocker that stopped it.
 import { describe, expect, it } from "vitest";
-import { TAP_PX } from "../../src/layout/board";
+import { FLOOR, TAP_PX } from "../../src/layout/board";
+import { combatRow } from "../../src/layout/combat";
 import { combatLanes, hitTest, planTable, tableInputOf } from "../../src/layout";
 import type { CombatPairs, TablePlan, Unit } from "../../src/layout";
-import { bounds } from "../../src/layout/shape";
+import { makeGeo } from "../../src/layout/seat/geometry";
+import { bounds, stackShape, unitShape } from "../../src/layout/shape";
 import { modelOf, seatId } from "../../src/model";
 import type { TableModel } from "../../src/model";
 import type { CardId } from "../../src/protocol";
@@ -79,6 +81,35 @@ describe("the combat row", () => {
       expect(b.r <= sb.l || b.l >= sb.r || b.b <= sb.t || b.t >= sb.b, `${u.id} clear of the stack`).toBe(true);
     }
     expect(hitTest(plan, { x: (sb.l + sb.r) / 2, y: (sb.t + sb.b) / 2 })?.kind).toBe("stack");
+  });
+
+  it.each([[80, VP.w, 2], [0, VP.w - 80, 2], [80, VP.w, 24]])("keeps the fallback row on screen beside an obstacle from x=%i to x=%i with %i attackers", (l, r, count) => {
+    const plan = planTable(tableInputOf(model(BLOCK), { viewport: VP }));
+    const { projector, reserve } = plan;
+    const attack = plan.combat!.attacks[0]!;
+    const unit = unitOf(plan, attack.attacker);
+    const seat = [...plan.seats.values()].find((s) => s.units.includes(unit))!;
+    const attacks = Array.from({ length: count }, (_, i) => ({ ...attack, attacker: id(10000 + i) }));
+    const plans = [{ ...seat, units: attacks.map(({ attacker }) => ({ ...unit, id: `test:${attacker}`, members: [attacker], fighting: false, tapped: true })) }];
+    const combat = { attacks, blocks: [] };
+    const geo = makeGeo(projector, reserve, FLOOR.mine);
+    const obstacle = stackShape("obstacle", [{ x: l, y: 550 }, { x: r, y: 550 }, { x: r, y: 300 }, { x: l, y: 300 }], 0, []);
+    const candidates = combatRow({
+      combat, plans, perspective: you, projector, geo,
+      middle: { l: 0, r: VP.w / geo.u, t: 300 / geo.u, b: 530 / geo.u },
+      obstacles: [obstacle],
+    });
+
+    const fallback = candidates.at(-1)!;
+    const moved = fallback.flatMap((seat) => seat.units.filter((unit) => unit.fighting).map((unit) => unitShape(projector, seat.seat, unit, seat.seat === you)));
+    expect(moved.length).toBeGreaterThan(0);
+    if (count === 2) expect(moved).toHaveLength(2);
+    else expect(moved.length).toBeLessThan(count);
+    for (const shape of moved) {
+      const face = bounds(shape.face);
+      expect(face.l).toBeGreaterThanOrEqual(0);
+      expect(face.r).toBeLessThanOrEqual(VP.w);
+    }
   });
 
   it("a blocker stands with the attacker it blocks: in front of it, between it and me, or just beside it (033)", () => {
