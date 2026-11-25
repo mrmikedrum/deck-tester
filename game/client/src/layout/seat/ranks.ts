@@ -8,7 +8,7 @@ import type { Question, Stance, TagFacts } from "../relevance";
 import { mat } from "./mat";
 import { CH, CW, EDGE, PLATE_IN, PLATE_S, SIDE, TAP_LEAN, clearBehind, floorScale, makeGeo, zoneSide } from "./geometry";
 import { TAP_PX } from "../board";
-import { bounds, unitShape } from "../shape";
+import { bounds, unitShape, zoneShape } from "../shape";
 import type { Geo, Region } from "./geometry";
 
 // `ranks`: an opponent's page dealt in the order a player would describe it (docs: the by-relevance direction). From the
@@ -264,6 +264,14 @@ function plan(input: SeatInput): SeatPlan {
     { own: 1, merge: true, walkersIn: false },
     { own: 1, merge: true, walkersIn: true },
   ] as const;
+  // Cards acting alone (aimed at, in a fight) step out of their fold: into a free place on the line where their fold
+  // stands there, else at the second row's middle end, its own place counted in the row.
+  const actors = cands.filter((c) => c.from);
+  const lineFree = line.map((k, i) => (k === null ? i : -1)).filter((i) => i >= 0);
+  const actorLine = new Map<string, number>();
+  for (const c of actors) if (lineSet.has(c.from!) && lineFree.length) actorLine.set(c.key, lineFree.shift()!);
+  const actorRow = actors.filter((c) => !actorLine.has(c.key));
+  const actorW = actorRow.length * placeW;
   let rung: { ranks: { own: Cand[]; tail: Cand[] }; cols: Col[]; walkersIn: boolean; w: number } | null = null;
   for (let k = Math.min(pressure, LADDER.length - 1); k < LADDER.length; k++) {
     const L = LADDER[k]!, rk = placed(L.own), cols = colsOf(L.merge, L.walkersIn);
@@ -272,7 +280,8 @@ function plan(input: SeatInput): SeatPlan {
       tailWOf(rk.tail.reduce((t, c) => t + c.ids.length, 0)) +
       (L.walkersIn ? 0 : walkers.reduce((t, c) => t + cardW(c.id, sS), 0)) +
       cols.reduce((t, c) => t + cardW(c.ids[0]!, c.s), 0) +
-      (mana.length ? CW * sW + 0.35 : 0);
+      (mana.length ? CW * sW + 0.35 : 0) +
+      actorW;
     rung = { ranks: rk, cols, walkersIn: L.walkersIn, w };
     if (w <= width) break;
   }
@@ -312,7 +321,8 @@ function plan(input: SeatInput): SeatPlan {
       kind: ids.length > 1 ? "pile" : "card",
       members: ids,
       top,
-      tapped: need(top).tapped,
+      // (Down, it lies flat and square at its foot: tapped shows on its face, never by a turn across its neighbours.)
+      tapped: st !== "down" && need(top).tapped,
       acting: c.acting,
       placement: standing(a, u, s, st, step),
       look,
@@ -331,6 +341,7 @@ function plan(input: SeatInput): SeatPlan {
   const toward = side ? zoneSide(false, r.x) : 1;
   type Item = { w: number; put: (u: number) => void };
   const row: Item[] = [];
+  for (const c of actorRow) row.push({ w: placeW, put: (u) => creatureUnit(c, aRanks, u, sR, false) });
   for (const c of ranks.own) row.push({ w: placeOf(c), put: (u) => creatureUnit(c, aRanks, u, sR, false) });
   // The tail's top card is its best answer to the question; at rest, a card that has just arrived lies on top, whole, as a
   // new card on a pile would; else the one that matters most.
@@ -402,15 +413,7 @@ function plan(input: SeatInput): SeatPlan {
     it.put(su - (toward * it.w) / 2);
     su -= toward * it.w;
   }
-  // Cards acting alone stand just beside their fold, at their row's end (combat takes a fighter to the middle).
-  cands
-    .filter((c) => c.from)
-    .forEach((c, i) => {
-      const onLineHome = lineSet.has(c.from!);
-      const a = onLineHome ? aLine : aRanks, sc = onLineHome ? sL : sR;
-      const u = (onLineHome ? ((places + 1) / 2) * per : rowW / 2 + placeW * (0.5 + i)) * (i % 2 ? -1 : 1) * toward;
-      creatureUnit(c, a, Math.max(-width / 2 + (CW * sc) / 2, Math.min(width / 2 - (CW * sc) / 2, u)), sc, onLineHome);
-    });
+  for (const [key, i] of actorLine) creatureUnit(byKey.get(key)!, aLine, (i - (places - 1) / 2) * per, sL, true);
 
   // ---- the plaque's band, behind the second row's tallest top (and its tags) ------------------------------------------
   // (A creature lying down measures as standing: it stands again with the next question.)
@@ -442,7 +445,16 @@ function plan(input: SeatInput): SeatPlan {
     .filter((z) => board.fixtures[z] > 0)
     .forEach((zone, i) => {
       const u = zonesU[i];
-      if (u !== undefined) zones.push({ zone, placement: { pos: at(c0 + zs * u, plateA), scale: zS, posture: "prop" } });
+      if (u === undefined) return;
+      // (A pile is propped from its near edge, half a card in front of where it stands: where something of the second row
+      // reaches that edge on screen, the pile stands back by that half card.)
+      const near = (pa: number) => bounds(zoneShape(projector, seat, zone, { pos: at(c0 + zs * u, pa), scale: zS, posture: "prop" }, false).foot);
+      const f = near(plateA);
+      const met = second.some((x) => {
+        const b = bounds(unitShape(projector, seat, x, false).face);
+        return b.l < f.r && b.r > f.l && b.t < f.b && b.b > f.t;
+      });
+      zones.push({ zone, placement: { pos: at(c0 + zs * u, met ? plateA + (CH / 2) * zS : plateA), scale: zS, posture: "prop" } });
     });
   let commander: Fixtures["commander"];
   if (board.fixtures.commander !== undefined) {
@@ -525,7 +537,7 @@ function mine(input: SeatInput): SeatPlan {
   const units = p.units.map((u) => {
     const st = stance(u);
     if (!st) return u;
-    return { ...u, stance: st, ...(st === "down" ? { placement: { ...u.placement, posture: "flat" as const } } : {}) };
+    return { ...u, stance: st, ...(st === "down" ? { tapped: false, placement: { ...u.placement, posture: "flat" as const } } : {}) };
   });
   return { ...p, units };
 }
