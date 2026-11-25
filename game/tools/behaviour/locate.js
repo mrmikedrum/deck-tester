@@ -28,7 +28,7 @@ function locateNew(w) {
     }
     return null;
   }
-  const PIDS = ["you", "ana", "bo", "cy"], who = w.plate != null ? w.plate : w.pile, seat = who != null ? dm.seats()[PIDS.indexOf(who)] : null;
+  const PIDS = ["you", "ana", "bo", "cy"], who = w.plate != null ? w.plate : w.pile != null ? w.pile : w.read != null ? w.read : w.tail, seat = who != null ? dm.seats()[PIDS.indexOf(who)] : null;
   const canvas = document.getElementById("stage");
   if (w.open) {                                            // the open table: the canvas, nothing picked, clear of the stack
     const quads = [...(dm.stack() || []).map(s => s.quad), ...dm.hits().filter(g => g.kind === "stack").map(g => g.quad)].filter(Boolean);
@@ -42,7 +42,11 @@ function locateNew(w) {
   const pile = w.pile != null ? dm.hits().filter(g => g.seat === seat && ["pile", "well", "summary"].includes(g.kind) && g.members.length > 1)
     .sort((a, b) => b.members.length - a.members.length)[0] : null;
   if (w.pile != null && !pile) return null;
-  const wanted = g => w.plate != null ? g.kind === "plate" && g.seat === seat
+  // {read: pid}: a page's read; {tail: pid}: its tail (the by-relevance layout), else its biggest pile.
+  const tail = w.tail != null ? dm.hits().find(g => g.seat === seat && /\/tail$/.test(g.id)) : null;
+  const wanted = g => w.read != null ? g.kind === "read" && g.seat === seat
+    : w.tail != null ? (tail ? g.id === tail.id : false)
+    : w.plate != null ? g.kind === "plate" && g.seat === seat
     : w.pile != null ? g.id === pile.id
     : w.stack != null ? g.kind === "stack" && g.members.includes(w.stack)
     : g.members.includes(w.card);

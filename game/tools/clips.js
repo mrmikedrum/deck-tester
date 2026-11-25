@@ -69,7 +69,7 @@ module.exports = [
             { at: 1500 * BOARDS.length, label: "lean in on Marath", js: '__h.focusOn("ana")', audit: false },
             { at: 1500 * BOARDS.length + 1400, label: "tap Marath's biggest pile", js: siftBiggest("ana"), audit: false },
             { at: 1500 * BOARDS.length + 2800, label: "close it", js: "__h.unsift(); __h.focusOn(null)" }] },
-    BOARDS[0], BOARDS.slice(1), { [BOARDS.length - 1]: { gesture: { tap: { plate: "ana" } } }, [BOARDS.length]: { gesture: { tap: { pile: "ana" } } },
+    BOARDS[0], BOARDS.slice(1), { [BOARDS.length - 1]: { gesture: { tap: { plate: "ana" } } }, [BOARDS.length]: { gesture: { tap: { tail: "ana" } } },
       [BOARDS.length + 1]: { gesture: [{ key: "Escape" }, { key: "Escape" }] } }),
   bothEntries({ name: "turns", live: "main", ms: 6000, audit: true, about: "The turn passes around the table: from my main phase to Atraxa's turn, then Dack's turn where Dack casts a spell, then back to me.",
     beats: [{ at: 300, label: "Atraxa's turn begins", js: take(STATES.theirs, 2) },
@@ -117,6 +117,17 @@ module.exports = [
               { at: 5700, label: "I pick Whirler Rogue", js: "void 0" }] },
       first, [steps[0], null, null, null],
       { 1: { gesture: { tap: { card: mine("Meloku the Clouded Mirror") } } }, 2: { gesture: { tap: { card: mine("Faerie Mastermind") } } }, 3: { gesture: { tap: { card: mine("Whirler Rogue") } } } }, false);
+    clip.entries = ["new"];
+    return clip;
+  })(),
+  // Marath's turn at 15, before he attacks: I tap his page's read to look through what he could hit me with.
+  (() => {
+    const { first, steps } = PLAYS.threat15;
+    const clip = bothEntries({ name: "read15", live: first, ms: 4200, audit: true,
+      about: "It's Marath's main phase on turn 15. I tap the line of words on his page to look through his creatures.",
+      beats: [{ at: 300, label: "Marath has priority in his main phase", js: take(steps[0], 2) },
+              { at: 2100, label: "I tap Marath's read", js: "void 0", audit: false }] },
+      first, [steps[0], null], { 1: { gesture: { tap: { read: "ana" } } } }, false);
     clip.entries = ["new"];
     return clip;
   })(),
