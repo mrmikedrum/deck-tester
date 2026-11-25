@@ -459,7 +459,9 @@ committed plan. The app replans only when the plan key changes: gen, model rev, 
 combat draft's cards and `settling`: cards in flight between zones, while a change set the scene has not taken moves a
 card or its last report said `flying`. Pages then hold their shape while cards leave them; the app replans when it turns
 false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
-today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
+today's `fitSeat` and `fold`, ported. A second, `ranks` (the by-relevance design prototype), deals an opponent's page as
+a line, a second row of ranks and shelf, and a read, and poses each card by the question the moment asks
+(`layout/relevance.ts`: facts only; their words are `narrative/table-words.ts`). A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
 cards, needs `planTable` work too.
 
 ## play: the decision controller
