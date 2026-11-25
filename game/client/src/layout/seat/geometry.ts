@@ -133,8 +133,7 @@ export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1
   // (Tapped, it lies turned: then its narrow side runs away from me, foreshortened, and that must be 44 too.)
   if (flat) {
     const tall = ((at(0).y - g.proj.project({ x: pos.x, y: 0, z: pos.z - 0.5 }).y) * 2) / g.u;
-    // (Turned, any card's floor: a band whose floor is higher, my trays', has its tapped cards in its trays' bands.)
-    w = Math.max(w, ((Math.max(FLOOR.any, tap) * 1.12 * k) / tall) * (CW / CH), (Math.max(FLOOR.any, tap) * 1.09 * k) / tall);
+    w = Math.max(w, ((Math.max(FLOOR.any, tap) * 1.12 * k) / tall) * (CW / CH), (px * 1.09 * k) / tall);
   }
   return w / (CW * k);
 }

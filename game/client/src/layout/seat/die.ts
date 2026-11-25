@@ -5,7 +5,8 @@ import type { SeatInput, SeatLayout, Tray, TrayTop, Unit, UnitRole } from "../se
 import type { CardId } from "../types";
 import type { Cards, Draft } from "./fold";
 import type { Geo } from "./geometry";
-import { bandSpec } from "./geometry";
+import { bandSpec, floorScale, makeGeo } from "./geometry";
+import { FLOOR } from "../board";
 import { TRAY_PRINT } from "../shape";
 import { planWith } from "./mat";
 import type { Classified } from "./mat";
@@ -171,11 +172,17 @@ function lipOf(cs: readonly BoardCard[], top: TrayTop): Pick<Tray, "lip" | "lipI
 }
 
 /** Each unit's posture and tray: standouts stand ready and lie turned when tapped; stacks, support and mana lie flat. */
-function finish(d: Draft, u: Unit, cards: Cards): Unit {
+function finish(d: Draft, u: Unit, cards: Cards, input: SeatInput): Unit {
   const cs = u.members.map((id) => cards.need(id));
   if (cs.length < 2) {
     const stand = u.role === "creature" && (!u.tapped || u.acting);
-    return { ...u, placement: { ...u.placement, posture: stand ? "stand" : "flat", ...(stand ? { lean: STAND_LEAN } : {}) } };
+    if (stand || u.role !== "creature") return { ...u, placement: { ...u.placement, posture: stand ? "stand" : "flat", ...(stand ? { lean: STAND_LEAN } : {}) } };
+    // Tapped, it lies turned in its place where its narrow side, foreshortened, still meets its floor; where it would not,
+    // it stands turned in its foot, as a tapped standee does (floors come first: lying larger, it would meet its
+    // neighbours).
+    const floor = input.board.mine ? FLOOR.mine : FLOOR.theirs, g = makeGeo(input.projector, input.reserve, floor);
+    const lies = floorScale(g, u.placement.pos, floor, true, u.placement.scale) <= u.placement.scale + 1e-6;
+    return { ...u, placement: { ...u.placement, posture: lies ? "flat" : "stand", ...(lies ? {} : { lean: STAND_LEAN }) } };
   }
   // (A detachment's attackers go together under one bone die, tapped by attacking or not.)
   const detached = !!d.fight && d.key.startsWith("d");
@@ -229,7 +236,8 @@ const band =
   (g: Geo): Geo["band"] =>
   (k, me, px) => {
     const b = bandSpec(k, me, g.pitch, px);
-    if (k === "C") return me ? b : { ...b, step: Math.max(b.step, TRAY_D), tall: 1.04 };
+    // (Theirs start where a tray's lip lies at a standee's foot: what stands in front of the row keeps clear of it.)
+    if (k === "C") return me ? b : { ...b, lead: b.lead - TRAY_PRINT.front, step: Math.max(b.step, TRAY_D), tall: 1.04 };
     if (k === "S") return me ? { ...b, flat: true } : { ...b, flat: true, lying: true, lead: -TRAY_PRINT.front, first: TRAY_D + 0.1, step: TRAY_D + 0.1 };
     // (Their one Mana tray lies at the end of their support row: as deep as a tray from its foot.)
     return me ? { ...b, flat: true } : { ...b, flat: true, lying: true, lead: -TRAY_PRINT.front, first: TRAY_PRINT.back - TRAY_PRINT.front };

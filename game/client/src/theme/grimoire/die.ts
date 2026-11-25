@@ -102,7 +102,7 @@ export interface LipSpec {
 }
 
 /** The lip's canvas size, px: one line on a brass strip as wide as the tray. */
-export const LIP_PX = { w: 512, h: 84, font: 60 } as const;
+export const LIP_PX = { w: 512, h: 84, font: 64 } as const;
 
 /** A tray's brass lip: total power, then keyword icons, each with a count unless every member has it. */
 export function paintLip(canvas: Canvas, spec: LipSpec, s: Surfaces): void {

@@ -6,6 +6,7 @@
 // Motion is recorded at 1×; audit stills come from a second, coarse pass at the iPad's 2× (--scale).
 // It serves client/ itself (tools/serve.js) unless BASE is set. Per clip, writes <outdir>/<clip>/: frames/NNN.jpg, clip.mp4, track.json (the screen
 // quad of every mat and the box of every piece, per frame) and beats.json (what happened when).
+// LAYOUT=<id> plans the new entry's table with that seat layout (`mat`, `die`).
 // ENTRY=new records the built new entry (client/dist, `npx vite build`) on the scripted transport (index.html?script):
 // the clip's envelopes and card data are its scenario, every answer is replied to at once, and it is read only through
 // `window.__deckmaster`. Only clips with a new-entry form (`entries` naming "new") record there; a beat's `new` is its
@@ -288,7 +289,8 @@ async function newPage(ctx, clip) {
   const scenario = { catalog, envelopes: [clip.liveNew || clip.live], reply: { t: "queued" } };
   await p.route("**/script.json", route => route.fulfill({ json: scenario }));
   await p.route("**/api/**", route => route.fulfill({ status: 404, json: {} }));   // a scripted page asks the bridge nothing
-  await p.goto(BASE + "index.html?script=script.json");
+  // (LAYOUT=mat records the seat layout the table is planned with, where a branch defaults to another.)
+  await p.goto(BASE + "index.html?script=script.json" + (process.env.LAYOUT ? "&layout=" + encodeURIComponent(process.env.LAYOUT) : ""));
   await p.waitForFunction(() => window.__deckmaster, null, { timeout: 60000 });
   await p.evaluate(() => window.__deckmaster.ready);
   await p.waitForFunction(() => window.__deckmaster.seats().length > 0, null, { timeout: 60000 });

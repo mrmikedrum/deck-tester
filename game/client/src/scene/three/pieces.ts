@@ -329,7 +329,7 @@ const TRAY = {
   boneAt: { x: 0.1, y: 0.08 },
   ironAt: { x: CH / 2 - 0.14, y: CH / 2 + TRAY_BAND / 2 },
   /** The lip: a brass strip along the front, tilted to face me. */
-  lip: { h: 0.18, z: 0.05, tilt: 1.2 },
+  lip: { h: 0.21, tilt: 1.2 },
   /** A die's hop and tumble when its count changes. */
   hop: 0.2,
   tumble: 0.45,
@@ -574,7 +574,8 @@ class TrayParts {
         this.lip = new Decal(lease, TRAY.w, TRAY.lip.h, { renderOrder: 6 });
         this.lip.mesh.userData[LABEL] = { fonts: [LIP_PX.font], h: LIP_PX.h } satisfies LabelTag;
         this.lip.mesh.rotation.x = TRAY.lip.tilt;
-        this.lip.mesh.position.set(0, TRAY.front - (TRAY.lip.h / 2) * Math.cos(TRAY.lip.tilt) - 0.06, (TRAY.lip.h / 2) * Math.sin(TRAY.lip.tilt) + 0.01);
+        // (Raised against the rim's front, its foot on the page.)
+        this.lip.mesh.position.set(0, TRAY.front - 0.03 - (TRAY.lip.h / 2) * Math.cos(TRAY.lip.tilt), (TRAY.lip.h / 2) * Math.sin(TRAY.lip.tilt) + 0.01);
         this.group.add(this.lip.mesh);
       }
     }
