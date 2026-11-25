@@ -72,6 +72,9 @@ function sizeFor(g: Geo, pos: V3, posture: Placement["posture"], px: number): nu
 }
 
 /** How deep into the leaf (from its near edge) the table is first above screen height `y`. */
+/** Where a card's face tops out on screen. */
+const topOf = (g: Geo, pl: Placement): number => bounds(unitShape(g.proj, "", { ...PROBE, placement: pl }, false).face).t;
+
 function behind(g: Geo, r: Region, y: number, u = 0): number {
   let lo = 0, hi = r.d * 2;
   for (let i = 0; i < 20; i++) {
@@ -258,7 +261,10 @@ function plan(input: SeatInput): SeatPlan {
   const inner = 1;
   const lipCards = [...(lip !== null ? [lip] : []), ...acting];
   const sLip = sizeFor(g, at(inner * (W / 2 - 1), -1.6), "lean", LEAF.lipPx);
-  const aLip = -(CH * sLip + 0.12);
+  // Its top stays below the leaf's near edge on screen: a card on the lip never lies over the slip.
+  const edgeY = g.proj.project(at(inner * (W / 2 - 1), 0)).y;
+  let aLip = -(CH * sLip + 0.12);
+  for (let k = 0; k < 40 && topOf(g, { pos: at(inner * (W / 2 - (CW * sLip) / 2 - 0.15), aLip), scale: sLip, posture: "lean" }) < edgeY + 3 * g.u; k++) aLip -= 0.1;
   lipCards.forEach((id, i) => {
     const c = need(id);
     const role: UnitRole = c.creature ? "creature" : c.planeswalker ? "walker" : "support";

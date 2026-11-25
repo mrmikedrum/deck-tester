@@ -42,7 +42,7 @@ export function clashOf(s: AppState): boolean {
 
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
   const { w, h, safe } = s.viewport;
-  return `${s.paradigm}|${spreadOf(s) ?? ""}|${clashOf(s) ? "clash" : ""}|${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
+  return `${s.paradigm}|${spreadOf(s) ?? ""}|${clashOf(s) ? `clash${(s.focus.clashBlocked ?? []).join(",")}` : ""}|${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
 }
 
 export interface Replanned {
@@ -70,6 +70,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
     const plan = planTable({
       spread: spreadOf(s),
       clash: clashOf(s),
+      ...(s.focus.clashBlocked?.length ? { clashBlocked: s.focus.clashBlocked } : {}),
       ...tableInputOf(model, {
         viewport: { w: s.viewport.w, h: s.viewport.h },
         safe: s.viewport.safe,

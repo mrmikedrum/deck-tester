@@ -164,6 +164,8 @@ export interface TableInput {
   readonly spread?: SeatId | null;
   /** Focus-first: the combat is the table's focus (the clash): its fighters stand large on the floor. */
   readonly clash?: boolean;
+  /** The attackers blocked at this combat's blocks step (the clash keeps them with the pairs). */
+  readonly clashBlocked?: readonly CardId[];
   /** The turn and whose it is. */
   readonly turn?: number;
   readonly active?: SeatId | null;
@@ -307,7 +309,7 @@ export function planTable(input: TableInput): TablePlan {
       const bc = by.get(id);
       return { like: bc ? `${bc.name}|${bc.power}/${bc.toughness}|${bc.token}` : String(id), name: bc?.name ?? "", power: Math.max(0, bc?.power ?? 0) };
     };
-    const cl = clashRow(final, combat, input.seats[0]!.seat, projector, geo, facts);
+    const cl = clashRow(final, combat, input.seats[0]!.seat, projector, geo, facts, input.clashBlocked ?? []);
     if (cl) {
       final = cl.plans;
       clashMarks = { tally: cl.tally, lanes: cl.lanes };

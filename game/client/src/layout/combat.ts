@@ -413,7 +413,7 @@ export interface Clash {
  * mine in the far row and mine toe to toe in front of it; the unblocked attackers gathered to one side as regiments by kind
  * (one stack with a tab, "Beast ×2 · 8"), with any single ones. The units keep their ids, so each walks from its place.
  */
-export function clashRow(plans: readonly SeatPlan[], combat: CombatPairs, perspective: SeatId, proj: Projector, g: Geo, facts: (id: CardId) => FighterFacts): Clash | null {
+export function clashRow(plans: readonly SeatPlan[], combat: CombatPairs, perspective: SeatId, proj: Projector, g: Geo, facts: (id: CardId) => FighterFacts, wasBlocked: readonly CardId[] = []): Clash | null {
   const units = fightUnits(plans, fighters(combat));
   if (!units.size) return null;
   const u = g.u, mine = (id: CardId) => units.get(id)?.seat === perspective;
@@ -428,7 +428,8 @@ export function clashRow(plans: readonly SeatPlan[], combat: CombatPairs, perspe
   interface Col { far: Unit[]; near: Unit[]; stack?: { ids: CardId[]; far: boolean } }
   const pairs: Col[] = [], loose: Col[] = [];
   const attacks = [...combat.attacks].sort((a, b) => sx(a.attacker) - sx(b.attacker));
-  const blockedIds = new Set(combat.blocks.map((b) => b.attacker));
+  // (An attacker blocked at the blocks step stays with the pairs after its blocker has died.)
+  const blockedIds = new Set([...combat.blocks.map((b) => b.attacker), ...wasBlocked]);
   for (const a of attacks) {
     if (!blockedIds.has(a.attacker)) continue;
     const col: Col = { far: [], near: [] };
