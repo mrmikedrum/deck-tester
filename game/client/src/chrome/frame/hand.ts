@@ -74,7 +74,7 @@ export interface CardDraw extends Pose {
   readonly fit: LabelFit;
   readonly reading: boolean;
   readonly dragging: boolean;
-  /** Dragged up past the play line: let go over the table and it plays. */
+  /** Let go here, it would be offered to play: a card play may play now, dragged up past the play line, over the table. */
   readonly ready: boolean;
 }
 
@@ -103,6 +103,9 @@ interface Drag {
   readonly f0: number;
   dx: number;
   dy: number;
+  /** Where the pointer is now. */
+  x: number;
+  y: number;
   turned: boolean;
 }
 
@@ -170,6 +173,8 @@ export class HandMotion {
   constructor(
     private readonly acts: HandActs,
     private readonly wake: () => void,
+    /** Whether a card let go at (x, y) is over the table: the same test its release is sent with. */
+    private readonly overTable: (x: number, y: number) => boolean,
   ) {}
 
   /** Forget all motion (after a renderer fault, the next commit is a cut). */
@@ -221,7 +226,7 @@ export class HandMotion {
       case "dragStart":
         this.peek = null;
         if (this.index(g.on) < 0 || g.on === null) return;
-        this.drag = { card: g.on, mode: g.dir === "up" ? "play" : "page", f0: Math.round(this.to), dx: 0, dy: 0, turned: false };
+        this.drag = { card: g.on, mode: g.dir === "up" ? "play" : "page", f0: Math.round(this.to), dx: 0, dy: 0, x: g.x, y: g.y, turned: false };
         this.wake();
         return;
       case "drag": {
@@ -229,6 +234,8 @@ export class HandMotion {
         if (!d) return;
         d.dx = g.dx;
         d.dy = g.dy;
+        d.x = g.x;
+        d.y = g.y;
         if (d.mode === "page" && !d.turned && this.layout) {
           const u = this.layout.u, w = cardSize(u).w;
           if (Math.abs(g.dx) > TURN_U * u + TURN_PX) {
@@ -345,7 +352,8 @@ export class HandMotion {
       if (d && d.card === c.id && d.mode === "play") {
         const pose = this.liftedPose(d) ?? { x: q.x, y: q.y, rot: 0, scale: PLAY_SCALE };
         this.shown.set(c.id, pose);
-        const ready = d.dy <= HAND_PLAY_DY;
+        // The gilt rim promises only what the release will do (play's `release`): a card it may play, past the line, over the table.
+        const ready = c.playable && d.dy <= HAND_PLAY_DY && this.overTable(d.x, d.y);
         return { id: c.id, ...pose, z: PLAY_Z, label: w, fit: labelFit(c.name, w, layout.u, layout.measure), reading: false, dragging: true, ready };
       }
       const target: Pose = { x: q.x, y: q.y, rot: q.rot, scale: 1 };

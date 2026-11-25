@@ -16,6 +16,8 @@ const hand = (more: Partial<HandView> = {}): HandView => ({ cards: HAND, away: f
 
 let acts: { a: string; card: CardId; dy?: number; pose?: ScreenPose; at: number }[];
 let wakes: number;
+/** Where the table is, as the renderer tells it (`overTable`). */
+let over: (x: number, y: number) => boolean;
 let m: HandMotion;
 let commit: number;
 let t: number;
@@ -40,6 +42,7 @@ const drop = (card: CardId, dy: number, dx = 0): void =>
   g({ g: "drop", on: card, x: dx, y: dy, dx, dy, vx: 0, vy: 0, swipe: null, at: t });
 
 beforeEach(() => {
+  over = () => true;
   acts = [];
   wakes = 0;
   commit = 0;
@@ -50,6 +53,7 @@ beforeEach(() => {
       release: (card, dy, pose, at) => acts.push({ a: "release", card, dy, pose, at }),
     },
     () => wakes++,
+    (x, y) => over(x, y),
   );
   step();
 });
@@ -105,6 +109,22 @@ describe("play mode", () => {
     expect(r.pose).toEqual(toScreen({ x: rest.x + 10, y: rest.y - 120, rot: 0, scale: PLAY_SCALE }, LAYOUT));
     expect(r.pose!.rect.bottom).toBeCloseTo(LAYOUT.oy + rest.y - 120);
     expect(r.pose!.rect.right - r.pose!.rect.left).toBeCloseTo(150 * PLAY_SCALE);
+  });
+  it("its gilt rim promises only a play the release would offer: a playable card, past the line, over the table", () => {
+    const ready = (card: CardId): boolean => step().cards.find((d) => d.id === card)!.ready;
+    // Frantic Search may be played: short of the line no, past it yes.
+    dragUp(id(3), -60);
+    expect(ready(id(3))).toBe(false);
+    dragUp(id(3), -120);
+    expect(ready(id(3))).toBe(true);
+    // ...but not over the hand or the prompt, where letting go plays nothing.
+    over = () => false;
+    expect(ready(id(3))).toBe(false);
+    // Snap may not be played now: never, however far it goes.
+    over = () => true;
+    drop(id(3), -120);
+    dragUp(id(1), -200);
+    expect(ready(id(1))).toBe(false);
   });
   it("a short lift is still a release: the 90 px rule is play's, not the chrome's", () => {
     dragUp(id(3), -40);
@@ -271,7 +291,7 @@ describe("the fan changing", () => {
   it("is deterministic: the same gestures at the same commit times draw the same frames", () => {
     const run = (): HandFrame[] => {
       const out: HandFrame[] = [];
-      const mm = new HandMotion({ tap: () => {}, release: () => {} }, () => {});
+      const mm = new HandMotion({ tap: () => {}, release: () => {} }, () => {}, () => true);
       let tt = 0, cc = 0;
       out.push(mm.step(hand(), LAYOUT, ++cc, (tt += 16)));
       mm.gesture({ g: "tap", on: id(1), kind: "touch", x: 0, y: 0, at: tt });
