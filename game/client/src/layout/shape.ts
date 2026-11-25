@@ -95,20 +95,23 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
  * A tray's footprint in its card's frame, card heights from its foot (the ready card's near edge): its lip in front, its
  * tapped band behind, one creature place wide (scene/three/pieces.ts `TRAY`).
  */
-export const TRAY_PRINT = { w: CH + 0.11, front: -0.2, back: CH + 0.3 + 0.085, detached: CH + 0.085 } as const;
-/** How much of its height the tapped stack shows behind the ready one: 0.3, so two tray rows fit a side page. */
-export const TRAY_BAND = 0.3;
+/** How much of its height the tapped stack shows behind the ready one: 0.22, so two tray rows fit a side page. */
+export const TRAY_BAND = 0.22;
+/** A tray's rim past its card, each side and behind. */
+export const TRAY_RIM = 0.06;
+export const TRAY_PRINT = { w: CW + 2 * TRAY_RIM, front: -0.14, back: CH + TRAY_BAND + TRAY_RIM, detached: CH + TRAY_RIM, rim: TRAY_RIM } as const;
 
 export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean, at: At = AT_REST): Shape {
   const p: Placement = u.placement;
   const fr = frameOf(proj, p.pos, p.posture, u.tapped, p.lean);
   const q = cardQuads(proj, fr, p.scale, u.tapped, CW, CH, at);
-  if (u.tray && p.posture !== "stand") {
-    // A tray is one unit: its footprint is what it covers and where a tap reaches it; its card's name and foot are what
-    // nothing else may cover. (Its own dice, lip and tapped stack lie on it.)
-    const s = p.scale, back = u.tray.detachment ? TRAY_PRINT.detached : TRAY_PRINT.back;
+  const fp = u.footprint;
+  if (fp && p.posture !== "stand") {
+    // A tray or a fan is one unit: its footprint is what it covers and where a tap reaches it; its card's name and foot
+    // are what nothing else may cover. (Its own dice, lip and stacks lie on it.)
+    const s = p.scale;
     const pt = (x: number, b: number): Point => proj.project(at({ x: fr.base.x + x * s, y: fr.base.y + fr.up.y * b * s, z: fr.base.z + fr.up.z * b * s }));
-    const hw = TRAY_PRINT.w / 2, face: Quad = [pt(-hw, TRAY_PRINT.front), pt(hw, TRAY_PRINT.front), pt(hw, back), pt(-hw, back)];
+    const hw = fp.w / 2, face: Quad = [pt(-hw, fp.front), pt(hw, fp.front), pt(hw, fp.back), pt(-hw, fp.back)];
     // (It lies flat from its foot back: drawn by depth, it is as far off as its middle, behind a card standing beside it.)
     return { group: u.id, kind: "unit", seat, ...q, face, order: p.pos.z - (CH / 2) * s, floor: u.role === "creature" ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any, members: u.members };
   }
@@ -156,7 +159,7 @@ export function stackShape(group: string, face: Quad, order: number, members: re
 export function seatShapes(proj: Projector, plan: SeatPlan, mine: boolean): Shape[] {
   return [
     ...plan.units.map((u) => unitShape(proj, plan.seat, u, mine)),
-    ...plan.fixtures.zones.map((z) => zoneShape(proj, plan.seat, z.zone, z.placement, mine)),
+    ...plan.fixtures.zones.map((z) => zoneShape(proj, plan.seat, z.zone, z.placement, mine || z.placement.posture === "flat")),
     plateShape(proj, plan.seat, plan.fixtures.plate),
     ...(plan.fixtures.commander ? [commanderShape(proj, plan.seat, plan.fixtures.commander)] : []),
   ];

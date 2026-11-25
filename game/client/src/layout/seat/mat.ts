@@ -118,9 +118,11 @@ export interface MatStyle {
   readonly paradigm: string;
   readonly classify: (bf: readonly BoardCard[], hosts: ReadonlySet<CardId>, me: boolean, seat: string, input: SeatInput) => Classified;
   /** The creature fold (fit.ts `FitCtx.foldC`), given the board's cards and who is dressed. */
-  readonly foldC?: (cards: Cards, hosts: ReadonlySet<CardId>, input: SeatInput) => (units: Draft[], cap: number) => Draft[];
+  readonly foldC?: (cards: Cards, hosts: ReadonlySet<CardId>, input: SeatInput) => (units: Draft[], cap: number, perRow: number) => Draft[];
   /** The page's geometry, where the layout stands or lies things differently (its bands' specs, its standees' lean). */
   readonly geo?: (g: Geo) => Geo;
+  /** Their graveyard and exile lie flat just behind the plaque's line, not propped in front of it. */
+  readonly flatZones?: boolean;
   /** Each unit as placed: its posture and anything of its own (a tray). */
   readonly finish?: (d: Draft, u: Unit, cards: Cards, input: SeatInput) => Unit;
 }
@@ -160,7 +162,7 @@ export function planWith(input: SeatInput, style: MatStyle): SeatPlan {
 
   const keepOf = (u: Draft): boolean => !!u.lands || cards.need(u.rep).commander || cards.need(u.rep).legendary;
   const foldC = style.foldC?.(cards, hosts, input);
-  const ctx = (p: Fit | null): FitCtx => ({ g, cards, region: r, me, keepOf, prev: p, ...(foldC ? { foldC, tabs: false } : {}) });
+  const ctx = (p: Fit | null): FitCtx => ({ g, cards, region: r, me, keepOf, prev: p, ...(foldC ? { foldC, tabs: false } : {}), ...(style.flatZones ? { flatZones: true } : {}) });
   const args = {
     nz: Number(board.fixtures.graveyard > 0) + Number(board.fixtures.exile > 0),
     cmd: board.fixtures.commandZone,
@@ -274,7 +276,10 @@ function poses(input: SeatInput, g: Geo, cards: Cards, fit: Fit, dressedBy: Read
     const pl = fit.place!;
     present.forEach((zone, i) => {
       const u = pl.zones[i];
-      if (u !== undefined) zones.push({ zone, placement: { pos: g.toWorld(r, u, vAt(fit.plateA + fit.zoneBack)), scale: pl.zS, posture: "prop" } });
+      if (u === undefined) return;
+      // (Lying flat, its near edge on the plaque's line: it reaches back, never into what lies in front.)
+      if (style.flatZones) zones.push({ zone, placement: { pos: g.toWorld(r, u, vAt(fit.plateA + (pl.zS * CH) / 2)), scale: pl.zS, posture: "flat" } });
+      else zones.push({ zone, placement: { pos: g.toWorld(r, u, vAt(fit.plateA + fit.zoneBack)), scale: pl.zS, posture: "prop" } });
     });
   }
   // The commander leans beside the plaque while it is in the command zone (h.js `banner`), on its piles' side, standing
@@ -282,7 +287,8 @@ function poses(input: SeatInput, g: Geo, cards: Cards, fit: Fit, dressedBy: Read
   let commander: Fixtures["commander"];
   if (fx.commander !== undefined) {
     const side = zoneSide(me, r.x), cs = me ? 1.15 : 0.9;
-    const pos: V3 = { x: plate.pos.x + side * 2.2 * sP, y: plate.pos.y, z: plate.pos.z - 0.06 * sP };
+    // (Under a flat-zoned page, along the page's own row, so on a side page's slant it stays on the plaque's line.)
+    const pos: V3 = style.flatZones && !me ? g.toWorld(r, pu + side * 2.2 * sP, backV - 0.06 * sP) : { x: plate.pos.x + side * 2.2 * sP, y: plate.pos.y, z: plate.pos.z - 0.06 * sP };
     commander = { card: fx.commander, placement: { pos, scale: Math.max(cs * sP, floorScale(g, pos, FLOOR.any, false, cs * sP)), posture: "stand" } };
   }
   // The mat is the page, lying from the fixed edge.

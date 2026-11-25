@@ -22,13 +22,13 @@ import type { BufferGeometry, Material, Texture } from "three";
 import { BoxGeometry } from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
-import { TRAY_BAND } from "../../layout/shape";
+import { TRAY_BAND, TRAY_RIM } from "../../layout/shape";
 import { LIP_PX, SIGN_FONT, SIGN_U, canonical, colour, faceKey, kit, materials, motion, seatInk } from "../../theme";
 import type { DieTone, FaceSpec, SeatPlace, TallySpec } from "../../theme";
-import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
+import type { ActorView, Draw, FanLook, GhostView, Sample } from "../stage/types";
 import { PILE_STEP, siftRoll } from "../stage/poses";
 import { LABEL_PX } from "../stage/labels";
-import { SIFT_SHADE } from "../stage/describe";
+import { SIFT_SHADE, TRAY_OUT } from "../stage/describe";
 import { createCard } from "./card";
 import type { CardObject } from "./card";
 import { ashFx, burstFx, chosenFx, emberFx, sigilFx, spellFx, wellFx } from "./fx";
@@ -313,27 +313,38 @@ const WELL_TURN = Math.PI / 12;
 
 /** A tray's sizes in card units (a card is 1 tall), in its card's own frame: +y away from me, +z up off the page. */
 const TRAY = {
-  /** One creature place wide (a turned card's width and a little), from the ready card's foot to past the tapped band. */
-  w: CH + 0.06,
-  front: -CH / 2 - 0.06,
-  /** The tapped stack shows this much of a card's height behind the ready stack. */
+  /** Tight to its card: a rim of `TRAY_RIM` each side, from the ready card's foot to past the tapped band. */
+  w: CW + 2 * TRAY_RIM,
+  front: -CH / 2 - TRAY_RIM,
+  /** The tapped stack lies this much of a card's height behind the ready one, shaded and turned a little. */
   band: TRAY_BAND,
-  back: CH / 2 + TRAY_BAND + 0.06,
+  back: CH / 2 + TRAY_BAND + TRAY_RIM,
   floor: 0.022,
   /** A stack is as thick as its cards, to 12. */
   most: 12,
-  /** The bone die's edge; the iron die is 0.8 of it. */
-  die: 0.3,
+  /** The bone die's edge, seated low and left on the art; the iron die is 0.8 of it, at the tapped band's right end. */
+  die: 0.22,
   iron: 0.8,
-  /** The die on the ready stack's art, right of centre; the iron die at the band's right end. */
-  boneAt: { x: 0.1, y: 0.08 },
-  ironAt: { x: CH / 2 - 0.14, y: CH / 2 + TRAY_BAND / 2 },
+  // (Low and left on the art: from a far seat a cube's height runs up the screen, and its top must stay below the name.)
+  boneAt: { x: -0.15, y: -0.15 },
+  ironAt: { x: CW / 2 - 0.11, y: CH / 2 + TRAY_BAND / 2 },
+  /** On a Ranks tally the die sits on the right end of its title strip, smaller. */
+  ranksDie: 0.2,
+  ranksAt: { x: CW / 2 - 0.12, y: CH / 2 - 0.085 },
+  /** One stack (their mana): its dice side by side on it, small. */
+  stackDie: 0.2,
+  stackAt: { bone: { x: -0.15, y: -0.16 }, iron: { x: 0.13, y: -0.16 } },
+  /** A card a spell aims at slides this much of its height out toward me, over the lip. */
+  out: TRAY_OUT,
   /** The lip: a brass strip along the front, tilted to face me. */
   lip: { h: 0.21, tilt: 1.2 },
   /** A die's hop and tumble when its count changes. */
   hop: 0.2,
   tumble: 0.45,
 } as const;
+
+/** How far a spent card (tapped, lying where it is) or a tray's tapped stack turns: enough to read, never a quarter. */
+const SPENT_TURN = (12 * Math.PI) / 180;
 
 /** A slotted brass foot a standee stands in: a low bar across its foot, on the page. */
 function brassFoot(ground: Group): { mesh: Mesh; dispose(): void } {
@@ -364,8 +375,9 @@ class Die {
     yaw: number,
     private readonly over = false,
   ) {
-    this.geo = new RoundedBoxGeometry(e, e, e, 3, e * 0.16);
-    this.mat = new MeshStandardMaterial({ color: kit.die[tone].body, roughness: tone === "iron" ? 0.45 : 0.6, metalness: tone === "iron" ? 0.55 : 0.02 });
+    // (Aged: dull, its corners worn rather than rounded, so it reads as a game die and not a toy block.)
+    this.geo = new RoundedBoxGeometry(e, e, e, 2, e * 0.08);
+    this.mat = new MeshStandardMaterial({ color: kit.die[tone].body, roughness: tone === "iron" ? 0.55 : 0.88, metalness: tone === "iron" ? 0.45 : 0 });
     // (Over everything, as a plaque is: drawn last, its faces sorted among themselves.)
     if (over) this.mat.depthTest = false;
     const cube = covers(new Mesh(this.geo, this.mat));
@@ -389,7 +401,7 @@ class Die {
     const lease = this.host.painter.die({ n, tone: this.tone });
     if (this.top) this.top.set(lease);
     else {
-      this.top = new Decal(lease, this.e * 0.86, this.e * 0.86, { renderOrder: this.over ? 12 : 6, depthTest: !this.over });
+      this.top = new Decal(lease, this.e * 0.92, this.e * 0.92, { renderOrder: this.over ? 12 : 6, depthTest: !this.over });
       this.top.mesh.position.z = this.e / 2 + 0.002;
       this.spin.add(this.top.mesh);
     }
@@ -448,9 +460,9 @@ class TrayCard {
     this.key = next.key;
     this.obj.material.map = next.texture;
   }
-  look(tap: number, fade: number, mark: ActorView["mark"], glow: number): void {
+  look(tap: number, fade: number, mark: ActorView["mark"], glow: number, shaded = false): void {
     this.obj.body.rotation.z = -tap * (Math.PI / 2);
-    setLook(this.obj.material, { tap: 0, dim: fade });
+    setLook(this.obj.material, { tap: shaded ? 1 : 0, dim: fade });
     setSignal(this.obj.material, this.host.rim, glow > 0.5 ? mark : null);
   }
   dispose(): void {
@@ -460,9 +472,10 @@ class TrayCard {
 }
 
 /**
- * A tray: a bronze rim and vellum floor one creature place wide; the ready stack lying upright at its front, as thick as
- * its cards, under a bone die; the tapped stack turned a quarter behind it, a band of it showing, under an iron die; and
- * the brass lip along its front saying what the tray is worth. Counts follow what has arrived.
+ * A tray: a bronze rim tight to its card and a vellum floor; the ready stack lying at its front, as thick as its cards,
+ * under a bone die; the tapped stack shaded and turned a little behind it, a band of it showing, under an iron die (their
+ * mana: one stack, its two dice side by side); the brass lip along its front saying what it is worth; and a card a spell
+ * aims at slid half out toward me. Counts follow what has arrived.
  */
 class TrayParts {
   readonly group = new Group();
@@ -471,6 +484,7 @@ class TrayParts {
   private readonly tones: number[] = [];
   private ready: TrayCard | null = null;
   private tapped: TrayCard | null = null;
+  private out: CardPart | null = null;
   private readyBlock: Mesh;
   private tappedBlock: Mesh;
   private bone: Die;
@@ -482,15 +496,15 @@ class TrayParts {
   constructor(
     private readonly host: Host,
     seed: number,
-    detachment: boolean,
+    private readonly kind: { detachment: boolean; stack: boolean; ranks: boolean },
   ) {
-    const back = detachment ? CH / 2 + 0.06 : TRAY.back, d = back - TRAY.front, cy = (back + TRAY.front) / 2;
+    const back = kind.detachment || kind.stack ? CH / 2 + TRAY_RIM : TRAY.back, d = back - TRAY.front, cy = (back + TRAY.front) / 2;
     const bronze = new MeshStandardMaterial({ color: kit.tray.rim, roughness: 0.42, metalness: 0.65 });
     const floor = new MeshStandardMaterial({ color: kit.tray.floor, roughness: 0.9, metalness: 0 });
     const edge = new MeshStandardMaterial({ color: 0xd8c9a2, roughness: 0.95, metalness: 0 });
     this.mats.push(bronze, floor, edge);
     this.tones.push(kit.tray.rim, kit.tray.floor, 0xd8c9a2);
-    const rim = new BoxGeometry(TRAY.w + 0.05, d + 0.05, TRAY.floor);
+    const rim = new BoxGeometry(TRAY.w, d, TRAY.floor);
     const inner = new BoxGeometry(TRAY.w - 0.03, d - 0.03, 0.004);
     this.geos.push(rim, inner);
     const rimMesh = new Mesh(rim, bronze), innerMesh = new Mesh(inner, floor);
@@ -507,8 +521,9 @@ class TrayParts {
     this.group.add(this.readyBlock, this.tappedBlock);
     // (A little seeded yaw, so no two dice sit alike.)
     const yaw = (k: number) => (((seed * 2654435761 + k * 40503) >>> 0) % 1000) / 1000 - 0.5;
-    this.bone = new Die(host, "bone", TRAY.die, yaw(1) * 0.5);
-    this.iron = new Die(host, "iron", TRAY.die * TRAY.iron, yaw(2) * 0.5);
+    const e = kind.stack ? TRAY.stackDie : kind.ranks ? TRAY.ranksDie : TRAY.die;
+    this.bone = new Die(host, "bone", e, yaw(1) * 0.4);
+    this.iron = new Die(host, "iron", kind.stack ? e : e * TRAY.iron, yaw(2) * 0.4);
     this.group.add(this.bone.group, this.iron.group);
   }
 
@@ -522,12 +537,17 @@ class TrayParts {
 
   patch(v: ActorView, d: Extract<Draw, { t: "unit" }>): void {
     const t = d.tray!;
-    // What has arrived: a newcomer is ready (tokens arrive untapped), so the bone die counts up as they land.
-    const r = Math.max(0, Math.min(t.ready, v.shown - t.tapped)), k = Math.max(0, Math.min(t.tapped, v.shown - r));
+    // What has arrived: a newcomer is ready (tokens arrive untapped), so the bone die counts up as they land. A card a
+    // spell aims at is out from under it.
+    const r0 = Math.max(0, Math.min(t.ready, v.shown - t.tapped)), k = Math.max(0, Math.min(t.tapped, v.shown - r0));
+    const outN = t.out ? Math.min(t.outN, r0 + k) : 0, r = Math.max(0, r0 - outN);
     this.counts = { r, t: k };
-    const readyTop: TopFace = t.tally ? { tally: t.tally } : { face: v.face };
+    const stack = this.kind.stack;
+    // (One stack holds them all; else the ready stack, and the tapped one behind.)
+    const n = stack ? r + k : r, nT = stack ? 0 : k;
+    const readyTop: TopFace = t.tally ? { tally: t.tally } : { face: r === 0 && stack ? (t.tappedFace ?? v.face) : v.face };
     const tappedTop: TopFace = t.tally ? { tally: t.tally } : { face: t.tappedFace ?? v.face };
-    const shape = `${r > 0}|${k > 0}`;
+    const shape = `${n > 0}|${nT > 0}|${t.out ? faceKey(t.out) : ""}`;
     if (shape !== this.shape) {
       this.shape = shape;
       for (const c of [this.ready, this.tapped])
@@ -535,31 +555,51 @@ class TrayParts {
           this.group.remove(c.obj.group);
           c.dispose();
         }
-      this.ready = r > 0 ? new TrayCard(this.host, readyTop, d.token) : null;
-      this.tapped = k > 0 ? new TrayCard(this.host, tappedTop, d.token) : null;
+      if (this.out) {
+        this.group.remove(this.out.obj.group);
+        this.out.dispose();
+      }
+      this.ready = n > 0 ? new TrayCard(this.host, readyTop, d.token) : null;
+      this.tapped = nT > 0 ? new TrayCard(this.host, tappedTop, d.token) : null;
+      this.out = t.out ? new CardPart(this.host, t.out, d.token) : null;
       for (const c of [this.ready, this.tapped]) if (c) this.group.add(c.obj.group);
+      if (this.out) this.group.add(this.out.obj.group);
     } else {
       this.ready?.set(readyTop);
       this.tapped?.set(tappedTop);
     }
-    // The tapped stack lies behind, turned, a band of it showing; alone it lies where the ready stack would.
-    const hT = Math.min(k, TRAY.most) * TH, hR = Math.min(r, TRAY.most) * TH, f = TRAY.floor + 0.004;
-    const yT = r > 0 ? CH / 2 + TRAY.band - CW / 2 : 0;
-    this.tappedBlock.visible = k > 1;
-    this.tappedBlock.scale.set(CH * 0.98, CW * 0.98, Math.max(1e-3, hT - TH));
+    // The tapped stack lies behind, shaded and turned a little, a band of it showing; alone it lies where the ready
+    // stack would.
+    const hT = Math.min(nT, TRAY.most) * TH, hR = Math.min(n, TRAY.most) * TH, f = TRAY.floor + 0.004;
+    const yT = n > 0 ? TRAY.band : 0;
+    this.tappedBlock.visible = nT > 1;
+    this.tappedBlock.scale.set(CW * 0.98, CH * 0.98, Math.max(1e-3, hT - TH));
     this.tappedBlock.position.set(0, yT, f + (hT - TH) / 2);
+    this.tappedBlock.rotation.z = -SPENT_TURN;
     this.tapped?.obj.group.position.set(0, yT, f + hT - TH / 2);
-    const zR = f + (k > 0 && r > 0 ? hT : 0);
-    this.readyBlock.visible = r > 1;
+    const zR = f + (nT > 0 && n > 0 ? hT : 0);
+    this.readyBlock.visible = n > 1;
     this.readyBlock.scale.set(CW * 0.98, CH * 0.98, Math.max(1e-3, hR - TH));
     this.readyBlock.position.set(0, 0, zR + (hR - TH) / 2);
     this.ready?.obj.group.position.set(0, 0, zR + hR - TH / 2);
+    // The card aimed at: slid half out toward me, over the lip, a little turned.
+    this.out?.obj.group.position.set(0.03, -TRAY.out * CH, zR + hR + 0.012);
+    if (this.out) this.out.obj.group.rotation.z = 0.05;
     // The dice: one card needs none.
-    this.bone.group.visible = r > 1;
-    this.bone.group.position.set(TRAY.boneAt.x, TRAY.boneAt.y, zR + hR + 0.001);
-    this.iron.group.visible = k > 1;
-    const ironAt = r > 0 ? TRAY.ironAt : TRAY.boneAt;
-    this.iron.group.position.set(ironAt.x, ironAt.y, f + hT + 0.001);
+    const top = zR + hR + 0.001;
+    if (stack) {
+      this.bone.group.visible = r > 1;
+      this.bone.group.position.set(TRAY.stackAt.bone.x, TRAY.stackAt.bone.y, top);
+      this.iron.group.visible = k > 1;
+      this.iron.group.position.set(TRAY.stackAt.iron.x, TRAY.stackAt.iron.y, top);
+    } else {
+      const at = this.kind.ranks ? TRAY.ranksAt : TRAY.boneAt;
+      this.bone.group.visible = r > 1;
+      this.bone.group.position.set(at.x, at.y, top);
+      this.iron.group.visible = k > 1;
+      const ironAt = n > 0 ? TRAY.ironAt : at;
+      this.iron.group.position.set(ironAt.x, ironAt.y, f + hT + 0.001);
+    }
     // The lip.
     const lipKey = t.lip ? canonical(t.lip) : "";
     if (lipKey !== this.lipKey) {
@@ -583,8 +623,13 @@ class TrayParts {
 
   look(v: ActorView, clock: Clock): void {
     const s = v.sample;
-    this.ready?.look(0, s.fade, v.mark, s.glow);
-    this.tapped?.look(1, s.fade, this.ready ? null : v.mark, s.glow);
+    // (The ready stack shows its state; the tapped one, and a stack all spent, are shaded and turned a little.)
+    const spentStack = this.kind.stack && this.counts.r === 0;
+    this.ready?.look(0, s.fade, v.mark, s.glow, spentStack);
+    if (this.ready && spentStack) this.ready.obj.body.rotation.z = -SPENT_TURN;
+    this.tapped?.look(0, s.fade, this.ready ? null : v.mark, s.glow, true);
+    if (this.tapped) this.tapped.obj.body.rotation.z = -SPENT_TURN;
+    this.out?.look(0, s.fade, v.mark, s.glow);
     this.bone.set(this.counts.r, clock.t);
     this.iron.set(this.counts.t, clock.t);
     this.bone.tick(clock, s.fade);
@@ -601,11 +646,51 @@ class TrayParts {
   dispose(): void {
     this.ready?.dispose();
     this.tapped?.dispose();
+    this.out?.dispose();
     this.bone.dispose();
     this.iron.dispose();
     this.lip?.dispose();
     for (const g of this.geos) g.dispose();
     for (const m of this.mats) m.dispose();
+  }
+}
+
+/**
+ * A fan of real cards lying in one place (support): spread from a pivot near their feet, the right on top, so each
+ * shows its name's start and a strip of its art; spent ones shaded.
+ */
+class FanParts {
+  readonly group = new Group();
+  private cards: CardPart[] = [];
+  private key = "";
+  constructor(private readonly host: Host) {}
+  patch(f: FanLook, token: boolean): void {
+    const key = f.faces.map(faceKey).join(",") + `|${f.w}`;
+    if (key === this.key) return;
+    this.key = key;
+    for (const c of this.cards) {
+      this.group.remove(c.obj.group);
+      c.dispose();
+    }
+    const k = f.faces.length, pivot = -CH / 2 + 0.1, arm = CH / 2 - 0.1;
+    // (Spread to fill its width: the outer corners reach its edges.)
+    const half = k > 1 ? Math.min(0.42, Math.asin(Math.min(0.9, (f.w - CW) / 2 / (CH * 0.92)))) : 0, step = k > 1 ? (2 * half) / (k - 1) : 0;
+    this.cards = f.faces.map((face, i) => {
+      const c = new CardPart(this.host, face, token), a = -half + i * step;
+      c.obj.group.position.set(-Math.sin(a) * arm, pivot + Math.cos(a) * arm, TH * (i + 1));
+      c.obj.group.rotation.z = -a;
+      this.group.add(c.obj.group);
+      return c;
+    });
+  }
+  look(f: FanLook, fade: number, mark: ActorView["mark"], glow: number): void {
+    this.cards.forEach((c, i) => c.look(0, fade, mark, glow, !!f.spent[i]));
+  }
+  front(): Mesh | null {
+    return this.cards[this.cards.length - 1]?.obj.front ?? null;
+  }
+  dispose(): void {
+    for (const c of this.cards) c.dispose();
   }
 }
 
@@ -625,6 +710,7 @@ class UnitView implements PieceView {
   private well: { effect: Effect; key: string } | null = null;
   private wellSign: Decal | null = null;
   private tray: TrayParts | null = null;
+  private fan: FanParts | null = null;
   private foot: { mesh: Mesh; dispose(): void } | null = null;
 
   constructor(
@@ -649,7 +735,7 @@ class UnitView implements PieceView {
   }
 
   front(): Mesh | null {
-    return this.tray ? this.tray.front() : (this.cards[0]?.obj.front ?? null);
+    return this.tray ? this.tray.front() : this.fan ? this.fan.front() : (this.cards[0]?.obj.front ?? null);
   }
 
   /** The body its chips ride on: the top card's, or a tray's ready card's. */
@@ -668,7 +754,7 @@ class UnitView implements PieceView {
       this.cards = [];
       this.copyKey = "";
       if (!this.tray) {
-        this.tray = new TrayParts(this.host, d.seed, d.tray.detachment);
+        this.tray = new TrayParts(this.host, d.seed, { detachment: d.tray.detachment, stack: d.tray.stack, ranks: !!d.tray.tally });
         this.group.add(this.tray.group);
       }
       this.tray.patch(v, d);
@@ -676,6 +762,25 @@ class UnitView implements PieceView {
       this.group.remove(this.tray.group);
       this.tray.dispose();
       this.tray = null;
+    }
+    if (d.fan) {
+      // A fan of its real cards: no copies.
+      for (const c of this.cards) {
+        this.group.remove(c.obj.group);
+        c.dispose();
+      }
+      this.cards = [];
+      this.copyKey = "";
+      if (!this.fan) {
+        this.fan = new FanParts(this.host);
+        this.group.add(this.fan.group);
+      }
+      this.fan.patch(d.fan, d.token);
+      return;
+    } else if (this.fan) {
+      this.group.remove(this.fan.group);
+      this.fan.dispose();
+      this.fan = null;
     }
     if (d.tray) {
       this.dressing(d);
@@ -842,8 +947,11 @@ class UnitView implements PieceView {
     // A copy standing for tapped members is turned (a pile's) or shaded (a well's) on its own; the rest follow the pile.
     for (const c of this.cards) {
       const own = c.obj.group.userData["tapped"] === true;
-      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own);
+      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own || !!d.spent);
+      // (Spent where it lies: shaded and a little turned, never a quarter turn.)
+      if (d.spent) c.obj.body.rotation.z = -SPENT_TURN;
     }
+    if (d.fan) this.fan?.look(d.fan, s.fade, v.mark, s.glow);
     for (const c of this.dress) c.look(0, s.fade, null, 0);
     this.tray?.look(v, clock);
     this.sign?.tone(1 - 0.8 * s.fade);
@@ -887,6 +995,7 @@ class UnitView implements PieceView {
     this.wellSign?.dispose();
     for (const c of this.chips) c.dispose();
     this.tray?.dispose();
+    this.fan?.dispose();
     this.foot?.dispose();
     this.marks.clear();
     this.ash?.dispose();
@@ -914,7 +1023,7 @@ class ZoneView implements PieceView {
     const d = v.draw as Extract<Draw, { t: "zone" }>;
     // h.js `zoneLean`: propped from its near edge for an opponent, so its top card and count read across the table.
     this.lean.position.z = CH / 2;
-    this.lean.rotation.x = d.mine ? 0 : PILE_LEAN;
+    this.lean.rotation.x = d.mine || d.flat ? 0 : PILE_LEAN;
     this.body.position.z = -CH / 2;
     this.lean.add(this.body);
     this.group.add(this.lean);

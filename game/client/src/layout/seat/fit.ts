@@ -75,12 +75,17 @@ export interface FitCtx {
    * A layout's own creature fold (the `die` layout's Ranks tray), in place of piling like creatures and then one mixed
    * pile. Its folds never send creatures to the support row or fold lone noncreatures after them.
    */
-  readonly foldC?: (units: Draft[], cap: number) => Draft[];
+  readonly foldC?: (units: Draft[], cap: number, perRow: number) => Draft[];
   /** Piles wear title tabs (the mat's); false where nothing does (the `die` layout's trays say it on their dice). */
   readonly tabs?: boolean;
+  /** Their graveyard and exile lie flat just behind the plaque's line (the `die` layout), sized lying. */
+  readonly flatZones?: boolean;
 }
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
+/** Behind a band that lies flat, the plaque's piles keep clear of it: propped from half a card in front of the plaque, or
+ * lying behind its line. */
+const LYING_CLEAR = { propped: 0.5, flat: 0.15 } as const;
 
 const stats = (c: { name: string; power: number | null; toughness: number | null }): string => `${c.name}|${c.power}/${c.toughness}`;
 
@@ -279,8 +284,10 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
       for (let it = 0; it < 3; it++) {
         // the floor where its farthest row stands (mine: the front row)
         const foot = me ? a + s * (B.first + (rows[k]! - 1) * B.step - B.lead) : a + s * (B.lead + (rows[k]! - 1) * B.step);
-        // (A creature tapped turns and leans further back, TAP_LEAN: then its narrow side runs up the screen, foreshortened.)
-        s = Math.max(B.pref, floorScale(g, g.toWorld(r, 0, r.d / 2 - foot), k === "C" || (host && k === "S") ? B.px / Math.cos(TAP_LEAN) : B.px, B.flat, s));
+        // (A creature tapped turns and leans further back, TAP_LEAN: then its narrow side runs up the screen, foreshortened.
+        // A back row that lies is measured lying, and where nothing lies turned, upright.)
+        const back = !me && !!B.backLying && rows[k]! > 1;
+        s = Math.max(B.pref, floorScale(g, g.toWorld(r, 0, r.d / 2 - foot), (k === "C" && !B.upright) || (host && k === "S") ? B.px / Math.cos(TAP_LEAN) : B.px, B.flat || back, s, !B.upright));
       }
       let step = B.step, d = s * (B.first + (rows[k]! - 1) * B.step);
       if (!me && B.lying) {
@@ -293,14 +300,16 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
           const f = a + s * (B.lead + i * step);
           step = Math.max(step, (clearBehind(g, r, f, s, tall) - f) / s);
         }
-        d = Math.max(s * (B.lead + (rows[k]! - 1) * step), clearBehind(g, r, a + s * (B.lead + (rows[k]! - 1) * step), s, tall) - a);
+        d = Math.max(s * (B.lead + (rows[k]! - 1) * step), clearBehind(g, r, a + s * (B.lead + (rows[k]! - 1) * step), s, B.tallLast ?? tall) - a);
+        // (A back row that lies, behind a row that stands: as deep as what lies there reaches behind its foot.)
+        if (B.backLying && rows[k]! > 1) d = s * (B.lead + (rows[k]! - 1) * step + B.backLying);
       }
       let span = bandSpan(g, r, me, me ? a : a + d);
       if (lands) {
         // their well: lying flat, sized to the floors where it lies
         const L0 = g.band("L", false, cPx), foot = a + s * B.lead, zs = zoneSide(me, r.x);
         let sL = L0.pref;
-        for (let it = 0; it < 3; it++) sL = Math.max(L0.pref, floorScale(g, g.toWorld(r, 0, r.d / 2 - foot), L0.px, true, sL));
+        for (let it = 0; it < 3; it++) sL = Math.max(L0.pref, floorScale(g, g.toWorld(r, 0, r.d / 2 - foot), L0.px, true, sL, !L0.upright));
         const lw = sL * CW + 0.35, lo = zs > 0 ? span.lo + lw : span.lo, hi = zs > 0 ? span.hi : span.hi - lw;
         b.L = { ...L0, k: "L", s: sL, n: n.L, rows: 1, perRow: 1, cap: 1, a0: foot - sL * L0.lead, a1: foot + sL * (L0.lying ? L0.first - L0.lead : CH), w: lw, u: zs > 0 ? span.lo + (sL * CW) / 2 : span.hi - (sL * CW) / 2 };
         span = { lo, hi, w: Math.max(0, hi - lo), uc: (lo + hi) / 2 };
@@ -316,8 +325,9 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
     b.plateA = a - GAP + back - PLATE_IN;
     const B = b.S.n ? b.S : b.C.n ? b.C : null;
     // (Lying, its last row ends where it ends; the piles in the plaque's row stand propped from half a card in front.)
-    if (B) b.plateA = Math.max(b.plateA, B.lying ? B.a1 + 0.7 : clearBehind(g, r, B.a0 + B.s * (B.lead + (B.rows - 1) * B.step), B.s));
-    if (b.L.n) b.plateA = Math.max(b.plateA, b.L.a1 + (b.L.lying ? 0.7 : 0.2)); // and behind the far end of their well
+    const clear = ctx.flatZones ? LYING_CLEAR.flat : LYING_CLEAR.propped;
+    if (B) b.plateA = Math.max(b.plateA, B.lying ? B.a1 + clear : clearBehind(g, r, B.a0 + B.s * (B.lead + (B.rows - 1) * B.step), B.s));
+    if (b.L.n) b.plateA = Math.max(b.plateA, b.L.a1 + (b.L.lying ? clear : 0.2)); // and behind the far end of their well
     // The graveyard and exile in the plaque's row are propped from their near edge, half a card in front of it: where a
     // pile in front wears a title tab (a pile of copies, a fold), they stand back far enough that the tab never covers
     // their foot (`zoneBack`).
@@ -378,7 +388,7 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
     return { s, c: fold(cards, C, all - s.length, likeC, keep, named, "Creatures") };
   };
   let split: { s: Draft[]; c: Draft[] } | null = null;
-  const alone = ctx.foldC ? ctx.foldC(C, squeeze(b.C.cap)) : fold(cards, C, squeeze(b.C.cap), likeC, keep, named, "Creatures");
+  const alone = ctx.foldC ? ctx.foldC(C, squeeze(b.C.cap), b.C.perRow) : fold(cards, C, squeeze(b.C.cap), likeC, keep, named, "Creatures");
   if (!ctx.foldC && !me && S.length && b.C.cap && alone.some((u) => u.mixed)) {
     const rows0 = { ...rows };
     host = true;
@@ -398,7 +408,7 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
   // then the piles. The plaque sits off centre so the band is balanced on the page. A pile is as large as the floors ask
   // where it lies (`zS`), so what went to it stays readable. The band keeps room for a commander or pile that has gone,
   // so the plaque doesn't slide when one comes or goes.
-  const zS = me ? 0 : Math.max(0.8, floorScale(g, g.toWorld(r, 0, r.d / 2 - Math.min(b.plateA, r.d - PLATE_IN)), FLOOR.any, false, 0.8)); // propped up (PILE_LEAN): measured across, like a card standing
+  const zS = me ? 0 : Math.max(0.8, floorScale(g, g.toWorld(r, 0, r.d / 2 - Math.min(b.plateA, r.d - PLATE_IN)), FLOOR.any, !!ctx.flatZones, 0.8, !ctx.flatZones)); // propped up (PILE_LEAN): measured across, like a card standing
   const holdBack = !fresh && prev && prev.back0;
   const back0: Back0 = { nz: Math.max(args.nz, holdBack ? prev.back0.nz : 0), cmd: args.cmd || !!(holdBack && prev.back0.cmd), zS: Math.max(zS, holdBack ? prev.back0.zS : 0) };
   const backBand = () => {

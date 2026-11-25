@@ -46,8 +46,14 @@ export interface BandSpec {
   rows: number;
   /** Its things lie flat on the page (the `die` layout's support): a row is as deep as it lies, with nothing to see over. */
   lying?: boolean;
+  /** What lies in it never lies turned (spent shows by a shade and a slight turn): its floor is measured upright only. */
+  upright?: boolean;
+  /** Theirs: its back row lies flat (the `die` layout's trays behind its standouts), reaching this far behind its foot. */
+  backLying?: number;
   /** How tall what stands in it is, for what must show behind it (the mat's: a card and its title tab). */
   tall?: number;
+  /** As tall, behind its last row only: what lies in the band behind keeps clear of its tops with room for a tap. */
+  tallLast?: number;
 }
 export type BandKey = "C" | "S" | "L";
 
@@ -119,7 +125,7 @@ export function makeGeo(proj: Projector, reserve: Reservations, creaturePx: numb
 // The scale a card needs at `pos` to be `px` wide on screen, measured across its face's middle (standing) or the card
 // lying there (flat); lying, it must also be 44 tall to be tapped, and a card lying far off is foreshortened. Below
 // 1180x820 a floor in design px is under the 44 CSS px a finger needs, so the tap patch is the floor there.
-export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1.5): number {
+export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1.5, turned = true): number {
   const tap = TAP_PX / g.u, px = Math.max(floorPx, tap);
   // A standing card's face leans back square to me: its middle stands half its height up and back from its foot. A card
   // lying flat reaches away from its near edge (its foot).
@@ -133,7 +139,8 @@ export function floorScale(g: Geo, pos: V3, floorPx: number, flat = false, s = 1
   // (Tapped, it lies turned: then its narrow side runs away from me, foreshortened, and that must be 44 too.)
   if (flat) {
     const tall = ((at(0).y - g.proj.project({ x: pos.x, y: 0, z: pos.z - 0.5 }).y) * 2) / g.u;
-    w = Math.max(w, ((Math.max(FLOOR.any, tap) * 1.12 * k) / tall) * (CW / CH), (px * 1.09 * k) / tall);
+    // (Never turned, it must still give a finger a square on a side page, where a card lying is a skewed trapezoid.)
+    w = Math.max(w, ((Math.max(FLOOR.any, tap) * (turned ? 1.12 : 1.25) * k) / tall) * (CW / CH), turned ? (px * 1.09 * k) / tall : 0);
   }
   return w / (CW * k);
 }

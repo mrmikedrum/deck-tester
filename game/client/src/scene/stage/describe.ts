@@ -19,7 +19,7 @@ import type { LabelAsk, Measure } from "./labels";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
 import { pagePose, platePose, screenPose, stackPose, unitPose, zonePose } from "./poses";
 import { LOOK, tableFocus } from "./types";
-import type { Aim, Description, Draw, FocusTop, Lane, Look, Piece, Pose, TrayLook, WellLook } from "./types";
+import type { Aim, Description, Draw, FanLook, FocusTop, Lane, Look, Piece, Pose, TrayLook, WellLook } from "./types";
 
 export interface DescribeInput {
   readonly model: TableModel;
@@ -141,10 +141,10 @@ export function describe(input: DescribeInput): Description {
         face: members[members.length - 1] ?? null,
         ...placed(seat, zonePose(z.placement)),
         look: lookOf(dimOf(seat), mark, false, false),
-        form: `zone|${z.zone}|${mine}`,
+        form: `zone|${z.zone}|${mine}|${z.placement.posture}`,
         mods: `${mark ?? ""}`,
         mark,
-        draw: { t: "zone", zone: z.zone, mine, colour: colourOf(model, seat) },
+        draw: { t: "zone", zone: z.zone, mine, colour: colourOf(model, seat), ...(z.placement.posture === "flat" ? { flat: true } : {}) },
         needsMembers: true,
       });
     }
@@ -368,6 +368,16 @@ export function siftCards(model: TableModel, plan: TablePlan, group: string): Si
   const zone = m ? (m[1] as "graveyard" | "exile") : null;
   // A swarm opens to one printed card a state, each with its die: never nine identical cards in a row.
   const tray = zone ? undefined : plan.seats.get(g.seat as SeatId)?.units.find((u) => u.id === group)?.tray;
+  // (Ranks opens with its identical cards together too: one card a name and state, under a die for how many.)
+  if (tray && tray.top === "ranks") {
+    const groups = new Map<string, CardId[]>();
+    for (const id of [...tray.ready, ...tray.tapped]) {
+      const c = model.cards.get(id), k = `${c?.face.name ?? ""}|${c?.tapped ?? false}`;
+      groups.set(k, [...(groups.get(k) ?? []), id]);
+    }
+    const gs = [...groups.values()];
+    return { ids: gs.map((g) => g[0]!), tapped: gs.map((g) => model.cards.get(g[0]!)?.tapped ?? false), zone: null, counts: gs.map((g) => g.length) };
+  }
   if (tray && tray.top === "card" && tray.ready.length + tray.tapped.length > 1) {
     const ids = [tray.ready[0], tray.tapped[0]].filter((x): x is CardId => x !== undefined);
     return {
@@ -467,7 +477,9 @@ function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: Rea
         } else to = home.get(t.card);
       }
       if (!to || !pieces.has(to) || pieces.get(to)!.kind === "hidden") return;
-      out.push({ id: `aim:${it.id}:${j}`, from, to, onto, colours, faint: it !== top || !up });
+      // (At a card slid half out of its tray, toward me, the arc lands on that card.)
+      const dest = pieces.get(to), slid = "card" in t && dest?.draw.t === "unit" && !!dest.draw.tray?.out;
+      out.push({ id: `aim:${it.id}:${j}`, from, to, onto, colours, faint: it !== top || !up, ...(slid ? { shift: -TRAY_OUT } : {}) });
     });
   }
   return out;
@@ -497,9 +509,10 @@ function unitPiece(
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
   const { copies, tapNote } = copiesOf(model, u);
   const tray = u.tray ? trayLook(model, u, u.tray) : null;
+  const fan = u.fan ? fanLook(model, u) : null;
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
   // (A tray says it all on its dice, its lip and its tally card: no title.)
-  const title = tray ? null : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
+  const title = tray || fan ? null : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
   const draw: Draw = {
     t: "unit",
     unit: u.kind,
@@ -520,6 +533,8 @@ function unitPiece(
     seed: u.members[0] ?? 0,
     tray,
     ...(u.placement.posture === "stand" && u.placement.lean !== undefined ? { lean: u.placement.lean } : {}),
+    ...(u.spent ? { spent: true } : {}),
+    fan,
   };
   return {
     id: u.id,
@@ -529,42 +544,42 @@ function unitPiece(
     face: u.top,
     pose: unitPose(plan.projector, u.placement, u.tapped),
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
-    form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}|${draw.lean ?? ""}`,
+    form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}|${draw.lean ?? ""}|${fan ? "fan" : ""}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), tray ? canonical(tray) : ""].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), tray ? canonical(tray) : "", fan ? canonical(fan) : "", u.spent ? "spent" : ""].join("#"),
     mark,
     draw,
     needsMembers: true,
   };
 }
 
-/** A tally card's word for each kind of mixed stack. */
-const TALLY_WORD: Readonly<Record<Exclude<Tray["top"], "card">, string>> = { ranks: "Ranks", others: "Others", mana: "Mana", lands: "Lands", rocks: "Rocks" };
+/** How far a card a spell aims at slides out of its tray toward me, in card heights (pieces.ts `TRAY.out`). */
+export const TRAY_OUT = 0.5;
+
+/** The cards the stack aims at: one inside a tray slides half out from under its die. */
+const aimedAt = (model: TableModel): Set<CardId> => new Set(model.stack.flatMap((it) => it.targets.flatMap((t) => ("card" in t ? [t.card] : []))));
 
 /**
- * A tray as drawn: its counts, its tally card (a mixed stack's roster, biggest first, then "+5"; a mana tally by kind:
- * "14 lands", "2 rocks", "10 Treasure"), its tapped stack's face and its lip.
+ * A tray as drawn: its counts, its Ranks tally (the only tally: its roster, biggest first, each with its P/T, then "+5",
+ * and "≤3/2", nothing in it bigger), its tapped stack's face, its lip, and a card a spell aims at slid half out.
  */
 function trayLook(model: TableModel, u: Unit, t: Tray): TrayLook {
   const cs = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
   let tally: TallySpec | null = null;
-  if (t.top !== "card") {
-    let lines: string[];
-    if (t.top === "mana" || (t.top === "lands" && cs.some((c) => !isLand(c)))) {
-      const lands = cs.filter(isLand).length, tr = cs.filter(isTreasure).length, rocks = cs.length - lands - tr;
-      lines = [lands ? `${lands} land${lands > 1 ? "s" : ""}` : "", rocks ? `${rocks} rock${rocks > 1 ? "s" : ""}` : "", tr ? `${tr} Treasure` : ""].filter(Boolean);
-    } else {
-      const by = new Map<string, Card[]>();
-      for (const c of cs) by.set(c.face.name, [...(by.get(c.face.name) ?? []), c]);
-      const size = (c: Card) => (c.power ?? 0) * 100 + (c.toughness ?? 0);
-      const names = [...by.values()].sort((a, b) => size(b[0]!) - size(a[0]!) || b.length - a.length).map((g) => `${shortName(g[0]!.face.name)}${g.length > 1 ? ` ×${g.length}` : ""}`);
-      lines = names.length > 5 ? [...names.slice(0, 4), `+${names.length - 4}`] : names;
-    }
+  if (t.top === "ranks") {
+    const by = new Map<string, Card[]>();
+    for (const c of cs) by.set(c.face.name, [...(by.get(c.face.name) ?? []), c]);
+    const size = (c: Card) => (c.power ?? 0) * 100 + (c.toughness ?? 0);
+    const groups = [...by.values()].sort((a, b) => size(b[0]!) - size(a[0]!) || b.length - a.length);
+    const line = (g: Card[]) => `${g.length > 1 ? `${g.length} ` : ""}${shortName(g[0]!.face.name)}\t${g[0]!.power ?? ""}/${g[0]!.toughness ?? ""}`;
+    const lines = groups.length > 4 ? [...groups.slice(0, 3).map(line), `+${groups.length - 3} more`] : groups.map(line);
     const pw = cs.filter((c) => c.power !== null);
-    const pt = t.top === "ranks" && pw.length ? `≤${Math.max(...pw.map((c) => c.power ?? 0))}/${Math.max(...pw.map((c) => c.toughness ?? 0))}` : null;
-    tally = { word: TALLY_WORD[t.top], pt, lines };
+    const pt = pw.length ? `≤${Math.max(...pw.map((c) => c.power ?? 0))}/${Math.max(...pw.map((c) => c.toughness ?? 0))}` : null;
+    tally = { word: "Ranks", pt, lines };
   }
   const tapped = t.tapped.map((id) => model.cards.get(id)).find((c): c is Card => !!c);
+  const aimed = aimedAt(model), out = u.members.filter((id) => aimed.has(id));
+  const outCard = out.length ? model.cards.get(out[0]!) : undefined;
   return {
     ready: t.ready.length,
     tapped: t.tapped.length,
@@ -572,7 +587,16 @@ function trayLook(model: TableModel, u: Unit, t: Tray): TrayLook {
     tappedFace: tally || !tapped ? null : faceOfCard(model, tapped),
     lip: t.lip ? { text: t.lip, icons: t.lipIcons } : null,
     detachment: !!t.detachment,
+    stack: !!t.stack,
+    out: outCard ? faceOfCard(model, outCard) : null,
+    outN: out.length,
   };
+}
+
+/** Support of several as a fan of its real cards: the first eight, ready first, the spent ones shaded. */
+function fanLook(model: TableModel, u: Unit): FanLook {
+  const cs = u.members.slice(0, 8).map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
+  return { faces: cs.map((c) => faceOfCard(model, c)), spent: cs.map((c) => c.tapped), w: u.footprint?.w ?? 1 };
 }
 
 /** How many copies a pile draws (a well's short stack: four). */

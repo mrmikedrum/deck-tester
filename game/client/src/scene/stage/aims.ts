@@ -29,7 +29,7 @@ const lifted = (s: Sample): V3 => v3(s.pos.x, s.pos.y + s.lift, s.pos.z);
  * The arc's points from a stack card at `from` to `to`, a card (`card`), a plaque (`plate`) or a spell on the stack
  * (`spell`). `up`: the stack is the table's focus (it stands high: the arc leaves from lower down its card).
  */
-export function aimPath(proj: Projector, from: Sample, to: Sample, onto: "card" | "plate" | "spell", up: boolean): V3[] {
+export function aimPath(proj: Projector, from: Sample, to: Sample, onto: "card" | "plate" | "spell", up: boolean, shift = 0): V3[] {
   const camUp = proj.up;
   const U = v3(0, Math.cos(proj.pitch), -Math.sin(proj.pitch)),
     N = v3(0, Math.sin(proj.pitch), Math.cos(proj.pitch));
@@ -74,8 +74,8 @@ export function aimPath(proj: Projector, from: Sample, to: Sample, onto: "card" 
       // A card: up from the spell, in level from its side, then plumb down onto the middle of its top edge and on down
       // behind it, so it reads as dropped on this card and never as aimed at one it passes.
       const s = to.s,
-        mid = lifted(to),
-        ax = upOf(to);
+        ax = upOf(to),
+        mid = add(lifted(to), scaled(ax, shift * CH * s));
       const topPt = add(mid, scaled(ax, 0.5 * CH * s)),
         standing = ax.y > 0.5;
       const sd = Math.sign(mid.x - sp.x) || 1;

@@ -224,8 +224,13 @@ export type Draw =
       readonly tray: TrayLook | null;
       /** Standing at a lean of its own in a brass foot (the `die` layout), radians back from upright. */
       readonly lean?: number;
+      /** Lying spent: shaded and a little turned, never a quarter turn (the `die` layout's, theirs). */
+      readonly spent?: boolean;
+      /** Support of several lying as a fan of its real cards (the `die` layout). */
+      readonly fan?: FanLook | null;
     }
-  | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
+  /** `flat`: lying flat, as mine do (the `die` layout's), not propped up from its near edge. */
+  | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string; readonly flat?: boolean }
   /** `red`: the unblocked power aimed at its seat in a combat (the `die` layout's red die), or null. */
   | {
       readonly t: "plate";
@@ -322,6 +327,8 @@ export interface Aim {
   readonly colours: readonly string[];
   /** Below the top item: fainter. */
   readonly faint: boolean;
+  /** Where on its piece it lands, along the card in card heights: a card slid half out of its tray is nearer me. */
+  readonly shift?: number;
 }
 
 export interface Description {
@@ -401,6 +408,18 @@ export interface TrayLook {
   readonly lip: LipSpec | null;
   /** A detachment in the combat row: a small tray of attackers going together. */
   readonly detachment: boolean;
+  /** One stack, its bone and iron dice side by side (their mana), with no band behind. */
+  readonly stack: boolean;
+  /** A card a spell aims at, slid half out from under the die toward me (its face), and how many are aimed at. */
+  readonly out: FaceSpec | null;
+  readonly outN: number;
+}
+
+/** A fan of real cards lying in one place: the faces it shows (the first eight), which are spent, and its width. */
+export interface FanLook {
+  readonly faces: readonly FaceSpec[];
+  readonly spent: readonly boolean[];
+  readonly w: number;
 }
 
 export interface ActorView {

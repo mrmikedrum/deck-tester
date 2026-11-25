@@ -674,7 +674,7 @@ export class Stage {
         to = this.actors.get(a.to);
       if (!f || !to || !this.plan || f.actor.moving() || (f.piece.needsMembers && !f.shown.length)) continue;
       const up = f.piece.draw.t === "stack" && f.piece.draw.up;
-      aims.push({ id: a.id, points: aimPath(this.plan.projector, f.actor.now, to.actor.now, a.onto, up), colours: a.colours, faint: a.faint, flare: a.onto === "card" });
+      aims.push({ id: a.id, points: aimPath(this.plan.projector, f.actor.now, to.actor.now, a.onto, up, a.shift ?? 0), colours: a.colours, faint: a.faint, flare: a.onto === "card" });
     }
     return {
       actors,

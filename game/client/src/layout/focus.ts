@@ -186,7 +186,7 @@ function leanGrow(plan: TablePlan, l: Lean, room: Box): number {
   // the commander by its card's middle.
   const pl = sp.fixtures.plate.pos;
   fixed(plateShape(proj, l.seat, sp.fixtures.plate, carriedAbout(l, { x: pl.x, y: pl.y + 0.02, z: pl.z })).face);
-  for (const z of sp.fixtures.zones) fixed(zoneShape(proj, l.seat, z.zone, z.placement, false, carriedAbout(l, z.placement.pos)).face);
+  for (const z of sp.fixtures.zones) fixed(zoneShape(proj, l.seat, z.zone, z.placement, z.placement.posture === "flat", carriedAbout(l, z.placement.pos)).face);
   const cmd = sp.fixtures.commander;
   if (cmd) fixed(commanderShape(proj, l.seat, cmd, carriedAbout(l, cardMiddle(proj, cmd.placement, false))).face);
   const gap = (a: Box, b: Box): number => Math.max(b.l - a.r, a.l - b.r, b.t - a.b, a.t - b.b);

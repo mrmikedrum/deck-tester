@@ -57,6 +57,19 @@ export interface Unit {
   /** A tray under dice (the `die` layout): its cards lying as one unit, ready ones under a bone die and tapped ones
    * turned behind under an iron die. `members` is `ready` then `tapped`. */
   readonly tray?: Tray;
+  /** A fan of real cards lying in one place (the `die` layout's support): one group, its members fanned from the foot. */
+  readonly fan?: boolean;
+  /** Lying where it is spent (tapped) but measured upright: drawn shaded with a slight turn, never a quarter turn. */
+  readonly spent?: boolean;
+  /** What it covers lying flat, past its card, in card heights from its foot: a tray's rim and lip, a fan's spread. */
+  readonly footprint?: Footprint;
+}
+
+/** A lying unit's footprint in its card's frame: its width, and how far in front of its foot and behind it reaches. */
+export interface Footprint {
+  readonly w: number;
+  readonly front: number;
+  readonly back: number;
 }
 
 /** What a tray's top card is: the real card (a swarm of one kind) or a tally card naming a mixed stack. */
@@ -74,6 +87,8 @@ export interface Tray {
   readonly summary: Summary | null;
   /** A detachment: the attackers of a swarm that go to the combat row together, under one die. */
   readonly detachment?: boolean;
+  /** One stack, ready and tapped together, its bone and iron dice side by side on it (their mana: no band behind). */
+  readonly stack?: boolean;
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */

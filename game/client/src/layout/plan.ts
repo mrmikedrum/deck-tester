@@ -14,7 +14,7 @@ export const LAYOUTS: Readonly<Record<string, SeatLayout>> = { mat, die };
 import { combatRow, fighters, rowUnits } from "./combat";
 import type { CombatPairs } from "./combat";
 import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry";
-import { TRAY_PRINT, audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
+import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
 import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
 import type { TableTemplate } from "./template";
@@ -511,7 +511,7 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
     if (un.role === "creature" && !un.fighting) {
       // (Its top as if it stood square to me, the tallest it shows; one lying reaches back to its far edge.)
       const p = un.placement, th = proj.pitch;
-      const top = p.posture === "stand" ? { x: p.pos.x, y: p.pos.y + Math.cos(th) * CH * p.scale, z: p.pos.z - Math.sin(th) * CH * p.scale } : { x: p.pos.x, y: p.pos.y, z: p.pos.z - (un.tray ? TRAY_PRINT.back : CH) * p.scale };
+      const top = p.posture === "stand" ? { x: p.pos.x, y: p.pos.y + Math.cos(th) * CH * p.scale, z: p.pos.z - Math.sin(th) * CH * p.scale } : { x: p.pos.x, y: p.pos.y, z: p.pos.z - (un.footprint?.back ?? CH) * p.scale };
       b = Math.min(b, proj.project(top).y / u);
     }
   t = t || 60;

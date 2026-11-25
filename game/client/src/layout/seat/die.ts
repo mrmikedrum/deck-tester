@@ -8,6 +8,7 @@ import type { Geo } from "./geometry";
 import { bandSpec, floorScale, makeGeo } from "./geometry";
 import { FLOOR } from "../board";
 import { TRAY_PRINT } from "../shape";
+import { CH } from "./geometry";
 import { planWith } from "./mat";
 import type { Classified } from "./mat";
 
@@ -72,13 +73,14 @@ function fighterDrafts(cs: readonly BoardCard[], combat: CombatPairs | null | un
 
 function classify(bf: readonly BoardCard[], hosts: ReadonlySet<CardId>, me: boolean, seat: string, input: SeatInput): Classified {
   const { involved, combat } = input;
+  void involved;
   const isMana = (c: BoardCard) => !c.creature && !c.planeswalker && !c.specialLand && (c.land || c.manaRock || c.treasure);
   const fighting = fighters(combat ?? null);
   const C = kinGroups(bf.filter((c) => c.creature).sort(arrived), hosts).flatMap((g): Draft[] => {
-    // A creature in a fight (attacking, blocking) steps out from under the die while it fights; the rest stay. One
-    // aimed at by a spell stays under it, and the aim lands on its tray: a side page has three creature places, and
-    // one stepping out would cost its swarm its own.
-    const acts = (c: BoardCard) => (g.length > 1 ? fighting.has(c.id) : involved.has(c.id));
+    // A creature in a fight (attacking, blocking) steps out from under the die while it fights; the rest stay. One a
+    // spell aims at keeps its place (the scene slides it half out of its tray, or its Ranks): it takes none of its own,
+    // so nothing on its page refits.
+    const acts = (c: BoardCard) => fighting.has(c.id);
     const f = g.filter(acts), rest = g.filter((c) => !acts(c));
     if (!f.length) return [draft("c", g, "creature")];
     if (g.length === 1) return [draft("c", g, "creature", true)];
@@ -86,9 +88,11 @@ function classify(bf: readonly BoardCard[], hosts: ReadonlySet<CardId>, me: bool
     return [...home, ...fighterDrafts(f, combat)];
   });
 
+  // Their support is one fan of its real cards in their small band; mine lie by kind.
+  const support = bf.filter((c) => !c.creature && !c.planeswalker && !isMana(c)).sort(arrived);
   const S = [
     ...bf.filter((c) => c.planeswalker && !c.creature).sort(arrived).map((c) => draft("w", [c], "walker")),
-    ...kinGroups(bf.filter((c) => !c.creature && !c.planeswalker && !isMana(c)).sort(arrived), hosts).map((g) => draft("s", g, "support")),
+    ...(me ? kinGroups(support, hosts).map((g) => draft("s", g, "support")) : support.length ? [draft("s", readyFirst(support), "support")] : []),
   ];
 
   const mana = bf.filter(isMana).sort(arrived), L: Draft[] = [];
@@ -110,7 +114,7 @@ function classify(bf: readonly BoardCard[], hosts: ReadonlySet<CardId>, me: bool
  * the commander; anything wearing an Aura or Equipment; legendary creatures; a keyword that changes combat; the biggest
  * bodies; ready before tapped.
  */
-function standing(c: BoardCard, hosts: ReadonlySet<CardId>): number {
+function standingWorth(c: BoardCard, hosts: ReadonlySet<CardId>): number {
   return (
     (c.commander ? 1e6 : 0) +
     (hosts.has(c.id) ? 5e5 : 0) +
@@ -123,41 +127,58 @@ function standing(c: BoardCard, hosts: ReadonlySet<CardId>): number {
 }
 
 /**
- * Fold creatures into `cap` places: trays and fighters keep theirs; the single creatures that stand out least join one
- * Ranks tray (tapped and smallest first), which takes the place of the first of them to arrive. Where trays alone
- * outnumber the places, the smallest trays join it too.
+ * Fold creatures into `cap` places, `perRow` to a row. Theirs: the standouts stand in the front row (at most a row of
+ * them) and the trays lie behind; the single creatures that stand out least join one Ranks tray, and where trays alone
+ * outnumber the places, the smallest trays join it too. A swarm keeps its tray before a single keeps its place; nothing
+ * but creatures ever takes a creature place. Mine fold my token swarms first. Fighters keep their places.
  */
 const foldC =
   (cards: Cards, hosts: ReadonlySet<CardId>, me: boolean, offered: ReadonlySet<CardId>) =>
-  (units: Draft[], cap: number): Draft[] => {
+  (units: Draft[], cap: number, perRow: number): Draft[] => {
     const fights = units.filter((u) => u.fight), rest = units.filter((u) => !u.fight);
     const room = Math.max(1, cap - fights.length);
-    if (rest.length <= room) return units;
+    const single = (u: Draft) => u.ids.length === 1, rows = Math.max(1, Math.round(cap / Math.max(1, perRow)));
+    const standing = (us: readonly Draft[]) => us.filter(single).length;
+    // (Theirs, in two rows: what stands takes the front row, what lies the back.)
+    const order = (us: Draft[]): Draft[] => (me || rows < 2 ? us : [...us.filter((u) => single(u) && !u.fight), ...us.filter((u) => !single(u) || u.fight)]);
+    if (rest.length <= room && (me || rows < 2 || standing(rest) <= perRow)) return order(units);
     // (Theirs: the commander first, then the trays, then the standouts. Mine: my own creatures before my token swarms,
-    // which I know by their dice; past my front line they lie in my Ranks.)
+    // which I know by their dice; past my front line they lie in my Ranks. A card a decision offers steps out of the
+    // Ranks while it is offered, so a tap on the table reaches it.)
     const tray = (u: Draft) => (me ? u.ids.length : 1e7 + u.ids.length);
-    // (A card a decision offers steps out of the Ranks while it is offered, so a tap on the table reaches it.)
     const worth = (u: Draft): number =>
-      cards.need(u.rep).commander ? 1e8 : u.ids.length > 1 ? tray(u) : offered.has(u.rep) ? 5e7 : standing(cards.need(u.rep), hosts);
+      cards.need(u.rep).commander ? 1e8 : u.ids.length > 1 ? tray(u) : offered.has(u.rep) ? 5e7 : standingWorth(cards.need(u.rep), hosts);
     const ranked = rest.slice().sort((a, b) => worth(b) - worth(a));
-    const kept = new Set(ranked.slice(0, room - 1)), folded = rest.filter((u) => !kept.has(u));
+    const kept = new Set<Draft>();
+    let stood = 0;
+    for (const u of ranked) {
+      if (kept.size >= room - 1) break;
+      if (single(u) && !me && rows > 1 && stood >= perRow) continue;
+      kept.add(u);
+      if (single(u)) stood++;
+    }
+    const folded = rest.filter((u) => !kept.has(u));
+    if (folded.length === 1) return order(units); // (one left over takes the place a Ranks would)
     const cs = readyFirst(folded.flatMap((u) => u.ids).map((id) => cards.need(id)));
     const ranks: Draft = { key: "r" + Math.min(...cs.map((c) => c.id)), ids: cs.map((c) => c.id), rep: cs[0]!.id, role: "creature", title: `Ranks ${cs.length}`, mixed: true };
     const at = units.indexOf(folded[0]!);
     const out = units.filter((u) => u.fight || kept.has(u));
     out.splice(Math.min(at, out.length), 0, ranks);
-    return out;
+    return order(out);
   };
 
 /** What a stack's top card is: the card itself where every member is one kind, else a tally card. */
-function topOf(role: UnitRole, cs: readonly BoardCard[], theirWell: boolean): TrayTop {
-  if (role === "mana") {
-    if (theirWell) return "mana";
-    if (new Set(cs.map((c) => c.cardKey)).size === 1) return "card";
-    return cs.every((c) => c.manaRock) ? "rocks" : cs.every((c) => c.land) ? "lands" : "mana";
-  }
-  if (new Set(cs.map((c) => c.kin)).size === 1) return "card";
-  return role === "creature" ? "ranks" : "others";
+/** What a stack's top card is: a real card (mana shows its commonest), or the Ranks tally where creatures are unlike. */
+function topOf(role: UnitRole, cs: readonly BoardCard[]): TrayTop {
+  if (role === "mana" || new Set(cs.map((c) => c.kin)).size === 1) return "card";
+  return "ranks";
+}
+
+/** Mana's ready cards, its commonest kind first (the card it shows on top), then tapped the same way. */
+function commonestFirst(cs: readonly BoardCard[]): BoardCard[] {
+  const n = new Map<string, number>();
+  for (const c of cs) n.set(c.cardKey, (n.get(c.cardKey) ?? 0) + 1);
+  return cs.slice().sort((a, b) => (n.get(b.cardKey) ?? 0) - (n.get(a.cardKey) ?? 0) || Number(b.land) - Number(a.land) || a.id - b.id);
 }
 
 /** The lip's words and icons: total power, then each keyword with how many have it (no count when all do). */
@@ -171,24 +192,46 @@ function lipOf(cs: readonly BoardCard[], top: TrayTop): Pick<Tray, "lip" | "lipI
   return { lip: power > 0 || top === "ranks" ? `${power} power` : null, lipIcons };
 }
 
-/** Each unit's posture and tray: standouts stand ready and lie turned when tapped; stacks, support and mana lie flat. */
+/** Each unit's posture and what it lies as: standouts stand; a tapped one lies spent (theirs) or turned (mine); a swarm,
+ * Ranks or mana lies on a tray; support of several lies as a fan of its real cards. */
 function finish(d: Draft, u: Unit, cards: Cards, input: SeatInput): Unit {
-  const cs = u.members.map((id) => cards.need(id));
+  const cs = u.members.map((id) => cards.need(id)), me = input.board.mine;
+  const flat = { ...u.placement, posture: "flat" as const };
   if (cs.length < 2) {
-    const stand = u.role === "creature" && (!u.tapped || u.acting);
-    if (stand || u.role !== "creature") return { ...u, placement: { ...u.placement, posture: stand ? "stand" : "flat", ...(stand ? { lean: STAND_LEAN } : {}) } };
-    // Tapped, it lies turned in its place where its narrow side, foreshortened, still meets its floor; where it would not,
-    // it stands turned in its foot, as a tapped standee does (floors come first: lying larger, it would meet its
-    // neighbours).
-    const floor = input.board.mine ? FLOOR.mine : FLOOR.theirs, g = makeGeo(input.projector, input.reserve, floor);
+    if (u.role === "creature" && (!u.tapped || u.acting)) return { ...u, placement: { ...u.placement, posture: "stand", lean: STAND_LEAN } };
+    // Theirs lie spent where they stand, shaded and a little turned: their places are a card wide, not a turned card's.
+    if (!me) return { ...u, tapped: false, ...(u.tapped ? { spent: true } : {}), placement: flat };
+    if (u.role !== "creature") return { ...u, placement: flat };
+    // Mine: tapped, it lies turned in its place where its narrow side, foreshortened, still meets its floor; where it
+    // would not, it stands turned in its foot, as a tapped standee does.
+    const floor = FLOOR.mine, g = makeGeo(input.projector, input.reserve, floor);
     const lies = floorScale(g, u.placement.pos, floor, true, u.placement.scale) <= u.placement.scale + 1e-6;
     return { ...u, placement: { ...u.placement, posture: lies ? "flat" : "stand", ...(lies ? {} : { lean: STAND_LEAN }) } };
   }
+  if (u.role === "support" || u.role === "walker") {
+    // A fan of its real cards, ready first: one group, opened by a tap.
+    const members = readyFirst(cs).map((c) => c.id);
+    return {
+      ...u,
+      kind: "pile",
+      members,
+      top: members[0]!,
+      title: null,
+      mixed: new Set(cs.map((c) => c.cardKey)).size > 1,
+      tapped: false,
+      fan: true,
+      footprint: { w: me ? FAN_W.mine : FAN_W.theirs, front: -0.03, back: CH + 0.05 },
+      placement: flat,
+    };
+  }
   // (A detachment's attackers go together under one bone die, tapped by attacking or not.)
   const detached = !!d.fight && d.key.startsWith("d");
-  const ready = detached ? [...cs] : cs.filter((c) => !c.tapped), tapped = detached ? [] : cs.filter((c) => c.tapped);
-  const top = topOf(u.role, cs, !!d.lands);
+  const order = u.role === "mana" ? commonestFirst : (x: readonly BoardCard[]) => [...x];
+  const ready = order(detached ? [...cs] : cs.filter((c) => !c.tapped)), tapped = order(detached ? [] : cs.filter((c) => c.tapped));
+  const top = topOf(u.role, cs);
   const members = [...ready, ...tapped].map((c) => c.id);
+  // (Their mana is one small stack of real lands, the commonest on top, its dice side by side: no band behind it.)
+  const stack = u.role === "mana" && !me;
   const tray: Tray = {
     ready: ready.map((c) => c.id),
     tapped: tapped.map((c) => c.id),
@@ -196,6 +239,7 @@ function finish(d: Draft, u: Unit, cards: Cards, input: SeatInput): Unit {
     ...lipOf(cs, top),
     summary: top === "card" ? null : summarize(cs),
     ...(detached ? { detachment: true } : {}),
+    ...(stack ? { stack: true } : {}),
   };
   return {
     ...u,
@@ -204,11 +248,17 @@ function finish(d: Draft, u: Unit, cards: Cards, input: SeatInput): Unit {
     top: members[0]!,
     title: null,
     mixed: top !== "card",
-    tapped: ready.length === 0,
-    placement: { ...u.placement, posture: "flat" },
+    tapped: false,
+    placement: flat,
     tray,
+    footprint: stack
+      ? { w: TRAY_PRINT.w, front: -TRAY_PRINT.rim, back: CH + TRAY_PRINT.rim }
+      : { w: TRAY_PRINT.w, front: TRAY_PRINT.front, back: detached ? TRAY_PRINT.detached : TRAY_PRINT.back },
   };
 }
+
+/** How wide a fan of support spreads: theirs within its wide place, mine within a card's. */
+const FAN_W = { theirs: 1.4, mine: 0.84 } as const;
 
 function summarize(cs: readonly BoardCard[]): Tray["summary"] {
   const kw = new Map<string, number>();
@@ -237,13 +287,16 @@ const band =
   (k, me, px) => {
     const b = bandSpec(k, me, g.pitch, px);
     // (Theirs start where a tray's lip lies at a standee's foot: what stands in front of the row keeps clear of it.)
-    if (k === "C") return me ? b : { ...b, lead: b.lead - TRAY_PRINT.front, step: Math.max(b.step, TRAY_D), tall: 1.04 };
-    if (k === "S") return me ? { ...b, flat: true } : { ...b, flat: true, lying: true, lead: -TRAY_PRINT.front, first: TRAY_D + 0.1, step: TRAY_D + 0.1 };
-    // (Their one Mana tray lies at the end of their support row: as deep as a tray from its foot.)
-    return me ? { ...b, flat: true } : { ...b, flat: true, lying: true, lead: -TRAY_PRINT.front, first: TRAY_PRINT.back - TRAY_PRINT.front };
+    // (Their places are a tray wide, a card and its rim: what lies tapped there lies spent, never turned.)
+    // (Their standouts stand in the front row and their trays lie in the back row: it reaches a tray's depth behind its foot.)
+    if (k === "C") return me ? b : { ...b, per: TRAY_PRINT.w + 0.06, lead: b.lead - TRAY_PRINT.front / 2, step: Math.max(b.step, TRAY_D), tall: 1.04, tallLast: 1.14, upright: true, backLying: TRAY_PRINT.back };
+    // Their small band behind the creatures: support fanned and walkers lying, at any card's floor, measured upright.
+    if (k === "S") return me ? { ...b, flat: true } : { ...b, flat: true, lying: true, upright: true, lead: 0.08, first: 0.08 + CH + 0.05, step: CH + 0.2, per: FAN_W.theirs + 0.12 };
+    // (Their mana lies at the end of the small band: one stack of real lands on a tray.)
+    return me ? { ...b, flat: true } : { ...b, flat: true, lying: true, upright: true, lead: TRAY_PRINT.rim, first: CH + 2 * TRAY_PRINT.rim };
   };
 
 export const die: SeatLayout = {
   id: "die",
-  plan: (input) => planWith(input, { paradigm: "die", classify, foldC: (cards, hosts, input) => foldC(cards, hosts, input.board.mine, input.offered ?? new Set()), geo: (g) => ({ ...g, lean: STAND_LEAN, band: band(g) }), finish }),
+  plan: (input) => planWith(input, { paradigm: "die", flatZones: true, classify, foldC: (cards, hosts, input) => foldC(cards, hosts, input.board.mine, input.offered ?? new Set()), geo: (g) => ({ ...g, lean: STAND_LEAN, band: band(g) }), finish }),
 };
