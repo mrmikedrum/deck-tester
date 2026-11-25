@@ -1052,12 +1052,14 @@ class SlipView implements PieceView {
   constructor(
     private readonly host: Host,
     v: ActorView,
+    pitch: number,
   ) {
     const d = v.draw as Extract<Draw, { t: "slip" }>;
     this.lease = host.painter.reading(d.spec);
     this.key = canonical(d.spec);
     this.mesh = new Mesh(new PlaneGeometry(d.spec.w, d.spec.d), new MeshBasicMaterial({ map: this.lease.texture, transparent: true, depthWrite: false }));
-    this.mesh.rotation.x = -Math.PI / 2;
+    // (A tally stands square to me, a plaque's way; a slip lies.)
+    this.mesh.rotation.x = d.stand ? -pitch : -Math.PI / 2;
     this.mesh.position.y = 0.004;
     this.mesh.renderOrder = 3; // over the ground's sigils and ash, so its ink reads; a card on it still hides it by depth
     this.group.add(this.mesh);
@@ -1101,7 +1103,7 @@ export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
     case "scrim":
       return new ScrimView(env.host, v);
     case "slip":
-      return new SlipView(env.host, v);
+      return new SlipView(env.host, v, env.pitch);
     case "hidden":
       return null;
   }

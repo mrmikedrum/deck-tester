@@ -135,6 +135,7 @@ export function chipViewsOf(focus: FocusState, model: TableModel | null): ChipVi
   return focus.aside.flatMap((e): ChipView[] => {
     if (e.layer === "stack") return model && model.stack.length ? [{ layer: "stack", label: `Stack ${model.stack.length}` }] : [];
     if (e.layer === "mulligan") return [{ layer: "mulligan", label: "Your opening hand" }];
+    if (e.layer === "clash") return model?.combat ? [{ layer: "clash", label: "Combat" }] : [];
     return [];
   });
 }

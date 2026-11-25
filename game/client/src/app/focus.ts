@@ -39,14 +39,16 @@ export interface FocusState {
   readonly aside: readonly FocusEntry[];
   /** The stack (its items) the stack layer last came up for: a new item brings it up again, even set aside. */
   readonly stackKey: string;
+  /** The combat the clash last came up for (focus-first): a new combat step brings it up again, even set aside. */
+  readonly clashKey?: string;
 }
 
 export const NO_FOCUS_STATE: FocusState = { layers: [], aside: [], stackKey: "" };
 
 /** The table's own layers: under every chrome layer. */
-const TABLE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "lean", "sift"]);
+const TABLE: ReadonlySet<LayerId> = new Set<LayerId>(["clash", "stack", "lean", "sift"]);
 /** Dismissed, these are set aside (a chip restores them) rather than closed. */
-const SET_ASIDE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "mulligan"]);
+const SET_ASIDE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "clash", "mulligan"]);
 
 const tier = (l: LayerId): number => (TABLE.has(l) ? 0 : 1);
 
@@ -110,6 +112,20 @@ export function dismiss(f: FocusState): Dismissal {
   return { focus: SET_ASIDE.has(t.layer) ? setAside(f, t.layer) : close(f, t.layer), play: false };
 }
 
+/**
+ * The combat the clash stands for (focus-first): an attack on me or my planeswalker, or blocks against my attackers, with
+ * its step; empty when no combat involves me.
+ */
+export function clashKeyOf(model: TableModel | null): string {
+  const c = model?.combat;
+  if (!model || !c) return "";
+  const me = model.viewer.perspective;
+  const atMe = c.attackers.some((a) => a.defender && ("seat" in a.defender ? a.defender.seat === me : model.cards.get(a.defender.card)?.controller === me));
+  const mineBlocked = c.blockers.some((b) => model.cards.get(b.attacker)?.controller === me);
+  if (!atMe && !mineBlocked) return "";
+  return [model.phase, c.attackers.map((a) => a.attacker).join(","), c.blockers.map((b) => `${b.blocker}>${b.attacker}`).join(",")].join("|");
+}
+
 /** The stack's identity: its items, in order. Empty when there is no stack. */
 export const stackKeyOf = (model: TableModel | null): string => (model ? model.stack.map((i) => `${i.id}:${i.source ?? ""}`).join(",") : "");
 
@@ -122,7 +138,7 @@ export const stackKeyOf = (model: TableModel | null): string => (model ? model.s
  */
 export function sync(
   f: FocusState,
-  o: { sheet: boolean; mulligan: boolean; stack: string; groups?: (id: string) => boolean; pages?: (id: string) => number },
+  o: { sheet: boolean; mulligan: boolean; stack: string; clash?: string; groups?: (id: string) => boolean; pages?: (id: string) => number },
   restore: string | null,
 ): FocusState {
   let next = f;
@@ -137,6 +153,17 @@ export function sync(
   else if (!o.sheet && isOpen(next, "sheet")) next = close(next, "sheet");
   if (o.mulligan && !isOpen(next, "mulligan") && !isAside(next, "mulligan")) next = open(next, entry("mulligan"));
   else if (!o.mulligan) next = close(next, "mulligan");
+  // The clash (focus-first) comes up for a combat I am in, again at each new step of it, and goes when combat ends. It
+  // sits under the stack (a spell cast in combat takes the table; the clash is back when the stack empties).
+  const ck = o.clash ?? "";
+  if (ck !== (next.clashKey ?? "")) {
+    if (!ck) next = { ...close(next, "clash"), clashKey: "" };
+    else {
+      const e = entry("clash");
+      const base = { ...close(next, "clash"), clashKey: ck };
+      next = { ...base, layers: [e, ...base.layers] };
+    }
+  }
   if (o.stack !== next.stackKey) {
     next = o.stack ? open({ ...next, stackKey: o.stack }, entry("stack")) : { ...close(next, "stack"), stackKey: "" };
   }

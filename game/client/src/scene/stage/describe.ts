@@ -5,10 +5,10 @@
 // the plan put them (keeping that pose as `base`, which taps are measured from): the stack as the focus stands large in
 // the middle (the plan's `stackUp`), a lean-in carries one seat's page up over the middle (layout `leanOf`), and a sift
 // fans a pile's cards out in front of the camera (layout `siftOf`).
-import { abilityText, entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
+import { abilityText, entryText, isCreature, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
-import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
+import { CLASH, SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { seatReading } from "../../narrative";
@@ -69,6 +69,8 @@ export function describe(input: DescribeInput): Description {
   // Focus-first's spread is the plan's own (the seat's sheet is in `plan.seats`): no lean-in carries it.
   const spread = plan.spread !== null && leanSeat === plan.spread ? plan.spread : null;
   const lean: Lean | null = leanSeat && !spread ? leanOf(plan, leanSeat) : null;
+  // Focus-first's clash: the combat as the table's focus (its fighters' placements are the plan's).
+  const clash = table?.layer === "clash" && plan.clash && !stackUp;
   const sifting = table?.layer === "sift" && table.group !== null ? table.group : null;
   /** A pose carried by the lean-in: the leaning seat's things up over the middle, the page across slid aside. */
   const leaned = (seat: SeatId, p: Pose, yawed = false): Pose | null => {
@@ -126,7 +128,9 @@ export function describe(input: DescribeInput): Description {
     const rows = mine ? wellRows(sp.units) : new Map<string, { alt: boolean; small: boolean }>();
     for (const u of sp.units) {
       const dim = dimOf(seat);
-      const off = fighting && !u.fighting ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
+      // (In the clash, my creatures that may still block stay lit in their places.)
+      const ready = clash && mine && u.role === "creature" && !u.tapped;
+      const off = fighting && !u.fighting && !ready ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
       const piece = unitPiece(input, seat, u, mine, Math.max(dim, off), lookOf, markOf, rows.get(u.id));
       // Leaned in, a card grows where it stands (about its foot) as well as with its page; taps are still measured from
       // where the plan put it.
@@ -327,6 +331,18 @@ export function describe(input: DescribeInput): Description {
   const above = new Set<string>();
   // A spread lays the same scrim, and its sheet, its cards and every plaque stand above it.
   if (spread) for (const p of pieces.values()) if (p.seat === spread || p.kind === "plate") above.add(p.id);
+  // The clash: the fighters, my creatures that may still act (untapped, in their places), the plaques and the tally.
+  if (clash) {
+    for (const p of pieces.values()) {
+      const c = p.face !== null ? model.cards.get(p.face) : undefined;
+      if (p.fight || p.kind === "plate" || (p.seat === me && p.kind === "unit" && c && isCreature(c) && !c.tapped)) above.add(p.id);
+    }
+    const t = tallyOf(model, plan, cues);
+    if (t) {
+      pieces.set(t.id, t);
+      above.add(t.id);
+    }
+  }
   if (stackUp) {
     for (const id of pieces.keys()) if (id.startsWith("stack:")) above.add(id);
     for (const a of aims) above.add(a.to);
@@ -337,9 +353,50 @@ export function describe(input: DescribeInput): Description {
     lanes: lean ? [] : lanesOf(model, plan, cues, pieces),
     aims,
     tableTone: sifting ? DIM.table : 1,
-    scrim: stackUp ? SCRIM.alpha : spread ? SCRIM.alpha * 0.85 : 0,
+    scrim: stackUp ? SCRIM.alpha : spread || clash ? SCRIM.alpha * 0.85 : 0,
     above,
     perspective: me,
+  };
+}
+
+/** The tally (focus-first's clash): how much is coming at me, and once blocks stand, how much is unblocked; for my own
+ *  attack, at whom. A slip standing over the clash, beside the log strip, under the plate rail's middle. */
+function tallyOf(model: TableModel, plan: TablePlan, cues: BoardCues): Piece | null {
+  const combat = mergeCombat(engineCombat(model), cues.combat);
+  if (!combat || !combat.attacks.length) return null;
+  const me = model.viewer.perspective;
+  const pow = (id: CardId) => Math.max(0, model.cards.get(id)?.power ?? 0);
+  const blocked = new Set(combat.blocks.map((b) => b.attacker));
+  const atMe = combat.attacks.filter((a) => ("seat" in a.defender ? a.defender.seat === me : model.cards.get(a.defender.card)?.controller === me));
+  let text: string;
+  if (atMe.length) {
+    const all = atMe.reduce((t, a) => t + pow(a.attacker), 0);
+    text = blocked.size ? `${atMe.filter((a) => !blocked.has(a.attacker)).reduce((t, a) => t + pow(a.attacker), 0)} unblocked` : `${all} at you`;
+  } else {
+    const by = new Map<string, number>();
+    for (const a of combat.attacks) {
+      if (blocked.has(a.attacker)) continue;
+      const who = "seat" in a.defender ? (model.seat(a.defender.seat)?.name ?? String(a.defender.seat)) : (model.cards.get(a.defender.card)?.face.name ?? "");
+      by.set(who, (by.get(who) ?? 0) + pow(a.attacker));
+    }
+    text = [...by.entries()].map(([who, n]) => `${n} at ${who.split(",")[0]}`).join(" · ") || "all blocked";
+  }
+  const u = Math.min(plan.viewport.w / 1180, plan.viewport.h / 820);
+  const pos = plan.projector.onTable(CLASH.tally.x * u, CLASH.tally.y * u, 0.6);
+  const spec = { lines: [{ text, tone: "ink" as const }], colour: "#b08a4a", w: 2.6, d: 0.9 };
+  return {
+    id: "tally",
+    kind: "slip",
+    seat: null,
+    members: [],
+    face: null,
+    pose: { pos, rx: 0, ry: 0, s: 1 },
+    look: LOOK,
+    form: "tally",
+    mods: text,
+    mark: null,
+    draw: { t: "slip", spec, stand: true },
+    needsMembers: false,
   };
 }
 

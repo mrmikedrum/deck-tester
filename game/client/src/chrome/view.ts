@@ -50,7 +50,7 @@ export interface CardLook {
 }
 
 /** The focus layers (the app's focus stack): the table's own (the stack, a lean-in, a sift) and the chrome's. */
-export type ChromeLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses";
+export type ChromeLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses";
 
 /** An open layer, bottom first: where keyboard focus returns when it goes (a control's `data-fk`). */
 export interface LayerView {

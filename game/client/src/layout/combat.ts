@@ -384,3 +384,108 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
   return out;
 }
 
+
+// ---- the clash (focus-first) ----------------------------------------------------------------------------------------
+
+/** The clash's rows on screen (design px): the far row's feet, the gap to the near row's tops, the span across, and the
+ *  largest face width. Under the plate rail, over my own creatures' tops. */
+export const CLASH = { farFoot: 272, gap: 10, l: 34, r: 1146, max: 108, between: 12, fan: 0.32, tally: { x: 640, y: 64 } } as const;
+
+/**
+ * A combat as the table's focus (focus-first's clash): the fighters come to the floor at its scale, one column for each
+ * attack: the side that is not mine in the far row (their attackers, or the blockers set against mine), mine in the near
+ * row toe to toe with them. As large as the span allows, up to CLASH.max. The units keep their ids, so each walks from
+ * its place to its place in the clash. Null when nothing fights.
+ */
+export function clashRow(plans: readonly SeatPlan[], combat: CombatPairs, perspective: SeatId, proj: Projector, g: Geo, like: (id: CardId) => string): SeatPlan[] | null {
+  const units = fightUnits(plans, fighters(combat));
+  if (!units.size) return null;
+  const u = g.u, mine = (id: CardId) => units.get(id)?.seat === perspective;
+  // Columns, in the order the attackers stood: who attacks me first.
+  const cols: { far: Unit[]; near: Unit[]; fan?: true }[] = [];
+  const used = new Set<string>();
+  const add = (list: Unit[], id: CardId) => {
+    const f = units.get(id);
+    if (f && !used.has(f.unit.id)) {
+      used.add(f.unit.id);
+      list.push(f.unit);
+    }
+  };
+  const attacks = [...combat.attacks].sort(
+    (a, b) => Number("seat" in b.defender && b.defender.seat === perspective) - Number("seat" in a.defender && a.defender.seat === perspective) || proj.project(units.get(a.attacker)?.unit.placement.pos ?? { x: 0, y: 0, z: 0 }).x - proj.project(units.get(b.attacker)?.unit.placement.pos ?? { x: 0, y: 0, z: 0 }).x,
+  );
+  // Identical unblocked attackers stand as one fanned column (every edge showing, so the count is seen).
+  const fans = new Map<string, { far: Unit[]; near: Unit[]; fan: true }>();
+  for (const a of attacks) {
+    const col = { far: [] as Unit[], near: [] as Unit[] };
+    const side = (id: CardId) => (mine(id) ? col.near : col.far);
+    const blocked = combat.blocks.some((b) => b.attacker === a.attacker);
+    if (!blocked) {
+      const fu = units.get(a.attacker);
+      const key = `${fu?.seat}|${"seat" in a.defender ? a.defender.seat : a.defender.card}|${fu?.unit.tapped}|${like(a.attacker)}`;
+      const had = fans.get(key);
+      if (had) {
+        add(mine(a.attacker) ? had.near : had.far, a.attacker);
+        continue;
+      }
+      const fc = { ...col, fan: true as const };
+      fans.set(key, fc);
+      add(mine(a.attacker) ? fc.near : fc.far, a.attacker);
+      cols.push(fc);
+      continue;
+    }
+    add(side(a.attacker), a.attacker);
+    for (const b of combat.blocks) if (b.attacker === a.attacker) add(side(b.blocker), b.blocker);
+    if (col.far.length || col.near.length) cols.push(col);
+  }
+  if (!cols.length) return null;
+  const f = (un: Unit) => (un.tapped ? CH / CW : 1);
+  // A fan's width: one card and a strip of each other.
+  const rowW = (list: Unit[], fan: boolean) => (fan && list.length ? f(list[0]!) * (1 + CLASH.fan * (list.length - 1)) : list.reduce((t, x) => t + f(x), 0));
+  const colW = cols.map((c) => Math.max(rowW(c.far, !!c.fan), rowW(c.near, !!c.fan), 1));
+  const units1 = colW.reduce((t, w) => t + w, 0);
+  const w = Math.min(CLASH.max, (CLASH.r - CLASH.l - CLASH.between * (cols.length - 1)) / units1);
+  const total = units1 * w + CLASH.between * (cols.length - 1);
+  // A standing card's height on screen for a face `w` wide where it stands (its own shape: it leans back with the camera).
+  const placeAt = (x: number, footY: number) => {
+    const pos = proj.onTable(x * u, footY * u, 0);
+    const s = floorScale(g, pos, w / 1.09, false, 2);
+    return { pos, scale: s };
+  };
+  const out = new Map<string, Unit>();
+  let x0 = (CLASH.l + CLASH.r) / 2 - total / 2;
+  cols.forEach((c, i) => {
+    const cw = colW[i]! * w;
+    const row = (list: Unit[], footY: number) => {
+      const used = rowW(list, !!c.fan) * w;
+      let x = x0 + (cw - used) / 2;
+      for (const un of list) {
+        const ww = f(un) * w, p = placeAt(x + ww / 2, footY);
+        // (Fanned, each a little nearer than the one before, so each lies over the last and every edge shows.)
+        const pos = c.fan ? { ...p.pos, z: p.pos.z + 0.02 * list.indexOf(un) } : p.pos;
+        out.set(un.id, { ...un, fighting: true, placement: { ...un.placement, pos, scale: p.scale } });
+        x += c.fan ? ww * CLASH.fan : ww;
+      }
+    };
+    row(c.far, CLASH.farFoot);
+    x0 += cw + CLASH.between;
+  });
+  // The near row: its tops a gap under the far row's feet.
+  const pr = placeAt(590, CLASH.farFoot + 100);
+  const top = proj.project({ x: pr.pos.x, y: Math.cos(proj.pitch) * CH * pr.scale, z: pr.pos.z - Math.sin(proj.pitch) * CH * pr.scale }).y / u;
+  const nearFoot = CLASH.farFoot + CLASH.gap + (CLASH.farFoot + 100 - top);
+  x0 = (CLASH.l + CLASH.r) / 2 - total / 2;
+  cols.forEach((c, i) => {
+    const cw = colW[i]! * w;
+    const used = rowW(c.near, !!c.fan) * w;
+    let x = x0 + (cw - used) / 2;
+    for (const un of c.near) {
+      const ww = f(un) * w, p = placeAt(x + ww / 2, nearFoot);
+      const pos = c.fan ? { ...p.pos, z: p.pos.z + 0.02 * c.near.indexOf(un) } : p.pos;
+      out.set(un.id, { ...un, fighting: true, placement: { ...un.placement, pos, scale: p.scale } });
+      x += c.fan ? ww * CLASH.fan : ww;
+    }
+    x0 += cw + CLASH.between;
+  });
+  return plans.map((p) => (p.units.some((x) => out.has(x.id)) ? { ...p, units: p.units.map((x) => out.get(x.id) ?? x) } : p));
+}

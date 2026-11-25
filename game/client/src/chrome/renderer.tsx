@@ -298,6 +298,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
           log: view.logSheet !== null,
           losses: view.losses !== null,
           stack: false,
+          clash: false,
           lean: false,
           sift: false,
         };

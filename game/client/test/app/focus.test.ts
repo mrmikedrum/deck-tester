@@ -14,6 +14,32 @@ import type { Rig } from "./rig";
 const layers = (f: FocusState): string[] => f.layers.map((e) => e.layer);
 const aside = (f: FocusState): string[] => f.aside.map((e) => e.layer);
 
+describe("the clash (focus-first)", () => {
+  const O = { sheet: false, mulligan: false, stack: "" };
+  it("comes up for a combat I am in, under the stack, and again at each new step even set aside", () => {
+    let f = sync(NO_FOCUS_STATE, { ...O, clash: "DECLARE_ATTACKERS|1,2|" }, null);
+    expect(layers(f)).toEqual(["clash"]);
+    f = dismiss(f).focus;
+    expect(layers(f)).toEqual([]);
+    expect(aside(f)).toEqual(["clash"]);
+    // the same step: it stays aside
+    f = sync(f, { ...O, clash: "DECLARE_ATTACKERS|1,2|" }, null);
+    expect(layers(f)).toEqual([]);
+    // blocks declared: a new step, up again
+    f = sync(f, { ...O, clash: "DECLARE_BLOCKERS|1,2|3>1" }, null);
+    expect(layers(f)).toEqual(["clash"]);
+    // a spell cast in combat takes the table; the clash is back when the stack empties
+    f = sync(f, { ...O, stack: "9:9", clash: "DECLARE_BLOCKERS|1,2|3>1" }, null);
+    expect(layers(f)).toEqual(["clash", "stack"]);
+    f = sync(f, { ...O, clash: "DECLARE_BLOCKERS|1,2|3>1" }, null);
+    expect(layers(f)).toEqual(["clash"]);
+    // combat over: gone
+    f = sync(f, { ...O, clash: "" }, null);
+    expect(layers(f)).toEqual([]);
+    expect(aside(f)).toEqual([]);
+  });
+});
+
 describe("the focus stack", () => {
   it("a new layer goes on top of its tier: the table's (stack, lean, sift) always under the chrome's", () => {
     let f = open(NO_FOCUS_STATE, entry("inspector", { card: 7 as CardId }));

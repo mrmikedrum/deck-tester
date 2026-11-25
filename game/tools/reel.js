@@ -193,7 +193,12 @@ const AUDIT_NEW = step => {
     for (const u of sp.units) role.set(u.id, u.role);
     if (sp.fixtures.commander) role.set("command:" + sp.seat, "commander");
   }
-  const up = Object.entries(faces).filter(([, f]) => f.kind === "stack" && f.up && f.visible).map(([id]) => id), stackUp = up.length > 0;
+  // Focus-first's focuses are set aside like the stack held up: the clash's fighters, and a spread's sheet (the opening of
+  // that seat's piles, so its leaf's piles count as opened, not hidden).
+  const focusIds = new Set();
+  if (plan.clash) for (const sp of plan.seats.values()) for (const u of sp.units) if (u.fighting) focusIds.add(u.id);
+  if (plan.spread && plan.seats.get(plan.spread)) for (const u of plan.seats.get(plan.spread).units) focusIds.add(u.id);
+  const up = Object.entries(faces).filter(([id, f]) => f.visible && ((f.kind === "stack" && f.up) || focusIds.has(id))).map(([id]) => id), stackUp = up.some(id => faces[id].kind === "stack");
   const aimed = new Set(stackUp ? ((state.model || {}).stack || []).flatMap(st => (st.targets || []).map(t => (t && typeof t === "object" ? t.card : t)).filter(c => typeof c === "number")) : []);
   const panel = el => { const a = el && el.closest("[data-audit]"); if (a) return "panel:" + a.dataset.audit; const c = el && el.closest("[class]"); return "panel:" + (c ? String(c.className).split(" ")[0] : el ? el.tagName.toLowerCase() : "?"); };
   const owned = new Map();   // piece id -> the grid cells a tap there reaches it

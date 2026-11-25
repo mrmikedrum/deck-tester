@@ -25,9 +25,9 @@ export interface MomentView {
 /** The app's focus layers (app/focus `LayerId`), the top one with its subject: `seat` for a lean-in, `group` for a sift,
  * `card` for the inspector. The table's own layers are the stack, a lean-in and a sift; the rest are the chrome's
  * (a sheet, the inspector, the mulligan, the Game menu, the hand's list), drawn over the table. */
-export type FocusLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand";
+export type FocusLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand";
 /** The table's own layers: always under the chrome's. */
-export type TableLayerId = "stack" | "lean" | "sift";
+export type TableLayerId = "stack" | "clash" | "lean" | "sift";
 /** A table layer open in the focus stack, with its subject. */
 export interface TableLayer {
   readonly layer: TableLayerId;
@@ -248,7 +248,7 @@ export type Draw =
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
   | { readonly t: "hidden" }
   /** A leaf's slip (focus-first): its lines, lying on the table under the page's near edge. */
-  | { readonly t: "slip"; readonly spec: ReadingSpec }
+  | { readonly t: "slip"; readonly spec: ReadingSpec; readonly stand?: boolean }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
   | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }
   /** The shade a sift lays over the table, and the vellum behind its cards (a screen rect, CSS px). */

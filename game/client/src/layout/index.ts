@@ -12,7 +12,7 @@ export { front, LEAF } from "./seat/front";
 export { planSeat, auditSeat, planTable, hitTest, summarize } from "./plan";
 export { STACK_POSE } from "./plan";
 export { tableInputOf } from "./table-input";
-export { combatLanes, engineCombat, fighters, mergeCombat } from "./combat";
+export { CLASH, clashRow, combatLanes, engineCombat, fighters, mergeCombat } from "./combat";
 export type { CombatPairs, LaneEnd, LaneSpec } from "./combat";
 export type { TableInputOptions } from "./table-input";
 export type { PlanSeatOptions, StackEntry, StackAtRest, TableInput, GroupKind, HitGroup, HitGroups, TablePlan } from "./plan";

@@ -35,9 +35,14 @@ export function spreadOf(s: AppState): SeatId | null {
   return s.paradigm === "front" ? (s.focus.layers.find((e) => e.layer === "lean")?.seat ?? null) : null;
 }
 
+/** Focus-first: the combat is the table's focus while the clash layer is open (not set aside), and no look is over it. */
+export function clashOf(s: AppState): boolean {
+  return s.paradigm === "front" && s.focus.layers.some((e) => e.layer === "clash") && spreadOf(s) === null;
+}
+
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
   const { w, h, safe } = s.viewport;
-  return `${s.paradigm}|${spreadOf(s) ?? ""}|${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
+  return `${s.paradigm}|${spreadOf(s) ?? ""}|${clashOf(s) ? "clash" : ""}|${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
 }
 
 export interface Replanned {
@@ -64,6 +69,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
   try {
     const plan = planTable({
       spread: spreadOf(s),
+      clash: clashOf(s),
       ...tableInputOf(model, {
         viewport: { w: s.viewport.w, h: s.viewport.h },
         safe: s.viewport.safe,

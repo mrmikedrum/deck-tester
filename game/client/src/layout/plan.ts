@@ -7,7 +7,7 @@ import type { ChromeMode, Reservations } from "./reservations";
 import type { LayoutMemory, SeatInput, SeatLayout, SeatPlan, Summary, Unit } from "./seat";
 import { Ledger } from "./ledger";
 import { mat } from "./seat/mat";
-import { combatRow, fighters, rowUnits } from "./combat";
+import { clashRow, combatRow, fighters, rowUnits } from "./combat";
 import type { CombatPairs } from "./combat";
 import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry";
 import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
@@ -162,6 +162,8 @@ export interface TableInput {
   readonly paradigm?: Paradigm;
   /** Focus-first: the seat whose leaf is spread over the table (a look), or none. */
   readonly spread?: SeatId | null;
+  /** Focus-first: the combat is the table's focus (the clash): its fighters stand large on the floor. */
+  readonly clash?: boolean;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
 }
@@ -217,6 +219,8 @@ export interface TablePlan {
   readonly paradigm: Paradigm;
   /** The seat spread over the table (its plan in `seats` is the sheet's), or null. */
   readonly spread: SeatId | null;
+  /** The combat stands as the clash (its fighters' placements are the clash's). */
+  readonly clash: boolean;
 }
 
 function fnv(s: string): number {
@@ -281,9 +285,22 @@ export function planTable(input: TableInput): TablePlan {
     if (!moved) break;
     c = compose();
   }
-  const final = c.placed;
+  let final = c.placed;
+  let shapes = c.shapes;
+  // The clash (focus-first): a combat I am in as the table's focus. Its fighters stand at the floor's scale under the
+  // plate rail, over everything but the plates; the audit stays the table's at rest (the focus set aside).
+  let clashUp = false;
+  if (input.clash && combat && paradigm === "front" && !input.spread) {
+    const look = new Map(input.seats.flatMap((x) => x.board.cards.map((bc) => [bc.id, `${bc.name}|${bc.power}/${bc.toughness}|${bc.token}`] as const)));
+    const cl = clashRow(final, combat, input.seats[0]!.seat, projector, geo, (id) => look.get(id) ?? String(id));
+    if (cl) {
+      final = cl;
+      clashUp = true;
+      const up = rowUnits(cl, fight);
+      shapes = [...cl.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine).map((x) => (up.has(x.group) ? { ...x, order: x.order + SHEET_ORDER } : x))), ...c.stack.map((s) => s.shape)];
+    }
+  }
   const seats = new Map(final.map((p) => [p.seat, p]));
-  const shapes = c.shapes;
   let v = c.v;
   // A stack card the middle has no room for, one off the safe area, or one the audit finds without a patch of its own,
   // has no hit group: a sheet offers it.
@@ -316,7 +333,7 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, paradigm, spread: spreadSeatId };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, paradigm, spread: spreadSeatId, clash: clashUp };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle
