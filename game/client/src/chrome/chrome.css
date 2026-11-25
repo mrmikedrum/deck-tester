@@ -814,8 +814,12 @@
     padding: 0 calc(10 * var(--u));
     font-size: calc(22 * var(--u));
   }
+  /* In the caption's row, not at its corner; still its own positioning box, or its stud fills the whole caption. */
   .l-sift .g-close {
-    position: static;
+    position: relative;
+    top: auto;
+    right: auto;
+    flex: none;
   }
   .l-back {
     pointer-events: auto;
