@@ -185,11 +185,15 @@ class Table {
   }
   async boot(snap) {
     this.queue.push(engineShape(Object.assign({}, clone(snap), { v: ++this.v, error: null })));
+    console.log("[DEBUG-boot] before harness.js:" + new Error().stack.split("\n")[1]);
     await this.page.goto("/" + (process.env.BEHAVIOUR_ENTRY || (NEW ? "index.html" : "live.html")));
     const T0 = Date.now(); const lap = m => process.env.BEHAVIOUR_TIMING && console.log(m, Date.now() - T0);
     if (NEW) {                                               // the scene can draw and the first snapshot is taken
+    console.log("[DEBUG-boot] before harness.js:" + new Error().stack.split("\n")[1]);
       await this.page.waitForFunction(() => window.__deckmaster, null, { timeout: 30000 });
+    console.log("[DEBUG-boot] before harness.js:" + new Error().stack.split("\n")[1]);
       await this.page.evaluate(() => window.__deckmaster.ready);
+    console.log("[DEBUG-boot] before harness.js:" + new Error().stack.split("\n")[1]);
       await this.page.waitForFunction(() => window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
     } else await this.page.waitForFunction(() => window.__h && window.Live && window.Live.snap && window.Live.snap.view, null, { timeout: 30000 });
     lap("ready");
@@ -198,6 +202,7 @@ class Table {
     if (NEW) await this.page.waitForFunction(() => window.__deckmaster.settled(), null, { timeout: 30000 });
     await this.page.evaluate(() => window.__clock.freeze());
     this.frozen = true; this.snapshot = this.queue.length ? null : this.snapshot;
+    console.log("[DEBUG-boot] before harness.js:" + new Error().stack.split("\n")[1]);
     await this.step(1200);
   }
   // Answer the requests held by `hold = true`.
@@ -281,6 +286,10 @@ const test = base.extend({
     const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true, deviceScaleFactor: 1, baseURL: process.env.BEHAVIOUR_BASE });
     const page = await ctx.newPage();
     const t = new Table(page);
+    page.on("console", m => console.log("[DEBUG-boot] console", m.type(), m.text()));
+    page.on("pageerror", e => console.log("[DEBUG-boot] pageerror", e.stack));
+    page.on("requestfailed", r => console.log("[DEBUG-boot] failed", r.url(), r.failure()));
+    page.on("response", r => { if (r.status() >= 400) console.log("[DEBUG-boot] response", r.status(), r.url()); });
     await t.install();
     await t.boot(snapshot("theirs"));
     await use(t);

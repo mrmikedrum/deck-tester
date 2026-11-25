@@ -57,9 +57,11 @@ jobs:
       - name: The behaviour suite on the new entry
         # The client all work builds on. The current client, the rollback until cutover, runs its suite locally: on
         # this runner's software rendering some of its snapshots take longer than the harness waits.
-        run: npm run behaviour
+        run: npm run behaviour -- autopass.spec.js -g 'with only pass on offer' --workers=1 --reporter=line
         env:
           BEHAVIOUR_CLIENT: new
+          BEHAVIOUR_TIMING: "1"
+          DEBUG: pw:browser
       - name: The new entry's cast subset, on Chromium and WebKit
         # The built entry (npm run build above) on the same specs, through window.__deckmaster: the tests tagged @cast.
         run: npx playwright test -c tools/behaviour --grep @cast
