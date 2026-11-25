@@ -54,7 +54,8 @@ same-origin; they aren't in git. A fresh checkout fetches the offline fixtures' 
 
 Mana abilities stay on their permanents as optional controls. They are excluded from All plays/Respond
 counts and do not block automatic passing by themselves. Real responses and targeted threats still
-hold the normal response window. The native mana regression checks empty-priority passing; the UI
-state-machine test checks mana-only auto-continue, real responses, threats and direct mana buttons.
+hold the normal response window. The native mana regression checks empty-priority passing; the behaviour suite
+(`game/tools/behaviour/`, `npm run behaviour` in `game/`) pins what the client sends for every decision, auto-pass and
+Hold included, through real gestures against a mocked bridge.
 
 The look, and the loop that records and judges it, are in [LOOK.md](LOOK.md).

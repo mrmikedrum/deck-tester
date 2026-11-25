@@ -161,6 +161,14 @@ Stills and wall-clock strips missed what was wrong with motion, so review now wo
 - `tools/reel.js` records the clips in `tools/clips.js` on a virtual clock (rAF, `performance.now`, timers and CSS
   animations stepped at 1/30 s), so every frame is captured at true time even under software rendering. Each frame
   also logs every mat's screen outline, size, texture and shade, and every piece's box (`track.json`).
+  `ENTRY=new` records the built new entry (`npx vite build` first) instead, on the scripted transport
+  (`index.html?script`), read only through `window.__deckmaster`; only clips with a new-entry form (`entries`: every clip but `scenarios`) record
+  there, and its track has boxes and page outlines but no textures or shades, and no layout audit. A clip's beats are
+  page script (`js`), a snapshot sent as the bridge would (`push`), or a real gesture (`gesture`: a hand card dragged
+  up, a tap on a card, plate, pile, the stack or the open table, a key); a beat's `new` is its form on the new entry
+  where the current client's is `__h` script (`Live.take` becomes a `push` of the same state, `focusOn` a plate tap). Playback starts at a fixed virtual time with every card image
+  decoded, and on the new entry the clock steps only while no art is loading, so two recordings of a clip are the same
+  frames (hash `frames/`).
 - `tools/packet.js` turns a clip into what a model can see: per beat, a 3×3 sheet of whole-screen frames, a zoomed
   sheet per mat that moved, a trails image (each mat's outline per frame, blue → red) and telemetry flags in plain
   words (jumps, one-frame turns, retextures, stretched images, overlaps).
