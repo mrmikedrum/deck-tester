@@ -333,6 +333,26 @@ describe("my own Sunfall, played compressed", () => {
   });
 });
 
+describe("large loss notices", () => {
+  const recap = (names: string[], tokens: number) => {
+    const losses: State["losses"] = [
+      ...names.map((name) => ({ name, where: "to exile", token: false })),
+      ...Array.from({ length: tokens }, () => ({ name: "Thopter", where: "away", token: true })),
+    ].map((loss, i) => ({ ...loss, id: i, card: i as State["losses"][number]["card"], why: "", wait: null }));
+    return narrative.recapView({ ...narrative.initial, losses, recap: losses.map((loss) => loss.id) })?.title;
+  };
+
+  it("counts cards by destination and tokens when most of the losses are tokens", () => {
+    expect(recap(Array(8).fill("Creature"), 14)).toBe("Lost 22: 8 cards to exile, 14 tokens ›");
+    expect(recap([], 5)).toBe("Lost 5: 5 tokens ›");
+  });
+
+  it("names the first two nontoken cards when most of the losses are cards", () => {
+    expect(recap(["Princess Yue", "Faerie Mastermind", "Whirler Rogue", "Tiller Engine", "Mulldrifter"], 2))
+      .toBe("Lost 7: Princess Yue, Faerie Mastermind +5 ›");
+  });
+});
+
 // ---- resets, releases, recaps, bounds ----------------------------------------------------------------------------
 
 describe("what waits, and for how long", () => {

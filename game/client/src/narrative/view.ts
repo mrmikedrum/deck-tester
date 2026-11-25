@@ -87,7 +87,22 @@ export function recapView(s: State): RecapView | null {
     const where = one.where === "away" ? (one.token ? "token" : "") : one.where.replace(/^to (?:the )?/, "");
     return { title: `Lost: ${one.name}${where ? ` (${where})` : ""} ›`, summary: "" };
   }
-  return { title: `Lost ${settled.length}: ${settled.map((l) => l.name).join(", ")} ›`, summary: "" };
+  let names = settled.map((l) => l.name).join(", ");
+  if (settled.length > 4) {
+    const cards = settled.filter((l) => !l.token);
+    const tokens = settled.length - cards.length;
+    if (tokens > cards.length) {
+      const byDestination = new Map<string, number>();
+      for (const card of cards) byDestination.set(card.where, (byDestination.get(card.where) ?? 0) + 1);
+      const groups = [...byDestination].sort((a, b) => b[1] - a[1]).map(([where, n]) =>
+        `${n} card${n === 1 ? "" : "s"} ${where === "away" ? "gone" : where}`,
+      );
+      names = [...groups, `${tokens} tokens`].join(", ");
+    } else {
+      names = `${cards.slice(0, 2).map((l) => l.name).join(", ")} +${settled.length - 2}`;
+    }
+  }
+  return { title: `Lost ${settled.length}: ${names} ›`, summary: "" };
 }
 
 /** live.js `lostSheet` ("What you lost"): every settled loss this game, newest first. */

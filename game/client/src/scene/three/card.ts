@@ -20,6 +20,7 @@ export interface CardOptions {
   readonly tapped?: boolean;
   readonly token?: boolean;
   readonly dim?: boolean;
+  readonly transparent?: boolean;
 }
 
 export interface CardObject {
@@ -34,17 +35,34 @@ export interface CardObject {
 
 export function createCard(kit: CardKit, face: Texture, opts: CardOptions = {}): CardObject {
   const group = new Group();
-  const edge = new Mesh(kit.geo.edge, [kit.shared.hidden, opts.token ? kit.shared.edgeDark : kit.shared.edge]);
+  const sharedEdge = opts.token ? kit.shared.edgeDark : kit.shared.edge;
+  const edgeMaterial = opts.transparent ? sharedEdge.clone() : sharedEdge;
+  const rearMaterial = opts.transparent ? kit.shared.rear.clone() : kit.shared.rear;
+  const edge = new Mesh(kit.geo.edge, [kit.shared.hidden, edgeMaterial]);
   edge.castShadow = true;
   const material = faceMaterial(face, kit.rim, opts.dim ?? false);
+  if (opts.transparent) {
+    edgeMaterial.transparent = true;
+    rearMaterial.transparent = true;
+    material.transparent = true;
+  }
   const front = new Mesh(kit.geo.face, material);
   front.position.z = card.thickness / 2 + card.faceLift;
-  const rear = new Mesh(kit.geo.face, kit.shared.rear);
+  const rear = new Mesh(kit.geo.face, rearMaterial);
   rear.position.z = -card.thickness / 2 - card.faceLift;
   rear.rotation.y = Math.PI;
   const body = new Group();
   body.rotation.z = opts.tapped ? -Math.PI / 2 : 0;
   body.add(edge, front, rear);
   group.add(body);
-  return { group, body, front, material, dispose: () => material.dispose() };
+  return {
+    group, body, front, material,
+    dispose() {
+      material.dispose();
+      if (opts.transparent) {
+        edgeMaterial.dispose();
+        rearMaterial.dispose();
+      }
+    },
+  };
 }
