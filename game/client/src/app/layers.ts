@@ -170,7 +170,8 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
     group,
     title,
     ...(groups ? { groups } : {}),
-    tapped: all.tapped.filter(Boolean).length,
+    // (A spread of runs counts the cards each stands for.)
+    tapped: all.tapped.reduce((t, x, i) => t + (x ? (all.counts?.[i] ?? 1) : 0), 0),
     page: p,
     pages,
     range: pages > 1 ? `${from + 1}–${to} of ${n}` : null,
