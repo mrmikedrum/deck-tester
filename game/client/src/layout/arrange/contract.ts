@@ -70,8 +70,11 @@ export interface Container {
   readonly viewer: SeatId;
   readonly frame: SurfaceFrame;
   readonly projector: Projector;
-  /** Every other table pose the frame must hold under (§5.3); [] until the template has poses. */
-  readonly poses: readonly Projector[];
+  /**
+   * Every other table pose the arrangement must hold under (§5.3): the mats parting is the frame slid along its `away`
+   * by `shift`, the camera unchanged. Nothing in an arrangement changes with a pose; the audit checks each.
+   */
+  readonly poses: readonly FramePose[];
   readonly layer: Layer;
   /** A presented card's lean from the frame's normal, radians (25°). */
   readonly stand: { readonly lean: number };
@@ -83,6 +86,12 @@ export interface Container {
   readonly growth: { readonly d: readonly number[] } | "fixed";
   readonly entry: EntryId;
   readonly paging: { readonly page: number } | null;
+}
+
+export interface FramePose {
+  readonly id: string;
+  /** World units along the frame's `away` (positive: away from me). */
+  readonly shift: number;
 }
 
 // ---- 1.2 cards, relations, acting -----------------------------------------------------------------------------------
@@ -253,7 +262,17 @@ export interface ArrUnit {
   readonly emphasis: Emphasis | null;
   readonly lit: readonly CardId[];
   readonly acting: boolean;
+  /**
+   * Hidden members that matter, at most two, by the policy's importance: the scene draws them proud of their pile and
+   * lit (designer §4's cue). Their strip is inside the unit's envelope.
+   */
+  readonly notable: readonly { readonly card: CardId; readonly cue: Cue }[];
+  /** Its tier changed with its types: it stands or lies where it was, as its own unit, until the next re-sort. */
+  readonly retyped: boolean;
 }
+
+/** Why a notable member is cued: I can act on it, it can hurt me, it answers the moment, it is new to me. */
+export type Cue = "act" | "threat" | "answer" | "news";
 
 export type PaintItem =
   | { readonly kind: "card"; readonly unit: UnitId; readonly card: CardId }
@@ -331,12 +350,14 @@ export interface Arrangement {
     /** The policy's intent was rejected and `ready-tapped` stood in for this plan. */
     readonly policyInvalid: string | null;
     readonly violations: readonly ArrViolation[];
+    /** The audit under each pose of the container (violations only; nothing was changed for them). */
+    readonly poses: readonly { readonly id: string; readonly violations: readonly ArrViolation[] }[];
   };
   readonly memory: ContainerMemory;
 }
 
 export interface ArrViolation {
-  readonly rule: "floor" | "tap-patch" | "place" | "covers-name" | "covers-foot" | "off-frame";
+  readonly rule: "floor" | "tap-patch" | "place" | "covers-name" | "covers-foot" | "off-screen";
   readonly unit: UnitId;
   readonly measured: number;
   readonly limit: number;
@@ -365,31 +386,51 @@ export interface Group {
   readonly members: readonly CardId[];
   /** Auras and Equipment on its members: they ride with the unit and never stand alone. */
   readonly dressing: readonly CardId[];
-  /** Its members are identical to the eye (copies): it may stack. */
-  readonly copies: boolean;
+  /** Its members may square into one block (copies, or a well of lands): a `stack` step may take it. */
+  readonly stacks: boolean;
+  /** It starts squared, before any fold (their well is one block from its first land). */
+  readonly squared?: boolean;
 }
 
 export interface TierSpec {
   readonly id: TierId;
   readonly posture: "stand" | "lie";
+  /**
+   * How a tapped card shows in it, which sets its slot: a quarter turn (inside the turn horizon: the slot is a card's
+   * height wide) or a notch (a card's width, its corners crossing the gap).
+   */
+  readonly tapped: "quarter" | "notch";
   /** Which row of the container it takes (0 nearest the anchor edge). Tiers sharing a row share it in `fixed` order. */
   readonly row: number;
   /** Units in a fixed order across (the leaf's back: rest, works, lands), by tier. */
   readonly order?: "fixed";
   /** It may hold stacks: reserve the count strip in front of its row. */
   readonly markers?: boolean;
+  /** Its fans may push a notable member proud: reserve that strip behind the row. */
+  readonly proud?: boolean;
 }
 
 /** Which groups a fold step takes. */
 export type Selector =
-  | { readonly tier: TierId; readonly copies?: boolean; readonly tokens?: boolean; readonly spent?: boolean; readonly creatures?: boolean }
+  | {
+      readonly tier?: TierId;
+      /** Groups that may stack and hold two or more. */
+      readonly stacks?: boolean;
+      readonly tokens?: boolean;
+      /** Every member tapped, beside a sibling of the same card with one untapped. */
+      readonly spent?: boolean;
+      readonly creatures?: boolean;
+    }
   | { readonly all: true };
+
+/** Where a demoted group goes: one tier, or by whether it is a creature now. */
+export type DemoteTo = TierId | { readonly creature: TierId; readonly other: TierId };
 
 export type FoldStep =
   | { readonly op: "split-spent"; readonly where: Selector; readonly to: TierId }
   | { readonly op: "stack"; readonly where: Selector }
   | { readonly op: "fan"; readonly where: Selector; readonly show: number }
-  | { readonly op: "demote"; readonly where: Selector; readonly to: TierId }
+  | { readonly op: "demote"; readonly where: Selector; readonly to: DemoteTo }
   | { readonly op: "summary"; readonly where: Selector };
 
 /** What a policy sees beyond the cards: who looks, whose they are, what acts. Never the moment, but where it says so. */
@@ -450,6 +491,13 @@ export interface PolicyMemory {
   readonly tops: Readonly<Record<UnitKey, CardId>>;
   /** The tier each unit stood in at the last plan: a newcomer and a retype are told apart from a stayer. */
   readonly tiers: Readonly<Record<UnitKey, TierId>>;
+  /** The tier each card was seated by (its classification then), only so a card whose types change stays in place
+   *  until the next re-sort; recomputed from current types every plan. */
+  readonly bases: Readonly<Record<string, TierId>>;
+  /** Which unit held each card: lineage across splits and merges. */
+  readonly held: Readonly<Record<string, UnitKey>>;
+  /** The folds that ran, by edit id: a fold undoes only past its deadband. */
+  readonly folds: readonly string[];
   readonly edits: number;
   readonly tidy: { readonly turn: number; readonly phase: Phase; readonly ranking: readonly UnitKey[] } | null;
 }
