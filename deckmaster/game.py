@@ -34,6 +34,7 @@ CLIENT = GAME / "client"
 DIST = CLIENT / "dist"   # the new client's build, served at /next/
 CACHE = engine.HOME / "cache" / "cards"
 CLIENTLOG = engine.HOME / "clientlog.jsonl"
+BENCH = engine.HOME / "bench"   # the workbench's timing results (game/client/src/scene/workbench/bench.ts)
 UA = {"User-Agent": "deckmaster-game/0.1", "Accept": "application/json"}
 ARGS = None
 
@@ -517,6 +518,34 @@ class ClientLog:
 
 CLIENT_LOG = ClientLog(CLIENTLOG)
 
+
+class BenchResults:
+    """POST /api/bench: a workbench timing run (an iPad on the LAN has no clipboard over plain http), each kept as a
+    JSON file under .deckmaster/bench/, the newest 20."""
+    KEEP = 20
+
+    def __init__(self, folder, clock=time.time):
+        self.folder, self.clock = Path(folder), clock
+        self.lock = threading.Lock()
+
+    def add(self, body):
+        """(HTTP status, reply) for a request body: {rows: [...], ...}."""
+        if not isinstance(body, dict) or not isinstance(body.get("rows"), list):
+            return 400, {"ok": False, "error": "expected the bench page's results: {rows: [...], ...}"}
+        with self.lock:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
+            name, n = f"bench-{stamp}.json", 2
+            while (self.folder / name).exists():
+                name, n = f"bench-{stamp}-{n}.json", n + 1
+            (self.folder / name).write_text(json.dumps(body, indent=1) + "\n")
+            for old in sorted(self.folder.glob("bench-*.json"), key=lambda p: p.stat().st_mtime)[:-self.KEEP]:
+                old.unlink()
+        return 200, {"ok": True, "file": f".deckmaster/bench/{name}"}
+
+
+BENCH_RESULTS = BenchResults(BENCH)
+
 # ---- HTTP ----------------------------------------------------------------------------------------------------------
 
 
@@ -610,6 +639,12 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 return self.send(400, {"ok": False, "error": "not JSON"})
             return self.send(*CLIENT_LOG.add(body))
+        if url.path == "/api/bench":
+            try:
+                body = self.body(n)
+            except ValueError:
+                return self.send(400, {"ok": False, "error": "not JSON"})
+            return self.send(*BENCH_RESULTS.add(body))
         try:
             b = self.body(n)
             if url.path == "/api/answer":

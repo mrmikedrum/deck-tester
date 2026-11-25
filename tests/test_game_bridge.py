@@ -472,6 +472,21 @@ class NextClientServingTest(unittest.TestCase):
             self.assertEqual(s.get("/api/clientlog", "POST", [1, 2])[0], 400)
         self.assertEqual(len(self.log.path.read_text().splitlines()), 2)
 
+    def test_the_bench_endpoint_keeps_each_run_as_a_file(self):
+        bench = game.BenchResults(pathlib.Path(self.tmp.name) / "bench", clock=lambda: 1_700_000_000)
+        with mock.patch.object(game, "BENCH_RESULTS", bench), Server(self.dist, self.log) as s:
+            status, _, data = s.get("/next/api/bench", "POST", {"rows": [{"input": "dense"}], "userAgent": "iPad"})
+            reply = json.loads(data)
+            self.assertEqual((status, reply["ok"]), (200, True))
+            name = pathlib.Path(reply["file"]).name
+            self.assertEqual(json.loads((bench.folder / name).read_text())["rows"], [{"input": "dense"}])
+            second = json.loads(s.get("/api/bench", "POST", {"rows": []})[2])["file"]   # the same second: a new name
+            self.assertNotEqual(pathlib.Path(second).name, name)
+            self.assertEqual(s.get("/api/bench", "POST", {"no": "rows"})[0], 400)
+        bench.KEEP = 1
+        bench.add({"rows": []})
+        self.assertEqual(len(list(bench.folder.glob("bench-*.json"))), 1)
+
     def test_a_bad_content_length_is_refused_and_a_good_one_read_exactly(self):
         body = json.dumps({"entries": [entry()]}).encode()
         with Server(self.dist, self.log) as s:

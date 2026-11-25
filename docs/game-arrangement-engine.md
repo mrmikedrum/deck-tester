@@ -943,10 +943,13 @@ No solver exists to time yet, so this is a gate, not a claim.
   budget.
 
 **How to run it.** Node: `node --no-warnings --experimental-transform-types game/tools/bench-plan.mjs [plans] [--json]`.
-The iPad: on the Mac, `bin/deckmaster game` (it rebuilds the client when stale); on the iPad, open
-`http://<the Mac's address>:8765/next/workbench.html?only=bench` and wait for "Done" (about a minute). The page times
-the same inputs (`scene/workbench/bench-inputs.ts`) with the shadow leaf on and off; Safari's clock is coarse (1 ms),
-so it also reports a batch mean. Send the table or "Copy results".
+The iPad: on the Mac, `bin/deckmaster game` (it rebuilds the client when stale), then open
+`http://<the Mac's address>:8765/next/workbench.html?only=bench`; or, without the game server, build the client
+(`npx vite build` in `game/`) and run `node game/tools/serve.js 8797 --dist --lan`, which prints the address to open.
+Wait for "Done" and press "Send to Mac": the results are kept as a file under `.deckmaster/bench/` and the page names
+it. Over plain http a browser offers no clipboard, so the page also shows the results in a box with "Select all", and
+Copy and Share only where the browser has them. The page times the same inputs and course as Node
+(`scene/workbench/bench-inputs.ts`); Safari's clock is coarse (1 ms), so it also reports a batch mean.
 
 **The iPad, first run (Nov 25)**, before the bench fixes below and the optimizations (ms per `planTable`, median /
 worst; an iPad's browser at 834×1210 @2x, planned at 1180×820):

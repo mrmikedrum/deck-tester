@@ -1,7 +1,9 @@
 // The bench page (`workbench.html?only=bench`): `planTable` timed in this browser on the same named inputs as the Node
 // bench (tools/bench-plan.mjs), with the arrangement engine's shadow leaf on and off. It is how the 8 ms budget is
 // measured on the iPad (docs/game-arrangement-engine.md §7.3): open it there from the Home Screen or Safari, wait for
-// "done", and send the results (Copy, or `window.__bench` through the Web Inspector).
+// "Done", and press "Send to Mac": the results go back to the machine serving the page (POST api/bench, kept under
+// .deckmaster/bench/). Over plain http on the network a browser offers no clipboard or share sheet, so the page also
+// shows the results in a box to select by hand, and offers Copy and Share only where the browser has them.
 import { after, frame, now } from "../../platform";
 import type { TablePlan } from "../../layout";
 import { VIEWPORT, WARM, benchInputs, course, planFrame, planFrameChanged, planMatOnly } from "./bench-inputs";
@@ -106,8 +108,12 @@ export async function bench(root: HTMLElement): Promise<void> {
     <p id="b-status">Loading the inputs…</p>
     <style>#b-table td, #b-table th { padding: 2px 10px; } #b-table th { font-weight: 600; }</style>
     <div style="overflow-x:auto"><table id="b-table" style="border-collapse:collapse;font:14px/1.5 Barlow, sans-serif"></table></div>
-    <p><button id="b-run">Run again</button> <button id="b-copy">Copy results</button></p>
-    <pre id="b-json" style="white-space:pre-wrap;font-size:11px;color:#a69c8b"></pre>`;
+    <p style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <button id="b-send" disabled>Send to Mac</button> <button id="b-select">Select all</button>
+      <button id="b-copy" hidden>Copy</button> <button id="b-share" hidden>Share</button> <button id="b-run">Run again</button>
+      <span id="b-sent" style="color:#a69c8b;font-size:13px"></span>
+    </p>
+    <textarea id="b-json" readonly style="box-sizing:border-box;width:100%;height:40vh;font:11px/1.4 monospace;background:#120b06;color:#d8cfbf;border:1px solid #3b2717;padding:8px"></textarea>`;
   const $ = (id: string) => root.querySelector<HTMLElement>(`#${id}`)!;
   const load = Object.values(design)[0];
   if (!load) throw new Error("the design pass's boards are missing (tests/fixtures/boards/design-pass.json)");
@@ -147,12 +153,40 @@ export async function bench(root: HTMLElement): Promise<void> {
       );
     }
     last = { userAgent: navigator.userAgent, screen: { w: screen.width, h: screen.height, dpr: devicePixelRatio }, viewport: VIEWPORT, clockResolutionMs: res, plansPerInput: PLANS, budgetMs: 8, rows };
-    $("b-json").textContent = JSON.stringify(last, null, 1);
+    (root.querySelector("#b-json") as HTMLTextAreaElement).value = JSON.stringify(last, null, 1);
+    (root.querySelector("#b-send") as HTMLButtonElement).disabled = false;
     (globalThis as { __bench?: unknown }).__bench = last;
     $("b-status").textContent = "Done. Times are ms per planTable; the budget is 8 ms worst case on the dense board and the combat.";
     document.documentElement.dataset["ready"] = "1";
   };
   $("b-run").onclick = () => void run();
-  $("b-copy").onclick = () => void navigator.clipboard?.writeText(JSON.stringify(last, null, 1));
+  const text = () => JSON.stringify(last, null, 1);
+  const said = (t: string) => ($("b-sent").textContent = t);
+  $("b-send").onclick = async () => {
+    said("Sending…");
+    try {
+      // relative: /next/api/bench under the game server, /api/bench under tools/serve.js
+      const r = await fetch("api/bench", { method: "POST", headers: { "Content-Type": "application/json" }, body: text() });
+      const reply = (await r.json()) as { ok?: boolean; file?: string; error?: string };
+      said(r.ok && reply.ok ? `Sent: ${reply.file ?? ""}` : `Not sent: ${reply.error ?? r.status}`);
+    } catch (e) {
+      said(`Not sent: ${e instanceof Error ? e.message : String(e)} (select all and copy instead)`);
+    }
+  };
+  $("b-select").onclick = () => {
+    const t = root.querySelector("#b-json") as HTMLTextAreaElement;
+    t.focus();
+    t.select();
+    t.setSelectionRange(0, t.value.length);
+  };
+  // Only where the browser has them: a secure page (https, localhost) for the clipboard; a share sheet where offered.
+  if (globalThis.isSecureContext && navigator.clipboard) {
+    $("b-copy").hidden = false;
+    $("b-copy").onclick = () => void navigator.clipboard.writeText(text()).then(() => said("Copied"), () => said("Not copied: select all instead"));
+  }
+  if (typeof navigator.share === "function") {
+    $("b-share").hidden = false;
+    $("b-share").onclick = () => void navigator.share({ title: "planTable timings", text: text() }).catch(() => undefined);
+  }
   await run();
 }
