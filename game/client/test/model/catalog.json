@@ -1,0 +1,2216 @@
+{
+"Ancient Tomb": {
+"name": "Ancient Tomb",
+"faces": [
+{
+"name": "Ancient Tomb",
+"cost": "",
+"type": "Land",
+"text": "{T}: Add {C}{C}. This land deals 2 damage to you.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/ancient-tomb.jpg",
+"img": "cache/card/ancient-tomb.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Arcane Denial": {
+"name": "Arcane Denial",
+"faces": [
+{
+"name": "Arcane Denial",
+"cost": "{1}{U}",
+"type": "Instant",
+"text": "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.\nYou draw a card at the beginning of the next turn's upkeep.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/arcane-denial.jpg",
+"img": "cache/card/arcane-denial.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Arcane Signet": {
+"name": "Arcane Signet",
+"faces": [
+{
+"name": "Arcane Signet",
+"cost": "{2}",
+"type": "Artifact",
+"text": "{T}: Add one mana of any color in your commander's color identity.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/arcane-signet.jpg",
+"img": "cache/card/arcane-signet.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Arid Mesa": {
+"name": "Arid Mesa",
+"faces": [
+{
+"name": "Arid Mesa",
+"cost": "",
+"type": "Land",
+"text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/arid-mesa.jpg",
+"img": "cache/card/arid-mesa.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Atraxa, Praetors' Voice": {
+"name": "Atraxa, Praetors' Voice",
+"faces": [
+{
+"name": "Atraxa, Praetors' Voice",
+"cost": "{G}{W}{U}{B}",
+"type": "Legendary Creature — Phyrexian Angel Horror",
+"text": "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "4",
+"toughness": "4",
+"loyalty": null,
+"colors": [
+"B",
+"G",
+"U",
+"W"
+],
+"art": "cache/art/atraxa-praetors-voice.jpg",
+"img": "cache/card/atraxa-praetors-voice.jpg",
+"keywords": [
+"Deathtouch",
+"Flying",
+"Lifelink",
+"Vigilance",
+"Proliferate"
+]
+}
+],
+"produces": [],
+"identity": [
+"B",
+"G",
+"U",
+"W"
+],
+"layout": "normal"
+},
+"Basalt Monolith": {
+"name": "Basalt Monolith",
+"faces": [
+{
+"name": "Basalt Monolith",
+"cost": "{3}",
+"type": "Artifact",
+"text": "This artifact doesn't untap during your untap step.\n{T}: Add {C}{C}{C}.\n{3}: Untap this artifact.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/basalt-monolith.jpg",
+"img": "cache/card/basalt-monolith.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Breeding Pool": {
+"name": "Breeding Pool",
+"faces": [
+{
+"name": "Breeding Pool",
+"cost": "",
+"type": "Land — Forest Island",
+"text": "({T}: Add {G} or {U}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/breeding-pool.jpg",
+"img": "cache/card/breeding-pool.jpg",
+"keywords": []
+}
+],
+"produces": [
+"G",
+"U"
+],
+"identity": [
+"G",
+"U"
+],
+"layout": "normal"
+},
+"Cankerbloom": {
+"name": "Cankerbloom",
+"faces": [
+{
+"name": "Cankerbloom",
+"cost": "{1}{G}",
+"type": "Creature — Phyrexian Fungus",
+"text": "{1}, Sacrifice this creature: Choose one —\n• Destroy target artifact.\n• Destroy target enchantment.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "3",
+"toughness": "2",
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/cankerbloom.jpg",
+"img": "cache/card/cankerbloom.jpg",
+"keywords": [
+"Proliferate"
+]
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Cavern of Souls": {
+"name": "Cavern of Souls",
+"faces": [
+{
+"name": "Cavern of Souls",
+"cost": "",
+"type": "Land",
+"text": "As this land enters, choose a creature type.\n{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a creature spell of the chosen type, and that spell can't be countered.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/cavern-of-souls.jpg",
+"img": "cache/card/cavern-of-souls.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"C",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Chaos Warp": {
+"name": "Chaos Warp",
+"faces": [
+{
+"name": "Chaos Warp",
+"cost": "{2}{R}",
+"type": "Instant",
+"text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"R"
+],
+"art": "cache/art/chaos-warp.jpg",
+"img": "cache/card/chaos-warp.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"R"
+],
+"layout": "normal"
+},
+"City of Traitors": {
+"name": "City of Traitors",
+"faces": [
+{
+"name": "City of Traitors",
+"cost": "",
+"type": "Land",
+"text": "When you play another land, sacrifice this land.\n{T}: Add {C}{C}.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/city-of-traitors.jpg",
+"img": "cache/card/city-of-traitors.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Command Tower": {
+"name": "Command Tower",
+"faces": [
+{
+"name": "Command Tower",
+"cost": "",
+"type": "Land",
+"text": "{T}: Add one mana of any color in your commander's color identity.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/command-tower.jpg",
+"img": "cache/card/command-tower.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Cursed Totem": {
+"name": "Cursed Totem",
+"faces": [
+{
+"name": "Cursed Totem",
+"cost": "{2}",
+"type": "Artifact",
+"text": "Activated abilities of creatures can't be activated.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/cursed-totem.jpg",
+"img": "cache/card/cursed-totem.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Dack Fayden, Helping Hand": {
+"name": "Dack Fayden, Helping Hand",
+"faces": [
+{
+"name": "Dack Fayden, Helping Hand",
+"cost": "{4}{W}{W}",
+"type": "Legendary Creature — Human Advisor",
+"text": "When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen.",
+"power": "4",
+"toughness": "6",
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/dack-fayden-helping-hand.jpg",
+"img": "cache/card/dack-fayden-helping-hand.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Deafening Silence": {
+"name": "Deafening Silence",
+"faces": [
+{
+"name": "Deafening Silence",
+"cost": "{W}",
+"type": "Enchantment",
+"text": "Each player can't cast more than one noncreature spell each turn.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/deafening-silence.jpg",
+"img": "cache/card/deafening-silence.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Evolution Sage": {
+"name": "Evolution Sage",
+"faces": [
+{
+"name": "Evolution Sage",
+"cost": "{2}{G}",
+"type": "Creature — Elf Druid",
+"text": "Landfall — Whenever a land you control enters, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "3",
+"toughness": "2",
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/evolution-sage.jpg",
+"img": "cache/card/evolution-sage.jpg",
+"keywords": [
+"Proliferate",
+"Landfall"
+]
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Fabled Passage": {
+"name": "Fabled Passage",
+"faces": [
+{
+"name": "Fabled Passage",
+"cost": "",
+"type": "Land",
+"text": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/fabled-passage.jpg",
+"img": "cache/card/fabled-passage.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Faerie Mastermind": {
+"name": "Faerie Mastermind",
+"faces": [
+{
+"name": "Faerie Mastermind",
+"cost": "{1}{U}",
+"type": "Creature — Faerie Rogue",
+"text": "Flash\nFlying\nWhenever an opponent draws their second card each turn, you draw a card.\n{3}{U}: Each player draws a card.",
+"power": "2",
+"toughness": "1",
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/faerie-mastermind.jpg",
+"img": "cache/card/faerie-mastermind.jpg",
+"keywords": [
+"Flying",
+"Flash"
+]
+}
+],
+"produces": [],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Farseek": {
+"name": "Farseek",
+"faces": [
+{
+"name": "Farseek",
+"cost": "{1}{G}",
+"type": "Sorcery",
+"text": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/farseek.jpg",
+"img": "cache/card/farseek.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Felidar Guardian": {
+"name": "Felidar Guardian",
+"faces": [
+{
+"name": "Felidar Guardian",
+"cost": "{3}{W}",
+"type": "Creature — Cat Beast",
+"text": "When this creature enters, you may exile another target permanent you control, then return that card to the battlefield under its owner's control.",
+"power": "1",
+"toughness": "4",
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/felidar-guardian.jpg",
+"img": "cache/card/felidar-guardian.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Felidar Retreat": {
+"name": "Felidar Retreat",
+"faces": [
+{
+"name": "Felidar Retreat",
+"cost": "{3}{W}",
+"type": "Enchantment",
+"text": "Landfall — Whenever a land you control enters, choose one —\n• Create a 2/2 white Cat Beast creature token.\n• Put a +1/+1 counter on each creature you control. Those creatures gain vigilance until end of turn.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/felidar-retreat.jpg",
+"img": "cache/card/felidar-retreat.jpg",
+"keywords": [
+"Landfall"
+]
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Flooded Strand": {
+"name": "Flooded Strand",
+"faces": [
+{
+"name": "Flooded Strand",
+"cost": "",
+"type": "Land",
+"text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/flooded-strand.jpg",
+"img": "cache/card/flooded-strand.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Forest": {
+"name": "Forest",
+"faces": [
+{
+"name": "Forest",
+"cost": "",
+"type": "Basic Land — Forest",
+"text": "({T}: Add {G}.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/forest.jpg",
+"img": "cache/card/forest.jpg",
+"keywords": []
+}
+],
+"produces": [
+"G"
+],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Gemstone Caverns": {
+"name": "Gemstone Caverns",
+"faces": [
+{
+"name": "Gemstone Caverns",
+"cost": "",
+"type": "Legendary Land",
+"text": "If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.\n{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/gemstone-caverns.jpg",
+"img": "cache/card/gemstone-caverns.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"C",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Glissa, Herald of Predation": {
+"name": "Glissa, Herald of Predation",
+"faces": [
+{
+"name": "Glissa, Herald of Predation",
+"cost": "{3}{B}{G}",
+"type": "Legendary Creature — Phyrexian Zombie Elf",
+"text": "At the beginning of combat on your turn, choose one —\n• Incubate 2 twice. (To incubate 2, create an Incubator token with two +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)\n• Transform all Incubator tokens you control.\n• Phyrexians you control gain first strike and deathtouch until end of turn.",
+"power": "3",
+"toughness": "5",
+"loyalty": null,
+"colors": [
+"B",
+"G"
+],
+"art": "cache/art/glissa-herald-of-predation.jpg",
+"img": "cache/card/glissa-herald-of-predation.jpg",
+"keywords": [
+"Incubate",
+"Transform"
+]
+}
+],
+"produces": [],
+"identity": [
+"B",
+"G"
+],
+"layout": "normal"
+},
+"Godless Shrine": {
+"name": "Godless Shrine",
+"faces": [
+{
+"name": "Godless Shrine",
+"cost": "",
+"type": "Land — Plains Swamp",
+"text": "({T}: Add {W} or {B}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/godless-shrine.jpg",
+"img": "cache/card/godless-shrine.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"W"
+],
+"identity": [
+"B",
+"W"
+],
+"layout": "normal"
+},
+"Grove of the Burnwillows": {
+"name": "Grove of the Burnwillows",
+"faces": [
+{
+"name": "Grove of the Burnwillows",
+"cost": "",
+"type": "Land",
+"text": "{T}: Add {C}.\n{T}: Add {R} or {G}. Each opponent gains 1 life.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/grove-of-the-burnwillows.jpg",
+"img": "cache/card/grove-of-the-burnwillows.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C",
+"G",
+"R"
+],
+"identity": [
+"G",
+"R"
+],
+"layout": "normal"
+},
+"Hallowed Fountain": {
+"name": "Hallowed Fountain",
+"faces": [
+{
+"name": "Hallowed Fountain",
+"cost": "",
+"type": "Land — Plains Island",
+"text": "({T}: Add {W} or {U}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/hallowed-fountain.jpg",
+"img": "cache/card/hallowed-fountain.jpg",
+"keywords": []
+}
+],
+"produces": [
+"U",
+"W"
+],
+"identity": [
+"U",
+"W"
+],
+"layout": "normal"
+},
+"Hangarback Walker": {
+"name": "Hangarback Walker",
+"faces": [
+{
+"name": "Hangarback Walker",
+"cost": "{X}{X}",
+"type": "Artifact Creature — Construct",
+"text": "This creature enters with X +1/+1 counters on it.\nWhen this creature dies, create a 1/1 colorless Thopter artifact creature token with flying for each +1/+1 counter on this creature.\n{1}, {T}: Put a +1/+1 counter on this creature.",
+"power": "0",
+"toughness": "0",
+"loyalty": null,
+"colors": [],
+"art": "cache/art/hangarback-walker.jpg",
+"img": "cache/card/hangarback-walker.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Harmonize": {
+"name": "Harmonize",
+"faces": [
+{
+"name": "Harmonize",
+"cost": "{2}{G}{G}",
+"type": "Sorcery",
+"text": "Draw three cards.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/harmonize.jpg",
+"img": "cache/card/harmonize.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Haywire Mite": {
+"name": "Haywire Mite",
+"faces": [
+{
+"name": "Haywire Mite",
+"cost": "{1}",
+"type": "Artifact Creature — Insect",
+"text": "When this creature dies, you gain 2 life.\n{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment.",
+"power": "1",
+"toughness": "1",
+"loyalty": null,
+"colors": [],
+"art": "cache/art/haywire-mite.jpg",
+"img": "cache/card/haywire-mite.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Herd Baloth": {
+"name": "Herd Baloth",
+"faces": [
+{
+"name": "Herd Baloth",
+"cost": "{3}{G}{G}",
+"type": "Creature — Beast",
+"text": "Whenever one or more +1/+1 counters are put on this creature, you may create a 4/4 green Beast creature token.",
+"power": "4",
+"toughness": "4",
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/herd-baloth.jpg",
+"img": "cache/card/herd-baloth.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Incubation Druid": {
+"name": "Incubation Druid",
+"faces": [
+{
+"name": "Incubation Druid",
+"cost": "{1}{G}",
+"type": "Creature — Elf Druid",
+"text": "{T}: Add one mana of any type that a land you control could produce. If this creature has a +1/+1 counter on it, add three mana of that type instead.\n{3}{G}{G}: Adapt 3. (If this creature has no +1/+1 counters on it, put three +1/+1 counters on it.)",
+"power": "0",
+"toughness": "2",
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/incubation-druid.jpg",
+"img": "cache/card/incubation-druid.jpg",
+"keywords": [
+"Adapt"
+]
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Insight Engine": {
+"name": "Insight Engine",
+"faces": [
+{
+"name": "Insight Engine",
+"cost": "{2}{U}",
+"type": "Artifact",
+"text": "{2}, {T}: Put a charge counter on this artifact, then draw a card for each charge counter on it.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/insight-engine.jpg",
+"img": "cache/card/insight-engine.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Island": {
+"name": "Island",
+"faces": [
+{
+"name": "Island",
+"cost": "",
+"type": "Basic Land — Island",
+"text": "({T}: Add {U}.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/island.jpg",
+"img": "cache/card/island.jpg",
+"keywords": []
+}
+],
+"produces": [
+"U"
+],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Kami of Whispered Hopes": {
+"name": "Kami of Whispered Hopes",
+"faces": [
+{
+"name": "Kami of Whispered Hopes",
+"cost": "{2}{G}",
+"type": "Creature — Spirit",
+"text": "If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on that permanent instead.\n{T}: Add X mana of any one color, where X is this creature's power.",
+"power": "1",
+"toughness": "1",
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/kami-of-whispered-hopes.jpg",
+"img": "cache/card/kami-of-whispered-hopes.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Karn's Bastion": {
+"name": "Karn's Bastion",
+"faces": [
+{
+"name": "Karn's Bastion",
+"cost": "",
+"type": "Land",
+"text": "{T}: Add {C}.\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/karn-s-bastion.jpg",
+"img": "cache/card/karn-s-bastion.jpg",
+"keywords": [
+"Proliferate"
+]
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Lion's Eye Diamond": {
+"name": "Lion's Eye Diamond",
+"faces": [
+{
+"name": "Lion's Eye Diamond",
+"cost": "{0}",
+"type": "Artifact",
+"text": "Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/lion-s-eye-diamond.jpg",
+"img": "cache/card/lion-s-eye-diamond.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Mana Vault": {
+"name": "Mana Vault",
+"faces": [
+{
+"name": "Mana Vault",
+"cost": "{1}",
+"type": "Artifact",
+"text": "This artifact doesn't untap during your untap step.\nAt the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\nAt the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.\n{T}: Add {C}{C}{C}.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/mana-vault.jpg",
+"img": "cache/card/mana-vault.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Marath, Will of the Wild": {
+"name": "Marath, Will of the Wild",
+"faces": [
+{
+"name": "Marath, Will of the Wild",
+"cost": "{R}{G}{W}",
+"type": "Legendary Creature — Elemental Beast",
+"text": "Marath enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\n{X}, Remove X +1/+1 counters from Marath: Choose one —\n• Put X +1/+1 counters on target creature. X can't be 0.\n• Marath deals X damage to any target. X can't be 0.\n• Create an X/X green Elemental creature token. X can't be 0.",
+"power": "0",
+"toughness": "0",
+"loyalty": null,
+"colors": [
+"G",
+"R",
+"W"
+],
+"art": "cache/art/marath-will-of-the-wild.jpg",
+"img": "cache/card/marath-will-of-the-wild.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G",
+"R",
+"W"
+],
+"layout": "normal"
+},
+"Marsh Flats": {
+"name": "Marsh Flats",
+"faces": [
+{
+"name": "Marsh Flats",
+"cost": "",
+"type": "Land",
+"text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Swamp card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/marsh-flats.jpg",
+"img": "cache/card/marsh-flats.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Mishra's Workshop": {
+"name": "Mishra's Workshop",
+"faces": [
+{
+"name": "Mishra's Workshop",
+"cost": "",
+"type": "Land",
+"text": "{T}: Add {C}{C}{C}. Spend this mana only to cast artifact spells.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/mishra-s-workshop.jpg",
+"img": "cache/card/mishra-s-workshop.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Misty Rainforest": {
+"name": "Misty Rainforest",
+"faces": [
+{
+"name": "Misty Rainforest",
+"cost": "",
+"type": "Land",
+"text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/misty-rainforest.jpg",
+"img": "cache/card/misty-rainforest.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Mountain": {
+"name": "Mountain",
+"faces": [
+{
+"name": "Mountain",
+"cost": "",
+"type": "Basic Land — Mountain",
+"text": "({T}: Add {R}.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/mountain.jpg",
+"img": "cache/card/mountain.jpg",
+"keywords": []
+}
+],
+"produces": [
+"R"
+],
+"identity": [
+"R"
+],
+"layout": "normal"
+},
+"Mox Diamond": {
+"name": "Mox Diamond",
+"faces": [
+{
+"name": "Mox Diamond",
+"cost": "{0}",
+"type": "Artifact",
+"text": "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.\n{T}: Add one mana of any color.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/mox-diamond.jpg",
+"img": "cache/card/mox-diamond.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Mox Opal": {
+"name": "Mox Opal",
+"faces": [
+{
+"name": "Mox Opal",
+"cost": "{0}",
+"type": "Legendary Artifact",
+"text": "Metalcraft — {T}: Add one mana of any color. Activate only if you control three or more artifacts.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/mox-opal.jpg",
+"img": "cache/card/mox-opal.jpg",
+"keywords": [
+"Metalcraft"
+]
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Mulldrifter": {
+"name": "Mulldrifter",
+"faces": [
+{
+"name": "Mulldrifter",
+"cost": "{4}{U}",
+"type": "Creature — Elemental",
+"text": "Flying\nWhen this creature enters, draw two cards.\nEvoke {2}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)",
+"power": "2",
+"toughness": "2",
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/mulldrifter.jpg",
+"img": "cache/card/mulldrifter.jpg",
+"keywords": [
+"Flying",
+"Evoke"
+]
+}
+],
+"produces": [],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Mystic Sanctuary": {
+"name": "Mystic Sanctuary",
+"faces": [
+{
+"name": "Mystic Sanctuary",
+"cost": "",
+"type": "Land — Island",
+"text": "({T}: Add {U}.)\nThis land enters tapped unless you control three or more other Islands.\nWhen this land enters untapped, you may put target instant or sorcery card from your graveyard on top of your library.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/mystic-sanctuary.jpg",
+"img": "cache/card/mystic-sanctuary.jpg",
+"keywords": []
+}
+],
+"produces": [
+"U"
+],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Nature's Lore": {
+"name": "Nature's Lore",
+"faces": [
+{
+"name": "Nature's Lore",
+"cost": "{1}{G}",
+"type": "Sorcery",
+"text": "Search your library for a Forest card, put that card onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/nature-s-lore.jpg",
+"img": "cache/card/nature-s-lore.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Nykthos, Shrine to Nyx": {
+"name": "Nykthos, Shrine to Nyx",
+"faces": [
+{
+"name": "Nykthos, Shrine to Nyx",
+"cost": "",
+"type": "Legendary Land",
+"text": "{T}: Add {C}.\n{2}, {T}: Choose a color. Add an amount of mana of that color equal to your devotion to that color. (Your devotion to a color is the number of mana symbols of that color in the mana costs of permanents you control.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/nykthos-shrine-to-nyx.jpg",
+"img": "cache/card/nykthos-shrine-to-nyx.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"C",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Otawara, Soaring City": {
+"name": "Otawara, Soaring City",
+"faces": [
+{
+"name": "Otawara, Soaring City",
+"cost": "",
+"type": "Legendary Land",
+"text": "{T}: Add {U}.\nChannel — {3}{U}, Discard this card: Return target artifact, creature, enchantment, or planeswalker to its owner's hand. This ability costs {1} less to activate for each legendary creature you control.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/otawara-soaring-city.jpg",
+"img": "cache/card/otawara-soaring-city.jpg",
+"keywords": [
+"Channel"
+]
+}
+],
+"produces": [
+"U"
+],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Ouroboroid": {
+"name": "Ouroboroid",
+"faces": [
+{
+"name": "Ouroboroid",
+"cost": "{2}{G}{G}",
+"type": "Creature — Plant Wurm",
+"text": "At the beginning of combat on your turn, put X +1/+1 counters on each creature you control, where X is this creature's power.",
+"power": "1",
+"toughness": "3",
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/ouroboroid.jpg",
+"img": "cache/card/ouroboroid.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Path to Exile": {
+"name": "Path to Exile",
+"faces": [
+{
+"name": "Path to Exile",
+"cost": "{W}",
+"type": "Instant",
+"text": "Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/path-to-exile.jpg",
+"img": "cache/card/path-to-exile.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Plains": {
+"name": "Plains",
+"faces": [
+{
+"name": "Plains",
+"cost": "",
+"type": "Basic Land — Plains",
+"text": "({T}: Add {W}.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/plains.jpg",
+"img": "cache/card/plains.jpg",
+"keywords": []
+}
+],
+"produces": [
+"W"
+],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Pollenbright Druid": {
+"name": "Pollenbright Druid",
+"faces": [
+{
+"name": "Pollenbright Druid",
+"cost": "{1}{G}",
+"type": "Creature — Elf Druid",
+"text": "When this creature enters, choose one —\n• Put a +1/+1 counter on target creature.\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": "1",
+"toughness": "1",
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/pollenbright-druid.jpg",
+"img": "cache/card/pollenbright-druid.jpg",
+"keywords": [
+"Proliferate"
+]
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Princess Yue": {
+"name": "Princess Yue",
+"faces": [
+{
+"name": "Princess Yue",
+"cost": "{2}{U}",
+"type": "Legendary Creature — Human Noble Ally",
+"text": "When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.)\n{T}: Scry 2.",
+"power": "3",
+"toughness": "2",
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/princess-yue.jpg",
+"img": "cache/card/princess-yue.jpg",
+"keywords": [
+"Scry"
+]
+}
+],
+"produces": [
+"C"
+],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Reality Shift": {
+"name": "Reality Shift",
+"faces": [
+{
+"name": "Reality Shift",
+"cost": "{1}{U}",
+"type": "Instant",
+"text": "Exile target creature. Its controller manifests the top card of their library. (That player puts the top card of their library onto the battlefield face down as a 2/2 creature. If it's a creature card, it can be turned face up any time for its mana cost.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/reality-shift.jpg",
+"img": "cache/card/reality-shift.jpg",
+"keywords": [
+"Manifest"
+]
+}
+],
+"produces": [],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Reflecting Pool": {
+"name": "Reflecting Pool",
+"faces": [
+{
+"name": "Reflecting Pool",
+"cost": "",
+"type": "Land",
+"text": "{T}: Add one mana of any type that a land you control could produce.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/reflecting-pool.jpg",
+"img": "cache/card/reflecting-pool.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Restoration Angel": {
+"name": "Restoration Angel",
+"faces": [
+{
+"name": "Restoration Angel",
+"cost": "{3}{W}",
+"type": "Creature — Angel",
+"text": "Flash\nFlying\nWhen this creature enters, you may exile target non-Angel creature you control, then return that card to the battlefield under your control.",
+"power": "3",
+"toughness": "4",
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/restoration-angel.jpg",
+"img": "cache/card/restoration-angel.jpg",
+"keywords": [
+"Flying",
+"Flash"
+]
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Return of the Wildspeaker": {
+"name": "Return of the Wildspeaker",
+"faces": [
+{
+"name": "Return of the Wildspeaker",
+"cost": "{4}{G}",
+"type": "Instant",
+"text": "Choose one —\n• Draw cards equal to the greatest power among non-Human creatures you control.\n• Non-Human creatures you control get +3/+3 until end of turn.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/return-of-the-wildspeaker.jpg",
+"img": "cache/card/return-of-the-wildspeaker.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Sacred Foundry": {
+"name": "Sacred Foundry",
+"faces": [
+{
+"name": "Sacred Foundry",
+"cost": "",
+"type": "Land — Mountain Plains",
+"text": "({T}: Add {R} or {W}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/sacred-foundry.jpg",
+"img": "cache/card/sacred-foundry.jpg",
+"keywords": []
+}
+],
+"produces": [
+"R",
+"W"
+],
+"identity": [
+"R",
+"W"
+],
+"layout": "normal"
+},
+"Seat of the Synod": {
+"name": "Seat of the Synod",
+"faces": [
+{
+"name": "Seat of the Synod",
+"cost": "",
+"type": "Artifact Land",
+"text": "{T}: Add {U}.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/seat-of-the-synod.jpg",
+"img": "cache/card/seat-of-the-synod.jpg",
+"keywords": []
+}
+],
+"produces": [
+"U"
+],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Smothering Tithe": {
+"name": "Smothering Tithe",
+"faces": [
+{
+"name": "Smothering Tithe",
+"cost": "{3}{W}",
+"type": "Enchantment",
+"text": "Whenever an opponent draws a card, that player may pay {2}. If the player doesn't, you create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/smothering-tithe.jpg",
+"img": "cache/card/smothering-tithe.jpg",
+"keywords": [
+"Treasure"
+]
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Snap": {
+"name": "Snap",
+"faces": [
+{
+"name": "Snap",
+"cost": "{1}{U}",
+"type": "Instant",
+"text": "Return target creature to its owner's hand. Untap up to two lands.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/snap.jpg",
+"img": "cache/card/snap.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Sol Ring": {
+"name": "Sol Ring",
+"faces": [
+{
+"name": "Sol Ring",
+"cost": "{1}",
+"type": "Artifact",
+"text": "{T}: Add {C}{C}.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/sol-ring.jpg",
+"img": "cache/card/sol-ring.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Song of the Worldsoul": {
+"name": "Song of the Worldsoul",
+"faces": [
+{
+"name": "Song of the Worldsoul",
+"cost": "{4}{W}{W}",
+"type": "Enchantment",
+"text": "Whenever you cast a spell, populate. (Create a token that's a copy of a creature token you control.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/song-of-the-worldsoul.jpg",
+"img": "cache/card/song-of-the-worldsoul.jpg",
+"keywords": [
+"Populate"
+]
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Springleaf Drum": {
+"name": "Springleaf Drum",
+"faces": [
+{
+"name": "Springleaf Drum",
+"cost": "{1}",
+"type": "Artifact",
+"text": "{T}, Tap an untapped creature you control: Add one mana of any color.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/springleaf-drum.jpg",
+"img": "cache/card/springleaf-drum.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Staff of the Storyteller": {
+"name": "Staff of the Storyteller",
+"faces": [
+{
+"name": "Staff of the Storyteller",
+"cost": "{1}{W}",
+"type": "Artifact",
+"text": "When this artifact enters, create a 1/1 white Spirit creature token with flying.\nWhenever you create one or more creature tokens, put a story counter on this artifact.\n{W}, {T}, Remove a story counter from this artifact: Draw a card.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/staff-of-the-storyteller.jpg",
+"img": "cache/card/staff-of-the-storyteller.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Stomping Ground": {
+"name": "Stomping Ground",
+"faces": [
+{
+"name": "Stomping Ground",
+"cost": "",
+"type": "Land — Mountain Forest",
+"text": "({T}: Add {R} or {G}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/stomping-ground.jpg",
+"img": "cache/card/stomping-ground.jpg",
+"keywords": []
+}
+],
+"produces": [
+"G",
+"R"
+],
+"identity": [
+"G",
+"R"
+],
+"layout": "normal"
+},
+"Sunfall": {
+"name": "Sunfall",
+"faces": [
+{
+"name": "Sunfall",
+"cost": "{3}{W}{W}",
+"type": "Sorcery",
+"text": "Exile all creatures. Incubate X, where X is the number of creatures exiled this way. (Create an Incubator token with X +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/sunfall.jpg",
+"img": "cache/card/sunfall.jpg",
+"keywords": [
+"Incubate",
+"Transform"
+]
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Swamp": {
+"name": "Swamp",
+"faces": [
+{
+"name": "Swamp",
+"cost": "",
+"type": "Basic Land — Swamp",
+"text": "({T}: Add {B}.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/swamp.jpg",
+"img": "cache/card/swamp.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B"
+],
+"identity": [
+"B"
+],
+"layout": "normal"
+},
+"Sword of Truth and Justice": {
+"name": "Sword of Truth and Justice",
+"faces": [
+{
+"name": "Sword of Truth and Justice",
+"cost": "{3}",
+"type": "Artifact — Equipment",
+"text": "Equipped creature gets +2/+2 and has protection from white and from blue.\nWhenever equipped creature deals combat damage to a player, put a +1/+1 counter on a creature you control, then proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)\nEquip {2}",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/sword-of-truth-and-justice.jpg",
+"img": "cache/card/sword-of-truth-and-justice.jpg",
+"keywords": [
+"Proliferate",
+"Equip"
+]
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Swords to Plowshares": {
+"name": "Swords to Plowshares",
+"faces": [
+{
+"name": "Swords to Plowshares",
+"cost": "{W}",
+"type": "Instant",
+"text": "Exile target creature. Its controller gains life equal to its power.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/swords-to-plowshares.jpg",
+"img": "cache/card/swords-to-plowshares.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Talon Gates of Madara": {
+"name": "Talon Gates of Madara",
+"faces": [
+{
+"name": "Talon Gates of Madara",
+"cost": "",
+"type": "Land — Gate",
+"text": "When this land enters, up to one target creature phases out.\n{T}: Add {C}.\n{1}, {T}: Add one mana of any color.\n{4}: Put this card from your hand onto the battlefield.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/talon-gates-of-madara.jpg",
+"img": "cache/card/talon-gates-of-madara.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"C",
+"G",
+"R",
+"U",
+"W"
+],
+"identity": [],
+"layout": "normal"
+},
+"Temple Garden": {
+"name": "Temple Garden",
+"faces": [
+{
+"name": "Temple Garden",
+"cost": "",
+"type": "Land — Forest Plains",
+"text": "({T}: Add {G} or {W}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/temple-garden.jpg",
+"img": "cache/card/temple-garden.jpg",
+"keywords": []
+}
+],
+"produces": [
+"G",
+"W"
+],
+"identity": [
+"G",
+"W"
+],
+"layout": "normal"
+},
+"The Monarch": {
+"name": "The Monarch",
+"faces": [
+{
+"name": "The Monarch",
+"cost": "",
+"type": "Card",
+"text": "At the beginning of your end step, draw a card.\nWhenever a creature deals combat damage to you, its controller becomes the monarch.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/the-monarch.jpg",
+"img": "cache/card/the-monarch.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "token"
+},
+"Thespian's Stage": {
+"name": "Thespian's Stage",
+"faces": [
+{
+"name": "Thespian's Stage",
+"cost": "",
+"type": "Land",
+"text": "{T}: Add {C}.\n{2}, {T}: This land becomes a copy of target land, except it has this ability.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/thespian-s-stage.jpg",
+"img": "cache/card/thespian-s-stage.jpg",
+"keywords": []
+}
+],
+"produces": [
+"C"
+],
+"identity": [],
+"layout": "normal"
+},
+"Throne of Geth": {
+"name": "Throne of Geth",
+"faces": [
+{
+"name": "Throne of Geth",
+"cost": "{2}",
+"type": "Artifact",
+"text": "{T}, Sacrifice an artifact: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/throne-of-geth.jpg",
+"img": "cache/card/throne-of-geth.jpg",
+"keywords": [
+"Proliferate"
+]
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Trinisphere": {
+"name": "Trinisphere",
+"faces": [
+{
+"name": "Trinisphere",
+"cost": "{3}",
+"type": "Artifact",
+"text": "As long as this artifact is untapped, each spell that would cost less than three mana to cast costs three mana to cast. (Additional mana in the cost may be paid with any color of mana or colorless mana. For example, a spell that would cost {1}{B} to cast costs {2}{B} to cast instead.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/trinisphere.jpg",
+"img": "cache/card/trinisphere.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Unbound Flourishing": {
+"name": "Unbound Flourishing",
+"faces": [
+{
+"name": "Unbound Flourishing",
+"cost": "{2}{G}",
+"type": "Enchantment",
+"text": "Whenever you cast a permanent spell with a mana cost that contains {X}, double the value of X.\nWhenever you cast an instant or sorcery spell or activate an ability, if that spell's mana cost or that ability's activation cost contains {X}, copy that spell or ability. You may choose new targets for the copy.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"G"
+],
+"art": "cache/art/unbound-flourishing.jpg",
+"img": "cache/card/unbound-flourishing.jpg",
+"keywords": [
+"Double"
+]
+}
+],
+"produces": [],
+"identity": [
+"G"
+],
+"layout": "normal"
+},
+"Unwind": {
+"name": "Unwind",
+"faces": [
+{
+"name": "Unwind",
+"cost": "{2}{U}",
+"type": "Instant",
+"text": "Counter target noncreature spell. Untap up to three lands.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"U"
+],
+"art": "cache/art/unwind.jpg",
+"img": "cache/card/unwind.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [
+"U"
+],
+"layout": "normal"
+},
+"Vesuva": {
+"name": "Vesuva",
+"faces": [
+{
+"name": "Vesuva",
+"cost": "",
+"type": "Land",
+"text": "You may have this land enter tapped as a copy of any land on the battlefield.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/vesuva.jpg",
+"img": "cache/card/vesuva.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+},
+"Vigorbloom Charm": {
+"name": "Vigorbloom Charm",
+"faces": [
+{
+"name": "Vigorbloom Charm",
+"cost": "{G}{W}",
+"type": "Instant",
+"text": "Choose one —\n• Target permanent you control gains hexproof and indestructible until end of turn.\n• You draw a card and gain 3 life.\n• Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls. (Each deals damage equal to its power to the other.)",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [
+"G",
+"W"
+],
+"art": "cache/art/vigorbloom-charm.jpg",
+"img": "cache/card/vigorbloom-charm.jpg",
+"keywords": [
+"Fight"
+]
+}
+],
+"produces": [],
+"identity": [
+"G",
+"W"
+],
+"layout": "normal"
+},
+"Watery Grave": {
+"name": "Watery Grave",
+"faces": [
+{
+"name": "Watery Grave",
+"cost": "",
+"type": "Land — Island Swamp",
+"text": "({T}: Add {U} or {B}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/watery-grave.jpg",
+"img": "cache/card/watery-grave.jpg",
+"keywords": []
+}
+],
+"produces": [
+"B",
+"U"
+],
+"identity": [
+"B",
+"U"
+],
+"layout": "normal"
+},
+"Wispweaver Angel": {
+"name": "Wispweaver Angel",
+"faces": [
+{
+"name": "Wispweaver Angel",
+"cost": "{4}{W}{W}",
+"type": "Creature — Angel",
+"text": "Flying\nWhen this creature enters, you may exile another target creature you control, then return that card to the battlefield under its owner's control.",
+"power": "4",
+"toughness": "4",
+"loyalty": null,
+"colors": [
+"W"
+],
+"art": "cache/art/wispweaver-angel.jpg",
+"img": "cache/card/wispweaver-angel.jpg",
+"keywords": [
+"Flying"
+]
+}
+],
+"produces": [],
+"identity": [
+"W"
+],
+"layout": "normal"
+},
+"Wooded Foothills": {
+"name": "Wooded Foothills",
+"faces": [
+{
+"name": "Wooded Foothills",
+"cost": "",
+"type": "Land",
+"text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"loyalty": null,
+"colors": [],
+"art": "cache/art/wooded-foothills.jpg",
+"img": "cache/card/wooded-foothills.jpg",
+"keywords": []
+}
+],
+"produces": [],
+"identity": [],
+"layout": "normal"
+}
+}
