@@ -26,6 +26,12 @@ const stats = (xs) => {
   return { median: q(s, 0.5), p90: q(s, 0.9), worst: s.at(-1) };
 };
 
+/** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
+const engineOf = (plan) => {
+  const s = plan.shadow, f = s?.result?.fit;
+  return { policy: s?.policy, error: !!s?.error, overflow: !!s?.result?.overflow, units: f?.units.length ?? 0, candidates: f?.report.candidates ?? 0, audits: f ? f.report.audits + f.report.poses.length : 0, violations: f?.report.violations.length ?? 0, parted: f ? f.report.poses.reduce((t, p) => t + p.violations.length, 0) : 0 };
+};
+
 /** Plan every frame of an input in order, `runs` plans in all, carrying memory; per-plan times. */
 function time(input, shadow) {
   const times = [], plans = [];
@@ -34,7 +40,7 @@ function time(input, shadow) {
     shadow
       ? planFrame(f, prev)
       : planTable(tableInputOf(f.model, { viewport: VIEWPORT, mode: "normal", memory: prev?.memory ?? null, settling: f.settling }));
-  for (let w = 0; w < 30; w++) prev = one(input.frames[w % input.frames.length]); // warm the JIT
+  for (let w = 0; w < 150; w++) prev = one(input.frames[w % input.frames.length]); // warm the JIT
   prev = null;
   for (let r = 0; r < Math.max(runs, input.frames.length); r++) {
     const f = input.frames[i++ % input.frames.length];
@@ -42,7 +48,7 @@ function time(input, shadow) {
     const t0 = performance.now();
     const plan = one(f);
     times.push(performance.now() - t0);
-    plans.push(plan);
+    plans.push(engineOf(plan));
     prev = plan;
   }
   return { times, plans };
@@ -51,9 +57,8 @@ function time(input, shadow) {
 const rows = [];
 for (const input of inputs) {
   const on = time(input, true), off = time(input, false);
-  const shadows = on.plans.map((p) => p.shadow).filter(Boolean);
-  const fits = shadows.map((s) => s.result?.fit).filter(Boolean);
-  const n = (f) => Math.max(...fits.map(f));
+  const e = on.plans;
+  const n = (k) => Math.max(...e.map((x) => x[k]));
   rows.push({
     input: input.name,
     what: input.what,
@@ -61,14 +66,14 @@ for (const input of inputs) {
     withShadow: stats(on.times),
     matOnly: stats(off.times),
     engine: {
-      policy: [...new Set(shadows.map((s) => s.policy))].join(","),
-      errors: shadows.filter((s) => s.error).length,
-      units: n((f) => f.units.length),
-      candidates: n((f) => f.report.candidates),
-      audits: n((f) => f.report.audits + f.report.poses.length),
-      violations: n((f) => f.report.violations.length),
-      partedViolations: n((f) => f.report.poses.reduce((t, p) => t + p.violations.length, 0)),
-      overflow: shadows.filter((s) => s.result?.overflow).length,
+      policy: [...new Set(e.map((x) => x.policy))].join(","),
+      errors: e.filter((x) => x.error).length,
+      units: n("units"),
+      candidates: n("candidates"),
+      audits: n("audits"),
+      violations: n("violations"),
+      partedViolations: n("parted"),
+      overflow: e.filter((x) => x.overflow).length,
     },
   });
 }

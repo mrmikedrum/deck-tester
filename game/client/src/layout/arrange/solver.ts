@@ -37,12 +37,12 @@ import type { Drawn } from "./draw";
 import { onFrame } from "./frame";
 import { kindOf } from "./policies/kinds";
 import { readyTapped } from "./policies/ready-tapped";
-import { rowsOf } from "./rows";
-import type { RowGeo } from "./rows";
+import { RowPlanner, bandsOf, placesOf } from "./rows";
+import type { Band, RowGeo } from "./rows";
 import { S_TABLE, SLOT, fanExtent } from "./scale";
 import { validateIntent } from "./validate";
 
-/** Audits after the first, each a row made one place tighter (§5.1 step 3). */
+/** Audits after the first, each a band made one place tighter (§5.1 step 3). */
 const RETRIES = 4;
 const EPS = 1e-9;
 
@@ -130,15 +130,18 @@ export function arrange(input: ArrangeInput): ArrangeResult {
     intent = intentOf(policy, cards, ctx, input.memory?.policies[policy.id] ?? null);
   }
   const pm = input.memory?.policies[policy.id] ?? null;
-  const rows = rowsOf(c, policy.tiers, s);
+  // Rows come from the space and the cards: bands of tiers, each taking the rows its units need (rows.ts).
+  const bands = bandsOf(policy.tiers);
+  const planner = new RowPlanner(c, s, u);
   const tierOf = new Map(policy.tiers.map((t) => [t.id, t]));
-  const rowOfTier = (t: TierId): RowGeo => rows.find((r) => r.tiers.some((x) => x.id === t))!;
+  const bandOf = new Map(bands.flatMap((b) => b.tiers.map((t) => [t.id, b] as const)));
   const standingTiers = policy.tiers.filter((t) => t.posture === "stand");
+  const firstRow = bands.length ? planner.next(null, bands[0]!) : null;
 
   // Precondition (§1.1): the frame holds a tap patch at its anchor, on the safe area and off the keepouts.
   const at = c.projector.project(onFrame(c.frame, 0, SLOT.margin));
   const blocked = c.keepouts.some((k) => k.on === "screen" && at.x >= k.rect.left && at.x <= k.rect.right && at.y >= k.rect.top && at.y <= k.rect.bottom);
-  if (blocked || at.x < c.safe.left || at.x > c.safe.right || at.y < c.safe.top || at.y > c.safe.bottom || !rows.some((r) => r.intervals.length))
+  if (blocked || at.x < c.safe.left || at.x > c.safe.right || at.y < c.safe.top || at.y > c.safe.bottom || !firstRow)
     return containerOverflow(input, policy, cards, seq, next, invalid);
 
   // ---- groups: the policy's, with acting cards and retyped cards out of theirs ----
@@ -147,7 +150,7 @@ export function arrange(input: ArrangeInput): ArrangeResult {
   // ---- the re-sort ----
   const ranking = groups.filter((g) => standingTiers.some((t) => t.id === g.base) && !g.acting).sort((a, b) => b.imp - a.imp || cmp(a.key, b.key));
   const incumbentKeys = new Set(groups.filter((g) => g.members.some((id) => standingTiers.some((t) => t.id === pm?.tiers[pm.held[id] ?? ""]))).map((g) => g.key));
-  const front = new Set(ranking.slice(0, rows[0]?.places.reduce((t, p) => t + p.length, 0) ?? 0).map((g) => g.key));
+  const front = new Set(ranking.slice(0, firstRow?.grid ? placesOf(firstRow) : 0).map((g) => g.key));
   const changed =
     groups.some((g) => g.retyped) ||
     ranking.some((ch) => !incumbentKeys.has(ch.key) && front.has(ch.key) && ranking.some((inc) => incumbentKeys.has(inc.key) && !front.has(inc.key) && policy.promote(inc.imp, ch.imp)));
@@ -160,20 +163,20 @@ export function arrange(input: ArrangeInput): ArrangeResult {
   const edits = compile(policy, groups, tidy ? new Set() : incumbentKeys);
   const held = new Set(pm?.folds ?? []);
 
-  // ---- walk, draw, audit; a failing row folds one place tighter, at most RETRIES times ----
+  // ---- walk, draw, audit; a failing band folds one place tighter, at most RETRIES times ----
   let tight = new Map<number, number>();
   let best: Candidate | null = null, audits = 0, candidates = 0;
   for (let attempt = 0; attempt <= RETRIES + 1; attempt++) {
     const forceSummary = attempt === RETRIES + 1;
-    const walked = walk(policy, groups, gByKey, edits, rows, rowOfTier, tierOf, held, tight, input.clock.settling, s, forceSummary);
+    const walked = walk(policy, groups, gByKey, edits, bands, bandOf, planner, tierOf, held, tight, input.clock.settling, s, forceSummary);
     candidates += walked.estimates;
-    const cand = place(input, policy, ctx, rows, walked, pm, tidy, s, u);
+    const cand = place(input, policy, ctx, bands, planner, tight, walked, pm, tidy, s, u);
     audits += 1;
     if (!best || cand.violations.length < best.violations.length) best = cand;
     // Only crowding is folding's to fix: a patch taken or a strip covered. A floor or a stray region is geometry.
     const crowded = cand.violations.filter((v) => v.rule === "tap-patch" || v.rule === "covers-name" || v.rule === "covers-foot");
     if (!crowded.length) break;
-    const bad = new Set(crowded.map((v) => cand.rowOfUnit.get(v.unit)).filter((r): r is number => r !== undefined));
+    const bad = new Set(crowded.map((v) => cand.bandOfUnit.get(v.unit)).filter((r): r is number => r !== undefined));
     if (!bad.size) break;
     tight = new Map(tight);
     for (const r of bad) tight.set(r, (tight.get(r) ?? 0) + 1);
@@ -192,10 +195,13 @@ export function arrange(input: ArrangeInput): ArrangeResult {
     policies: { ...(input.memory?.policies ?? {}), [policy.id]: cand.memory(ranking.map((g) => g.key), tidy) },
   };
 
-  const overflow: Overflow | null = cand.unplaced.length
-    ? { reason: "actors", cards: cand.unplaced, ask: { kind: "focus", role: "spread" } }
-    : cand.violations.length
-      ? { reason: "space", cards: [...new Set(cand.violations.flatMap((v) => cand.units.find((x) => x.id === v.unit)?.members ?? []))].sort((a, b) => a - b), ask: { kind: "entry" } }
+  // Cards no place could hold are reached through the entry, and said: actors past every place (a focus shows them), or
+  // a container whose space ran out.
+  const spaceCards = [...new Set([...cand.unplaced.other, ...cand.violations.flatMap((v) => cand.units.find((x) => x.id === v.unit)?.members ?? [])])].sort((a, b) => a - b);
+  const overflow: Overflow | null = cand.unplaced.actors.length
+    ? { reason: "actors", cards: [...new Set([...cand.unplaced.actors, ...spaceCards])].sort((a, b) => a - b), ask: { kind: "focus", role: "spread" } }
+    : spaceCards.length
+      ? { reason: "space", cards: spaceCards, ask: { kind: "entry" } }
       : null;
 
   const fit: Arrangement = {
@@ -204,7 +210,7 @@ export function arrange(input: ArrangeInput): ArrangeResult {
     frame: c.frame,
     step: 1,
     scale: s,
-    rows: rows.map((r) => ({ tiers: r.tiers.map((t) => t.id), v: r.v, posture: r.posture, intervals: r.intervals, places: r.grid ? r.places.reduce((t, p) => t + p.length, 0) : Math.floor(r.intervals.reduce((t, iv) => t + iv.hi - iv.lo, 0) / r.base + EPS) })),
+    rows: cand.rows.map((r) => ({ tiers: r.band.tiers.map((t) => t.id), quarter: r.quarter, v: r.v, posture: r.posture, intervals: r.intervals, places: r.grid ? placesOf(r) : Math.floor(r.intervals.reduce((t, iv) => t + iv.hi - iv.lo, 0) / r.base + EPS) })),
     units: cand.units,
     paint: cand.paint,
     targets: cand.targets,
@@ -364,16 +370,18 @@ interface Walked {
 }
 
 /**
- * Walk the edit list once, in order (§5.1 step 2): an edit runs only while the row it frees still overflows (with a
- * whole place to spare for a fold that ran last plan, so folds do not flicker); each is consumed once.
+ * Walk the edit list once, in order (§5.1 step 2): an edit runs only while the band it frees still overflows the rows
+ * the space gives it (with a whole place to spare for a fold that ran last plan, so folds do not flicker); each is
+ * consumed once.
  */
 function walk(
   policy: Policy,
   groups: readonly G[],
   gByKey: ReadonlyMap<string, G>,
   edits: readonly Edit[],
-  rows: readonly RowGeo[],
-  rowOfTier: (t: TierId) => RowGeo,
+  bands: readonly Band[],
+  bandOf: ReadonlyMap<TierId, Band>,
+  planner: RowPlanner,
   tierOf: ReadonlyMap<TierId, Policy["tiers"][number]>,
   held: ReadonlySet<string>,
   tight: ReadonlyMap<number, number>,
@@ -384,33 +392,36 @@ function walk(
   const st: State = { tier: new Map(groups.map((g) => [g.key, g.base])), stacked: new Set(groups.filter((g) => g.squared).map((g) => g.key)), fan: new Map(), summary: new Set() };
   const records: EditRecord[] = [], ran: string[] = [];
   let estimates = 0;
-  const over = (row: RowGeo, slack: number): boolean => {
+  // Which bands overflow, now, with `slack` places held back from the band `held` names.
+  const over = (band: Band | null, slack: boolean): boolean => {
     estimates++;
-    return overflows(row, draftUnits(policy, groups, st, tierOf, s), (tight.get(row.index) ?? 0) * row.base + slack);
+    const laid = lay(bands, planner, draftUnits(policy, groups, st, tierOf, s), tight, slack && band ? band.index : null);
+    return band ? laid.over.has(band.index) : laid.over.size > 0;
   };
   for (const e of edits) {
     const step = e.step;
-    let target: RowGeo | null = null, groupsHit: string[];
+    let target: Band | null = null, groupsHit: string[];
     if (e.group !== null) {
       const g = gByKey.get(e.group)!;
       const tier = st.tier.get(g.key)!;
       if (st.summary.has(g.key) || st.fan.has(g.key)) continue;
       if (!matches(step.where, g, tier, groups, st)) continue;
       if (step.op === "stack" && (st.stacked.has(g.key) || !g.stacks)) continue;
-      target = rowOfTier(tier);
+      target = bandOf.get(tier)!;
       groupsHit = [g.key];
     } else if (step.op === "fan") {
       const tier = "tier" in step.where ? step.where.tier : undefined;
       if (tier === undefined) continue;
       groupsHit = groups.filter((g) => !g.pinned && st.tier.get(g.key) === tier && !st.summary.has(g.key) && !st.fan.has(g.key)).map((g) => g.key);
       if (groupsHit.reduce((t, k) => t + gByKey.get(k)!.members.length, 0) < 2) continue;
-      target = rowOfTier(tier);
+      target = bandOf.get(tier) ?? null;
+      if (!target) continue;
     } else {
       groupsHit = groups.filter((g) => !g.pinned && !st.summary.has(g.key)).map((g) => g.key);
       if (!groupsHit.length) continue;
     }
     const wasHeld = held.has(e.id);
-    const need = forceSummary && step.op === "summary" ? true : settling && wasHeld ? true : target ? over(target, wasHeld ? target.base : 0) : rows.some((r) => over(r, wasHeld ? r.base : 0));
+    const need = forceSummary && step.op === "summary" ? true : settling && wasHeld ? true : over(target, wasHeld);
     records.push({ index: e.index, op: step.op, groups: groupsHit, ran: need });
     if (!need) continue;
     ran.push(e.id);
@@ -485,11 +496,11 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
   }
   if (summary.length) {
     const sorted = [...summary].sort((a, b) => b.imp - a.imp || cmp(a.key, b.key));
-    const last = policy.tiers.filter((t) => lying(t.id)).at(-1) ?? policy.tiers.at(-1)!;
+    // The last resort sits at the anchor (designer §7.2): the first tier, whose first row the container always has.
     out.push({
       key: "sum",
       kind: "summary",
-      tier: last.id,
+      tier: policy.tiers[0]!.id,
       members: sorted.flatMap((g) => g.members),
       dressing: sorted.flatMap((g) => g.dressing),
       groups: sorted.map((g) => g.key),
@@ -509,46 +520,91 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
 /** The dressing of one member of an unstacked group: what is attached to it (a host's card; others' strays to the first). */
 const dressedOn = (g: G, d: CardId, id: CardId): boolean => (g.members.length === 1 ? true : g.members[0] === id ? true : false) && d !== id;
 
-/** Whether a row's units overflow it, with `less` world units of its room held back. */
-function overflows(row: RowGeo, units: readonly U[], less: number): boolean {
-  const here = units.filter((x) => row.tiers.some((t) => t.id === x.tier));
-  if (row.grid) {
-    const places = row.places.reduce((t, p) => t + p.length, 0) - Math.round(less / row.base);
-    return here.reduce((t, x) => t + span(x, row), 0) > places;
+/** What the space gives each band for these units: its rows, and whether its units overflow them. */
+interface Laid {
+  readonly rows: RowGeo[];
+  readonly byBand: Map<number, RowGeo[]>;
+  readonly over: Set<number>;
+}
+
+/**
+ * Lay the rows (§5.2): bands in order from the anchor edge, each taking rows while its units do not fit them and the
+ * space has another, keeping room for the first row of every later band that holds something. `tight` holds back places
+ * from a band an audit found crowded; `slackFor` holds back one more (a fold's deadband).
+ */
+function lay(bands: readonly Band[], planner: RowPlanner, units: readonly U[], tight: ReadonlyMap<number, number>, slackFor: number | null): Laid {
+  const per = bands.map((b) => units.filter((x) => b.tiers.some((t) => t.id === x.tier)));
+  const rows: RowGeo[] = [], byBand = new Map<number, RowGeo[]>(), over = new Set<number>();
+  let prev: RowGeo | null = null;
+  const roomAfter = (row: RowGeo, later: readonly Band[]): boolean => {
+    let p: RowGeo | null = row;
+    for (const b of later) if (!(p = planner.next(p, b))) return false;
+    return true;
+  };
+  for (const b of bands) {
+    const mine = per[b.index]!, got: RowGeo[] = [];
+    byBand.set(b.index, got);
+    if (!mine.length) continue;
+    const later = bands.slice(b.index + 1).filter((x) => per[x.index]!.length);
+    const less = (tight.get(b.index) ?? 0) + (slackFor === b.index ? 1 : 0);
+    while (!(got.length && fitsBand(b, mine, got, less))) {
+      const next: RowGeo | null = planner.next(prev, b);
+      if (!next || (got.length && !roomAfter(next, later))) break;
+      got.push(next);
+      prev = next;
+    }
+    if (!fitsBand(b, mine, got, less)) over.add(b.index);
+    rows.push(...got);
   }
-  return pack(row, ordered(row, here), less) === null;
+  return { rows, byBand, over };
 }
 
 const span = (x: U, row: RowGeo): number => Math.max(1, Math.ceil(x.width / row.base - EPS));
 
-/** A lying row's units in its fixed order: by tier, then the heaviest first. */
-function ordered(row: RowGeo, units: readonly U[]): U[] {
-  const ix = new Map(row.tiers.map((t, i) => [t.id, i]));
-  return [...units].sort((a, b) => ix.get(a.tier)! - ix.get(b.tier)! || Number(b.retyped) - Number(a.retyped) || b.imp - a.imp || cmp(a.key, b.key));
+function fitsBand(b: Band, units: readonly U[], rows: readonly RowGeo[], less: number): boolean {
+  if (!rows.length) return !units.length;
+  if (b.posture === "stand") return units.reduce((t, x) => t + span(x, rows[0]!), 0) <= rows.reduce((t, r) => t + placesOf(r), 0) - less;
+  return packBand(rows, ordered(b, units), less * rows[0]!.base) !== null;
 }
 
-/** Pack units left to right into a row's intervals, each run centred in its interval; null when they do not fit. */
-function pack(row: RowGeo, units: readonly U[], less = 0): { key: string; interval: number; place: number; u: number; w: number }[] | null {
-  const out: { key: string; interval: number; place: number; u: number; w: number }[] = [];
+/** A lying band's units in their tier order, then the heaviest first. */
+function ordered(b: Band, units: readonly U[]): U[] {
+  const ix = new Map(b.tiers.map((t, i) => [t.id, i]));
+  return [...units].sort((a, c) => ix.get(a.tier)! - ix.get(c.tier)! || Number(c.retyped) - Number(a.retyped) || c.imp - a.imp || cmp(a.key, c.key));
+}
+
+interface Packed {
+  readonly key: string;
+  readonly row: RowGeo;
+  /** The row within its band. */
+  readonly k: number;
+  readonly interval: number;
+  readonly place: number;
+  readonly u: number;
+  readonly w: number;
+}
+
+/** Pack units left to right across a lying band's rows and their intervals, each run centred; null when they do not
+ *  fit. `less` world units of room are held back from the first interval. */
+function packBand(rows: readonly RowGeo[], units: readonly U[], less = 0): Packed[] | null {
+  const spans = rows.flatMap((row, k) => row.intervals.map((iv, interval) => ({ row, k, interval, lo: iv.lo, hi: iv.hi })));
+  const runs: U[][] = spans.map(() => []), used = spans.map(() => 0);
   let i = 0, budget = less;
-  const runs: U[][] = row.intervals.map(() => []);
-  const used = row.intervals.map(() => 0);
   for (const x of units) {
-    while (i < row.intervals.length) {
-      const iv = row.intervals[i]!, room = iv.hi - iv.lo - used[i]! - (budget > 0 ? budget : 0);
-      if (x.width <= room + EPS) break;
+    while (i < spans.length && x.width > spans[i]!.hi - spans[i]!.lo - used[i]! - budget + EPS) {
       i++;
       budget = 0;
     }
-    if (i >= row.intervals.length) return null;
+    if (i >= spans.length) return null;
     runs[i]!.push(x);
     used[i]! += x.width;
   }
-  runs.forEach((run, k) => {
-    const iv = row.intervals[k]!;
-    let u0 = (iv.lo + iv.hi) / 2 - used[k]! / 2;
+  const out: Packed[] = [];
+  runs.forEach((run, n) => {
+    const sp = spans[n]!;
+    let u0 = (sp.lo + sp.hi) / 2 - used[n]! / 2;
     run.forEach((x, p) => {
-      out.push({ key: x.key, interval: k, place: p, u: u0 + x.width / 2, w: x.width });
+      out.push({ key: x.key, row: sp.row, k: sp.k, interval: sp.interval, place: p, u: u0 + x.width / 2, w: x.width });
       u0 += x.width;
     });
   });
@@ -564,8 +620,10 @@ interface Candidate {
   readonly targets: PickTarget[];
   readonly attention: Attention[];
   readonly violations: ArrViolation[];
-  readonly unplaced: CardId[];
-  readonly rowOfUnit: ReadonlyMap<string, number>;
+  /** Cards no place could hold: acting, the commander or a retyped card (past every place), or anything else. */
+  readonly unplaced: { readonly actors: CardId[]; readonly other: CardId[] };
+  readonly bandOfUnit: ReadonlyMap<string, number>;
+  readonly rows: readonly RowGeo[];
   readonly edits: EditRecord[];
   readonly used: Arrangement["used"];
   /** What is drawn, per unit id, for a pose's audit. */
@@ -573,31 +631,29 @@ interface Candidate {
   memory(ranking: readonly string[], tidy: boolean): PolicyMemory;
 }
 
-function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, rows: readonly RowGeo[], walked: Walked, pm: PolicyMemory | null, tidy: boolean, s: number, du: number): Candidate {
+function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: readonly Band[], planner: RowPlanner, tight: ReadonlyMap<number, number>, walked: Walked, pm: PolicyMemory | null, tidy: boolean, s: number, du: number): Candidate {
   const c = input.container;
   const tierOf = new Map(policy.tiers.map((t) => [t.id, t]));
   const all = draftUnits(policy, walked.groups, walked.st, tierOf, s);
-  const slots = new Map<string, { row: RowGeo; ref: SlotRef; u: number; w: number }>();
-  const unplaced: CardId[] = [];
-  const spill: U[] = [];
-  for (const row of rows) {
-    const here = all.filter((x) => row.tiers.some((t) => t.id === x.tier));
-    if (row.grid) {
-      const pending = [...spill.splice(0), ...here];
-      const placed = gridPlace(row, pending, pm, tidy);
-      for (const [k, v] of placed.at) slots.set(k, { row, ...v });
-      // what did not fit: pinned units (acting, the commander, retyped) take the next standing row; others are a fault
-      for (const x of placed.left) {
-        if (x.pinned) spill.push(x);
-        else unplaced.push(...x.members);
-      }
+  const laid = lay(bands, planner, all, tight, null);
+  const slots = new Map<string, { row: RowGeo; band: Band; ref: SlotRef; u: number; w: number }>();
+  const actors: CardId[] = [], other: CardId[] = [];
+  for (const b of bands) {
+    const rows = laid.byBand.get(b.index)!;
+    const here = all.filter((x) => b.tiers.some((t) => t.id === x.tier));
+    if (!here.length) continue;
+    if (b.posture === "stand") {
+      const placed = gridPlace(rows, here, pm, tidy);
+      for (const [k, v] of placed.at) slots.set(k, { band: b, ...v });
+      for (const x of placed.left) (x.pinned ? actors : other).push(...x.members, ...x.dressing);
     } else {
-      const packed = pack(row, ordered(row, here)) ?? pack(row, ordered(row, here).slice(0, fitCount(row, ordered(row, here))))!;
-      for (const p of packed) slots.set(p.key, { row, ref: { row: row.index, interval: p.interval, place: p.place }, u: p.u, w: p.w });
-      for (const x of here) if (!slots.has(x.key)) unplaced.push(...x.members);
+      const units = ordered(b, here);
+      let n = units.length;
+      while (n > 0 && packBand(rows, units.slice(0, n)) === null) n--;
+      for (const p of packBand(rows, units.slice(0, n)) ?? []) slots.set(p.key, { row: p.row, band: b, ref: { row: p.k, interval: p.interval, place: p.place }, u: p.u, w: p.w });
+      for (const x of here) if (!slots.has(x.key)) (x.pinned ? actors : other).push(...x.members, ...x.dressing);
     }
   }
-  for (const x of spill) unplaced.push(...x.members);
 
   // ---- lineage: stable ids across splits and merges (§3) ----
   const ids = lineage(all, pm);
@@ -648,7 +704,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, rows: readon
     }
   }
   // cards nobody could place: reached through the entry, and never silently
-  const off = unplaced.filter((id) => input.acting.offered.has(id) || input.acting.involved.has(id));
+  const off = [...actors, ...other].filter((id) => input.acting.offered.has(id) || input.acting.involved.has(id));
   if (off.length) attention.push({ unit: c.entry, cards: off, why: input.acting.offered.has(off[0]!) ? "offered" : "aimed" });
 
   // ---- units out ----
@@ -701,7 +757,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, rows: readon
     };
   });
   const violations = auditUnits(c, audited, du);
-  const rowOfUnit = new Map(units.map((un) => [un.id, slots.get(un.key)!.row.index]));
+  const bandOfUnit = new Map(units.map((un) => [un.id, slots.get(un.key)!.band.index]));
 
   // ---- used bounds ----
   const us = [...slots.values()];
@@ -722,8 +778,9 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, rows: readon
     targets,
     attention,
     violations,
-    unplaced: [...new Set(unplaced)].sort((a, b) => a - b),
-    rowOfUnit,
+    unplaced: { actors: [...new Set(actors)].sort((a, b) => a - b), other: [...new Set(other)].sort((a, b) => a - b) },
+    bandOfUnit,
+    rows: laid.rows,
     edits: walked.records,
     used: { frame: frameRect, screen: screenRect },
     placed: placedList,
@@ -758,52 +815,41 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, rows: readon
   };
 }
 
-function fitCount(row: RowGeo, units: readonly U[]): number {
-  let n = units.length;
-  while (n > 0 && pack(row, units.slice(0, n)) === null) n--;
-  return n;
-}
-
 /**
- * Places in a standing row, centre-out. A re-sort deals the row by rank (the commander first); otherwise a unit keeps its
- * place while it lasts, a retyped card takes its old place where free, and a newcomer the first free place.
+ * Places in a standing band, its nearest row first, each row's intervals nearest the middle first, each interval's
+ * places centre-out. A re-sort deals the band by rank (the commander first); otherwise a unit keeps its place while it
+ * lasts, a retyped card takes its old place where free, and a newcomer the first free place.
  */
-function gridPlace(row: RowGeo, units: readonly U[], pm: PolicyMemory | null, tidy: boolean): { at: Map<string, { ref: SlotRef; u: number; w: number }>; left: U[] } {
-  const at = new Map<string, { ref: SlotRef; u: number; w: number }>();
-  const free = row.places.flatMap((ps, interval) => ps.map((u, place) => ({ interval, place, u })));
-  // intervals nearest the row's middle first, then their places centre-out
-  free.sort((a, b) => Math.abs((row.intervals[a.interval]!.lo + row.intervals[a.interval]!.hi) / 2) - Math.abs((row.intervals[b.interval]!.lo + row.intervals[b.interval]!.hi) / 2) || a.interval - b.interval || a.place - b.place);
+function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemory | null, tidy: boolean): { at: Map<string, { row: RowGeo; ref: SlotRef; u: number; w: number }>; left: U[] } {
+  const at = new Map<string, { row: RowGeo; ref: SlotRef; u: number; w: number }>();
+  const mid = (r: RowGeo, i: number) => Math.abs((r.intervals[i]!.lo + r.intervals[i]!.hi) / 2);
+  const free = rows.flatMap((row, k) =>
+    row.places
+      .flatMap((ps, interval) => ps.map((u, place) => ({ row, k, interval, place, u })))
+      .sort((a, b) => mid(row, a.interval) - mid(row, b.interval) || a.interval - b.interval || a.place - b.place),
+  );
   const taken = new Set<string>();
-  const key = (p: { interval: number; place: number }) => `${p.interval}:${p.place}`;
+  const key = (p: { k: number; interval: number; place: number }) => `${p.k}:${p.interval}:${p.place}`;
   const rank = (a: U, b: U) => Number(b.pinned && !b.acting && !b.retyped) - Number(a.pinned && !a.acting && !a.retyped) || b.imp - a.imp || cmp(a.key, b.key);
   const left: U[] = [];
-  const give = (x: U, p: { interval: number; place: number; u: number }) => {
+  const give = (x: U, p: (typeof free)[number]) => {
     taken.add(key(p));
-    at.set(x.key, { ref: { row: row.index, interval: p.interval, place: p.place }, u: p.u, w: row.base });
+    at.set(x.key, { row: p.row, ref: { row: p.k, interval: p.interval, place: p.place }, u: p.u, w: p.row.base });
   };
+  const slotOf = (x: U): SlotRef | null => pm?.slots[x.key] ?? x.prefer?.slot ?? null;
   const stay: U[] = [], fresh: U[] = [];
-  for (const x of units) {
-    const was = pm?.slots[x.key] ?? (x.prefer?.slot && x.prefer.tier && x.prefer.slot.row === row.index ? x.prefer.slot : null);
-    if (!tidy && was && was.row === row.index) stay.push(x);
+  for (const x of units) (!tidy && slotOf(x) ? stay : fresh).push(x);
+  for (const x of [...stay].sort(rank)) {
+    const was = slotOf(x)!;
+    const p = free.find((f) => f.k === was.row && f.interval === was.interval && f.place === was.place && !taken.has(key(f)));
+    if (p) give(x, p);
     else fresh.push(x);
   }
-  if (!tidy)
-    for (const x of [...stay].sort(rank)) {
-      const was = pm?.slots[x.key] ?? x.prefer!.slot!;
-      const p = free.find((f) => f.interval === was.interval && f.place === was.place && !taken.has(key(f)));
-      if (p) give(x, p);
-      else fresh.push(x);
-    }
   const newcomers = tidy ? [...units].sort(rank) : fresh.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.arrival - b.arrival || cmp(a.key, b.key));
-  // the room the row has: when it is short, the heaviest keep places (the walk folded the rest; pinned cards come first)
-  const capacity = free.length - taken.size;
-  const keep = new Set([...newcomers].sort(rank).slice(0, capacity).map((x) => x.key));
+  // when the band is short, the heaviest keep places (the walk folded the rest; pinned cards come first)
+  const keep = new Set([...newcomers].sort(rank).slice(0, free.length - taken.size).map((x) => x.key));
   for (const x of newcomers) {
-    if (!keep.has(x.key)) {
-      left.push(x);
-      continue;
-    }
-    const p = free.find((f) => !taken.has(key(f)));
+    const p = keep.has(x.key) ? free.find((f) => !taken.has(key(f))) : undefined;
     if (p) give(x, p);
     else left.push(x);
   }

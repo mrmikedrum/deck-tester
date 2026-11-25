@@ -28,14 +28,15 @@ describe("ready-tapped", () => {
       ac({ name: "Angel", power: 3, keywords: ["flying"] }),
     ];
     const r = run({ cards });
-    const front = r.fit.units.filter((u) => u.tier === "ready");
+    // the standing band takes as many rows as the leaf's space gives it: two here, four places each
+    const front = r.fit.units.filter((u) => u.tier === "ready" && u.slot.row === 0);
     expect(front.length).toBe(4);
     // place 0 is the middle (left of it, with an even count): the commander
     expect(unitOf(r, "Marath", cards).slot).toEqual({ row: 0, interval: 0, place: 0 });
     const names = (us: typeof front) => us.flatMap((u) => u.members.map((id) => cards.find((c) => c.id === id)!.name)).sort();
     expect(names(front)).toEqual(["Angel", "Baloth", "Marath", "Wurm"]);
     // the next four by weight (Druid and Sage tie at 1: the earlier key folds first, deterministically)
-    expect(names(r.fit.units.filter((u) => u.tier === "second"))).toEqual(["Patron", "Rishkar", "Sage", "Witness"]);
+    expect(names(r.fit.units.filter((u) => u.tier === "ready" && u.slot.row === 1))).toEqual(["Patron", "Rishkar", "Sage", "Witness"]);
     expect(r.overflow).toBeNull();
   });
 
@@ -103,7 +104,7 @@ describe("ready-tapped", () => {
     const r = run({ cards, acting: { involved: new Set([attacker]) } });
     const own = r.fit.units.find((u) => u.members.includes(attacker))!;
     expect(own.members).toEqual([attacker]);
-    expect(["ready", "second"]).toContain(own.tier);
+    expect(own.tier).toBe("ready");
     const beasts = r.fit.units.find((u) => u.kind === "stack" && u.members.length === 8)!;
     expect(beasts.marker?.count).toBe(8);
   });
@@ -135,7 +136,7 @@ describe("works (a creature-light seat)", () => {
       ...Array.from({ length: 6 }, (_, i) => ac({ name: `Spirit ${i}`, power: 1 })),
     ];
     const r = run({ cards, policy: works });
-    const standing = r.fit.units.filter((u) => u.tier === "ready" || u.tier === "second").map((u) => cards.find((c) => c.id === u.top)!.name);
+    const standing = r.fit.units.filter((u) => u.tier === "ready").map((u) => cards.find((c) => c.id === u.top)!.name);
     for (const n of ["Rule of Law", "Trinisphere", "Wrenn"]) expect(standing).toContain(n);
     expect(unitOf(r, "Ornament", cards).tier).toBe("works");
     const tr = run({ cards, policy: readyTapped });

@@ -35,8 +35,16 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 /** An arrangement as text: each unit by row and place, what it shows, its count, posture and turn; then attention. */
 export function digest(a: Arrangement, cards: readonly ArrCard[], overflow: ArrangeResult["overflow"]): string {
   const by = new Map(cards.map((c) => [c.id, c]));
-  const out = [`policy ${a.policy} · ${a.rows.map((r, i) => `row ${i} ${r.posture} v${r1(r.v)} ${r.places} places`).join(" · ")}`];
-  const units = [...a.units].sort((x, y) => x.slot.row - y.slot.row || x.slot.interval - y.slot.interval || (x.cards[0]?.foot.x ?? 0) - (y.cards[0]?.foot.x ?? 0));
+  const out = [`policy ${a.policy} · ${a.rows.map((r, i) => `row ${i} ${r.posture}${r.posture === "stand" ? (r.quarter ? " (quarter)" : " (notch)") : ""} v${r1(r.v)} ${r.places} places`).join(" · ")}`];
+  // by row on the table (each row's depth from the anchor), then across
+  const f = a.frame, along = (p: { x: number; y: number; z: number }, d: { x: number; y: number; z: number }) => (p.x - f.anchor.x) * d.x + (p.y - f.anchor.y) * d.y + (p.z - f.anchor.z) * d.z;
+  const rowOf = (u: (typeof a.units)[number]) => {
+    const p = u.cards.find((c) => c.card === u.top) ?? u.cards[0];
+    const v = p ? along(p.foot, f.away) : 0;
+    return a.rows.reduce((best, r, i) => (r.v <= v + 1e-6 ? i : best), 0);
+  };
+  const acrossOf = (u: (typeof a.units)[number]) => (u.cards[0] ? along(u.cards[0].foot, f.across) : 0);
+  const units = [...a.units].sort((x, y) => rowOf(x) - rowOf(y) || acrossOf(x) - acrossOf(y));
   for (const u of units) {
     const top = u.cards.find((p) => p.card === u.top);
     const f = u.facts;

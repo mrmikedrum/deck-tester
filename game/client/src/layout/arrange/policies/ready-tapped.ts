@@ -1,16 +1,17 @@
-// `ready-tapped` (§2.4), shaped to the designer's leaf: two standing rows (the front, inside the turn horizon, where a
-// tapped card makes a quarter turn; the second, past it, where tapped is a notch) and a lying row in a fixed order:
-// the rest of their creatures, their works, their lands as one block.
+// `ready-tapped` (§2.4): the commander and the heaviest groups stand, as many rows of them as the space holds (inside
+// the turn horizon a tapped card makes a quarter turn; past it, a notch); behind them lie the rest of their creatures,
+// their works and their lands as one block, in that order.
 import type { ArrCard, Group, Policy, PolicyCtx, TierSpec } from "../contract";
 import { PINNED, anyTapped, collect, creatureWeight, emphasisOf, factsOf, mattersOf, need, promoteRule, seatOf, tidyRule, topOf } from "./common";
 import { kindOf } from "./kinds";
 
+/** What is presented stands; behind it lie the rest, the works and the lands, in that order. How many rows each takes
+ *  is the space's and the cards' (a leaf at turn 15 holds two standing rows; a deeper one would hold more). */
 export const LEAF_TIERS: readonly TierSpec[] = [
-  { id: "ready", posture: "stand", tapped: "quarter", row: 0, markers: true },
-  { id: "second", posture: "stand", tapped: "notch", row: 1, markers: true },
-  { id: "rest", posture: "lie", tapped: "notch", row: 2, order: "fixed", markers: true, proud: true },
-  { id: "works", posture: "lie", tapped: "notch", row: 2, order: "fixed", markers: true, proud: true },
-  { id: "lands", posture: "lie", tapped: "notch", row: 2, order: "fixed", markers: true },
+  { id: "ready", posture: "stand", markers: true },
+  { id: "rest", posture: "lie", markers: true, proud: true },
+  { id: "works", posture: "lie", markers: true, proud: true },
+  { id: "lands", posture: "lie", markers: true },
 ];
 
 /** Groups (§2.4): the commander alone; a creature with dressing, a legendary creature, a planeswalker, a battle alone;
@@ -71,8 +72,7 @@ export const readyTapped: Policy = {
     { op: "stack", where: { tier: "works", stacks: true } },
     { op: "stack", where: { tokens: true, stacks: true } },
     { op: "stack", where: { creatures: true, stacks: true } },
-    { op: "demote", where: { tier: "ready" }, to: "second" },
-    { op: "demote", where: { tier: "second" }, to: { creature: "rest", other: "works" } },
+    { op: "demote", where: { tier: "ready" }, to: { creature: "rest", other: "works" } },
     { op: "fan", where: { tier: "works" }, show: 6 },
     { op: "fan", where: { tier: "rest" }, show: 6 },
     { op: "summary", where: { all: true } },

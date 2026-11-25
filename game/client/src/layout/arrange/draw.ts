@@ -71,7 +71,7 @@ export function regionOf(proj: Projector, f: SurfaceFrame, lo: number, hi: numbe
 
 /** A unit's cards, marker and target region at its place in `row`, on frame `f` (a pose may have moved it). */
 export function drawUnit(c: Container, f: SurfaceFrame, row: RowGeo, d: DrawSpec, s: number): Drawn {
-  const proj = c.projector, v = row.v, quarter = row.tiers.some((t) => t.tapped === "quarter");
+  const proj = c.projector, v = row.v, quarter = row.quarter;
   const cards: CardPlace[] = [];
   const top = d.members[0] ?? null;
   // A block turns only when all of it is spent (a well with one open land lies square).

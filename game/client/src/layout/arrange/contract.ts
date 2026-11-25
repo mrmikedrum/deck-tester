@@ -195,6 +195,8 @@ export interface SlotRef {
 
 export interface Row {
   readonly tiers: readonly TierId[];
+  /** Inside the turn horizon: a tapped card here makes a quarter turn (else a notch). */
+  readonly quarter: boolean;
   /** Depth of the row's feet from the anchor edge. */
   readonly v: number;
   readonly posture: "stand" | "lie";
@@ -392,18 +394,15 @@ export interface Group {
   readonly squared?: boolean;
 }
 
+/**
+ * A tier says how its cards are presented, never how many rows or places it has: consecutive tiers of one posture
+ * share a band, laid from the anchor edge in the policy's order, and a band takes as many rows as its units need and
+ * the container's space allows. A standing band's rows are grids of places, counted centre-out, the nearest row first;
+ * a lying band packs its units across in tier order.
+ */
 export interface TierSpec {
   readonly id: TierId;
   readonly posture: "stand" | "lie";
-  /**
-   * How a tapped card shows in it, which sets its slot: a quarter turn (inside the turn horizon: the slot is a card's
-   * height wide) or a notch (a card's width, its corners crossing the gap).
-   */
-  readonly tapped: "quarter" | "notch";
-  /** Which row of the container it takes (0 nearest the anchor edge). Tiers sharing a row share it in `fixed` order. */
-  readonly row: number;
-  /** Units in a fixed order across (the leaf's back: rest, works, lands), by tier. */
-  readonly order?: "fixed";
   /** It may hold stacks: reserve the count strip in front of its row. */
   readonly markers?: boolean;
   /** Its fans may push a notable member proud: reserve that strip behind the row. */

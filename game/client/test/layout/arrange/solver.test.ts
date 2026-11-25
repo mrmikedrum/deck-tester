@@ -125,7 +125,7 @@ describe("stability (§3)", () => {
     resetIds(1);
     const front = [ac({ commander: true, power: 4 }), ...Array.from({ length: 4 }, (_, i) => ac({ name: `Bear ${i}`, power: 3 }))];
     const a = run({ cards: front });
-    expect(a.fit.units.filter((u) => u.tier === "second").length).toBe(1);
+    expect(a.fit.units.filter((u) => u.slot.row === 1).length).toBe(1);
     // one leaves the front: the demoted one could come back, but the deadband keeps it until the next turn re-deals
     const b = run({ cards: front.filter((c) => c.name !== "Bear 0"), memory: a.fit.memory, clock: { phase: "MAIN2" } });
     expect(b.fit.report.edits.filter((e) => e.ran).length).toBeGreaterThanOrEqual(0);
@@ -218,7 +218,7 @@ describe("current types (§1.2, designer §5)", () => {
     const c = run({ cards: [...base, crewed], memory: b.fit.memory, clock: { phase: "COMBAT_BEGIN" } });
     const moved = c.fit.units.find((u) => u.members.includes(ship.id))!;
     expect(moved.retyped).toBe(false);
-    expect(["ready", "second"]).toContain(moved.tier);
+    expect(moved.tier).toBe("ready");
     // a Vehicle crewed and back before the re-sort never travels
     const d = run({ cards: [...base, ship], memory: b.fit.memory, clock: { phase: "MAIN1" } });
     const back = d.fit.units.find((u) => u.members.includes(ship.id))!;
@@ -254,16 +254,8 @@ describe("bounded search (§5.1)", () => {
 /** A legal random policy: random grouping, tiers in random rows, random importance, a random ladder. */
 function chaos(seed: number): Policy {
   const rnd = prng(seed);
-  const rows = 1 + Math.floor(rnd() * 3);
-  const tiers: TierSpec[] = Array.from({ length: 2 + Math.floor(rnd() * 4) }, (_, i) => {
-    const row = Math.min(rows - 1, Math.floor((i * rows) / 4));
-    return { id: `t${i}`, posture: row === rows - 1 && rows > 1 ? "lie" : rnd() < 0.7 ? "stand" : "lie", tapped: rnd() < 0.5 ? "quarter" : "notch", row, markers: rnd() < 0.7, proud: rnd() < 0.5 };
-  });
-  // a row is standing or lying as a whole
-  for (const r of new Set(tiers.map((t) => t.row))) {
-    const p = tiers.find((t) => t.row === r)!.posture;
-    tiers.forEach((t, i) => t.row === r && (tiers[i] = { ...t, posture: p }));
-  }
+  // any number of tiers, standing and lying in any order: the space decides how many rows each band gets
+  const tiers: TierSpec[] = Array.from({ length: 2 + Math.floor(rnd() * 4) }, (_, i) => ({ id: `t${i}`, posture: rnd() < 0.5 ? "stand" : "lie", markers: rnd() < 0.7, proud: rnd() < 0.5 }));
   const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rnd() * xs.length)]!;
   const salt = Math.floor(rnd() * 1000);
   const tierFor = (g: Group) => tiers[(g.members[0]! * 31 + salt) % tiers.length]!.id;

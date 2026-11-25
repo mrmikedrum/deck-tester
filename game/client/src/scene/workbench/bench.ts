@@ -39,19 +39,32 @@ function matOnly(f: Frame, prev: TablePlan | null): TablePlan {
   return planTable(tableInputOf(f.model, { viewport: VIEWPORT, mode: "normal", memory: prev?.memory ?? null, settling: f.settling }));
 }
 
+interface EngineDid {
+  readonly units: number;
+  readonly candidates: number;
+  readonly audits: number;
+  readonly overflow: boolean;
+  readonly error: boolean;
+}
+/** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
+const did = (p: TablePlan): EngineDid => {
+  const f = p.shadow?.result?.fit;
+  return { units: f?.units.length ?? 0, candidates: f?.report.candidates ?? 0, audits: f ? f.report.audits + f.report.poses.length : 0, overflow: !!p.shadow?.result?.overflow, error: !!p.shadow?.error };
+};
+
 /** Per-plan times over `PLANS` plans of `input`'s frames in order (memory carried), and batch means. */
-async function time(input: Named, plan: (f: Frame, prev: TablePlan | null) => TablePlan): Promise<{ stats: Stats; plans: TablePlan[] }> {
+async function time(input: Named, plan: (f: Frame, prev: TablePlan | null) => TablePlan): Promise<{ stats: Stats; plans: EngineDid[] }> {
   const fs = input.frames;
   let prev: TablePlan | null = null;
   for (let i = 0; i < 20; i++) prev = plan(fs[i % fs.length]!, prev);
-  const times: number[] = [], plans: TablePlan[] = [];
+  const times: number[] = [], plans: EngineDid[] = [];
   prev = null;
   for (let i = 0; i < Math.max(PLANS, fs.length); i++) {
     if (i % fs.length === 0) prev = null;
     const t0 = now();
     const p = plan(fs[i % fs.length]!, prev);
     times.push(now() - t0);
-    plans.push(p);
+    plans.push(did(p));
     prev = p;
     if (i % 50 === 49) await nextFrame(); // let the page breathe (and draw progress)
   }
@@ -108,8 +121,7 @@ export async function bench(root: HTMLElement): Promise<void> {
       $("b-status").textContent = `Timing ${input.name} (${input.what})…`;
       await wait(50);
       const on = await time(input, planFrame), off = await time(input, matOnly);
-      const fits = on.plans.map((p) => p.shadow?.result?.fit).filter((f) => !!f);
-      const most = (g: (f: (typeof fits)[number]) => number) => Math.max(0, ...fits.map(g));
+      const most = (g: (d: EngineDid) => number) => Math.max(0, ...on.plans.map(g));
       const row: Row = {
         input: input.name,
         what: input.what,
@@ -117,11 +129,11 @@ export async function bench(root: HTMLElement): Promise<void> {
         withShadow: on.stats,
         matOnly: off.stats,
         engine: {
-          units: most((f) => f.units.length),
-          candidates: most((f) => f.report.candidates),
-          audits: most((f) => f.report.audits + f.report.poses.length),
-          overflow: on.plans.filter((p) => p.shadow?.result?.overflow).length,
-          errors: on.plans.filter((p) => p.shadow?.error).length,
+          units: most((d) => d.units),
+          candidates: most((d) => d.candidates),
+          audits: most((d) => d.audits),
+          overflow: on.plans.filter((d) => d.overflow).length,
+          errors: on.plans.filter((d) => d.error).length,
         },
       };
       rows.push(row);
