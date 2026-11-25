@@ -10,13 +10,15 @@ import { mat } from "./seat/mat";
 import { combatRow, fighters, rowUnits } from "./combat";
 import type { CombatPairs } from "./combat";
 import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry";
-import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
+import { audit, bounds, depthOrder, hitQuad, inQuad, seatShapes, stackShape } from "./shape";
 import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
 import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 import { shadowPlan } from "./arrange/shadow";
+import { arrangedSeat } from "./arrange/adapter";
+import { leafFrame } from "./arrange/leaf";
 import type { ShadowInput, ShadowPlan } from "./arrange/shadow";
 
 // Planning a seat with the hard-limit audit and a fold-harder retry, and planning the table: four seats, plates, the
@@ -239,7 +241,15 @@ export function planTable(input: TableInput): TablePlan {
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);
-  const plans: SeatPlan[] = inputs.map((i) => planSeat(layout, i, { fighting: fight }));
+  // The arrangement engine's leaf (TableInput.shadow): recorded beside mat, or, when it is drawn, the seat's plan.
+  const at = input.shadow ? input.seats.findIndex((x) => x.seat === input.shadow!.seat) : -1;
+  const shadow = input.shadow && at >= 0 ? shadowPlan(input.shadow, tpl.slots[at]!, projector, reserve.safe) : undefined;
+  const drawn = input.shadow?.draw && shadow?.result ? at : -1;
+  const plans: SeatPlan[] = inputs.map((i, k) =>
+    k === drawn
+      ? arrangedSeat({ result: shadow!.result!, frame: leafFrame(tpl.slots[k]!), yaw: tpl.slots[k]!.yaw, board: i.board, cards: input.shadow!.cards, projector, reserve })
+      : planSeat(layout, i, { fighting: fight }),
+  );
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
   const geo = makeGeo(projector, reserve, FLOOR.mine);
@@ -271,7 +281,8 @@ export function planTable(input: TableInput): TablePlan {
     const bad = new Set(c.v.filter((x) => !c.row.has(x.group)).map((x) => x.seat));
     let moved = false;
     plans.forEach((p, i) => {
-      if (!bad.has(p.seat) || p.report.lastResort) return;
+      // (The engine's leaf folds by its own ladder: the table does not refold it.)
+      if (!bad.has(p.seat) || p.report.lastResort || i === drawn) return;
       floor[i] = Math.max(floor[i]!, p.report.pressure) + 1;
       // A seat already at the last notch (it passed its own audit there) has nothing harder to fold to but its last resort.
       plans[i] = floor[i]! > MAX_PRESSURE ? lastResort(inputs[i]!, p, fight) : planSeat(layout, inputs[i]!, { minPressure: floor[i]!, fighting: fight });
@@ -297,8 +308,6 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  const at = input.shadow ? input.seats.findIndex((x) => x.seat === input.shadow!.seat) : -1;
-  const shadow = input.shadow && at >= 0 ? shadowPlan(input.shadow, tpl.slots[at]!, projector, reserve.safe) : undefined;
   return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, ...(shadow ? { shadow } : {}) };
 }
 
@@ -579,7 +588,7 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
   for (const p of plans)
-    for (const un of p.units) groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: shape(un.id).face, order: shape(un.id).order });
+    for (const un of p.units) groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: hitQuad(shape(un.id)), order: shape(un.id).order });
   for (const p of plans) for (const z of p.fixtures.zones) {
     const id = `zone:${z.zone}:${p.seat}`;
     groups.push({ id, kind: "zone", seat: p.seat, members: [], quad: shape(id).face, order: shape(id).order });

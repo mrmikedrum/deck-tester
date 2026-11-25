@@ -28,6 +28,8 @@ export interface ShadowInput {
   readonly policy?: string;
   /** Audit the leaf under the parted pose too (goldens, the bench's report): it only reports. */
   readonly auditPoses?: boolean;
+  /** The engine's leaf is the seat's plan (drawn, tapped, audited); otherwise it is only recorded beside mat. */
+  readonly draw?: boolean;
 }
 
 export interface ShadowPlan {
@@ -43,6 +45,8 @@ export interface ShadowOptions {
   readonly memory?: ContainerMemory | null;
   readonly policy?: string;
   readonly auditPoses?: boolean;
+  /** Draw the across leaf with the engine (the seat's plan), not only record it. */
+  readonly draw?: boolean;
 }
 
 /** The across seat's input from the model: its battlefield as `boardOf` draws it, read from current types. */
@@ -61,6 +65,7 @@ export function shadowInputOf(model: TableModel, seat: SeatId, involved: Readonl
     memory: o.memory ?? null,
     ...(o.policy !== undefined ? { policy: o.policy } : {}),
     ...(o.auditPoses ? { auditPoses: true } : {}),
+    ...(o.draw ? { draw: true } : {}),
   };
 }
 

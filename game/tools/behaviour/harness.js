@@ -236,6 +236,8 @@ class Table {
   // only need the inspector open use this.
   async click(point) { await this.page.mouse.click(point.x, point.y); await sleep(40); await this.step(100); }
   async tapCard(id) { await this.tap(await locate(this.page, { card: id })); }
+  // Where a thing is (locate.js's kinds), for a tap at a particular spot: a card's place off its face.
+  locate(what) { return locate(this.page, what); }
   async tapPlate(pid) { await this.tap(await locate(this.page, { plate: pid })); }
   async drag(from, to) {
     const m = this.page.mouse;

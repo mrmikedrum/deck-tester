@@ -35,7 +35,12 @@ export interface Shape {
   /** Face width on screen across its middle, px, upright. */
   readonly width: number;
   readonly members: readonly CardId[];
+  /** What a tap reaches when it is not the face: the arrangement engine's place for the unit (its slot). */
+  readonly hit?: Quad;
 }
+
+/** What a tap reaches on an item: its place where it has one, else its face. */
+export const hitQuad = (s: Shape): Quad => s.hit ?? s.face;
 
 const TILT = { prop: 0.85, lean: 0.4, flat: 0 } as const;
 
@@ -57,7 +62,8 @@ interface Frame {
   readonly up: V3;
 }
 
-const frameOf = (proj: Projector, pos: V3, posture: Posture, tapped: boolean): Frame => {
+const frameOf = (proj: Projector, pos: V3, posture: Posture, tapped: boolean, own?: Placement["frame"]): Frame => {
+  if (own) return { base: pos, up: own.up };
   if (posture === "stand") {
     const th = proj.pitch + (tapped ? TAP_LEAN : 0);
     return { base: { x: pos.x, y: pos.y + 0.02, z: pos.z }, up: { x: 0, y: Math.cos(th), z: -Math.sin(th) } };
@@ -73,7 +79,7 @@ const AT_REST: At = (v) => v;
 
 /** A card's middle at rest (the point the scene poses it by, `unitPose`): where a lean-in carries it from. */
 export function cardMiddle(proj: Projector, p: Placement, tapped: boolean): V3 {
-  const fr = frameOf(proj, p.pos, p.posture, tapped), h = (CH / 2) * p.scale;
+  const fr = frameOf(proj, p.pos, p.posture, tapped, p.frame), h = (CH / 2) * p.scale;
   return { x: fr.base.x + fr.up.x * h, y: fr.base.y + fr.up.y * h, z: fr.base.z + fr.up.z * h };
 }
 
@@ -97,7 +103,8 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
 
 export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean, at: At = AT_REST): Shape {
   const p: Placement = u.placement;
-  const q = cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
+  const own = p.frame;
+  const q = own ? ownQuads(proj, p, own, u.turn ?? (u.tapped ? 1 : 0), at) : cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
   const creature = u.role === "creature";
   return {
     group: u.id,
@@ -105,9 +112,28 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     seat,
     ...q,
     order: p.pos.z,
-    floor: creature ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
+    // (An arranged creature lying in a pile meets the any-card floor: only a standing one is a creature on show.)
+    floor: creature && (!own || p.posture === "stand") ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
     members: u.members,
+    // at rest, a tap reaches its place; carried in a lean-in or fighting in the row, its face
+    ...(u.hit && at === AT_REST && !u.fighting ? { hit: u.hit } : {}),
   };
+}
+
+/**
+ * A card on its own axes (the arrangement engine's), turned `turn` quarter turns clockwise in its own plane about its
+ * middle (a tapped card: 1 a quarter turn, 1/6 a notch). Its width is measured unturned, as a floor is.
+ */
+function ownQuads(proj: Projector, p: Placement, own: NonNullable<Placement["frame"]>, turn: number, at: At): { face: Quad; name: Quad; foot: Quad; width: number } {
+  const s = p.scale, th = (turn * Math.PI) / 2, c = Math.cos(th), sn = Math.sin(th);
+  const m = (a: V3, b: V3, k: number): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k });
+  const mid = m(p.pos, own.up, (CH / 2) * s);
+  const up = m({ x: own.up.x * c, y: own.up.y * c, z: own.up.z * c }, own.right, sn);
+  const right = m({ x: own.right.x * c, y: own.right.y * c, z: own.right.z * c }, own.up, -sn);
+  const pt = (a: number, b: number): Point => proj.project(at(m(m(mid, right, a * s), up, b * s)));
+  const win = (t0: number, t1: number): Quad => [pt(-CW / 2, (t0 - 0.5) * CH), pt(CW / 2, (t0 - 0.5) * CH), pt(CW / 2, (t1 - 0.5) * CH), pt(-CW / 2, (t1 - 0.5) * CH)];
+  const a = proj.project(m(mid, own.right, (-CW / 2) * s)), b = proj.project(m(mid, own.right, (CW / 2) * s));
+  return { face: win(0, 1), name: win(5 / 6, 1), foot: win(0, 1 / 6), width: Math.hypot(b.x - a.x, b.y - a.y) };
 }
 
 /** The plaque stands leaning back by the camera's pitch, 3.2 wide and 0.82 tall at scale 1. */
@@ -253,7 +279,11 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     // (A plaque is not a card or a pile: intent.md's patch rule is for those. It still draws over what it stands on.)
     // A whole square found geometrically is a patch the cell grid would find too, so the grid runs only to measure a
     // failure (the verdicts are the grid's; arrange/audit.ts `hasSquare`).
-    const best = s.kind === "plate" || (!GRID_ONLY.on && hasSquare(s.face, bb, near.map((o) => o.face), area.chrome, area.safe, tap)) ? tap : tapPatch(s, near, area, tap);
+    // (On its place where it has one: what hit testing gives it, less what is on top there.)
+    const region = hitQuad(s), rb = s.hit ? bounds(region) : bb;
+    const atop = s.hit ? sorted.filter((o) => o !== s && o.group !== s.group && o.order >= s.order && overlaps(bounds(hitQuad(o)), rb)) : near;
+    const best =
+      s.kind === "plate" || (!GRID_ONLY.on && hasSquare(region, rb, atop.map(hitQuad), area.chrome, area.safe, tap)) ? tap : tapPatch({ ...s, face: region }, atop.map((o) => ({ ...o, face: hitQuad(o) })), area, tap);
     if (best < tap - 1e-6) out.push({ rule: "tap-patch", group: s.group, seat: s.seat, measured: best, limit: tap });
   }
   return out;

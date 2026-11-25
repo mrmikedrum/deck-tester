@@ -86,6 +86,15 @@ test.describe("targets and choices on the table", () => {
     await table.tapCard(OPTS(s)[1].id);
     expect(await table.answered(1)).toEqual([{ key: expect.any(String), answer: [2] }]);
   });
+  test("a tapped card on the leaf across is chosen by a tap in its place, off its face", async ({ table }) => {
+    // Glissa is Atraxa's, across: tapped, it lies a quarter turn in a place a standing card's height wide (the new entry
+    // draws that leaf with the arrangement engine; the current client has no places and taps the card).
+    const s = snapshot("main");
+    find(s, "Atraxa", "Glissa, Herald of Predation").tapped = true;
+    await table.open(choice(s));
+    await table.tap(await table.locate({ place: OPTS(s)[1].id }));
+    expect(await table.answered(1)).toEqual([{ key: expect.any(String), answer: [2] }]);
+  });
   test("exactly one wanted: a tap on a player's plate sends the player", { tag: "@cast" }, async ({ table }) => {
     const s = snapshot("main");
     await table.open(choice(s));

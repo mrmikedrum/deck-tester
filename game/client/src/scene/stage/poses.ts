@@ -22,6 +22,13 @@ export const PILE_STEP = 0.0075;
 /** The pose of a card standing in `posture` with its foot at `pos`: its middle half a card up its face. */
 export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
   const s = p.scale;
+  if (p.frame) {
+    // Its own axes (the arrangement engine's), untapped: Ry·Rx carries the card's right to `right` and up to `up` (the
+    // renderer turns a tapped one in its own plane).
+    const { right, up } = p.frame;
+    const ry = Math.atan2(-right.z, right.x), rx = Math.atan2(up.x * Math.sin(ry) + up.z * Math.cos(ry), up.y);
+    return { pos: add(p.pos, scaled(up, 0.5 * s)), rx, ry, s };
+  }
   if (p.posture === "stand") {
     const th = proj.pitch + (tapped ? TAP_LEAN : 0);
     const up = v3(0, Math.cos(th), -Math.sin(th));

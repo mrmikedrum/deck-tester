@@ -11,6 +11,7 @@ import { engineCombat, fighters, mergeCombat } from "./combat";
 import type { CombatPairs } from "./combat";
 import type { TableModel } from "../model";
 import { shadowInputOf } from "./arrange/shadow";
+import { arrangedMemory } from "./arrange/adapter";
 import type { ShadowOptions } from "./arrange/shadow";
 
 export interface TableInputOptions {
@@ -61,6 +62,6 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     memory: o.memory ?? null,
     stack,
     combat,
-    ...(o.shadow && model.seats.length === 4 ? { shadow: shadowInputOf(model, model.seats[2]!.id, involved, o.settling ?? false, o.shadow) } : {}),
+    ...(o.shadow && model.seats.length === 4 ? { shadow: shadowInputOf(model, model.seats[2]!.id, involved, o.settling ?? false, { ...o.shadow, memory: o.shadow.memory ?? arrangedMemory(o.memory?.get(model.seats[2]!.id)) }) } : {}),
   };
 }
