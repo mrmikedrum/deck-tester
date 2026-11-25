@@ -20,7 +20,7 @@ import {
 } from "three";
 import type { Material, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
-import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
+import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk, signal } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
 import { PILE_STEP, siftRoll } from "../stage/poses";
@@ -1015,6 +1015,10 @@ class AccountView implements PieceView {
   look(v: ActorView): void {
     this.mat.color.setScalar(Math.max(0, 1 - v.sample.fade));
     this.mat.opacity = v.sample.alpha;
+    // While a decision lights cards it holds, its ink lights with them: fire for a choice, gilt for a pick, blood in danger.
+    const lit = v.mark ? INK_LIGHT[v.mark] : null;
+    this.mat.emissive.set(lit ?? "#000000");
+    this.mat.emissiveIntensity = lit ? 0.55 * Math.max(0.3, v.sample.glow || 1) : 0;
   }
   dispose(): void {
     this.lease.release();
@@ -1023,8 +1027,11 @@ class AccountView implements PieceView {
   }
 }
 
-/** An answer in red, lying on the table: a slip tucked under its page's edge (drawn before the page, which covers the
- *  tucked part), a landing numeral or a note (over the pages, under every card). */
+/** The light an account's ink takes from the strongest mark among its cards. */
+const INK_LIGHT: Readonly<Record<string, string>> = { option: signal.option, selected: signal.selected, danger: signal.danger };
+
+/** An answer in red, lying on the table: a slip on its page's front edge, a landing numeral or a note (over the pages,
+ *  under every card). */
 class AnswerView implements PieceView {
   readonly group = new Group();
   private readonly geo = new PlaneGeometry(1, 1);
@@ -1040,7 +1047,9 @@ class AnswerView implements PieceView {
     this.mat = new MeshStandardMaterial({ map: this.lease.texture, transparent: true, depthWrite: false, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2 });
     this.mesh = new Mesh(this.geo, this.mat);
     this.mesh.scale.set(d.spec.w, d.spec.d, 1);
-    this.mesh.renderOrder = d.spec.kind === "slip" ? -4 : -1;
+    // (Drawn after the table's ground effects, a sigil's brand among them, so nothing glows over its words; the depth
+    // test still hides it behind any card that stands in front of it.)
+    this.mesh.renderOrder = 4;
     this.group.add(this.mesh);
   }
   patch(v: ActorView): void {

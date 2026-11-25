@@ -10,7 +10,7 @@ import type { Btn, Kind } from "./kind";
 
 /** What reaches me with these blocks: the power of the attackers at me no blocker of mine stops ("Take 11"). */
 function takeOf(c: { d: BlockDecision; f: Parameters<typeof cardOf>[0]; draft: { sel: readonly number[] } }): { sum?: string } {
-  const at = c.f.attackersAtMe;
+  const at = c.f.attackingMe;
   if (!at.length) return {};
   const stopped = new Set(c.draft.sel.flatMap((o) => { const r = c.d.refs[o - 1]; return r ? [r.blocks] : []; }));
   const take = at.filter((id) => !stopped.has(id)).reduce((t, id) => t + Math.max(0, cardOf(c.f, id)?.power ?? 0), 0);

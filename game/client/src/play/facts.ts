@@ -57,6 +57,8 @@ export interface Facts {
   readonly stack: readonly ItemFact[];
   /** Attackers aimed at me while attackers are declared. */
   readonly attackersAtMe: readonly CardId[];
+  /** Every attacker aimed at me in the combat on the table, whatever the step (the block's sum). */
+  readonly attackingMe: readonly CardId[];
   /** Who declared blockers, while blockers are declared. */
   readonly blockerSeats: readonly SeatId[];
   /** The top of the stack is someone else's and aims at me or mine (readings `threatens`). */
@@ -98,10 +100,8 @@ export function factsOf(m: TableModel): Facts {
     if (st.controller === null || st.controller === me) continue;
     for (const t of st.targets) if ("card" in t && m.cards.get(t.card)?.controller === me) danger.add(t.card);
   }
-  const attackersAtMe =
-    m.phase === "COMBAT_DECLARE_ATTACKERS"
-      ? (m.combat?.attackers ?? []).filter((a) => a.defender !== null && "seat" in a.defender && a.defender.seat === me).map((a) => a.attacker)
-      : [];
+  const attackingMe = (m.combat?.attackers ?? []).filter((a) => a.defender !== null && "seat" in a.defender && a.defender.seat === me).map((a) => a.attacker);
+  const attackersAtMe = m.phase === "COMBAT_DECLARE_ATTACKERS" ? attackingMe : [];
   const blockerSeats =
     m.phase === "COMBAT_DECLARE_BLOCKERS"
       ? [...new Set((m.combat?.blockers ?? []).map((b) => m.cards.get(b.blocker)?.controller).filter((s): s is SeatId => !!s))]
@@ -131,6 +131,7 @@ export function factsOf(m: TableModel): Facts {
       sweep: isCreatureSweep(s, m),
     })),
     attackersAtMe,
+    attackingMe,
     blockerSeats,
     threat: !!top && threatens(top, m),
     sweep: !!top && isCreatureSweep(top, m),

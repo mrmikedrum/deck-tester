@@ -37,8 +37,8 @@ export interface InkAtRest {
   readonly shape: Shape;
 }
 
-/** How far a slip tucks under its page's front edge (world): over the page's margin, short of the front row's feet. */
-const TUCK = 0.45;
+/** How far a slip lies in over its page's front edge (world): on the page's margin, short of the front row's feet. */
+const TUCK = 0.5;
 /** A slip's margin round its words, in ems. */
 const PAD = { x: 0.7, y: 0.45 } as const;
 
@@ -126,8 +126,19 @@ export function answersAtRest(o: AnswersInput): InkAtRest[] {
       const ends = lanes.filter((x) => x.defending === l.seat && "at" in x.to).map((x) => (x.to as { at: V3 }).at);
       if (!ends.length) continue;
       const c = { x: ends.reduce((t, e) => t + e.x, 0) / ends.length, y: 0, z: ends.reduce((t, e) => t + e.z, 0) / ends.length };
-      // Just short of the edge the lanes land on, toward the middle they come from, the numeral at the tally's size.
-      out.push(block(o.projector, `landing:${l.seat}`, "landing", l.seat, [l.text], l.ids, { ...c, z: c.z + (l.seat === o.perspective ? -0.75 : 0.6) }, 0, INK_PX.tally, false, true));
+      // Where the lanes land: on my side, just short of my page toward the middle they come from; on theirs, on the page's
+      // front margin (toward me it would lie under my own creatures).
+      const mk = (p: V3): InkAtRest => block(o.projector, `landing:${l.seat}`, "landing", l.seat, [l.text], l.ids, p, 0, INK_PX.tally, false, true);
+      if (l.seat !== o.perspective) {
+        out.push(mk({ ...c, z: c.z - 0.35 }));
+        continue;
+      }
+      // Mine: short of my page where the lanes come in, unless the fight stands there; then beside my plaque, where my
+      // life is (still where the attack lands: on me).
+      const plate = planOf.get(o.perspective)?.fixtures.plate.pos;
+      const tries = [mk({ ...c, z: c.z - 0.75 }), ...(plate ? [3.4, -3.4].map((dx) => mk({ x: plate.x + dx, y: 0, z: plate.z - 0.3 })) : [])];
+      const clear = (x: InkAtRest): boolean => !audit([...o.shapes, x.shape], o.projector.viewport, { only: (y) => y === x.shape }).some((v) => v.rule !== "tap-patch");
+      out.push(tries.find(clear) ?? tries[0]!);
     }
   }
   if (o.ask?.kind === "block" && o.combat) {
