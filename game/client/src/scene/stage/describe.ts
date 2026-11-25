@@ -17,7 +17,7 @@ import { DIM, SCRIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
 import type { LabelAsk, Measure } from "./labels";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
-import { pagePose, platePose, screenPose, stackPose, unitPose, zonePose } from "./poses";
+import { pagePose, platePose, poseQuad, screenPose, stackPose, unitPose, zonePose } from "./poses";
 import { LOOK, tableFocus } from "./types";
 import type { Aim, Description, Draw, FocusTop, Lane, Look, Piece, Pose, WellLook } from "./types";
 
@@ -438,7 +438,11 @@ function unitPiece(
   const members = [...u.members, ...u.dressing];
   const top = model.cards.get(u.top);
   const mark = strongest(u.members.map(markOf));
-  const face = top ? faceOfCard(model, top, mark) : null;
+  const pose = unitPose(plan.projector, u.placement, u.tapped);
+  // Under 56 px on screen a card wears its small form: one word, one figure or one glyph.
+  const q = poseQuad(plan.projector, pose);
+  const small = Math.hypot(q[1].x - q[0].x, q[1].y - q[0].y) < SMALL_FACE_PX;
+  const face = top ? faceOfCard(model, top, mark, small) : null;
   const chips = top ? chipsOf(top) : [];
   const looked = u.kind === "well" ? wellLook(model, u, mine) : null;
   const well = looked ? { ...looked, sign: looked.theirs ? looked.sign : fitWellSign(plan, u.id, looked.sign, input.measure ?? estimate), ...row } : null;
@@ -474,7 +478,7 @@ function unitPiece(
     seat,
     members,
     face: u.top,
-    pose: unitPose(plan.projector, u.placement, u.tapped),
+    pose,
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
@@ -484,6 +488,9 @@ function unitPiece(
     needsMembers: true,
   };
 }
+
+/** A card narrower than this on screen (CSS px) wears its small face. */
+const SMALL_FACE_PX = 56;
 
 /** How many copies a pile draws (a well's short stack: four). */
 export const PILE_COPIES = { pile: 3, well: 4 } as const;

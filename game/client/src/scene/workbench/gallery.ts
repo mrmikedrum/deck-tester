@@ -179,6 +179,28 @@ const FACES: readonly {
   },
 ];
 
+/** One of each composition the table draws (designer's `frames.png`). */
+const TABLE_FACES: readonly { label: string; entry: Entry }[] = [
+  { label: "creature", entry: { name: "Herd Baloth", frame: "G", kind: "creature", power: 4, toughness: 4, keywords: ["Trample"] } },
+  { label: "token", entry: { name: "Beast", frame: "G", kind: "creature", power: 4, toughness: 4, token: true } },
+  { label: "commander", entry: { name: "Atraxa, Grand Unifier", frame: "M", kind: "creature", power: 8, toughness: 8, commander: true, keywords: ["Flying", "Deathtouch"] } },
+  { label: "artifact creature", entry: { name: "Steel Overseer", frame: "C", kind: "creature", made: ["artifact"], power: 6, toughness: 6, gem: "idle" } },
+  { label: "artifact (rock)", entry: { name: "Sol Ring", frame: "C", kind: "rock", mana: ["C", "C"] } },
+  { label: "enchantment", entry: { name: "Rule of Law", frame: "W", kind: "enchantment" } },
+  { label: "enchantment creature", entry: { name: "Courser of Kruphix", frame: "G", kind: "creature", made: ["enchantment"], power: 2, toughness: 4 } },
+  { label: "planeswalker", entry: { name: "Tezzeret, Cruel Captain", frame: "U", kind: "walker", loyalty: "5" } },
+  { label: "commander planeswalker", entry: { name: "Dack Fayden", frame: "M", kind: "walker", loyalty: "3", commander: true } },
+  { label: "battle", entry: { name: "Invasion of Zendikar", frame: "G", kind: "enchantment", made: [], whole: "battle", defense: "3" } },
+  { label: "basic land", entry: { name: "Island", frame: "U", kind: "land", basic: true, mana: ["U"] } },
+  { label: "dual land", entry: { name: "Breeding Pool", frame: "G", kind: "land", mana: ["G", "U"] } },
+  { label: "any-colour land", entry: { name: "Command Tower", frame: "L", kind: "land", mana: ["W", "U", "B", "R", "G"] } },
+  { label: "utility land", entry: { name: "Mystic Sanctuary", frame: "L", kind: "land", mana: ["U"], gem: "idle" } },
+  { label: "vehicle, not crewed", entry: { name: "Smuggler's Copter", frame: "C", kind: "artifact", hollow: true, power: 3, toughness: 3, keywords: ["Flying"] } },
+  { label: "the same, crewed", entry: { name: "Smuggler's Copter", frame: "C", kind: "creature", made: ["artifact"], power: 3, toughness: 3, keywords: ["Flying"] } },
+  { label: "land creature", entry: { name: "Dryad Arbor", frame: "G", kind: "creature", made: ["land"], mana: ["G"], power: 1, toughness: 1 } },
+  { label: "artifact enchantment", entry: { name: "Spear of Heliod", frame: "W", kind: "artifact", made: ["artifact", "enchantment"], gem: "idle" } },
+];
+
 export function gallery(root: HTMLElement, env: FaceEnv, isReady: (url: string) => boolean): void {
   const faces = section(root, "faces", "Faces");
   for (const f of FACES) {
@@ -196,6 +218,14 @@ export function gallery(root: HTMLElement, env: FaceEnv, isReady: (url: string) 
       env,
     ),
   );
+
+  // The table faces, composed from what each card is now, at their standard size and in the small form (under 56 px).
+  const table = section(root, "table-faces", "Table faces");
+  for (const f of TABLE_FACES) {
+    const spec = faceOf(f.entry, false, isReady);
+    figure(table, f.label, (c) => paintFace(c, spec, env));
+    figure(table, `${f.label}, small`, (c) => paintFace(c, { ...spec, small: true }, env));
+  }
 
   const plates = section(root, "plates", "Plates");
   const rows: readonly {
