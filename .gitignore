@@ -4,8 +4,12 @@ __pycache__/
 /vendor
 engine/target/
 .DS_Store
-# The game client's tools: their packages, and the look loop's recordings and rounds (paused; see game/LOOK.md)
-game/tools/node_modules
+# The game client: its packages and build, and the look loop's recordings and rounds (paused; see game/LOOK.md)
+game/node_modules
+game/client/dist
+game/client/dist.staging
+game/client/dist.old
+agent/integrations/manabox/node_modules
 /game/look/
 /game/reels/
 /game/lanes/

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["client/index.html", "client/workbench.html", "client/test/**/*.test.ts", "tools/**/*.js"],
+  "project": ["client/src/**/*.{ts,tsx}", "client/test/**/*.ts", "tools/**/*.js"],
+  "ignoreDependencies": ["prettier"]
+}

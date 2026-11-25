@@ -25,21 +25,42 @@ jobs:
 
   client:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: game
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Scripts parse
-        run: for f in game/client/*.js game/tools/*.js; do node --check "$f"; done
-      - name: Every file a page loads exists
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Old client scripts parse
+        run: for f in client/*.js tools/*.js; do node --check "$f"; done
+      - name: Tools' tests (the packet's layout verdict)
+        run: node --test "tools/*.test.js"
+      - name: Every file the old pages load exists
         run: |
           node -e '
           const fs = require("fs"), path = require("path"); let bad = 0;
-          for (const h of fs.readdirSync("game/client").filter(f => f.endsWith(".html")))
-            for (const m of fs.readFileSync("game/client/" + h, "utf8").matchAll(/(?:src|href)="([^"]+)"/g))
-              if (!/^https?:/.test(m[1]) && !fs.existsSync(path.join("game/client", m[1]))) { console.log(h + ": missing " + m[1]); bad++; }
+          for (const h of ["live.html", "offline.html"])
+            for (const m of fs.readFileSync("client/" + h, "utf8").matchAll(/(?:src|href)="([^"]+)"/g))
+              if (!/^https?:/.test(m[1]) && !fs.existsSync(path.join("client", m[1]))) { console.log(h + ": missing " + m[1]); bad++; }
           process.exit(bad ? 1 : 0);'
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run behaviour
+      - name: The new entry's cast subset, on Chromium and WebKit
+        # The built entry (npm run build above) on the same specs, through window.__deckmaster: the tests tagged @cast.
+        run: npx playwright test -c tools/behaviour --grep @cast
+        env:
+          BEHAVIOUR_CLIENT: new
+          BEHAVIOUR_BROWSERS: chromium,webkit
 
   agent:
     # The deck partner's Python tools: Scryfall search/cache and the deck audit.
