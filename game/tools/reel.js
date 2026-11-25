@@ -247,13 +247,17 @@ const AUDIT_NEW = step => {
       }
     }
   } finally { panels.forEach(([e, v]) => (e.style.visibility = v)); }
-  // Labels at rest (the stack's focus set aside): each one's box and text size, and every card's name strip and foot, so
-  // the packet can check that no label meets another, or another unit's name or stats.
+  // Labels at rest (the stack's focus set aside: the board under it keeps its labels where they are): each one's box and
+  // text size as drawn (unrounded), and every card's name strip and foot, so the packet can check that no label meets
+  // another, or another unit's name or stats. `labelled`: the board draws labels (or has piles that would carry them),
+  // so a beat without them measured is not a pass. Null labels: the scene could not say.
   const strips = Object.entries(faces).filter(([id, f]) => f.visible && f.kind === "unit" && !up.includes(id))
     .flatMap(([id, f]) => [{ id, part: "name", q: strip(f.quad, 5 / 6, 1) }, { id, part: "foot", q: strip(f.quad, 0, 1 / 6) }])
     .map(({ id, part, q }) => ({ id, part, box: [Math.min(...q.map(p => p[0])), Math.min(...q.map(p => p[1])), Math.max(...q.map(p => p[0])), Math.max(...q.map(p => p[1]))] }));
-  const labels = stackUp ? [] : dm.scene.labels().filter(l => l.visible).map(l => ({ id: l.id, box: l.box, px: Math.round(l.px * 10) / 10, name: ((pieces[l.id] || {}).names || [])[0] || l.id }));
-  return { pieces, stackUp, labels, strips: stackUp ? [] : strips };
+  const drawn = dm.scene.labels ? dm.scene.labels() : null;
+  const labels = drawn ? drawn.filter(l => l.visible && !up.includes(l.id)).map(l => ({ id: l.id, box: l.box, px: l.px, name: ((pieces[l.id] || {}).names || [])[0] || l.id })) : null;
+  const labelled = (drawn || []).some(l => !up.includes(l.id)) || Object.values(pieces).some(p => p.role !== "plate" && p.role !== "stack" && p.n > 1);
+  return { pieces, stackUp, labels, labelled, strips };
 };
 
 // The current client on a mocked bridge: /api/view is a long poll held until a beat pushes the next snapshot (a beat's

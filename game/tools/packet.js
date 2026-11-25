@@ -151,33 +151,39 @@ function auditRows(a, fr) {
 }
 
 // Labels (intent.md: cards belong to the table they lie on): no label meets another label, or another unit's name strip
-// or foot, by more than 2 px each way; every label's text is at least 11 px on screen.
-const LABEL = { overlap: 2, px: 11 };
+// or foot, by more than 2 px each way; every label's text is at least 11 px on screen, as drawn (never rounded up to it;
+// `eps` is the projection's float noise, a thousandth of a pixel, not a tolerance).
+// A board that draws labels (`labelled`, or labels recorded) expects them measured; a beat that has none is not a pass.
+const LABEL = { overlap: 2, px: 11, eps: 1e-3 };
 function labelRows(a) {
-  const labels = a.labels || [], strips = a.strips || [];
+  const measured = Array.isArray(a.labels), expected = !!a.labelled || (measured && a.labels.length > 0);
+  if (!measured) return { md: expected ? ["Labels: **not measured** on a board that draws them"] : [], fails: 0, measured, expected };
+  const labels = a.labels, strips = a.strips || [];
   const meet = (p, q) => Math.min(p[2], q[2]) - Math.max(p[0], q[0]) > LABEL.overlap && Math.min(p[3], q[3]) - Math.max(p[1], q[1]) > LABEL.overlap;
-  const small = labels.filter(l => l.px < LABEL.px), hits = [];
+  const small = labels.filter(l => l.px < LABEL.px - LABEL.eps), hits = [];
   labels.forEach((l, i) => {
     labels.slice(i + 1).forEach(m => { if (m.id !== l.id && meet(l.box, m.box)) hits.push(`${l.name} meets ${m.name}'s label`); });
     strips.forEach(s => { if (s.id !== l.id && meet(l.box, s.box)) hits.push(`${l.name} covers ${(a.pieces[s.id] || {}).names ? a.pieces[s.id].names[0] : s.id}'s ${s.part === "name" ? "name" : "stats"}`); });
   });
-  const md = [`Labels: ${labels.length} measured · smallest text ${labels.length ? Math.min(...labels.map(l => l.px)).toFixed(1) : "-"} px · ${small.length ? "**" + small.length + " under 11 px**: " + small.map(l => `${l.name} ${l.px}`).join(", ") : "none under 11 px"} · ${hits.length ? "**" + hits.length + " collide**: " + hits.join("; ") : "none collide"}`];
-  return { md, fails: small.length + hits.length, measured: a.labels !== undefined };
+  const px = v => v.toFixed(2);
+  const md = [`Labels: ${labels.length} measured · smallest text ${labels.length ? px(Math.min(...labels.map(l => l.px))) : "-"} px · ${small.length ? "**" + small.length + " under 11 px**: " + small.map(l => `${l.name} ${px(l.px)}`).join(", ") : "none under 11 px"} · ${hits.length ? "**" + hits.length + " collide**: " + hits.join("; ") : "none collide"}`];
+  return { md, fails: small.length + hits.length, measured, expected };
 }
 
-// The packet's last line: PASS only when every beat held to the limits had pieces measured and none broke one. A clip
-// with nothing measured says so: it is not a pass.
-function verdict({ gated, measured, fails }) {
+// The packet's last line: PASS only when every beat held to the limits had pieces measured, every one whose board draws
+// labels had them measured, and none broke a limit. A clip with nothing measured says so: it is not a pass.
+function verdict({ gated, measured, fails, labelled = 0, labelsMeasured = 0 }) {
   if (fails) return `**LAYOUT: FAIL** (${fails} breaches of the hard limits)`;
   if (!measured) return `**LAYOUT: NOT MEASURED** (${gated ? `none of the ${gated} beats held to the limits had a piece measured` : "no beat was held to the limits"}: this is not a pass)`;
   if (measured < gated) return `**LAYOUT: INCOMPLETE** (${measured} of ${gated} beats held to the limits measured; no breaches in those)`;
+  if (labelsMeasured < labelled) return `**LAYOUT: INCOMPLETE** (labels measured on ${labelsMeasured} of ${labelled} labelled beats; no breaches in those)`;
   return `**LAYOUT: PASS** (${measured} beat${measured > 1 ? "s" : ""} measured)`;
 }
 
 async function audits(page, track, dir, out) {
   const [VW, VH] = track.viewport, md = ["", "## Layout audit (hard limits from tools/look/intent.md)", "",
     `Floors: any card or pile ${FLOOR.any} px wide, an opponent's creature ${FLOOR.oppCreature}, my creature ${FLOOR.myCreature}; every piece a ${FLOOR.tap}×${FLOOR.tap} pt patch the hit test gives it; nothing hidden; no card's name or stats strip more than ${FLOOR.nameCover}% or face more than ${FLOOR.faceCover}% covered by another piece or a panel.`, ""];
-  let fails = 0, gated = 0, measured = 0;
+  let fails = 0, gated = 0, measured = 0, labelled = 0, labelsMeasured = 0;
   for (const a of track.audits) {
     const fr = a.objects ? { objects: a.objects } : track.frames[a.frame], tag = `stage-${String(a.frame).padStart(3, "0")}`;
     const still = path.join(dir, `still-${String(a.frame).padStart(3, "0")}.png`);
@@ -200,9 +206,11 @@ async function audits(page, track, dir, out) {
     const r = auditRows(a, fr), l = labelRows(a);
     fails += r.fails + l.fails;
     if (r.measured) measured++;
-    md.push("", ...(r.measured ? r.md : ["(held to the limits, but no piece was measured here)"]), "", ...(l.measured ? l.md : []), "");
+    if (l.expected) labelled++;
+    if (l.expected && l.measured) labelsMeasured++;
+    md.push("", ...(r.measured ? r.md : ["(held to the limits, but no piece was measured here)"]), "", ...l.md, "");
   }
-  md.push(verdict({ gated, measured, fails }));
+  md.push(verdict({ gated, measured, fails, labelled, labelsMeasured }));
   return md;
 }
 

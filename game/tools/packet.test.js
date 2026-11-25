@@ -51,3 +51,17 @@ test("labels: a label meeting another, or another unit's name strip, by more tha
   assert.equal(labelRows({ ...ok, labels: [ok.labels[0], { ...ok.labels[1], px: 9 }] }).fails, 1);
   assert.equal(labelRows({ pieces }).measured, false);
 });
+
+test("labels: a labelled board whose labels were not measured is INCOMPLETE, never a pass; text is held to 11 px unrounded", async () => {
+  const { labelRows } = require("./packet.js");
+  const beat = { frame: 9, label: "the stack up", gate: true, objects, pieces: { a: piece("you"), b: piece("ana") }, stackUp: true, strips: [] };
+  // The pieces were measured, but the board's labels were not: not a pass.
+  assert.match(await last([{ ...beat, labelled: true }]), /LAYOUT: INCOMPLETE\*\* \(labels measured on 0 of 1 labelled beats/);
+  // Measured on that board, they count; a board with no labels asks for none.
+  const label = { id: "a", box: [0, 0, 50, 20], px: 12, name: "Meloku" };
+  assert.match(await last([{ ...beat, labelled: true, labels: [label] }]), /LAYOUT: PASS/);
+  assert.match(await last([{ ...beat, labelled: false, labels: [] }]), /LAYOUT: PASS/);
+  // 10.96 px is under the floor, though it rounds to 11.0.
+  assert.equal(labelRows({ pieces: {}, labels: [{ ...label, px: 10.96 }], strips: [] }).fails, 1);
+  assert.match(await last([{ ...beat, labelled: true, labels: [{ ...label, px: 10.96 }] }]), /LAYOUT: FAIL/);
+});
