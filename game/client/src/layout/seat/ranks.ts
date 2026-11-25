@@ -484,7 +484,6 @@ function plan(input: SeatInput): SeatPlan {
     cmd: cmdBack,
   };
   const memory: LayoutMemory = { v: 1, paradigm: "ranks", fit: mem };
-  if (DEBUG.on) DEBUG.last = { readA, readD, aLine, sL, aRanks, sR, sT, sS, sW, plateA, D, rowW, width };
   return new Ledger(board.cards.map((c) => c.id)).seal({
     seat,
     units: out,
@@ -546,5 +545,4 @@ function mine(input: SeatInput): SeatPlan {
 }
 
 export const ranks: SeatLayout = { id: "ranks", plan };
-/** For tuning: the last plan's depths and scales. */
-export const DEBUG: { on: boolean; last: Record<string, number> | null } = { on: false, last: null };
+
