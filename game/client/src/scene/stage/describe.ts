@@ -88,6 +88,8 @@ export function describe(input: DescribeInput): Description {
   };
   /** How far a seat's things dim (h.js `dimTo`), or 0. Under the stack's scrim nothing dims again. */
   const dimOf = (seat: SeatId): number => {
+    // (Focus-first's spread: my side dims lightly, so the comparison the spread is for stays; the other leaves deeply.)
+    if (spread) return seat === me ? 0.18 : seat === spread ? 0 : CLASH_DIM;
     if (leanSeat) return seat === me ? DIM.leanMine : seat === leanSeat ? 0 : DIM.leanOther;
     if (stackUp) return 0;
     if (softSeat && seat !== softSeat && seat !== me) return DIM.soft;
@@ -224,7 +226,8 @@ export function describe(input: DescribeInput): Description {
       face: null,
       ...placed(seat, platePose(sp.fixtures.plate)),
       // (Under a sift's shade it goes: a plaque draws over everything, and would over the sifted cards.)
-      look: { ...LOOK, fade: leanSeat && leanSeat !== seat && !mine ? 0.6 : 0, glow: plateMark ? 1 : 0, alpha: sifting ? 0 : 1 },
+      // (The plate rail stays lit over a spread: whose turn and life always show.)
+      look: { ...LOOK, fade: leanSeat && !spread && leanSeat !== seat && !mine ? 0.6 : 0, glow: plateMark ? 1 : 0, alpha: sifting ? 0 : 1 },
       form: `plate|${seat}`,
       mods: canonical(spec) + (plateMark ?? ""),
       mark: plateMark,
@@ -329,7 +332,7 @@ export function describe(input: DescribeInput): Description {
     // (Under the clash's dim no tab is said but the fighters'.)
     if (clash && !p.fight) continue;
     const m = /^(.*?)\s*(\d+)$/.exec(p.draw.title);
-    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote, note: p.draw.note ?? null, times: p.draw.times ?? false, countFirst: p.draw.countFirst ?? false });
+    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote, note: p.draw.note ?? null, times: p.draw.times ?? false, countFirst: p.draw.countFirst ?? false, ...(p.draw.span ? { span: p.draw.span } : {}), ...(p.draw.peers ? { peers: p.draw.peers } : {}) });
   }
   const labelled = placeLabels(plan, asks, input.measure);
   for (const a of asks) {
@@ -365,7 +368,8 @@ export function describe(input: DescribeInput): Description {
     lanes: lean ? [] : lanesOf(model, plan, cues, pieces).filter((l) => !clash || !plan.clashMarks || plan.clashMarks.lanes.includes(l.from)),
     aims,
     tableTone: sifting ? DIM.table : 1,
-    scrim: stackUp ? SCRIM.alpha : spread || clash ? SCRIM.alpha * 0.85 : 0,
+    // (The spread's dim is in its seats' shades; its scrim is only a whisper, so the sheet stands above the table.)
+    scrim: stackUp ? SCRIM.alpha : clash ? SCRIM.alpha * 0.85 : spread ? 0.04 : 0,
     above,
     perspective: me,
   };
@@ -573,6 +577,8 @@ function unitPiece(
     note: u.note ?? null,
     times: u.times ?? false,
     ...(u.countFirst ? { countFirst: true } : {}),
+    ...(u.span ? { span: u.span } : {}),
+    ...(u.peers ? { peers: u.peers } : {}),
     mine,
     chips,
     dressed,

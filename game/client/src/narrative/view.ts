@@ -87,6 +87,8 @@ export function recapView(s: State): RecapView | null {
     const where = one.where === "away" ? (one.token ? "token" : "") : one.where.replace(/^to (?:the )?/, "");
     return { title: `Lost: ${one.name}${where ? ` (${where})` : ""} ›`, summary: "" };
   }
+  // (Past three, two names and how many more: the prompt says the least, and the report has the rest.)
+  if (settled.length > 3) return { title: `Lost ${settled.length}: ${settled[0]!.name}, ${settled[1]!.name} and ${settled.length - 2} more ›`, summary: "" };
   return { title: `Lost ${settled.length}: ${settled.map((l) => l.name).join(", ")} ›`, summary: "" };
 }
 

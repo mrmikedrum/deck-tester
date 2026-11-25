@@ -225,6 +225,8 @@ export type Draw =
       readonly note?: string | null;
       readonly times?: boolean;
       readonly countFirst?: boolean;
+      readonly span?: number;
+      readonly peers?: readonly string[];
       /** Its seat's colour (a well's sign notch, a standee's stripe). */
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */

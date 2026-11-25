@@ -484,7 +484,7 @@ export function clashRow(plans: readonly SeatPlan[], combat: CombatPairs, perspe
     if (c.stack) {
       const list = c.stack.far ? c.far : c.near, px = c.stack.far ? w : wn, foot = c.stack.far ? CLASH.farFoot : nearFoot;
       const f0 = facts(c.stack.ids[0]!), n = list.length, pow = c.stack.ids.reduce((t, id) => t + facts(id).power, 0);
-      list.forEach((un, k) => stand(un, x0 + px / 2, foot, px, k, k === 0 && n > 1 ? { title: `${f0.name} ${n}`, note: `· ${pow}`, times: true } : {}));
+      list.forEach((un, k) => stand(un, x0 + px / 2, foot, px, k, k === 0 && n > 1 ? { title: `${f0.name} ${n}`, note: `· ${pow}`, times: true, span: 1 + CLASH.stack * (n - 1), peers: list.slice(1).map((x) => x.id) } : {}));
       if (list[0]) lanes.push(list[0].id);
       // The tally stands on the floor in front of the first unblocked regiment.
       if (!tally) tally = proj.onTable((x0 + cw / 2) * u, (c.stack.far ? nearFoot - 30 : nearFoot + 24) * u, 0);

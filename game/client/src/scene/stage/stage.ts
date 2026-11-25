@@ -639,7 +639,8 @@ export class Stage {
       const dressedAll = p.draw.t === "unit" ? p.draw.dressed : [];
       const dressed = dressedAll.filter((d) => st.shown.includes(d.card));
       const count = st.shown.filter((id) => !dressedAll.some((d) => d.card === id)).length;
-      const draw = p.draw.t === "unit" ? { ...p.draw, title: retitle(p.draw.title, count), dressed } : p.draw;
+      // (A fan's or a regiment stack's first card speaks for its peers: its count is theirs, not its own.)
+      const draw = p.draw.t === "unit" ? { ...p.draw, title: p.draw.peers ? p.draw.title : retitle(p.draw.title, count), dressed } : p.draw;
       actors.push({
         id: st.id,
         kind: p.kind,

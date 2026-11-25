@@ -48,6 +48,10 @@ export interface Unit {
   readonly times?: boolean;
   /** Its tab says the count first ("8 more"). */
   readonly countFirst?: boolean;
+  /** Its tab may reach across this many card widths (a fanned regiment's first card speaks for the fan). */
+  readonly span?: number;
+  /** The fan it speaks for: its tab may lie over these units' tops. */
+  readonly peers?: readonly string[];
   /** Its cards act now (attack, block, are aimed at): it stands in its place but the combat row will take it. */
   readonly acting: boolean;
   /** Standing in the combat row in the open middle, away from its page place, which stays free for it (combat.ts). */

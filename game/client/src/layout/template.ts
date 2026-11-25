@@ -61,7 +61,7 @@ const LANDSCAPE_4: readonly SeatSlot[] = [
 // 300u down the screen), so the floor below them is open; mine as today.
 const LEAF_W = { side: 7.9, across: 8.3 } as const;
 const LEAF_D = 13;
-const LEAF_Z = -4.95 - LEAF_D / 2;
+const LEAF_Z = -4.7 - LEAF_D / 2;
 const LEAVES_4: readonly SeatSlot[] = [
   LANDSCAPE_4[0]!,
   { position: "left", x: -8.62, z: LEAF_Z, w: LEAF_W.side, d: LEAF_D, yaw: 0.1 },

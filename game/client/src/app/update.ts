@@ -297,6 +297,8 @@ function tapDefault(tx: Tx, on: play.Target): void {
     tx.s = { ...tx.s, focus: open(under, entry("lean", { seat: g.seat, restore: tx.origin ?? null })) };
     return;
   }
+  // On a spread every card is in view: a tap reads it (a well's or a fan's card), never the flat sift.
+  if (tx.s.paradigm === "front" && g && spreadNow !== null && g.seat === spreadNow && g.kind !== "zone" && g.kind !== "plate" && g.members.length) return inspect(tx, g.members[0]!);
   if (g && !sifting && sifts(tx.s, g)) {
     const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
     tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null })) };

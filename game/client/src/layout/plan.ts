@@ -483,7 +483,11 @@ function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plan
     }
   const chrome = reserve.items.map((i) => ({ l: i.rect.left / u, r: i.rect.right / u, t: i.rect.top / u, b: i.rect.bottom / u }));
   const hand = reserve.items.find((i) => i.kind === "hand")?.rect, prompt = reserve.items.find((i) => i.kind === "prompt")?.rect;
-  const xm = ((hand ? hand.right / u : 0) + (prompt ? prompt.left / u : vw)) / 2, ym = vh * 0.46;
+  // Focus-first holds the spell up over the floor, at most 200 px wide, its top under the leaves' slips, so what a sweep
+  // takes from each seat stays in view.
+  const M0 = tpl.leaves ? openMiddle(tpl, proj, plans, u) : null;
+  const held = tpl.leaves ? { most: 200 / CW, least: 200 / CW } : { most: Math.max(STACK_FOCUS.floor, STACK_FOCUS.share * vh), least: STACK_FOCUS.floor };
+  const xm = ((hand ? hand.right / u : 0) + (prompt ? prompt.left / u : vw)) / 2, ym = M0 ? Math.max(vh * 0.46, M0.t + held.most / 2 + 2) : vh * 0.46;
   const m = STACK_FOCUS.margin, sl = safe.left / u + m, sr = safe.right / u - m, st = Math.max(safe.top / u, STACK_FOCUS.top), sb = safe.bottom / u - m;
   // The spells under the top step toward what they aim at, else toward whose they are; the top toward whose it is.
   const sx = (sh: Shape | undefined): number | null => (sh ? (bounds(sh.face).l + bounds(sh.face).r) / 2 / u : null);
@@ -520,10 +524,10 @@ function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plan
     for (const k of [0.15, 0.3]) out.push([xm, ym - h * k]);
     return out;
   };
-  const most = Math.max(STACK_FOCUS.floor, STACK_FOCUS.share * vh);
+  const most = held.most;
   let found: { h: number; row: boolean; x: number; y: number } | null = null;
   find: for (const row of n > 1 ? [true, false] : [true])
-    for (let h = most; h >= STACK_FOCUS.floor - 0.01; h -= 10)
+    for (let h = most; h >= held.least - 0.01; h -= 10)
       for (const [x, y] of ways(h, row))
         if (fits(boxAt(h, row, x, y))) {
           found = { h, row, x, y };

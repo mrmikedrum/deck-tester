@@ -25,9 +25,9 @@ export const LEAF = {
   frontPx: { lo: 60, hi: 72 },
   side: 0.35,
   /** The slip: a strip of vellum laid square along the leaf's near border, inside it (about 30 px deep). */
-  slip: { from: 0.06, d: 0.92 },
+  slip: { from: 0.05, d: 0.84 },
   /** The front's feet, in from the near edge: just behind the slip. */
-  foot: 1.1,
+  foot: 1.0,
   /** A card on the lip: floor scale, as my own creatures. */
   lipPx: 72,
   /** Past these, things fold: creatures and walkers standing, other permanents lying singly. */

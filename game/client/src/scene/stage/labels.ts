@@ -33,6 +33,9 @@ export interface LabelAsk {
   readonly times?: boolean;
   /** The count leads ("8 more"). */
   readonly countFirst?: boolean;
+  /** Its tab may reach across this many of its card's widths, over the tops of `peers` (a fanned regiment). */
+  readonly span?: number;
+  readonly peers?: readonly string[];
 }
 
 /** A label as placed: its text's parts, its size, and its slide along the card's top edge as a share of the card's width. */
@@ -92,7 +95,8 @@ export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure:
     // The room in its row: half the way to the nearest unit beside it, each way.
     const beside = units.filter((u) => u.id !== a.id && u.seat === g.seat).map((u) => boxOf(u.quad)).filter((b) => b[1] < card[3] && b[3] > card[1]);
     const pitch = beside.length ? Math.min(...beside.map((b) => Math.abs((b[0] + b[2]) / 2 - cx))) : 2 * w;
-    const room = Math.max(w, pitch) - GAP;
+    const peers = new Set(a.peers ?? []);
+    const room = Math.max(w * (a.span ?? 1), a.span ? 0 : pitch) - GAP;
     const want = a.mine ? LABEL_PX.mine : LABEL_PX.theirs;
     let done: PlacedLabel | null = null;
     find: for (const slide of [0, 0.125, -0.125, 0.25, -0.25])
@@ -103,10 +107,11 @@ export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure:
         for (let px = want; px >= LABEL_PX.floor; px--) {
           const tw = measure(labelText(name, a.count, tap, note, !!a.times, !!a.countFirst), px), bw = tw + LABEL_PX.pad * px, bh = LABEL_PX.tall * px;
           if (bw > room) continue;
-          const mid = cx + slide * w, box: Box = [mid - bw / 2, card[1] - bh + OVERLAP, mid + bw / 2, card[1] + OVERLAP];
-          if (box[1] < 0 || obstacles.some((o) => o.id !== a.id && meets(o.box, box))) continue;
+          // (A fan's tab starts at its first card's left edge and runs over the fan.)
+          const mid = a.span ? card[0] + bw / 2 : cx + slide * w, box: Box = [mid - bw / 2, card[1] - bh + OVERLAP, mid + bw / 2, card[1] + OVERLAP];
+          if (box[1] < 0 || obstacles.some((o) => o.id !== a.id && !peers.has(o.id) && meets(o.box, box))) continue;
           obstacles.push({ id: a.id, box });
-          done = { name, px, slide, ...(a.note !== undefined ? { note } : {}), ...(tap !== a.tap ? { tap } : {}) };
+          done = { name, px, slide: a.span ? (mid - cx) / w : slide, ...(a.note !== undefined ? { note } : {}), ...(tap !== a.tap ? { tap } : {}) };
           break find;
         }
     if (done) placed.set(a.id, done);
