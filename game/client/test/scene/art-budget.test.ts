@@ -90,6 +90,7 @@ function unit(id: string, art: string): ActorView {
       well: null,
       copies: [],
       tapNote: null,
+      label: null,
       seatColour: "#000",
       seed: 1,
     },

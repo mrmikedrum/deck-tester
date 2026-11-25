@@ -20,10 +20,11 @@ import {
 } from "three";
 import type { Material, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
-import { SIGN_U, TAB_H, colour, faceKey, materials, motion, seatInk } from "../../theme";
+import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
 import { PILE_STEP, siftRoll } from "../stage/poses";
+import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard } from "./card";
 import type { CardObject } from "./card";
@@ -96,6 +97,24 @@ export interface PieceView {
  * labels drawn on or over them (signs, tabs, chips, plates, tags). Effects, shadows and the pages are not.
  */
 export const COVERS = "covers";
+/** Marks a label (a pile's title, a well's or a zone's sign): its lines' font sizes on its canvas, and the canvas's
+ * height, so the layout audit can read its text's size on screen (view.ts `labels`). */
+export const LABEL = "label";
+/**
+ * A label's tag: its lines' fonts and its canvas's height; the text size it keeps on screen (`want`, CSS px: the renderer
+ * scales it each frame, `fitLabels`); and for a tab standing on a card, the card's top edge it stands on and how far it
+ * overlaps it (px).
+ */
+export interface LabelTag {
+  readonly fonts: readonly number[];
+  readonly h: number;
+  readonly want?: number;
+  readonly foot?: number;
+  readonly overlap?: number;
+}
+const LABEL_OVERLAP = 3;
+const labelled = (d: { mesh: Mesh }, lease: Lease, fonts: readonly number[], want?: number): void =>
+  void (d.mesh.userData[LABEL] = { fonts, h: lease.height, ...(want ? { want } : {}) } satisfies LabelTag);
 const covers = (o: Mesh): Mesh => ((o.userData[COVERS] = true), o);
 
 /** What pieces are made with: the host, its effects kit and the camera's pitch. */
@@ -369,20 +388,22 @@ class UnitView implements PieceView {
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
-    const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.sub ?? ""}|${d.mixed}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${d.title === null && v.shown > 1 && !well ? v.shown : ""}|${!!well}`;
+    // A pile whose title gave way (no room on screen) shows its count as a chip on its face.
+    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well;
+    const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
     if (key === this.key) return;
     this.key = key;
     this.sign?.dispose();
     if (this.sign) this.group.remove(this.sign.mesh);
     this.sign = null;
-    if (d.title && !well) this.sign = this.titleTab(d, turned);
+    if (d.title && d.label && !well) this.sign = this.titleTab(d, turned);
     for (const c of this.chips) {
       this.cards[0]!.obj.body.remove(c.mesh);
       c.dispose();
     }
     this.chips = [];
     // (A well's count is on its sign.)
-    const specs = [...d.chips, ...(d.title === null && v.shown > 1 && !well ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
+    const specs = [...d.chips, ...(chip ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
     specs.forEach((spec, i) => {
       const chip = new Decal(this.host.painter.chip(spec), SIZE.chip, SIZE.chip, { renderOrder: 6 });
       chip.mesh.position.set(SIZE.chipAt.x - i * SIZE.chipStep, SIZE.chipAt.y, SIZE.chipAt.z);
@@ -392,33 +413,17 @@ class UnitView implements PieceView {
   }
 
   /**
-   * A pile's title on a tab standing up from its top card's top edge (h.js `titleTab`), so the top card's own name still
-   * shows under it: as wide as the card at most (a mixed pile's may reach 1.45 card widths, over its own fan), at most
-   * TAB_H tall. Its second line under it; where both fit larger on one line they share it; a mixed pile's tapped count
-   * goes up beside its title.
+   * A pile's title on a tab standing up from its top card's top edge, as the ledger placed it (stage labels.ts): one
+   * line, its text kept at its size on screen by the renderer (`fitLabels`), slid along the edge by its share of a card.
    */
   private titleTab(d: Extract<Draw, { t: "unit" }>, turned: boolean): Decal {
-    const painter = this.host.painter;
-    const top = turned ? CW / 2 : CH / 2,
-      wide = (turned ? CH : CW) * (d.mixed ? 1.45 : 1);
-    const fit = (l: Lease): number => Math.min(1.1, (wide * 1.04) / (l.width * SIGN_U), TAB_H / (l.height * SIGN_U));
-    const title = d.tapNote ? `${d.title!} ${d.tapNote}` : d.title!,
-      sub = d.sub;
-    const tap = d.mixed && sub ? / · \d+ tapped$/.exec(sub) : null;
-    const [t1, s1] = tap ? [title + tap[0], sub!.slice(0, tap.index) || null] : [title, sub];
-    let lease = painter.sign({ text: t1, colour: null, sub: s1 });
-    if (!d.mixed && sub) {
-      const one = painter.sign({ text: `${title} · ${sub}`, colour: null, sub: null });
-      if (fit(one) > fit(lease)) {
-        lease.release();
-        lease = one;
-      } else one.release();
-    }
-    const s = fit(lease),
-      w = lease.width * SIGN_U * s,
-      h = lease.height * SIGN_U * s;
-    const tab = new Decal(lease, w, h);
-    tab.mesh.position.set(d.mixed && !turned ? ((wide - CW) / 2) * 0.6 : 0, top + h / 2 - 0.035, TH / 2 + 0.03);
+    const l = d.label!;
+    const count = /(\d+)$/.exec(d.title ?? "")?.[1] ?? "";
+    const lease = this.host.painter.sign({ text: [l.name, count, d.tapNote].filter(Boolean).join(" "), colour: null, sub: null });
+    const top = turned ? CW / 2 : CH / 2, across = turned ? CH : CW;
+    const tab = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
+    tab.mesh.userData[LABEL] = { fonts: [SIGN_FONT.text], h: lease.height, want: l.px, foot: top, overlap: LABEL_OVERLAP } satisfies LabelTag;
+    tab.mesh.position.set(l.slide * across, top, TH / 2 + 0.03);
     this.group.add(tab.mesh);
     return tab;
   }
@@ -471,6 +476,7 @@ class UnitView implements PieceView {
     if (!w) return;
     const lease = this.host.painter.sign({ text: w.sign, colour: w.theirs ? d.seatColour : null, sub: w.sub });
     const sign = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
+    labelled(sign, lease, w.sub ? [SIGN_FONT.text, SIGN_FONT.sub] : [SIGN_FONT.text], LABEL_PX.theirs);
     const ws = SIZE.wellSign;
     sign.mesh.rotation.x = -Math.PI / 2 + ws.tilt;
     // Its size in the world: theirs fits the card's width; mine is a sign's own size, a little smaller in a long row.
@@ -595,6 +601,7 @@ class ZoneView implements PieceView {
       this.sign = new Decal(lease, 1, 1, { renderOrder: 6 });
       this.body.add(this.sign.mesh);
     }
+    if (this.sign) labelled(this.sign, lease, [SIGN_FONT.text], LABEL_PX.theirs);
     // Both signs take the size the longer word fits at, so their counts read alike (h.js: "Graveyard 00").
     const ref = this.host.painter.sign({ text: "Graveyard 00", colour: d.colour, sub: null });
     const w = lease.width * SIGN_U,

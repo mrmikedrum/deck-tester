@@ -9,7 +9,10 @@ import { Arc, FxKit, Ribbon, strikeFx } from "./fx";
 import type { Effect } from "./fx";
 import type { Host } from "./host";
 import { ABOVE } from "./focus-pass";
-import { COVERS, GROUND, GhostPiece, artWanted, createPiece, placeGroup } from "./pieces";
+import { COVERS, GROUND, GhostPiece, LABEL, artWanted, createPiece, placeGroup } from "./pieces";
+import type { LabelTag } from "./pieces";
+import { CW } from "../../layout/seat/geometry";
+import { LABEL_PX } from "../stage/labels";
 import type { Clock, PieceEnv, PieceView } from "./pieces";
 
 /** An object's place on screen (CSS px): its bounding box, and for a page the quad of its outline. */
@@ -26,6 +29,14 @@ export interface ScreenBox {
  * of the card's own face, however it is turned), its width on screen (the mean of its foot and top edges), and, for a
  * stack card, whether it stands up as the table's focus.
  */
+/** A label as last drawn (CSS px): its box on screen and its smallest line's text size there. */
+export interface DrawnLabel {
+  readonly id: string;
+  readonly visible: boolean;
+  readonly box: readonly [number, number, number, number];
+  readonly px: number;
+}
+
 export interface DrawnFace {
   readonly kind: PieceKind | "ghost";
   readonly visible: boolean;
@@ -123,12 +134,14 @@ export class StageRenderer {
       placeGroup(e.view.group, v.sample);
       e.view.group.visible = v.visible;
       e.view.look(v, clock);
+      this.fitLabels(e.view.group);
       // Above the stack's scrim, or back on the table (its effects are made as it goes, so every frame while above).
       const above = view.scrim > 0 && view.above.has(v.id);
       if (above || e.above) setAbove(e.view.group, above);
       e.above = above;
     }
     for (const [id, e] of [...this.pieces]) if (!seen.has(id)) this.drop(id, e);
+    this.settleSigns();
 
     const flying = new Set<string>();
     for (const g of view.ghosts) {
@@ -316,6 +329,142 @@ export class StageRenderer {
     };
     for (const [id, e] of this.pieces) if (e.view) one(id, e.kind, e.view.group, e.view.front?.(), e.up);
     for (const [id, g] of this.ghosts) one(id, "ghost", g.group, g.front(), false);
+    return out;
+  }
+
+  /**
+   * Keep every label at its text size on screen (its tag's `want`, CSS px): measured where it is drawn now and scaled
+   * to it, so a label reads the same wherever its card stands; a tab stays standing on its card's top edge, overlapping
+   * it by its tag's few px.
+   */
+  private fitLabels(group: Object3D): void {
+    const cam = this.host.camera, size = this.host.size;
+    if (!cam || !size?.w || !size.h) return;
+    const { w, h } = size;
+    const v = new Vector3();
+    const at = (x: number, y: number, m: Object3D): [number, number] => {
+      v.set(x, y, 0).applyMatrix4(m.matrixWorld).project(cam);
+      return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+    };
+    let updated = false;
+    group.traverse((o) => {
+      const tag = o.userData[LABEL] as LabelTag | undefined;
+      const m = o as Mesh;
+      if (!tag?.want || !m.isMesh) return;
+      if (!updated) {
+        cam.updateMatrixWorld();
+        group.updateWorldMatrix(true, true);
+        updated = true;
+      }
+      const ph = (m.geometry as unknown as { parameters?: { height: number } }).parameters?.height ?? 1;
+      const top = at(0, ph / 2, m), foot = at(0, -ph / 2, m), tall = Math.hypot(top[0] - foot[0], top[1] - foot[1]);
+      if (tall < 1e-3) return;
+      const k = (tag.want * tag.h) / Math.max(...tag.fonts) / tall;
+      m.scale.x *= k;
+      m.scale.y *= k;
+      if (tag.foot !== undefined) {
+        const local = ph * m.scale.y, perPx = local / (tall * k);
+        m.position.y = tag.foot + local / 2 - (tag.overlap ?? 0) * perPx;
+      }
+      m.updateMatrixWorld(true);
+    });
+  }
+
+  /**
+   * The signs that lie on the page (a well's, a zone's) where they are drawn now, kept off every other label and every
+   * other card's name strip and foot: slid along their row by up to a quarter of a card, then set at the floor's 11 px.
+   * (A pile's title is placed by the stage's ledger, labels.ts; these are known only once drawn.)
+   */
+  private settleSigns(): void {
+    const cam = this.host.camera, size = this.host.size;
+    if (!cam || !size?.w || !size.h) return;
+    const { w, h } = size;
+    type Box = [number, number, number, number];
+    const v = new Vector3();
+    const at = (x: number, y: number, z: number, m: Object3D): [number, number] => {
+      v.set(x, y, z).applyMatrix4(m.matrixWorld).project(cam);
+      return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+    };
+    const boxOf = (pts: [number, number][]): Box => [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+    const meets = (a: Box, b: Box): boolean => Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > 2 && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > 2;
+    const planeBox = (m: Mesh): Box => {
+      const g = m.geometry as unknown as { parameters?: { width: number; height: number } };
+      const pw = (g.parameters?.width ?? 1) / 2, ph = (g.parameters?.height ?? 1) / 2;
+      return boxOf([at(-pw, -ph, 0, m), at(pw, -ph, 0, m), at(pw, ph, 0, m), at(-pw, ph, 0, m)]);
+    };
+    const fixed: { id: string; box: Box }[] = [], signs: { id: string; m: Mesh; tag: LabelTag }[] = [];
+    for (const [id, e] of this.pieces) {
+      if (!e.view || !e.view.group.visible) continue;
+      const front = e.kind === "unit" ? e.view.front?.() : null;
+      if (front) {
+        const g = front.geometry;
+        g.computeBoundingBox();
+        const b = g.boundingBox!, z = (b.min.z + b.max.z) / 2, y0 = b.min.y, y1 = b.max.y, d = (y1 - y0) / 6;
+        fixed.push({ id, box: boxOf([at(b.min.x, y1 - d, z, front), at(b.max.x, y1, z, front)]) });
+        fixed.push({ id, box: boxOf([at(b.min.x, y0, z, front), at(b.max.x, y0 + d, z, front)]) });
+      }
+      e.view.group.traverse((o) => {
+        const tag = o.userData[LABEL] as LabelTag | undefined, m = o as Mesh;
+        if (!tag || !m.isMesh || !m.visible) return;
+        if (tag.foot === undefined && tag.want) signs.push({ id, m, tag });
+        else fixed.push({ id, box: planeBox(m) });
+      });
+    }
+    for (const s of signs) {
+      const base = (s.m.userData["baseX"] as number | undefined) ?? s.m.position.x;
+      s.m.userData["baseX"] = base;
+      const clear = (): boolean => {
+        s.m.updateMatrixWorld(true);
+        const box = planeBox(s.m);
+        return !fixed.some((f) => f.id !== s.id && meets(f.box, box)) ? (fixed.push({ id: s.id, box }), true) : false;
+      };
+      // (In its parent's units a card is CW wide: a slide of an eighth of a card a step, a quarter at most.)
+      const step = CW / 8;
+      let done = false;
+      for (const k of [1, LABEL_PX.floor / (s.tag.want ?? LABEL_PX.floor)]) {
+        if (k !== 1) s.m.scale.multiplyScalar(k);
+        for (const dx of [0, 1, -1, 2, -2]) {
+          s.m.position.x = base + dx * step;
+          if (clear()) {
+            done = true;
+            break;
+          }
+        }
+        if (done) break;
+      }
+      if (!done) {
+        s.m.position.x = base;
+        s.m.updateMatrixWorld(true);
+        fixed.push({ id: s.id, box: planeBox(s.m) });
+      }
+    }
+  }
+
+  /** Every label it holds as last drawn, by its piece (the layout audit's label checks; not per frame in the app). */
+  labels(camera: Camera, w: number, h: number): DrawnLabel[] {
+    const v = new Vector3();
+    const at = (x: number, y: number, m: Object3D): [number, number] => {
+      v.set(x, y, 0).applyMatrix4(m.matrixWorld).project(camera);
+      return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+    };
+    const out: DrawnLabel[] = [];
+    for (const [id, e] of this.pieces) {
+      if (!e.view) continue;
+      e.view.group.updateWorldMatrix(true, true);
+      e.view.group.traverse((o) => {
+        const tag = o.userData[LABEL] as { fonts: readonly number[]; h: number } | undefined;
+        const m = o as Mesh;
+        if (!tag || !m.isMesh) return;
+        const g = m.geometry as unknown as { parameters?: { width: number; height: number } };
+        const pw = g.parameters?.width ?? 1, ph = g.parameters?.height ?? 1;
+        const corners = [at(-pw / 2, -ph / 2, m), at(pw / 2, -ph / 2, m), at(pw / 2, ph / 2, m), at(-pw / 2, ph / 2, m)];
+        const xs = corners.map((c) => c[0]), ys = corners.map((c) => c[1]);
+        const top = at(0, ph / 2, m), foot = at(0, -ph / 2, m), tall = Math.hypot(top[0] - foot[0], top[1] - foot[1]);
+        let visible = true;
+        for (let q: Object3D | null = m; q; q = q.parent) if (!q.visible) visible = false;
+        out.push({ id, visible, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], px: (Math.min(...tag.fonts) / tag.h) * tall });
+      });
+    }
     return out;
   }
 

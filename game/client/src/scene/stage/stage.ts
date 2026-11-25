@@ -25,6 +25,7 @@ import type { PlanContext } from "./flights";
 import { Flights } from "./inflight";
 import { Membership } from "./membership";
 import { DURATION, PATH, SCRIM, paced } from "./motion";
+import type { Measure } from "./labels";
 import type { Pace } from "./motion";
 import { retitle } from "./piles";
 import type { DrawnPiece } from "./pick";
@@ -107,6 +108,8 @@ const HISTORY = 64;
 
 export interface StageOptions {
   readonly reducedMotion?: boolean;
+  /** The labels' text widths (labels.ts); an estimate without one. */
+  readonly measure?: Measure;
 }
 
 export class Stage {
@@ -229,7 +232,7 @@ export class Stage {
     const focus = tableFocusKey(frame.focus);
     const d = this.described;
     if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover) return d.desc;
-    const desc = describe({ model: frame.model, plan: frame.plan, cues: frame.cues, focus: frame.focus, hover: frame.hover });
+    const desc = describe({ model: frame.model, plan: frame.plan, cues: frame.cues, focus: frame.focus, hover: frame.hover, ...(this.opts.measure ? { measure: this.opts.measure } : {}) });
     this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, desc };
     return desc;
   }

@@ -14,6 +14,8 @@ import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
 import type { FaceSpec } from "../../theme";
 import { DIM, SCRIM } from "./motion";
+import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
+import type { LabelAsk, Measure } from "./labels";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
 import { pagePose, platePose, screenPose, stackPose, unitPose, zonePose } from "./poses";
 import { LOOK, tableFocus } from "./types";
@@ -26,6 +28,8 @@ export interface DescribeInput {
   readonly focus: FocusTop;
   /** The hit group under a mouse pointer. */
   readonly hover: string | null;
+  /** The labels' text widths (the sign's font measured); an estimate without one. */
+  readonly measure?: Measure;
 }
 
 /** The hover lift: a card under the pointer comes up off its page (a guess; the old client peeked in HTML instead). */
@@ -179,6 +183,7 @@ export function describe(input: DescribeInput): Description {
           well: null,
           copies: [{ face: null, tapped: false }],
           tapNote: null,
+          label: null,
           seatColour: colourOf(model, seat),
           seed: cmd.card,
         },
@@ -271,6 +276,20 @@ export function describe(input: DescribeInput): Description {
 
   // While I lean in on a seat the stack is set aside, and its arcs with it.
   const aims = lean ? [] : aimsOf(model, pieces, home, stackUp);
+  // Every pile's title, sized on screen and placed so none meets another label or another card's name or stats; a title
+  // with no room gives way to the count chip (labels.ts).
+  const asks: LabelAsk[] = [];
+  for (const p of pieces.values()) {
+    if (p.draw.t !== "unit" || !p.draw.title || p.draw.well) continue;
+    const m = /^(.*?)\s*(\d+)$/.exec(p.draw.title);
+    if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote });
+  }
+  const labelled = placeLabels(plan, asks, input.measure);
+  for (const a of asks) {
+    const p = pieces.get(a.id)!, d = p.draw as Extract<Draw, { t: "unit" }>, l = labelled.get(a.id) ?? null;
+    pieces.set(a.id, { ...p, draw: { ...d, label: l }, mods: `${p.mods}#${l ? `${l.name}|${l.px}|${l.slide}` : "chip"}` });
+  }
+
   // The stack as the focus lays one scrim over the table; the stack's cards, what they aim at and the arcs stand above it,
   // each in its own place (one dim, never a second one per piece).
   const above = new Set<string>();
@@ -421,7 +440,8 @@ function unitPiece(
   const mark = strongest(u.members.map(markOf));
   const face = top ? faceOfCard(model, top, mark) : null;
   const chips = top ? chipsOf(top) : [];
-  const well = u.kind === "well" ? { ...wellLook(model, u, mine), ...row } : null;
+  const looked = u.kind === "well" ? wellLook(model, u, mine) : null;
+  const well = looked ? { ...looked, sign: looked.theirs ? looked.sign : fitWellSign(plan, u.id, looked.sign, input.measure ?? estimate), ...row } : null;
   const dressed = u.dressing
     .map((id) => model.cards.get(id))
     .filter((c): c is Card => !!c)
@@ -444,6 +464,7 @@ function unitPiece(
     well,
     copies,
     tapNote,
+    label: null,
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
   };
@@ -556,6 +577,24 @@ function wellLook(model: TableModel, u: Unit, mine: boolean): Omit<WellLook, "al
   const rep = model.cards.get(u.top);
   const sign = u.title ?? `${shortName(rep?.face.name ?? "")}${n > 1 ? ` ×${n}` : ""}`;
   return { sign, sub: tapped ? (n > 1 ? `${tapped} tapped` : "tapped") : null, colours, spent, shown, theirs: false };
+}
+
+/**
+ * My well's sign, said short enough to stop short of its neighbours' cards at 12 px: no wider than twice the row's pitch
+ * less a card and 8 px; its name shortened (labels.ts `shorter`), never its count.
+ */
+function fitWellSign(plan: TablePlan, id: string, sign: string, measure: Measure): string {
+  const g = plan.hits.groups.find((x) => x.id === id);
+  if (!g) return sign;
+  const box = (q: typeof g.quad) => ({ l: Math.min(...q.map((p) => p.x)), r: Math.max(...q.map((p) => p.x)), t: Math.min(...q.map((p) => p.y)), b: Math.max(...q.map((p) => p.y)) });
+  const me = box(g.quad), w = me.r - me.l, cx = (me.l + me.r) / 2;
+  const row = plan.hits.groups.filter((x) => x.id !== id && x.seat === g.seat && x.kind === "well").map((x) => box(x.quad)).filter((b) => b.t < me.b && b.b > me.t);
+  if (!row.length) return sign;
+  const pitch = Math.min(...row.map((b) => Math.abs((b.l + b.r) / 2 - cx)));
+  const room = 2 * pitch - w - 8;
+  const m = /^(.*?)( ×\d+)?$/.exec(sign)!, count = m[2] ?? "";
+  for (const name of shorter(m[1]!)) if (measure(name + count, LABEL_PX.theirs) + LABEL_PX.pad * LABEL_PX.theirs <= room) return name + count;
+  return (shorter(m[1]!).at(-1) ?? m[1]!) + count;
 }
 
 /** My wells by row (h.js `rowsOf(plan.L)`): neighbours' signs alternate near and far; a row of more than 5, smaller. */

@@ -213,6 +213,9 @@ export type Draw =
       readonly copies: readonly { readonly face: FaceSpec | null; readonly tapped: boolean }[];
       /** "↷4": how many are tapped, where the copies cannot show it exactly (more members than copies); null else. */
       readonly tapNote: string | null;
+      /** Its title as placed on screen (labels.ts): the name it says, its text size (CSS px) and its slide along the top
+       * edge (a share of the card's width); null where it gives way to the count chip, or has no title. */
+      readonly label: { readonly name: string; readonly px: number; readonly slide: number } | null;
       /** Its seat's colour (a well's sign notch, a standee's stripe). */
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */

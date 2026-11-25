@@ -12,3 +12,4 @@ export * from "./piles";
 export * from "./animator";
 export * from "./pick";
 export * from "./stage";
+export * from "./labels";

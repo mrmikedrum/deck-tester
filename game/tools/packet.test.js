@@ -40,3 +40,14 @@ test("the verdict names what it counted", () => {
   assert.equal(verdict({ gated: 0, measured: 0, fails: 0 }), "**LAYOUT: NOT MEASURED** (no beat was held to the limits: this is not a pass)");
   assert.equal(verdict({ gated: 3, measured: 3, fails: 0 }), "**LAYOUT: PASS** (3 beats measured)");
 });
+
+test("labels: a label meeting another, or another unit's name strip, by more than 2 px, or under 11 px, breaks the limits", () => {
+  const { labelRows } = require("./packet.js");
+  const pieces = { a: { names: ["Beast"] }, b: { names: ["Elemental"] } };
+  const ok = { pieces, labels: [{ id: "a", box: [0, 0, 50, 20], px: 13, name: "Beast" }, { id: "b", box: [49, 0, 99, 20], px: 12, name: "Elemental" }], strips: [{ id: "b", part: "name", box: [52, 21, 99, 30] }] };
+  assert.equal(labelRows(ok).fails, 0);
+  assert.equal(labelRows({ ...ok, labels: [ok.labels[0], { ...ok.labels[1], box: [40, 0, 90, 20] }] }).fails, 1);
+  assert.equal(labelRows({ ...ok, strips: [{ id: "b", part: "name", box: [30, 10, 99, 30] }] }).fails, 1);
+  assert.equal(labelRows({ ...ok, labels: [ok.labels[0], { ...ok.labels[1], px: 9 }] }).fails, 1);
+  assert.equal(labelRows({ pieces }).measured, false);
+});

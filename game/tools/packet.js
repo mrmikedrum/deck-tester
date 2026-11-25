@@ -150,6 +150,21 @@ function auditRows(a, fr) {
   return { md, fails, measured };
 }
 
+// Labels (intent.md: cards belong to the table they lie on): no label meets another label, or another unit's name strip
+// or foot, by more than 2 px each way; every label's text is at least 11 px on screen.
+const LABEL = { overlap: 2, px: 11 };
+function labelRows(a) {
+  const labels = a.labels || [], strips = a.strips || [];
+  const meet = (p, q) => Math.min(p[2], q[2]) - Math.max(p[0], q[0]) > LABEL.overlap && Math.min(p[3], q[3]) - Math.max(p[1], q[1]) > LABEL.overlap;
+  const small = labels.filter(l => l.px < LABEL.px), hits = [];
+  labels.forEach((l, i) => {
+    labels.slice(i + 1).forEach(m => { if (m.id !== l.id && meet(l.box, m.box)) hits.push(`${l.name} meets ${m.name}'s label`); });
+    strips.forEach(s => { if (s.id !== l.id && meet(l.box, s.box)) hits.push(`${l.name} covers ${(a.pieces[s.id] || {}).names ? a.pieces[s.id].names[0] : s.id}'s ${s.part === "name" ? "name" : "stats"}`); });
+  });
+  const md = [`Labels: ${labels.length} measured · smallest text ${labels.length ? Math.min(...labels.map(l => l.px)).toFixed(1) : "-"} px · ${small.length ? "**" + small.length + " under 11 px**: " + small.map(l => `${l.name} ${l.px}`).join(", ") : "none under 11 px"} · ${hits.length ? "**" + hits.length + " collide**: " + hits.join("; ") : "none collide"}`];
+  return { md, fails: small.length + hits.length, measured: a.labels !== undefined };
+}
+
 // The packet's last line: PASS only when every beat held to the limits had pieces measured and none broke one. A clip
 // with nothing measured says so: it is not a pass.
 function verdict({ gated, measured, fails }) {
@@ -182,16 +197,16 @@ async function audits(page, track, dir, out) {
     }
     if (!a.gate) { md.push("", "(a still only: not held to the limits)", ""); continue; }
     gated++;
-    const r = auditRows(a, fr);
-    fails += r.fails;
+    const r = auditRows(a, fr), l = labelRows(a);
+    fails += r.fails + l.fails;
     if (r.measured) measured++;
-    md.push("", ...(r.measured ? r.md : ["(held to the limits, but no piece was measured here)"]), "");
+    md.push("", ...(r.measured ? r.md : ["(held to the limits, but no piece was measured here)"]), "", ...(l.measured ? l.md : []), "");
   }
   md.push(verdict({ gated, measured, fails }));
   return md;
 }
 
-module.exports = { audits, verdict };
+module.exports = { audits, verdict, labelRows };
 if (require.main === module) (async () => {
   const arg = process.argv[2] || "reels/latest";
   const clipDirs = fs.existsSync(path.join(arg, "track.json")) ? [arg] : fs.readdirSync(arg).map(d => path.join(arg, d)).filter(d => fs.existsSync(path.join(d, "track.json")));

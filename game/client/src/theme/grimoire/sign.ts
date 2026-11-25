@@ -8,6 +8,9 @@ import type { Surfaces } from "./surfaces";
 
 const NUM = font.num;
 
+/** A sign's fonts on its canvas (px): its line, and its second line (a well's "2 tapped": 11 px under 12). */
+export const SIGN_FONT = { text: 60, sub: 55 } as const;
+
 /** World units per canvas pixel of a sign. */
 export const SIGN_U = 0.00375;
 /** A title tab's greatest height above its card. */
@@ -31,15 +34,15 @@ export function paintSign(canvas: Canvas, spec: SignSpec, s: Surfaces): Size {
   const { text, colour: col, sub } = spec;
   const probe = canvas.getContext("2d");
   if (!probe) throw new Error("no 2d context");
-  probe.font = `700 60px ${NUM}`;
+  probe.font = `700 ${SIGN_FONT.text}px ${NUM}`;
   let tw = probe.measureText(text).width;
   if (sub) {
-    probe.font = `600 46px ${NUM}`;
+    probe.font = `600 ${SIGN_FONT.sub}px ${NUM}`;
     tw = Math.max(tw, probe.measureText(sub).width);
   }
   const notch = col ? 34 : 0,
     w = Math.min(sub ? 900 : 560, tw + 36 + notch),
-    h = sub ? 130 : 80;
+    h = sub ? 136 : 80;
   const x = begin(canvas, Math.ceil(w + 16), h + 16);
   x.shadowColor = "rgba(0,0,0,.6)";
   x.shadowBlur = 8;
@@ -56,12 +59,12 @@ export function paintSign(canvas: Canvas, spec: SignSpec, s: Surfaces): Size {
   x.fillStyle = colour.ink;
   x.textAlign = "center";
   x.textBaseline = "middle";
-  x.font = `700 60px ${NUM}`;
+  x.font = `700 ${SIGN_FONT.text}px ${NUM}`;
   x.fillText(text, 8 + (w + notch) / 2, 49, w - 28 - notch);
   if (sub) {
-    x.font = `600 46px ${NUM}`;
+    x.font = `600 ${SIGN_FONT.sub}px ${NUM}`;
     x.fillStyle = "#3a2c1a";
-    x.fillText(sub, 8 + (w + notch) / 2, 102, w - 28 - notch);
+    x.fillText(sub, 8 + (w + notch) / 2, 104, w - 28 - notch);
   }
   return { w: canvas.width, h: canvas.height };
 }
