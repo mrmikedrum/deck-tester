@@ -88,6 +88,8 @@ function unit(id: string, art: string): ActorView {
       dressed: [],
       colours: [],
       well: null,
+      copies: [],
+      tapNote: null,
       seatColour: "#000",
       seed: 1,
     },

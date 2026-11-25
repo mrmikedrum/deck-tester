@@ -249,7 +249,9 @@ export function fitSeat(ctx: FitCtx, args: FitArgs, hold = true): Fit {
   // one does, its row's places widen just enough for an upright neighbour to keep off its name and foot (half a turned
   // card and half an upright one, less the fifth of a name strip the limits allow), and where two may meet, as wide as
   // a creature's.
-  const turned = (): number => S.filter((u) => cards.need(u.top ?? topOf(u, me)).tapped).length;
+  // (A pile with tapped and ready cards draws its tapped ones turned behind the ready, about as wide as a turned card.)
+  const turned = (): number =>
+    S.filter((u) => cards.need(u.top ?? topOf(u, me)).tapped || (u.ids.length > 1 && u.ids.some((id) => cards.need(id).tapped))).length;
   const band = (k: BandKey): BandSpec => {
     if (host && k === "S") return { ...g.band("S", me, cPx), px: FLOOR.theirs, per: g.band("C", me, cPx).per };
     const B = g.band(k, me, cPx), n = k === "S" ? turned() : 0;

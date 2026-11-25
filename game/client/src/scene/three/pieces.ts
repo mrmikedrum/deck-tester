@@ -280,6 +280,10 @@ function standeeShadow(env: PieceEnv, tapped: boolean, lean: number): { mesh: Me
   return { mesh: m, lease };
 }
 
+/** A pile's tapped copy shows this share of a card's height past the front card's right edge; a well's lies turned 15°. */
+const TAPPED_SHOW = 0.28;
+const WELL_TURN = Math.PI / 12;
+
 class UnitView implements PieceView {
   readonly group = new Group();
   private cards: CardPart[] = [];
@@ -288,6 +292,7 @@ class UnitView implements PieceView {
   private sign: Decal | null = null;
   private chips: Decal[] = [];
   private key = "";
+  private copyKey = "";
   private readonly ground: Ground;
   private readonly marks: MarkFx;
   private ash: Effect | null = null;
@@ -321,30 +326,47 @@ class UnitView implements PieceView {
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "unit" }>;
     const well = d.well;
-    const copies = well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown));
-    if (this.cards.length !== copies) {
+    const copies = Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown)));
+    // Each copy stands for members of the pile and wears their state (while members are still arriving, the first).
+    const plan = d.copies.slice(0, copies);
+    const copyKey = plan.map((c) => (c.tapped ? "t" : "r")).join("") + `|${copies}|${d.posture}`;
+    if (this.cards.length !== copies || this.copyKey !== copyKey) {
       for (const c of this.cards) {
         this.group.remove(c.obj.group);
         c.dispose();
       }
       this.cards = [];
+      this.copyKey = copyKey;
+      const mixed = plan.some((c) => c.tapped) && plan.some((c) => !c.tapped);
       for (let i = 0; i < copies; i++) {
-        const c = new CardPart(this.host, v.face, d.token);
+        const cp = plan[i];
+        const c = new CardPart(this.host, cp?.face ?? v.face, d.token);
         if (well) {
-          // A well's lands lie in a short stack, a little proud of the page, the top one first.
+          // A well's lands lie in a short stack, a little proud of the page, the top one first; its tapped ones at the
+          // bottom, turned 15° about the stack's middle (all of them, when every one is spent).
           c.obj.group.position.set(0, 0, SIZE.well.proud + SIZE.well.step * (copies - 1 - i));
+          if (cp?.tapped) c.obj.group.rotation.z = -WELL_TURN;
+        } else if (mixed && cp?.tapped) {
+          // Behind the ready ones, turned as a lone tapped card is, a share of it showing past the front card's right
+          // edge, feet on the front card's foot line (a standee leans back as a tapped one does).
+          const st = SIZE.copyStep, cx = CW / 2 + TAPPED_SHOW * CH - CH / 2, cy = -CH / 2 + CW / 2, z = st.z * i;
+          if (d.posture === "stand") {
+            c.obj.group.rotation.x = -TAP_LEAN;
+            c.obj.group.position.set(cx, cy - (CW / 2) * (1 - Math.cos(TAP_LEAN)), z - (CW / 2) * Math.sin(TAP_LEAN));
+          } else c.obj.group.position.set(cx, cy, z);
         } else {
           const st = SIZE.copyStep;
           c.obj.group.position.set(st.x * i, st.y * i, st.z * i);
         }
+        c.obj.group.userData["tapped"] = !!cp?.tapped && (mixed || !!well);
         this.cards.push(c);
         this.group.add(c.obj.group);
       }
-    } else for (const c of this.cards) c.face(v.face);
+    } else this.cards.forEach((c, i) => c.face(plan[i]?.face ?? v.face));
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
-    const key = `${d.title ?? ""}|${d.sub ?? ""}|${d.mixed}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${d.title === null && v.shown > 1 && !well ? v.shown : ""}|${!!well}`;
+    const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.sub ?? ""}|${d.mixed}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${d.title === null && v.shown > 1 && !well ? v.shown : ""}|${!!well}`;
     if (key === this.key) return;
     this.key = key;
     this.sign?.dispose();
@@ -377,7 +399,7 @@ class UnitView implements PieceView {
     const top = turned ? CW / 2 : CH / 2,
       wide = (turned ? CH : CW) * (d.mixed ? 1.45 : 1);
     const fit = (l: Lease): number => Math.min(1.1, (wide * 1.04) / (l.width * SIGN_U), TAB_H / (l.height * SIGN_U));
-    const title = d.title!,
+    const title = d.tapNote ? `${d.title!} ${d.tapNote}` : d.title!,
       sub = d.sub;
     const tap = d.mixed && sub ? / · \d+ tapped$/.exec(sub) : null;
     const [t1, s1] = tap ? [title + tap[0], sub!.slice(0, tap.index) || null] : [title, sub];
@@ -464,7 +486,11 @@ class UnitView implements PieceView {
     const s = v.sample;
     // A well's card lies square however spent it is: its shade (and its badge) say tapped, never a turn.
     const spent = !!d.well?.spent;
-    for (const c of this.cards) c.look(d.well ? 0 : s.tap, s.fade, v.mark, s.glow, spent);
+    // A copy standing for tapped members is turned (a pile's) or shaded (a well's) on its own; the rest follow the pile.
+    for (const c of this.cards) {
+      const own = c.obj.group.userData["tapped"] === true;
+      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own);
+    }
     for (const c of this.dress) c.look(0, s.fade, null, 0);
     this.sign?.tone(1 - 0.8 * s.fade);
     this.ground.follow(s.rx);

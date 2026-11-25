@@ -12,6 +12,7 @@ import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftO
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
+import type { FaceSpec } from "../../theme";
 import { DIM, SCRIM } from "./motion";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
 import { pagePose, platePose, screenPose, stackPose, unitPose, zonePose } from "./poses";
@@ -176,6 +177,8 @@ export function describe(input: DescribeInput): Description {
           dressed: [],
           colours: cmdCard.face.colors,
           well: null,
+          copies: [{ face: null, tapped: false }],
+          tapNote: null,
           seatColour: colourOf(model, seat),
           seed: cmd.card,
         },
@@ -423,6 +426,7 @@ function unitPiece(
     .map((id) => model.cards.get(id))
     .filter((c): c is Card => !!c)
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
+  const { copies, tapNote } = copiesOf(model, u);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
   const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
   const draw: Draw = {
@@ -438,6 +442,8 @@ function unitPiece(
     dressed,
     colours: well ? well.colours : top ? top.face.colors : [],
     well,
+    copies,
+    tapNote,
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
   };
@@ -451,11 +457,35 @@ function unitPiece(
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
     mark,
     draw,
     needsMembers: true,
   };
+}
+
+/** How many copies a pile draws (a well's short stack: four). */
+export const PILE_COPIES = { pile: 3, well: 4 } as const;
+
+/**
+ * Of `k` copies drawn for `n` members with `t` tapped, how many are drawn tapped: none for none, every one for all, else
+ * the share, at least one and leaving one ready. Up to three members this is exact.
+ */
+export function tappedCopies(k: number, n: number, t: number): number {
+  if (t === 0 || n === 0) return 0;
+  return Math.max(1, Math.min(t === n ? k : k - 1, Math.round((k * t) / n)));
+}
+
+/** The copies a unit draws, ready first, each tapped one a tapped member's face; and its tapped count where inexact. */
+function copiesOf(model: TableModel, u: Unit): { copies: { face: FaceSpec | null; tapped: boolean }[]; tapNote: string | null } {
+  const cs = u.members.map((id) => model.cards.get(id)).filter((c): c is Card => !!c);
+  const n = cs.length, k = Math.max(1, Math.min(n, u.kind === "well" ? PILE_COPIES.well : PILE_COPIES.pile));
+  const tapped = cs.filter((c) => c.tapped), t = tapped.length, kt = tappedCopies(k, n, t);
+  const copies = [
+    ...Array.from({ length: k - kt }, () => ({ face: null, tapped: false })),
+    ...tapped.slice(0, kt).map((c) => ({ face: faceOfCard(model, c), tapped: true })),
+  ];
+  return { copies, tapNote: t > 0 && n > k && u.kind !== "well" ? `↷${t}` : null };
 }
 
 /**
@@ -481,7 +511,9 @@ function pileSub(model: TableModel, u: Unit, title: string): string | null {
   if (title) for (const c of cs) by.set(c.face.name, [...(by.get(c.face.name) ?? []), c]);
   const groups = [...by.values()].filter((g) => g.length > 1).sort((a, b) => b.length - a.length).slice(0, 2).map((g) => `${shortName(g[0]!.face.name)} ${g.length}`);
   const kinds = by.size > 1 ? (groups.length ? groups.join(" · ") : `${by.size} kinds`) : null;
-  return [kinds, tapped && tapped < cs.length ? `${tapped} tapped` : null].filter(Boolean).join(" · ") || null;
+  // (How many are tapped the copies show, and the title's ↷ where they cannot.)
+  void tapped;
+  return kinds;
 }
 
 /** The mana a source makes (h.js `manaOf`): the catalog's `produces`, else its own colours. */

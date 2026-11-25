@@ -206,6 +206,13 @@ export type Draw =
       readonly colours: readonly string[];
       /** A mana well's sign and light, or null. */
       readonly well: WellLook | null;
+      /**
+       * The copies it draws, front (a well: top) first, each standing for members of the pile and wearing their state: a
+       * tapped copy shows a tapped member's face; null is the top card's face. Ready copies first.
+       */
+      readonly copies: readonly { readonly face: FaceSpec | null; readonly tapped: boolean }[];
+      /** "↷4": how many are tapped, where the copies cannot show it exactly (more members than copies); null else. */
+      readonly tapNote: string | null;
       /** Its seat's colour (a well's sign notch, a standee's stripe). */
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
