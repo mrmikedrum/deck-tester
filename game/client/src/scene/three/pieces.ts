@@ -29,7 +29,7 @@ import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard } from "./card";
 import type { CardObject } from "./card";
-import { ashFx, burstFx, chosenFx, emberFx, sigilFx, spellFx, wellFx } from "./fx";
+import { ashFx, burstFx, chosenFx, emberFx, lampFx, sigilFx, spellFx, wellFx } from "./fx";
 import type { Effect, FxKit } from "./fx";
 import type { Host } from "./host";
 import { setLook, setSignal } from "./materials";
@@ -439,7 +439,8 @@ class UnitView implements PieceView {
     }
     this.chips = [];
     // (A well's count is on its sign.)
-    const specs = [...d.chips, ...(chip && d.die === undefined && !fan ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
+    // (A fan whose tag has no room says its count on its top card, as a pile does.)
+    const specs = [...d.chips, ...(chip && d.die === undefined ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
     // A regiment's count sits on its card as a brass die (`ranks`), its top corner, above any counters.
     if (die !== null) {
       const dc = new Decal(this.host.painter.chip({ text: String(die), ink: colour.ink, sub: null }), FAN.die, FAN.die, { renderOrder: 6 });
@@ -477,7 +478,8 @@ class UnitView implements PieceView {
 
   /** Forward: a pool of warm lamplight on the page under the card, as a well glows under its lands. */
   private lamp(d: Extract<Draw, { t: "unit" }>): void {
-    const on = d.stance === "forward" && !d.well;
+    // (Theirs only: mine stand close and lit already, and a pool under each would wash my row out.)
+    const on = d.stance === "forward" && !d.well && !d.mine;
     if (on === !!this.halo) return;
     if (this.halo) {
       this.ground.group.remove(this.halo.object);
@@ -485,7 +487,7 @@ class UnitView implements PieceView {
       this.halo = null;
       return;
     }
-    const fx = wellFx(this.env.fx, ["W"], d.seed + 1, false, CW * LAMP.w, CH * LAMP.d);
+    const fx = lampFx(this.env.fx, CW * LAMP.w, CH * LAMP.d);
     fx.object.rotation.x = -Math.PI / 2;
     fx.object.position.set(0, 0.012, -LAMP.back);
     this.ground.group.add(fx.object);

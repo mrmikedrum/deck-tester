@@ -417,6 +417,23 @@ export function wellFx(kit: FxKit, colours: readonly string[], seed: number, spe
   };
 }
 
+// ---- lamplight under a card standing forward (`ranks`) ----------------------------------------------------------------
+
+/** A soft pool of warm brass light on the page, under a card that answers the question: no motes, no bloom. */
+export function lampFx(kit: FxKit, w: number, h: number): Effect {
+  const m = new Mesh(new PlaneGeometry(w, h), new MeshBasicMaterial({ map: kit.map("wellGlow"), transparent: true, depthWrite: false, color: new Color(LAMP_FX.colour), opacity: LAMP_FX.opacity }));
+  m.renderOrder = 0;
+  return {
+    object: m,
+    tick: (_t, level) => {
+      m.material.opacity = LAMP_FX.opacity * level;
+    },
+    dispose: () => disposeMesh(m),
+  };
+}
+/** Brass, a little under the well's wash, tone-mapped with the page so it never blooms. */
+const LAMP_FX = { colour: 0xd6a85a, opacity: 0.42 } as const;
+
 // ---- gold under a card you chose --------------------------------------------------------------------------------------
 
 /** A steady pool of gilt in front of a chosen card's foot: "you did", where embers say "you could". No sparks. */
