@@ -178,6 +178,9 @@ export interface ArrangeInput {
   readonly acting: Acting;
   readonly moment: Moment;
   readonly policy: Policy;
+  /** The choice that picked `policy` (policies/select.ts `policyFor`), kept in memory as made; absent, a policy forced by
+   *  the caller keeps the memory's choice when it is the same policy. */
+  readonly selection?: ContainerMemory["selection"];
   readonly memory: ContainerMemory | null;
   readonly clock: Clock;
   /** Start the ladder at least this far (the composer's retry). */
@@ -475,8 +478,8 @@ export interface Policy {
   seat?(units: readonly DraftUnit[], ctx: PolicyCtx): SeatFacts;
   emphasis(u: DraftUnit, moment: Moment, ctx: PolicyCtx): { readonly emphasis: Emphasis | null; readonly lit: readonly CardId[] };
   readonly acting: "in-place" | "away";
-  /** Whether the front re-deals by rank now (§2.4's tidy), given the last tidy. */
-  tidy(clock: Clock, last: PolicyMemory["tidy"] | null, rankingChanged: boolean): boolean;
+  /** Whether the front re-deals by rank now (§2.4's tidy), given the turn and phase the last plan saw. */
+  tidy(clock: Clock, seen: PolicyMemory["seen"], rankingChanged: boolean): boolean;
   readonly promote: (incumbent: number, challenger: number) => boolean;
 }
 
@@ -499,6 +502,9 @@ export interface PolicyMemory {
   readonly folds: readonly string[];
   readonly edits: number;
   readonly tidy: { readonly turn: number; readonly phase: Phase; readonly ranking: readonly UnitKey[] } | null;
+  /** The turn and phase the last plan saw (not counting plans while cards were in flight): a phase change is measured
+   *  from it, never from the last re-sort. */
+  readonly seen: { readonly turn: number; readonly phase: Phase } | null;
 }
 
 /** Plain JSON, versioned. Places and keys, never classifications. */

@@ -62,7 +62,7 @@ export function shadowInputOf(model: TableModel, seat: SeatId, involved: Readonl
 
 export function shadowPlan(s: ShadowInput, slot: SeatSlot, projector: Projector, safe: Rect): ShadowPlan {
   const forced = s.policy !== undefined ? POLICIES.get(s.policy) : undefined;
-  const chosen = forced ? { policy: forced } : policyFor(s.cards, s.memory, s.clock);
+  const chosen = forced ? { policy: forced, selection: undefined } : policyFor(s.cards, s.memory, s.clock);
   try {
     const container = leafContainer({ id: `rest:${s.seat}`, seat: s.seat, viewer: s.viewer, slot, projector, safe, poses: [PARTED] });
     const here = new Set(s.cards.map((c) => c.id));
@@ -73,6 +73,7 @@ export function shadowPlan(s: ShadowInput, slot: SeatSlot, projector: Projector,
       acting: { involved: new Set([...s.involved].filter((id) => here.has(id))), offered: s.offered, usable: new Set(), choosing: s.choosing },
       moment: s.moment,
       policy: chosen.policy,
+      ...(chosen.selection ? { selection: chosen.selection } : {}),
       memory: s.memory,
       clock: s.clock,
     });

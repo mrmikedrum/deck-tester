@@ -83,3 +83,38 @@ export function arrCard(model: TableModel, id: CardId): ArrCard | null {
   const c = model.cards.get(id);
   return c ? arrCardOf(c) : null;
 }
+
+/**
+ * Each attached card's displayed root: the permanent at the end of its `attachedTo` chain among these cards, so an Aura
+ * on an Equipment on a creature rides with the creature. The immediate host stays on the card (`attachedTo`). A cycle
+ * is rooted at its lowest id. Cards attached to nothing here are absent.
+ */
+export function attachmentRoots(cards: readonly ArrCard[]): Map<CardId, CardId> {
+  const here = new Map(cards.map((c) => [c.id, c]));
+  const host = (id: CardId): CardId | null => {
+    const h = here.get(id)?.attachedTo ?? null;
+    return h !== null && h !== id && here.has(h) ? h : null;
+  };
+  const out = new Map<CardId, CardId>();
+  for (const c of cards) {
+    if (host(c.id) === null) continue;
+    const path: CardId[] = [c.id];
+    let at = host(c.id)!, root: CardId;
+    for (;;) {
+      const loop = path.indexOf(at);
+      if (loop >= 0) {
+        root = Math.min(...path.slice(loop)) as CardId;
+        break;
+      }
+      path.push(at);
+      const next = host(at);
+      if (next === null) {
+        root = at;
+        break;
+      }
+      at = next;
+    }
+    if (root !== c.id) out.set(c.id, root);
+  }
+  return out;
+}

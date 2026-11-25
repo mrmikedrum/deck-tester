@@ -1,6 +1,7 @@
 // What the starting policies share: grouping helpers, facts, the seat's summary, what matters if hidden, light, the
 // tidy and the promotion margin (§2.4). Policies are data plus these small functions; the solver owns space.
 import type { CardId } from "../../types";
+import { attachmentRoots } from "../card";
 import type { ArrCard, AttentionWhy, Clock, DraftUnit, Emphasis, Group, PolicyCtx, PolicyMemory, SeatFacts, UnitFacts } from "../contract";
 import type { Moment } from "../moment";
 import { stanceOf } from "../moment";
@@ -14,11 +15,11 @@ export const need = (ctx: PolicyCtx, id: CardId): ArrCard => {
 };
 const cardsOf = (ids: readonly CardId[], ctx: PolicyCtx): ArrCard[] => ids.map((id) => need(ctx, id));
 
-/** Attachments whose host is in the container: host id to the cards dressing it. */
+/** Attachments whose host is in the container, by the permanent they ride with (an Aura on Equipment on a creature
+ *  rides with the creature): root id to the cards dressing it. */
 export function dressingOf(cards: readonly ArrCard[]): Map<CardId, CardId[]> {
-  const here = new Set(cards.map((c) => c.id)), out = new Map<CardId, CardId[]>();
-  for (const c of cards)
-    if (c.attachedTo !== null && here.has(c.attachedTo) && c.attachedTo !== c.id) out.set(c.attachedTo, [...(out.get(c.attachedTo) ?? []), c.id]);
+  const out = new Map<CardId, CardId[]>();
+  for (const [d, root] of attachmentRoots(cards)) out.set(root, [...(out.get(root) ?? []), d]);
   for (const v of out.values()) v.sort((a, b) => a - b);
   return out;
 }
@@ -148,13 +149,14 @@ export function emphasisOf(u: DraftUnit, m: Moment, ctx: PolicyCtx): { emphasis:
 /** Forge's combat steps: the front never re-deals between declare attackers and end of combat. */
 const IN_COMBAT = /^COMBAT_(DECLARE_ATTACKERS|DECLARE_BLOCKERS|FIRST_STRIKE_DAMAGE|DAMAGE)$/;
 
-/** The owner's re-sort: at the start of every turn; at a phase change if the ranking changed past the margin. */
-export function tidyRule(clock: Clock, last: PolicyMemory["tidy"] | null, rankingChanged: boolean): boolean {
+/** The owner's re-sort: at the start of every turn; at a phase change if the ranking changed past the margin (or a card's
+ *  types did). A change is measured from the phase the last plan saw. */
+export function tidyRule(clock: Clock, seen: PolicyMemory["seen"], rankingChanged: boolean): boolean {
   if (clock.settling) return false;
-  if (!last) return true;
-  if (clock.turn !== last.turn) return true;
+  if (!seen) return true;
+  if (clock.turn !== seen.turn) return true;
   if (IN_COMBAT.test(String(clock.phase).toUpperCase())) return false;
-  return clock.phase !== last.phase && rankingChanged;
+  return clock.phase !== seen.phase && rankingChanged;
 }
 
 /** A challenger outranks an incumbent past the margin. */

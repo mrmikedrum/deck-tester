@@ -12,6 +12,23 @@ export interface Intent {
   readonly importance: ReadonlyMap<string, number>;
 }
 
+/** Null when the groups are a partition of the cards (every card in exactly one, as member or dressing, no group empty,
+ *  no key twice); else what is wrong. Checked before a policy is asked anything about a group. */
+export function validateGroups(groups: readonly Group[], cards: readonly ArrCard[]): string | null {
+  const all = new Set(cards.map((c) => c.id)), seen = new Set<CardId>(), keys = new Set<string>();
+  for (const g of groups) {
+    if (keys.has(g.key)) return `two groups share the key ${g.key}`;
+    keys.add(g.key);
+    if (!g.members.length) return `group ${g.key} is empty`;
+    for (const id of [...g.members, ...g.dressing]) {
+      if (!all.has(id)) return `group ${g.key} holds card ${id}, which is not in the container`;
+      if (seen.has(id)) return `card ${id} is in two groups`;
+      seen.add(id);
+    }
+  }
+  return seen.size === all.size ? null : `${all.size - seen.size} cards are in no group`;
+}
+
 /** Null when the intent is sound; else what is wrong with it (the first problem found). */
 export function validateIntent(policy: Policy, cards: readonly ArrCard[], intent: Intent, ctx: PolicyCtx): string | null {
   const tierIx = new Map(policy.tiers.map((t, i) => [t.id, i]));

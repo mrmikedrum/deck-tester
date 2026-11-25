@@ -79,6 +79,7 @@ describe("determinism, order independence, memory as JSON, the fixed point", () 
   });
 });
 
+const unitOf = (r: ArrangeResult, c: number) => r.fit.units.find((u) => u.members.includes(c as CardId) || u.dressing.includes(c as CardId));
 const mapJson = (_k: string, v: unknown) => (v instanceof Map ? [...v.entries()] : v instanceof Set ? [...v] : v);
 
 describe("stability (§3)", () => {
@@ -121,15 +122,21 @@ describe("stability (§3)", () => {
     expect(b.fit.units.length).toBe(a.fit.units.length + 1);
   });
 
-  it("a fold that ran holds until a whole place is spare (no flicker at the edge)", () => {
+  it("a fold holds until the open form needs a whole place less than the room, and then releases", () => {
     resetIds(1);
-    const front = [ac({ commander: true, power: 4 }), ...Array.from({ length: 4 }, (_, i) => ac({ name: `Bear ${i}`, power: 3 }))];
-    const a = run({ cards: front });
-    expect(a.fit.units.filter((u) => u.slot.row === 1).length).toBe(1);
-    // one leaves the front: the demoted one could come back, but the deadband keeps it until the next turn re-deals
-    const b = run({ cards: front.filter((c) => c.name !== "Bear 0"), memory: a.fit.memory, clock: { phase: "MAIN2" } });
-    expect(b.fit.report.edits.filter((e) => e.ran).length).toBeGreaterThanOrEqual(0);
-    expect(b.overflow).toBeNull();
+    // nine standing units in a band of eight places: the weakest is demoted to the rest
+    const cmd = ac({ id: 1, name: "Marath", commander: true, power: 9 });
+    const bodies = Array.from({ length: 8 }, (_, i) => ac({ id: 10 + i, name: `Body ${i}`, power: 2 + i }));
+    const a = run({ cards: [cmd, ...bodies] });
+    const demoted = a.fit.report.edits.filter((e) => e.ran && e.op === "demote");
+    expect(demoted.map((e) => e.groups)).toEqual([[`cr:${bodies[0]!.lookKey}:r`]]);
+    expect(unitOf(a, 10)!.tier).toBe("rest");
+    // one leaves, then a second: the open form would need 8 then 7 of 8 places; the fold holds while it needs 8 + 1
+    const without = (n: number) => [cmd, ...bodies.filter((_, i) => i === 0 || i > n)];
+    const b = run({ cards: without(1), memory: a.fit.memory });
+    expect(unitOf(b, 10)!.tier).toBe("rest");
+    const c = run({ cards: without(2), memory: b.fit.memory });
+    expect(unitOf(c, 10)!.tier).toBe("ready");
   });
 });
 

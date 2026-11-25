@@ -91,7 +91,32 @@ function covered(q: Quad, over: readonly Quad[]): number {
   return hit / (n * m);
 }
 
-/** The side of the largest square (px, on a 4 px grid) wholly inside `q`, inside `safe`, off the keepouts and `above`. */
+/** Whether two convex quads overlap (they share more than a boundary): no separating axis among their edges' normals. */
+function overlap(a: Quad, b: Quad): boolean {
+  for (const q of [a, b])
+    for (let i = 0; i < 4; i++) {
+      const p = q[i]!, n = q[(i + 1) % 4]!, ax = n.y - p.y, ay = p.x - n.x;
+      let amin = Infinity, amax = -Infinity, bmin = Infinity, bmax = -Infinity;
+      for (const v of a) {
+        const d = v.x * ax + v.y * ay;
+        amin = Math.min(amin, d);
+        amax = Math.max(amax, d);
+      }
+      for (const v of b) {
+        const d = v.x * ax + v.y * ay;
+        bmin = Math.min(bmin, d);
+        bmax = Math.max(bmax, d);
+      }
+      if (amax <= bmin + 1e-9 || bmax <= amin + 1e-9) return false;
+    }
+  return true;
+}
+
+/**
+ * The side of the largest square (px, on a 4 px grid) wholly inside `q`, inside `safe`, off the keepouts and `above`.
+ * A cell counts only when it lies wholly inside the quad and touches nothing excluded, so the answer is never more than
+ * the space: a patch it certifies is really there.
+ */
 export function largestSquare(q: Quad, bb: Box, above: readonly Quad[], keep: readonly { left: number; top: number; right: number; bottom: number }[], safe: { left: number; top: number; right: number; bottom: number }): number {
   const l = Math.max(Math.ceil(safe.left / CELL), Math.floor(bb.l / CELL)), r = Math.min(Math.floor(safe.right / CELL), Math.ceil(bb.r / CELL));
   const t = Math.max(Math.ceil(safe.top / CELL), Math.floor(bb.t / CELL)), b = Math.min(Math.floor(safe.bottom / CELL), Math.ceil(bb.b / CELL));
@@ -101,8 +126,10 @@ export function largestSquare(q: Quad, bb: Box, above: readonly Quad[], keep: re
   const sum = new Int32Array((w + 1) * (h + 1));
   for (let j = 0; j < h; j++)
     for (let i = 0; i < w; i++) {
-      const x = (l + i + 0.5) * CELL, y = (t + j + 0.5) * CELL;
-      const own = inQuad(q, x, y) && !kk.some((k) => x >= k.left && x < k.right && y >= k.top && y < k.bottom) && !above.some((o) => inQuad(o, x, y)) ? 1 : 0;
+      const x0 = (l + i) * CELL, y0 = (t + j) * CELL, x1 = x0 + CELL, y1 = y0 + CELL;
+      const cell: Quad = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+      const own =
+        cell.every((p) => inQuad(q, p.x, p.y)) && !kk.some((k) => x0 < k.right && x1 > k.left && y0 < k.bottom && y1 > k.top) && !above.some((o) => overlap(o, cell)) ? 1 : 0;
       sum[(j + 1) * (w + 1) + i + 1] = own + sum[j * (w + 1) + i + 1]! + sum[(j + 1) * (w + 1) + i]! - sum[j * (w + 1) + i]!;
     }
   const full = (n: number, i: number, j: number): boolean =>

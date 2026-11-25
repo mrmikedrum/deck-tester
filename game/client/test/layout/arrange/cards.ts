@@ -114,6 +114,7 @@ export interface Run {
   readonly vp?: Viewport;
   readonly poses?: readonly FramePose[];
   readonly container?: ArrangeInput["container"];
+  readonly selection?: ContainerMemory["selection"];
 }
 
 export function inputOf(r: Run): ArrangeInput {
@@ -126,7 +127,8 @@ export function inputOf(r: Run): ArrangeInput {
     policy: r.policy ?? readyTapped,
     memory: r.memory ?? null,
     clock: { ...CLOCK, ...r.clock },
-  };
+    ...(r.selection ? { selection: r.selection } : {}),
+  } as ArrangeInput;
 }
 
 export const run = (r: Run): ArrangeResult => arrange(inputOf(r));

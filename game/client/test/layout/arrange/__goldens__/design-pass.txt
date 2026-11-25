@@ -69,7 +69,7 @@ policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch
   rest   0.0.2 u0.6 card    Spirit                         lie notch 
   lands  0.0.3 u2.6 stack   Plains                         lie well 9 lands 11 open · die 16
   seat {"creatures":8,"power":16,"flyingPower":0,"keywords":[],"lands":9,"open":11,"works":3}
-  parted: tap-patch 4; tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2
+  parted: tap-patch 0; tap-patch 4; tap-patch 0; tap-patch 0; floor 53.2; floor 53.2
 
 == Marath, turn 15 (54 permanents)
 policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places

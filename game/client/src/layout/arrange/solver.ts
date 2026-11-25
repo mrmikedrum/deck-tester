@@ -31,6 +31,7 @@ import type {
   UnitKind,
 } from "./contract";
 import { auditUnits } from "./audit";
+import { attachmentRoots } from "./card";
 import type { AuditUnit } from "./audit";
 import { drawUnit } from "./draw";
 import type { Drawn } from "./draw";
@@ -40,7 +41,8 @@ import { readyTapped } from "./policies/ready-tapped";
 import { RowPlanner, bandsOf, placesOf } from "./rows";
 import type { Band, RowGeo } from "./rows";
 import { S_TABLE, SLOT, fanExtent } from "./scale";
-import { validateIntent } from "./validate";
+import { validateGroups, validateIntent } from "./validate";
+import type { Intent } from "./validate";
 
 /** Audits after the first, each a band made one place tighter (§5.1 step 3). */
 const RETRIES = 4;
@@ -52,6 +54,8 @@ interface G {
   readonly key: string;
   readonly members: readonly CardId[];
   readonly dressing: readonly CardId[];
+  /** The member each dressing card is drawn on: the permanent it rides with, or the first member. */
+  readonly dressOn: ReadonlyMap<CardId, CardId>;
   readonly stacks: boolean;
   readonly squared: boolean;
   /** Its tier by its current types, before any fold. */
@@ -90,6 +94,8 @@ interface U extends DraftUnit {
   readonly width: number;
   readonly arrival: number;
   readonly prefer: G["prefer"];
+  /** How many fan members show their edges (its fan step's `show`); 1 for anything else. */
+  readonly show: number;
 }
 
 interface Edit {
@@ -122,13 +128,15 @@ export function arrange(input: ArrangeInput): ArrangeResult {
 
   // The policy's intent, validated; a rejected one falls back to ready-tapped for this plan.
   let policy = input.policy;
-  let intent = intentOf(policy, cards, ctx, input.memory?.policies[policy.id] ?? null);
-  const invalid = validateIntent(policy, cards, intent, ctx);
+  let got = intentOf(policy, cards, ctx, input.memory?.policies[policy.id] ?? null);
+  const invalid = got.invalid;
   if (invalid !== null) {
     if (policy.id === readyTapped.id) throw new Error(`ready-tapped's own intent is invalid: ${invalid}`);
     policy = readyTapped;
-    intent = intentOf(policy, cards, ctx, input.memory?.policies[policy.id] ?? null);
+    got = intentOf(policy, cards, ctx, input.memory?.policies[policy.id] ?? null);
+    if (got.invalid !== null) throw new Error(`ready-tapped's own intent is invalid: ${got.invalid}`);
   }
+  const intent = got.intent!;
   const pm = input.memory?.policies[policy.id] ?? null;
   // Rows come from the space and the cards: bands of tiers, each taking the rows its units need (rows.ts).
   const bands = bandsOf(policy.tiers);
@@ -145,7 +153,8 @@ export function arrange(input: ArrangeInput): ArrangeResult {
     return containerOverflow(input, policy, cards, seq, next, invalid);
 
   // ---- groups: the policy's, with acting cards and retyped cards out of theirs ----
-  let groups = planGroups(policy, intent, byId, ctx, input, pm, standingTiers.map((t) => t.id), seq, true);
+  const roots = attachmentRoots(cards);
+  let groups = planGroups(policy, intent, byId, ctx, input, pm, standingTiers.map((t) => t.id), seq, true, roots);
 
   // ---- the re-sort ----
   const ranking = groups.filter((g) => standingTiers.some((t) => t.id === g.base) && !g.acting).sort((a, b) => b.imp - a.imp || cmp(a.key, b.key));
@@ -154,9 +163,9 @@ export function arrange(input: ArrangeInput): ArrangeResult {
   const changed =
     groups.some((g) => g.retyped) ||
     ranking.some((ch) => !incumbentKeys.has(ch.key) && front.has(ch.key) && ranking.some((inc) => incumbentKeys.has(inc.key) && !front.has(inc.key) && policy.promote(inc.imp, ch.imp)));
-  const tidy = policy.tidy(input.clock, pm?.tidy ?? null, changed);
+  const tidy = policy.tidy(input.clock, pm?.seen ?? null, changed);
   // A re-sort is when a card whose types changed walks to its new row.
-  if (tidy && groups.some((g) => g.retyped)) groups = planGroups(policy, intent, byId, ctx, input, pm, standingTiers.map((t) => t.id), seq, false);
+  if (tidy && groups.some((g) => g.retyped)) groups = planGroups(policy, intent, byId, ctx, input, pm, standingTiers.map((t) => t.id), seq, false, roots);
   const gByKey = new Map(groups.map((g) => [g.key, g]));
 
   // ---- the compiled edit list (§5.1 step 1) ----
@@ -190,7 +199,12 @@ export function arrange(input: ArrangeInput): ArrangeResult {
   const memory: ContainerMemory = {
     v: 2,
     container: c.id,
-    selection: input.memory?.selection.policy === policy.id ? input.memory.selection : { policy: policy.id, since: input.clock.turn },
+    selection:
+      input.selection && input.selection.policy === policy.id
+        ? input.selection
+        : input.memory?.selection.policy === policy.id
+          ? input.memory.selection
+          : { policy: policy.id, since: input.clock.turn },
     arrivals: { next, seq },
     policies: { ...(input.memory?.policies ?? {}), [policy.id]: cand.memory(ranking.map((g) => g.key), tidy) },
   };
@@ -227,21 +241,32 @@ export function arrange(input: ArrangeInput): ArrangeResult {
 
 // ---- intent and groups ----------------------------------------------------------------------------------------------
 
-function intentOf(policy: Policy, cards: readonly ArrCard[], ctx: PolicyCtx, pm: PolicyMemory | null) {
-  const groups = policy.group(cards, ctx);
-  const tier = new Map<string, TierId>(), presented = new Map<string, boolean>(), top = new Map<string, CardId>(), importance = new Map<string, number>();
-  for (const g of groups) {
-    tier.set(g.key, policy.tier(g, ctx));
-    presented.set(g.key, policy.presented(g, ctx));
-    top.set(g.key, policy.top(g, pm?.tops[`g:${g.key}`] ?? null, ctx));
-    importance.set(g.key, policy.importance(g, ctx));
+/**
+ * A policy's intent, or why it is invalid (§2.2): its groups are checked as a partition of the cards before any of its
+ * functions is asked about a group, and a policy that throws is as invalid as one that answers wrong.
+ */
+function intentOf(policy: Policy, cards: readonly ArrCard[], ctx: PolicyCtx, pm: PolicyMemory | null): { intent: Intent | null; invalid: string | null } {
+  try {
+    const groups = policy.group(cards, ctx);
+    const bad = validateGroups(groups, cards);
+    if (bad !== null) return { intent: null, invalid: bad };
+    const tier = new Map<string, TierId>(), presented = new Map<string, boolean>(), top = new Map<string, CardId>(), importance = new Map<string, number>();
+    for (const g of groups) {
+      tier.set(g.key, policy.tier(g, ctx));
+      presented.set(g.key, policy.presented(g, ctx));
+      top.set(g.key, policy.top(g, pm?.tops[`g:${g.key}`] ?? null, ctx));
+      importance.set(g.key, policy.importance(g, ctx));
+    }
+    const intent = { groups, tier, presented, top, importance };
+    return { intent, invalid: validateIntent(policy, cards, intent, ctx) };
+  } catch (e) {
+    return { intent: null, invalid: `the policy threw: ${e instanceof Error ? e.message : String(e)}` };
   }
-  return { groups, tier, presented, top, importance };
 }
 
 function planGroups(
   policy: Policy,
-  intent: ReturnType<typeof intentOf>,
+  intent: Intent,
   byId: ReadonlyMap<CardId, ArrCard>,
   ctx: PolicyCtx,
   input: ArrangeInput,
@@ -249,6 +274,7 @@ function planGroups(
   standing: readonly TierId[],
   seq: Readonly<Record<string, number>>,
   retype: boolean,
+  roots: ReadonlyMap<CardId, CardId>,
 ): G[] {
   const out: G[] = [];
   const acting = input.acting.involved;
@@ -259,6 +285,7 @@ function planGroups(
       key: g.key,
       members: g.members,
       dressing: g.dressing,
+      dressOn: new Map(g.dressing.map((d) => [d, g.members.includes(roots.get(d)!) ? roots.get(d)! : g.members[0]!] as const)),
       stacks: g.stacks && g.members.length > 1,
       squared: !!g.squared,
       base,
@@ -283,15 +310,22 @@ function planGroups(
     const top = intent.top.get(g.key)!;
     // the members ordered top first
     const members = [top, ...g.members.filter((id) => id !== top)];
-    const dressedBy = (id: CardId) => g.dressing.filter((d) => byId.get(d)?.attachedTo === id);
-    const out1: CardId[] = [];
+    // Dressing rides with the member it is (eventually) attached to; an attachment that acts leaves like any card.
+    const actingDressing = g.dressing.filter((d) => acting.has(d));
+    let rest = g.dressing.filter((d) => !acting.has(d));
+    const dressedBy = (id: CardId) => {
+      const mine = rest.filter((d) => roots.get(d) === id);
+      rest = rest.filter((d) => !mine.includes(d));
+      return mine;
+    };
+    const own: G[] = [];
+    const kept: CardId[] = [];
     for (const id of members) {
       const x = byId.get(id)!;
       // An acting card leaves its unit and stands, out of any pile (§2.7).
       if (acting.has(id)) {
-        const own: Group = { key: `act:${id}`, members: [id], dressing: dressedBy(id), stacks: false };
         const t = intent.tier.get(g.key)!;
-        out.push(make(own, standing.includes(t) ? t : firstStanding, { pinned: true, acting: true, presented: true, imp: intent.importance.get(g.key) ?? 0 }));
+        own.push(make({ key: `act:${id}`, members: [id], dressing: dressedBy(id), stacks: false }, standing.includes(t) ? t : firstStanding, { pinned: true, acting: true, presented: true, imp: intent.importance.get(g.key) ?? 0 }));
         continue;
       }
       // A card whose tier changed with its types stays where it was as its own unit, standing or lying by what it is now,
@@ -301,20 +335,24 @@ function planGroups(
       if (retype && was !== undefined && was !== base && heldKey !== undefined) {
         const tierWas = pm!.tiers[heldKey];
         if (tierWas !== undefined && policy.tiers.some((t) => t.id === tierWas)) {
-          const own: Group = { key: `re:${id}`, members: [id], dressing: dressedBy(id), stacks: false };
-          const now = policy.presented({ ...own, dressing: [] }, ctx) && !x.tapped && kindOf(x) !== "mana";
-          out.push(make(own, tierWas, { pinned: true, retyped: true, presented: now, prefer: { tier: tierWas, slot: pm!.slots[heldKey] ?? null } }));
+          const re: Group = { key: `re:${id}`, members: [id], dressing: dressedBy(id), stacks: false };
+          const now = policy.presented({ ...re, dressing: [] }, ctx) && !x.tapped && kindOf(x) !== "mana";
+          own.push(make(re, tierWas, { pinned: true, retyped: true, presented: now, prefer: { tier: tierWas, slot: pm!.slots[heldKey] ?? null } }));
           continue;
         }
       }
-      out1.push(id);
+      kept.push(id);
     }
-    if (out1.length) {
-      const dressing = g.dressing.filter((d) => out1.includes(byId.get(d)!.attachedTo as CardId) || !members.includes(byId.get(d)!.attachedTo as CardId));
-      const kept: Group = { ...g, members: out1, dressing };
-      const cmd = out1.some((id) => byId.get(id)!.commander);
-      out.push(make(kept, base, { pinned: cmd }));
+    for (const d of actingDressing) own.push(make({ key: `act:${d}`, members: [d], dressing: [], stacks: false }, firstStanding, { pinned: true, acting: true, presented: true, imp: intent.importance.get(g.key) ?? 0 }));
+    if (kept.length) {
+      const cmd = kept.some((id) => byId.get(id)!.commander);
+      out.push(make({ ...g, members: kept, dressing: rest }, base, { pinned: cmd }));
+    } else if (rest.length) {
+      // every member left: what dressed them and has no host here rides with the first that left
+      const first = own.find((x) => !x.members.some((id) => actingDressing.includes(id))) ?? own[0]!;
+      own[own.indexOf(first)] = { ...first, dressing: [...first.dressing, ...rest], dressOn: new Map([...first.dressOn, ...rest.map((d) => [d, first.members[0]!] as const)]) };
     }
+    out.push(...own);
   }
   return out.sort((a, b) => cmp(a.key, b.key));
 }
@@ -463,7 +501,7 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       fans.set(f, [...(fans.get(f) ?? []), g]);
       continue;
     }
-    const common = { tier, imp: g.imp, pinned: g.pinned, acting: g.acting, retyped: g.retyped, arrival: g.arrival, prefer: g.prefer, groups: [g.key] };
+    const common = { tier, imp: g.imp, pinned: g.pinned, acting: g.acting, retyped: g.retyped, arrival: g.arrival, prefer: g.prefer, groups: [g.key], show: 1 };
     // It stands where its tier stands (or it acts, or its types just changed where it lies); demoted, it lies.
     const stands = g.presented && (!lying(tier) || g.acting || g.retyped);
     if (st.stacked.has(g.key)) {
@@ -471,7 +509,7 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       out.push({ ...common, key: `s${g.key}`, kind, members: g.members, dressing: g.dressing, stands, width: SLOT.lie * s });
     } else
       for (const id of g.members)
-        out.push({ ...common, key: `c${id}`, kind: "card", members: [id], dressing: g.dressing.filter((d) => dressedOn(g, d, id)), stands, width: SLOT.lie * s });
+        out.push({ ...common, key: `c${id}`, kind: "card", members: [id], dressing: g.dressing.filter((d) => g.dressOn.get(d) === id), stands, width: SLOT.lie * s });
   }
   for (const [tier, gs] of fans) {
     const sorted = [...gs].sort((a, b) => b.imp - a.imp || cmp(a.key, b.key));
@@ -492,6 +530,7 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       width: Math.max(SLOT.lie, fanExtent(n)) * s,
       arrival: Math.min(...sorted.map((g) => g.arrival)),
       prefer: null,
+      show: n,
     });
   }
   if (summary.length) {
@@ -512,13 +551,12 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       width: SLOT.lie * s,
       arrival: Math.min(...sorted.map((g) => g.arrival)),
       prefer: null,
+      show: 1,
     });
   }
   return out.sort((a, b) => cmp(a.key, b.key));
 }
 
-/** The dressing of one member of an unstacked group: what is attached to it (a host's card; others' strays to the first). */
-const dressedOn = (g: G, d: CardId, id: CardId): boolean => (g.members.length === 1 ? true : g.members[0] === id ? true : false) && d !== id;
 
 /** What the space gives each band for these units: its rows, and whether its units overflow them. */
 interface Laid {
@@ -627,7 +665,7 @@ interface Candidate {
   readonly edits: EditRecord[];
   readonly used: Arrangement["used"];
   /** What is drawn, per unit id, for a pose's audit. */
-  readonly placed: readonly { readonly unit: ArrUnit; readonly row: RowGeo; readonly u: number; readonly w: number; readonly stands: boolean }[];
+  readonly placed: readonly { readonly unit: ArrUnit; readonly row: RowGeo; readonly u: number; readonly w: number; readonly stands: boolean; readonly show: number }[];
   memory(ranking: readonly string[], tidy: boolean): PolicyMemory;
 }
 
@@ -664,7 +702,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
   for (const x of all) {
     const sl = slots.get(x.key);
     if (!sl) continue;
-    drawn.set(x.key, drawUnit(c, c.frame, sl.row, { kind: x.kind, members: x.members, dressing: x.dressing, tapped: (id) => cardOf(id).tapped, stands: x.stands, show: FAN_SHOW, u: sl.u, w: sl.w }, s));
+    drawn.set(x.key, drawUnit(c, c.frame, sl.row, { kind: x.kind, members: x.members, dressing: x.dressing, tapped: (id) => cardOf(id).tapped, stands: x.stands, show: x.show, u: sl.u, w: sl.w }, s));
   }
   // paint: far first, then each unit's own layers; markers over their unit's cards
   const order = [...all].filter((x) => drawn.has(x.key)).sort((a, b) => drawn.get(b.key)!.depth - drawn.get(a.key)!.depth || cmp(a.key, b.key));
@@ -689,7 +727,8 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
   const groupImp = new Map<CardId, number>();
   for (const x of all) for (const id of x.members) groupImp.set(id, x.imp);
   for (const x of all) {
-    const hidden = hiddenOf(x);
+    // tucked attachments count as hidden when offered or aimed: their strip is no place to choose them
+    const hidden = [...hiddenOf(x), ...x.dressing.filter((d) => input.acting.offered.has(d) || input.acting.involved.has(d))];
     const why = new Map<AttentionWhy, CardId[]>();
     for (const id of hidden) {
       const card = cardOf(id);
@@ -769,7 +808,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     ? { left: Math.min(...pts.map((p) => p.x)), right: Math.max(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), bottom: Math.max(...pts.map((p) => p.y)) }
     : { left: 0, right: 0, top: 0, bottom: 0 };
 
-  const placedList = order.map((x) => ({ unit: units.find((un) => un.key === x.key)!, row: slots.get(x.key)!.row, u: slots.get(x.key)!.u, w: slots.get(x.key)!.w, stands: x.stands }));
+  const placedList = order.map((x) => ({ unit: units.find((un) => un.key === x.key)!, row: slots.get(x.key)!.row, u: slots.get(x.key)!.u, w: slots.get(x.key)!.w, stands: x.stands, show: x.show }));
 
   return {
     units,
@@ -810,6 +849,8 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
         folds: walked.ran,
         edits: walked.ran.length,
         tidy: didTidy ? { turn: input.clock.turn, phase: input.clock.phase, ranking } : (pm?.tidy ?? null),
+        // (a plan while cards are in flight does not count as seeing its phase: the re-sort it held back comes next)
+        seen: input.clock.settling ? (pm?.seen ?? null) : { turn: input.clock.turn, phase: input.clock.phase },
       };
     },
   };
@@ -873,8 +914,13 @@ function actionOf(input: ArrangeInput, ctx: PolicyCtx, un: ArrUnit): PickTarget[
   const open = { open: { role, from: un.id, page: 0 } } as const;
   if (un.dressing.some((id) => input.acting.offered.has(id))) return open;
   if (un.kind === "card" && un.top !== null) return input.acting.choosing && offered.length ? { select: un.top } : { inspect: un.top };
-  // a stack's members are interchangeable: one target that selects
-  if (un.kind === "stack" && input.acting.choosing && offered.length) return { select: offered[0]! };
+  // A block of copies is interchangeable: one target that selects. A block of distinct choices (a well of lands) opens
+  // its focus with them offered, so each can be chosen.
+  const look = (id: CardId) => {
+    const c = ctx.cards.get(id)!;
+    return `${c.lookKey}|${c.tapped}`;
+  };
+  if (un.kind === "stack" && input.acting.choosing && offered.length && offered.every((id) => look(id) === look(offered[0]!))) return { select: offered[0]! };
   return open;
 }
 
@@ -888,31 +934,41 @@ function actionOf(input: ArrangeInput, ctx: PolicyCtx, un: ArrUnit): PickTarget[
 function lineage(units: readonly U[], pm: PolicyMemory | null): Map<string, string> {
   const ids = new Map<string, string>(), taken = new Set<string>();
   const present = new Set(units.map((x) => x.key));
-  const sorted = [...units].sort((a, b) => cmp(a.key, b.key));
-  for (const x of sorted) {
-    const id = pm?.lineage[x.key];
-    if (id !== undefined && !taken.has(id)) {
-      ids.set(x.key, id);
-      taken.add(id);
-    }
-  }
-  for (const x of sorted) {
-    if (ids.has(x.key)) continue;
-    let pick: string | null = null;
-    if (pm) {
-      const from = new Map<string, CardId[]>();
-      for (const id of x.members) {
-        const k = pm.held[id];
-        if (k !== undefined && !present.has(k)) from.set(k, [...(from.get(k) ?? []), id]);
-      }
-      const cands = [...from.entries()].filter(([k]) => pm.lineage[k] !== undefined && !taken.has(pm.lineage[k]!));
-      cands.sort((a, b) => Number(x.members.includes(pm.tops[b[0]] as CardId)) - Number(x.members.includes(pm.tops[a[0]] as CardId)) || b[1].length - a[1].length || Math.min(...a[1]) - Math.min(...b[1]));
-      if (cands[0]) pick = pm.lineage[cands[0][0]]!;
-    }
-    let id = pick ?? `u:${x.key}`;
-    for (let n = 2; taken.has(id); n++) id = `u:${x.key}+${n}`;
+  const give = (x: U, id: string) => {
     ids.set(x.key, id);
     taken.add(id);
+  };
+  // a unit keeps its id while its key lasts
+  for (const x of [...units].sort((a, b) => cmp(a.key, b.key))) {
+    const id = pm?.lineage[x.key];
+    if (id !== undefined && !taken.has(id)) give(x, id);
+  }
+  if (pm) {
+    const gone = Object.keys(pm.lineage)
+      .filter((k) => !present.has(k))
+      .sort(cmp);
+    // a split: the part holding the old top keeps the id
+    for (const k of gone) {
+      const id = pm.lineage[k]!, top = pm.tops[k];
+      if (taken.has(id) || top === undefined) continue;
+      const heir = units.find((x) => !ids.has(x.key) && x.members.includes(top as CardId));
+      if (heir) give(heir, id);
+    }
+    // a merge, or a split whose top left: the part with most of the old members, ties to the earliest arrival
+    for (const x of [...units].filter((y) => !ids.has(y.key)).sort((a, b) => a.arrival - b.arrival || cmp(a.key, b.key))) {
+      const from = new Map<string, number>();
+      for (const id of x.members) {
+        const k = pm.held[id];
+        if (k !== undefined && !present.has(k) && pm.lineage[k] !== undefined && !taken.has(pm.lineage[k]!)) from.set(k, (from.get(k) ?? 0) + 1);
+      }
+      const best = [...from.entries()].sort((a, b) => b[1] - a[1] || cmp(a[0], b[0]))[0];
+      if (best) give(x, pm.lineage[best[0]]!);
+    }
+  }
+  for (const x of [...units].filter((y) => !ids.has(y.key)).sort((a, b) => cmp(a.key, b.key))) {
+    let id = `u:${x.key}`;
+    for (let n = 2; taken.has(id); n++) id = `u:${x.key}+${n}`;
+    give(x, id);
   }
   return ids;
 }
@@ -932,7 +988,7 @@ function lineageOf(x: U, pm: PolicyMemory | null, ids: ReadonlyMap<string, strin
 function auditAt(input: ArrangeInput, cand: Candidate, s: number, du: number, shift: number): ArrViolation[] {
   const c = input.container, f = { ...c.frame, anchor: onFrame(c.frame, 0, shift) };
   const cardOf = (id: CardId) => input.cards.find((x) => x.id === id)!;
-  const drawn = cand.placed.map((p) => ({ p, d: drawUnit(c, f, p.row, { kind: p.unit.kind, members: p.unit.members, dressing: p.unit.dressing, tapped: (id) => cardOf(id).tapped, stands: p.stands, show: FAN_SHOW, u: p.u, w: p.w }, s) }));
+  const drawn = cand.placed.map((p) => ({ p, d: drawUnit(c, f, p.row, { kind: p.unit.kind, members: p.unit.members, dressing: p.unit.dressing, tapped: (id) => cardOf(id).tapped, stands: p.stands, show: p.show, u: p.u, w: p.w }, s) }));
   let paint = 0;
   const audited: AuditUnit[] = drawn.map(({ p, d }) => {
     const faces = d.cards.map((cp) => ({ quad: cp.quad, paint: paint++ }));
