@@ -15,6 +15,8 @@ import type { CardLook, StackRow } from "./view";
 const TWO_ROWS_OVER = 6;
 
 const ROW_TONE: Readonly<Record<Button["tone"], string>> = { primary: "l-done", secondary: "" };
+/** The sheet's Clear keeps the class the behaviour suite finds it by (it was the pill tier's); it is a secondary plate. */
+const CLEAR_HOOK = "l-ghost";
 
 interface SheetProps {
   readonly sheet: SheetView;
@@ -161,7 +163,7 @@ export function Sheet(p: SheetProps): JSX.Element {
               <button
                 type="button"
                 key={b.id}
-                class={ROW_TONE[b.tone] || undefined}
+                class={[ROW_TONE[b.tone], b.role === "clear" ? CLEAR_HOOK : ""].filter(Boolean).join(" ") || undefined}
                 data-button={b.id}
                 disabled={!b.enabled}
                 onClick={() => send({ a: "press", button: b.id })}

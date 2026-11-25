@@ -254,7 +254,7 @@ describe("the sheet", () => {
     expect(texts(".l-grid button.l-opt")).toEqual(["Alpha", "Beta", "Gamma"]);
     expect($$(".l-grid button")[2]!.dataset["n"]).toBe("1");
     expect(texts(".l-row button")).toEqual(["Clear", "Done (1)"]);
-    expect($$(".l-row button").map((b) => b.className)).toEqual(["", "l-done"]);
+    expect($$(".l-row button").map((b) => b.className)).toEqual(["l-ghost", "l-done"]);
   });
   it("cards off the table (a library search) are pictured by name", () => {
     const items = OFFER.items.map((i, k) => ({ ...i, card: null, name: k === 0 ? "Forest" : "Swamp" }));
