@@ -188,9 +188,14 @@ const AUDIT_NEW = step => {
   const dm = window.__deckmaster, plan = dm.plan(), snap = dm.scene.inspect(), faces = dm.scene.faces(), state = dm.state();
   const seats = dm.seats(), pidOf = s => (s == null ? null : ["you", "ana", "bo", "cy"][seats.indexOf(s)] || s);
   const cv = document.querySelector("canvas"), W = innerWidth, H = innerHeight, cols = Math.ceil(W / step), rows = Math.ceil(H / step);
-  const role = new Map();
+  const role = new Map(), file = new Map(), tail = new Map();
   for (const sp of plan.seats.values()) {
-    for (const u of sp.units) role.set(u.id, u.role);
+    for (const u of sp.units) {
+      role.set(u.id, u.role);
+      // A file (battle lines) is one pile: its own cards overlap on purpose, and its heads are reached together, as its tail.
+      if (u.file) file.set(u.id, u.file.id);
+      if (u.file && u.file.rank > 0 && !u.raised && !u.fighting) tail.set(u.id, "tail:" + u.file.id);
+    }
     if (sp.fixtures.commander) role.set("command:" + sp.seat, "commander");
   }
   const up = Object.entries(faces).filter(([, f]) => f.kind === "stack" && f.up && f.visible).map(([id]) => id), stackUp = up.length > 0;
@@ -214,7 +219,7 @@ const AUDIT_NEW = step => {
         for (let i = Math.max(0, Math.floor(Math.min(...xs) / step)); i <= Math.min(cols - 1, Math.floor(Math.max(...xs) / step)); i++) {
           const x = i * step + step / 2, y = j * step + step / 2;
           if (!inQuad(qq, x, y)) continue;
-          out.n++; const w = seen(x, y, skip); if (w && w !== k) out.by[w] = (out.by[w] || 0) + 1;
+          out.n++; const w = seen(x, y, skip); if (w && w !== k && !(file.has(k) && file.get(w) === file.get(k))) out.by[w] = (out.by[w] || 0) + 1;
         }
       return out;
     };
@@ -235,7 +240,7 @@ const AUDIT_NEW = step => {
     grid();
     for (const pc of snap ? snap.pieces : []) {
       if (!["unit", "plate", "stack"].includes(pc.kind) || pc.remnant || up.includes(pc.id)) continue;
-      const f = faces[pc.id], cells = owned.get(pc.id), ids = pc.shown.length ? pc.shown : pc.members;
+      const f = faces[pc.id], cells = owned.get(tail.get(pc.id) || pc.id), ids = pc.shown.length ? pc.shown : pc.members;
       const hidden = pc.kind === "unit" && (!pc.visible || !f || !f.visible);
       pieces[pc.id] = { role: pc.kind === "plate" ? "plate" : pc.kind === "stack" ? "stack" : role.get(pc.id) || "card", pid: pc.kind === "stack" ? "stack" : pidOf(pc.seat), n: ids.length,
         names: ids.slice(0, 6).map(id => (dm.card(id) || {}).name).filter(Boolean),

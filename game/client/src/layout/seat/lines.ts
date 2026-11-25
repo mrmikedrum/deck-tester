@@ -2,7 +2,7 @@ import { FLOOR } from "../board";
 import type { BoardCard } from "../board";
 import { Ledger } from "../ledger";
 import type { Fixtures, LayoutMemory, Muster, Note, Placement, SeatInput, SeatLayout, SeatPlan, Unit } from "../seat";
-import { SLIP_PX, cardMiddle } from "../shape";
+import { SLIP_PX, bounds, cardMiddle, plateShape, unitShape, zoneShape } from "../shape";
 import type { CardId, V3 } from "../types";
 import { cardsOf, fold, kindWord } from "./fold";
 import type { Draft, Like } from "./fold";
@@ -286,10 +286,15 @@ function plan(input: SeatInput): SeatPlan {
   const back = me ? null : backBand();
   const fits = (S: number) => {
     const placed = cols.map((c, i) => {
+      // (Pressed past every head, a file closes up into its front: one pile of what it holds.)
+      if (S < 0 && c.length > 1) {
+        const all: Run = { ids: c.flatMap((x) => x.ids), rep: c[0]!.rep, w: c[0]!.w, acting: false };
+        return { f: fileOf(g, r, uOf(i), aLine, sFront, [all], px), rearguard: null, closed: c };
+      }
       const shown = c.slice(0, S + 1), rest = c.slice(S + 1);
       // (Past S heads the lightest fold into one rearguard behind the last; one alone is just a head.)
       const rear: Run | null = rest.length > 1 ? { ids: rest.flatMap((x) => x.ids), rep: rest[0]!.rep, w: 0, acting: false } : (rest[0] ?? null);
-      return { f: fileOf(g, r, uOf(i), aLine, sFront, rear ? [...shown, rear] : shown, px), rearguard: rest.length > 1 ? rest : null };
+      return { f: fileOf(g, r, uOf(i), aLine, sFront, rear ? [...shown, rear] : shown, px), rearguard: rest.length > 1 ? rest : null, closed: null };
     });
     let behind = aLine + 0.5;
     placed.forEach(({ f }) => {
@@ -310,9 +315,9 @@ function plan(input: SeatInput): SeatPlan {
   const sup = me ? [] : support();
   // Ways to fit, loosest first: the spent heap and the support in rows of their own, or sharing one row (the heap at the
   // outer end, compact), each with as many heads as fit.
-  const S0 = Math.max(0, Math.min(depth0, Math.max(0, ...cols.map((c) => c.length - 1))) - input.pressure);
+  const S0 = Math.max(-1, Math.min(depth0, Math.max(0, ...cols.map((c) => c.length - 1))) - input.pressure);
   const ways: { S: number; shared: boolean }[] = [];
-  for (let k = S0; k >= 0; k--) ways.push({ S: k, shared: false }, { S: k, shared: true });
+  for (let k = S0; k >= Math.min(0, S0); k--) ways.push({ S: k, shared: false }, { S: k, shared: true });
   const fitsBack = (w: { S: number; shared: boolean }, f: ReturnType<typeof fits>): boolean => {
     if (!back) return true;
     let a = f.back + 0.1;
@@ -332,11 +337,29 @@ function plan(input: SeatInput): SeatPlan {
   void S;
 
   let folded = 0;
-  files.placed.forEach(({ f, rearguard }, ci) => {
+  files.placed.forEach(({ f, rearguard, closed }, ci) => {
     const fileId = `${board.seat}:${ci}`, u = uOf(ci);
     for (const p of f) {
       const run = p.run, rear = !!rearguard && p === f[f.length - 1];
       if (rear) folded += rearguard.length - 1;
+      if (closed) {
+        folded += closed.length - 1;
+        units.push({
+          id: ids.take("c", run.ids),
+          role: "creature",
+          kind: "pile",
+          members: run.ids,
+          dressing: closed.flatMap(dressOf),
+          top: run.rep.id,
+          title: `Creatures ${run.ids.length}`,
+          mixed: true,
+          acting: false,
+          tapped: false,
+          placement: { pos: at(g, r, u, p.a), scale: p.s, posture: "stand" },
+          file: { id: fileId, rank: 0 },
+        });
+        continue;
+      }
       units.push({
         id: ids.take(rear ? "r" : "c", run.ids),
         role: "creature",
@@ -546,10 +569,11 @@ function plan(input: SeatInput): SeatPlan {
     // The land heap: propped a little off the page beside the plaque, as large as the floors ask there.
     const sL = Math.max(HEAP_S, scaleAt(g, plateFoot, FLOOR.any, false, HEAP_S));
     const hw = mana.length ? sL * CW + 0.35 : 0;
-    const width = eZ + half + 0.2 + hw;
-    const room = r.w - 0.5;
-    const heapBeside = width <= room;
-    const c = (-zs * (eZ - (half + (heapBeside ? 0.2 + hw : 0)))) / 2;
+    // The heap lies on the far side of the plaque from the zones across; on a side page past the zones, toward the table's
+    // middle (the plaque's other side is the screen's edge there).
+    const across = r.position === "across";
+    const zoneExt = across ? eZ : eZ + (hw ? 0.2 + hw : 0), otherExt = across ? half + (hw ? 0.2 + hw : 0) : half;
+    const c = (-zs * (zoneExt - otherExt)) / 2;
     const plate: Placement = { pos: at(g, r, c, aPlate), scale: PLATE_S, posture: "stand" };
     const present = (["graveyard", "exile"] as const).filter((z) => fx[z] > 0);
     const zonesOut = present.map((zone, i) => ({ zone, placement: { pos: at(g, r, c + zs * zones[i]!, aPlate), scale: zS, posture: "prop" as const } }));
@@ -561,12 +585,22 @@ function plan(input: SeatInput): SeatPlan {
     const heap = (): void => {
       if (!mana.length) return;
       const lands = mana.filter((x) => x.land), open = mana.filter((x) => !x.tapped).length, rocks = mana.length - lands.length;
-      // (Where the back band has no room for it, it lies at the outer end of the back band's row, in front of the zones.)
-      const uH = heapBeside ? c - zs * (half + 0.2 + hw / 2) : -zs * (r.w / 2 - 0.25 - hw / 2);
+      const dir = across ? -zs : zs;
+      let uH = across ? c - zs * (half + 0.2 + hw / 2) : c + zs * (eZ + 0.2 + hw / 2);
       // (As far back as its top stays on screen: across, the plaque is just under the screen's top.)
       let aH = aPlate - 0.1;
       const topOf = (a: number) => topY(g, at(g, r, uH, a), sL, CH, "lean");
       for (let k = 0; k < 40 && aH > 0 && topOf(aH) < 6 * g.u; k++) aH -= 0.1;
+      // On screen it keeps clear of the plaque (and its slip) and the zones, sliding outward, never off the screen.
+      const cardShapeAt = (pos: V3, sc: number) => cardShapeAtOf(g, pos, sc);
+      const fixed = [plateShape(g.proj, board.seat, plate, undefined, SLIP_PX * g.u), ...zonesOut.map((z) => zoneShape(g.proj, board.seat, z.zone, z.placement, false))].map((x) => bounds(x.face));
+      const box = (u: number) => bounds(cardShapeAt(at(g, r, u, aH), sL));
+      const meets = (b: ReturnType<typeof bounds>) => fixed.some((f) => f.l < b.r + 4 && f.r > b.l - 4 && f.t < b.b && f.b > b.t);
+      for (let k = 0; k < 40 && meets(box(uH)); k++) {
+        const next = box(uH + dir * 0.1);
+        if (next.l < 4 * g.u || next.r > g.proj.viewport.w - 4 * g.u) break;
+        uH += dir * 0.1;
+      }
       units.push({
         id: ids.take("m", mana.map((x) => x.id)),
         role: "mana",
@@ -585,6 +619,12 @@ function plan(input: SeatInput): SeatPlan {
     const page: Fixtures["page"] = { pos: at(g, r, 0, r.d / 2), w: r.w, d: r.d, yaw: r.yaw };
     return { fixtures: { page, plate, zones: zonesOut, ...(commander ? { commander } : {}) }, slipY, heap };
   }
+}
+
+/** A lying-back card's face on screen (a land heap's), for keeping it clear of the back band. */
+function cardShapeAtOf(g: Geo, pos: V3, s: number) {
+  const u: Unit = { id: "probe", role: "mana", kind: "well", members: [], dressing: [], top: 0 as CardId, title: null, mixed: false, acting: false, tapped: false, placement: { pos, scale: s, posture: "lean" } };
+  return unitShape(g.proj, "probe", u, false).face;
 }
 
 /** What a rearguard holds, as a player would say it: its biggest run by name, how many more, their power. */

@@ -239,6 +239,8 @@ export interface Violation {
   readonly seat: string | null;
   readonly measured: number;
   readonly limit: number;
+  /** For a cover: the seats of what is drawn over it. */
+  readonly by?: readonly (string | null)[];
 }
 
 /** Nothing covers more than this share of a name strip or foot, or of a face (intent.md "Hard limits"). */
@@ -295,9 +297,10 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     };
     if (s.kind !== "plate" && s.kind !== "tail") {
       const nm = covered(s.name, 7, 2), ft = covered(s.foot, 7, 2), fc = covered(s.face, 7, 7);
-      if (nm > COVER.strip) out.push({ rule: "covers-name", group: s.group, seat: s.seat, measured: nm, limit: COVER.strip });
-      if (ft > COVER.strip) out.push({ rule: "covers-foot", group: s.group, seat: s.seat, measured: ft, limit: COVER.strip });
-      if (fc > COVER.face) out.push({ rule: "covers-face", group: s.group, seat: s.seat, measured: fc, limit: COVER.face });
+      const by = [...new Set(over.filter((o) => overlaps(box.get(o)!, bb)).map((o) => o.seat))];
+      if (nm > COVER.strip) out.push({ rule: "covers-name", group: s.group, seat: s.seat, measured: nm, limit: COVER.strip, by });
+      if (ft > COVER.strip) out.push({ rule: "covers-foot", group: s.group, seat: s.seat, measured: ft, limit: COVER.strip, by });
+      if (fc > COVER.face) out.push({ rule: "covers-face", group: s.group, seat: s.seat, measured: fc, limit: COVER.face, by });
     }
     // tappable: a window of tap x tap px that the hit test gives to this group
     // (A plaque is not a card or a pile: intent.md's patch rule is for those. It still draws over what it stands on.)

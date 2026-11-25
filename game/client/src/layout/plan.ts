@@ -256,6 +256,9 @@ export function planTable(input: TableInput): TablePlan {
   for (let round = 0; c.v.length && round < MAX_PRESSURE; round++) {
     // (A fighter's own trouble in the row is not its seat's: folding the seat would not move it.)
     const bad = new Set(c.v.filter((x) => !c.row.has(x.group)).map((x) => x.seat));
+    // (A layout other than mat stands things that may reach over a neighbour, battle lines' files: the seat drawn over
+    // the card folds too.)
+    if (layout !== mat) for (const x of c.v) if (!c.row.has(x.group)) for (const s of x.by ?? []) if (s !== null && s !== x.seat) bad.add(s);
     let moved = false;
     plans.forEach((p, i) => {
       if (!bad.has(p.seat) || p.report.lastResort) return;
