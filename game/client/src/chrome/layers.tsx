@@ -234,10 +234,13 @@ export function Chips({ chips, send }: { chips: readonly ChipView[]; send: Send 
 }
 
 /** Leaning in on a seat: whose side this is, and the way back. */
-export function BackBar({ text, send }: { text: string; send: Send }): JSX.Element {
+export function BackBar({ text, sub, send }: { text: string; sub?: string | null; send: Send }): JSX.Element {
   return (
     <div class="l-back" data-focus="">
-      <span>{text}</span>
+      <span>
+        {text}
+        {sub ? <small>{sub}</small> : null}
+      </span>
       <button type="button" onClick={() => send({ t: "dismiss" })}>
         Back to the table
       </button>

@@ -15,6 +15,7 @@ import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
 import type { Paradigm, TableTemplate } from "./template";
 import { front } from "./seat/front";
+import { spreadSeat } from "./seat/spread";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 
@@ -22,6 +23,8 @@ import { designUnit } from "./types";
 // stack at rest, and what a tap can reach.
 
 const MAX_PRESSURE = 6;
+/** A spread's sheet draws over the table (under the plates): its groups' draw order is raised by this. */
+const SHEET_ORDER = 1e5;
 
 export interface PlanSeatOptions {
   readonly maxPressure?: number;
@@ -157,6 +160,8 @@ export interface TableInput {
   readonly layout?: SeatLayout;
   /** Which table: today's mats, or focus-first's leaves (`front` for the opponents; my page stays a mat). */
   readonly paradigm?: Paradigm;
+  /** Focus-first: the seat whose leaf is spread over the table (a look), or none. */
+  readonly spread?: SeatId | null;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
 }
@@ -210,6 +215,8 @@ export interface TablePlan {
   readonly combat: CombatPairs | null;
   /** Which table it is: today's mats or focus-first's leaves. */
   readonly paradigm: Paradigm;
+  /** The seat spread over the table (its plan in `seats` is the sheet's), or null. */
+  readonly spread: SeatId | null;
 }
 
 function fnv(s: string): number {
@@ -285,12 +292,31 @@ export function planTable(input: TableInput): TablePlan {
   for (const s of c.stack)
     if (s.spilled) v = [...v, { rule: "no-room", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
-  const hits = hitGroups(final, shapes, stack);
+  let hits = hitGroups(final, shapes, stack);
+  // A spread: that seat's sheet replaces its leaf, over everything but the plates; what it covers of the other leaves is
+  // out of reach (their plates stay), and my side stays reachable where the sheet does not lie over it.
+  const si = input.spread && paradigm === "front" ? input.seats.findIndex((x) => x.seat === input.spread) : -1;
+  let spreadSeatId: SeatId | null = null;
+  if (si > 0) {
+    const rest = final[si]!, sheet = spreadSeat(inputs[si]!, rest);
+    spreadSeatId = sheet.seat;
+    final[si] = sheet;
+    seats.set(sheet.seat, sheet);
+    const near = input.seats[0]!.seat;
+    const lifted = seatShapes(projector, sheet, false).filter((x) => x.kind !== "plate").map((x) => ({ ...x, order: x.order + SHEET_ORDER }));
+    const keep = hits.groups.filter((x) => x.kind === "plate" || x.kind === "stack" || x.seat === near);
+    const sheetGroups: HitGroup[] = [
+      ...sheet.units.map((un) => { const sh = lifted.find((x) => x.group === un.id)!; return { id: un.id, kind: un.kind, seat: sheet.seat, members: un.members, quad: sh.face, order: sh.order }; }),
+      ...(sheet.fixtures.commander ? hits.groups.filter((x) => x.id === `command:${sheet.seat}`) : []),
+    ];
+    const groups = [...keep, ...sheetGroups];
+    hits = { rev: fnv(groups.map((x) => `${x.id}:${x.members.join(",")}`).join(";")), groups };
+  }
   const stackUp = stackFocus(input, tpl, projector, final, shapes, reserve, reserve.safe);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, paradigm };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, paradigm, spread: spreadSeatId };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle

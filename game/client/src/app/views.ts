@@ -3,9 +3,9 @@
 // losses and watching headline, the newest toast). Pure.
 import type { CardLook, ChromeView, HandCard, HandView } from "../chrome";
 import type { CardId } from "../protocol";
-import { handOrder, isCreatureSweep, topOf } from "../model";
+import { handOrder, isCreature, isCreatureSweep, topOf } from "../model";
 import * as narrative from "../narrative";
-import type { Card, TableModel } from "../model";
+import type { Card, SeatId, TableModel } from "../model";
 import * as play from "../play";
 import type { Carried } from "../play";
 import type { FocusTop, MomentView, SceneFrame, SceneReport } from "../scene/stage/types";
@@ -36,6 +36,13 @@ export function sceneFrame(s: AppState): SceneFrame | null {
     reducedMotion: s.reducedMotion,
     ...(s.paradigm === "front" ? { reading: narrative.readingContext(s.model, s.session.decision?.kind ?? null) } : {}),
   };
+}
+
+/** A spread's head (focus-first): the seat's force, and what it holds back. */
+function sheetHead(model: TableModel, seat: SeatId): string {
+  const p = model.seat(seat);
+  const cs = model.zone(seat, "battlefield").map((id) => model.cards.get(id)).filter((c): c is Card => !!c && isCreature(c));
+  return [narrative.forceLine(cs), ...(p ? [`hand ${p.hand}`, `library ${p.library}`] : [])].join(" · ");
 }
 
 /** live.js: an instant or sorcery shows its rules on the opened card. */
@@ -158,6 +165,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null): Chrom
     stack: model && controls.sheet?.kind === "stack" ? stackRowsOf(model) : [],
     sift: model && s.plan && sifted?.group != null ? siftViewOf(model, s.plan, sifted.group, sifted.page) : null,
     back: model && lean ? `${model.seat(lean)?.name ?? String(lean)}'s side` : null,
+    backSub: model && lean && s.paradigm === "front" ? sheetHead(model, lean) : null,
     newGame: offersNewGame(s),
     stackOpen: isOpen(f, "stack"),
     log: narrative.logStripView(n, model),

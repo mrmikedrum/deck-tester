@@ -181,6 +181,9 @@ export interface ChromeView {
   readonly sift: SiftView | null;
   /** Leaning in on a seat: "Ana's side", with the way back; null otherwise. */
   readonly back: string | null;
+  /** Under it, what the spread holds and what the seat holds back (focus-first's sheet head): "33 creatures · 92 power ·
+   *  hand 2 · library 67"; null otherwise. */
+  readonly backSub?: string | null;
   /** The stack layer is up (not set aside): the prompt carries the stack summary instead of its context. */
   readonly stackOpen: boolean;
   /** The strip at the top left: the turn and what just happened (hidden before a turn has an active player). */

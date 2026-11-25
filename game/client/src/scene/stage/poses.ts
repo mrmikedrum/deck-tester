@@ -56,7 +56,7 @@ export function platePose(p: Placement): Pose {
 
 /** A page lies on the table, turned by its yaw. */
 export function pagePose(page: { readonly pos: V3; readonly yaw: number }): Pose {
-  return { pos: v3(page.pos.x, 0.003, page.pos.z), rx: 0, ry: page.yaw, s: 1 };
+  return { pos: v3(page.pos.x, page.pos.y + 0.003, page.pos.z), rx: 0, ry: page.yaw, s: 1 };
 }
 
 /** Square to the camera: its right and up are the camera's (the camera never yaws, so only its pitch turns the card). */

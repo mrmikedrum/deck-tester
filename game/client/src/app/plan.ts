@@ -5,7 +5,7 @@
 // every choice in a sheet), never a thrown frame.
 import type { ChromeMode } from "../layout";
 import { planTable, reservations, tableInputOf } from "../layout";
-import type { TableModel } from "../model";
+import type { SeatId, TableModel } from "../model";
 import type { BoardCues } from "../play";
 import type { CardId } from "../protocol";
 import type { AppState } from "./state";
@@ -30,9 +30,14 @@ function pairsKey(cues: BoardCues): string {
   return [...d.attacks.map((a) => `${a.attacker}>${to(a.defender)}`), ...d.blocks.map((b) => `${b.blocker}|${b.attacker}`)].join(",");
 }
 
+/** Focus-first: the seat whose leaf is spread over the table (the look's layer), which the plan lays out as a sheet. */
+export function spreadOf(s: AppState): SeatId | null {
+  return s.paradigm === "front" ? (s.focus.layers.find((e) => e.layer === "lean")?.seat ?? null) : null;
+}
+
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
   const { w, h, safe } = s.viewport;
-  return `${s.paradigm}|${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
+  return `${s.paradigm}|${spreadOf(s) ?? ""}|${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
 }
 
 export interface Replanned {
@@ -57,8 +62,9 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
   const key = keyOf(model, s, mode, pairsKey(cues), settling);
   if (key === s.planKey) return { state: s, error: null };
   try {
-    const plan = planTable(
-      tableInputOf(model, {
+    const plan = planTable({
+      spread: spreadOf(s),
+      ...tableInputOf(model, {
         viewport: { w: s.viewport.w, h: s.viewport.h },
         safe: s.viewport.safe,
         mode,
@@ -68,7 +74,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         combat: cues.combat,
         paradigm: s.paradigm,
       }),
-    );
+    });
     return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };
   } catch (e) {
     return { state: { ...s, plan: null, planKey: key, reserve }, error: e instanceof Error ? e.message : String(e) };

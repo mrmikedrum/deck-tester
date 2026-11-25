@@ -403,7 +403,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
               {view.chips.length || view.back !== null ? (
                 <div class="l-corner">
                   <Chips chips={view.chips} send={send} />
-                  {view.back !== null ? <BackBar text={view.back} send={send} /> : null}
+                  {view.back !== null ? <BackBar text={view.back} sub={view.backSub ?? null} send={send} /> : null}
                 </div>
               ) : null}
               {view.sift !== null ? <SiftBar view={view.sift} send={send} /> : null}

@@ -18,7 +18,7 @@ it.skipIf(!file)("dev: the clips on leaves", () => {
       const r = decodeSnapshot(e);
       if (!r.ok) throw new Error("decode");
       const model = modelOf(r.value, cat, playerViewer(r.value)!)!;
-      const plan = planTable({ ...tableInputOf(model, { viewport: { w: 1180, h: 820 }, memory }), paradigm: (process.env["PARADIGM"] ?? "front") as "front" | "mat" });
+      const plan = planTable({ ...tableInputOf(model, { viewport: { w: 1180, h: 820 }, memory }), spread: (process.env["SPREAD"] ?? null) as SeatId | null, paradigm: (process.env["PARADIGM"] ?? "front") as "front" | "mat" });
       if (process.env["AUDIT"]) {
         const tpl = tableTemplate(4, "landscape", "front"), vp = { w: 1180, h: 820 }, projector = pinhole(tpl.camera, vp), reserve = reservations(vp);
         const ti = tableInputOf(model, { viewport: vp, memory });

@@ -288,6 +288,15 @@ function tapDefault(tx: Tx, on: play.Target): void {
   const held = g?.kind === "stack" && t?.layer === "stack" ? g.members[0] : undefined;
   if (held !== undefined) return inspect(tx, held);
   const sifting = t?.layer === "sift";
+  // Focus-first: an opponent's leaf is read by spreading it. A tap on its piles, well or regiments unfolds that seat's
+  // whole board over the table (a look; one replaces another); on the sheet itself a pile sifts as anywhere.
+  const me0 = tx.s.model?.viewer.perspective;
+  const spreadNow = f.layers.find((e) => e.layer === "lean")?.seat ?? null;
+  if (tx.s.paradigm === "front" && g && !sifting && g.seat !== null && g.seat !== me0 && g.seat !== spreadNow && g.kind !== "zone" && g.kind !== "plate" && g.members.length > 1) {
+    const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
+    tx.s = { ...tx.s, focus: open(under, entry("lean", { seat: g.seat, restore: tx.origin ?? null })) };
+    return;
+  }
   if (g && !sifting && sifts(tx.s, g)) {
     const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
     tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null })) };

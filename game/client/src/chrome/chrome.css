@@ -824,6 +824,13 @@
     font: italic 400 calc(18 * var(--u)) var(--serif);
     letter-spacing: 0.02em;
   }
+  .l-back small {
+    display: block;
+    font: 600 calc(14 * var(--u)) var(--num);
+    font-style: normal;
+    letter-spacing: 0.01em;
+    color: var(--ink-2);
+  }
 
   .l-menu:focus-visible,
   .l-hand-view:focus-visible,

@@ -66,7 +66,9 @@ export function describe(input: DescribeInput): Description {
   const stackUp = table?.layer === "stack" && model.stack.length > 0;
   const leanSeat = table?.layer === "lean" ? table.seat : null;
   const softSeat = model.active !== null && model.active !== me ? model.active : null;
-  const lean: Lean | null = leanSeat ? leanOf(plan, leanSeat) : null;
+  // Focus-first's spread is the plan's own (the seat's sheet is in `plan.seats`): no lean-in carries it.
+  const spread = plan.spread !== null && leanSeat === plan.spread ? plan.spread : null;
+  const lean: Lean | null = leanSeat && !spread ? leanOf(plan, leanSeat) : null;
   const sifting = table?.layer === "sift" && table.group !== null ? table.group : null;
   /** A pose carried by the lean-in: the leaning seat's things up over the middle, the page across slid aside. */
   const leaned = (seat: SeatId, p: Pose, yawed = false): Pose | null => {
@@ -219,7 +221,7 @@ export function describe(input: DescribeInput): Description {
 
     // A leaf's slip: its words, lying under the page's near edge (focus-first). None where there is nothing to say.
     const slip = sp.fixtures.slip;
-    if (slip && !mine) {
+    if (slip && !mine && seat !== spread) {
       const folded = sp.units.some((u) => u.role === "creature" && u.members.length > 1);
       const lines = seatReading(model, seat, folded, input.reading ?? "rest");
       if (lines.length) {
@@ -323,6 +325,8 @@ export function describe(input: DescribeInput): Description {
   // The stack as the focus lays one scrim over the table; the stack's cards, what they aim at and the arcs stand above it,
   // each in its own place (one dim, never a second one per piece).
   const above = new Set<string>();
+  // A spread lays the same scrim, and its sheet, its cards and every plaque stand above it.
+  if (spread) for (const p of pieces.values()) if (p.seat === spread || p.kind === "plate") above.add(p.id);
   if (stackUp) {
     for (const id of pieces.keys()) if (id.startsWith("stack:")) above.add(id);
     for (const a of aims) above.add(a.to);
@@ -333,7 +337,7 @@ export function describe(input: DescribeInput): Description {
     lanes: lean ? [] : lanesOf(model, plan, cues, pieces),
     aims,
     tableTone: sifting ? DIM.table : 1,
-    scrim: stackUp ? SCRIM.alpha : 0,
+    scrim: stackUp ? SCRIM.alpha : spread ? SCRIM.alpha * 0.85 : 0,
     above,
     perspective: me,
   };

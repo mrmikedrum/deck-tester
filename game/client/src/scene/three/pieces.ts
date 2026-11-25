@@ -1043,7 +1043,7 @@ class ScrimView implements PieceView {
   }
 }
 
-/** A leaf's slip: its painted strip lying on the table (a page's layer, under every card), dimmed with its seat. */
+/** A leaf's slip: its painted strip lying on the table, over the ground's marks, dimmed with its seat. */
 class SlipView implements PieceView {
   readonly group = new Group();
   private readonly mesh: Mesh<PlaneGeometry, MeshBasicMaterial>;
@@ -1059,7 +1059,7 @@ class SlipView implements PieceView {
     this.mesh = new Mesh(new PlaneGeometry(d.spec.w, d.spec.d), new MeshBasicMaterial({ map: this.lease.texture, transparent: true, depthWrite: false }));
     this.mesh.rotation.x = -Math.PI / 2;
     this.mesh.position.y = 0.004;
-    this.mesh.renderOrder = -1;
+    this.mesh.renderOrder = 3; // over the ground's sigils and ash, so its ink reads; a card on it still hides it by depth
     this.group.add(this.mesh);
   }
   patch(v: ActorView): void {
