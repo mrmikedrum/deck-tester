@@ -35,9 +35,9 @@ policy ready-tapped · row 0 stand v0.8 4 places · row 1 stand v4.2 4 places ·
   second 1.0.0 u-0.9 card    Elemental                      stand 
   second 1.0.1 u0.9 card    Cat Beast                      stand 
   second 1.0.3 u2.6 card    Pollenbright Druid             stand 
-  rest   2.0.0 u-2.3 fan     Beast                          lie notch fan 4 · 9 power
-  works  2.0.1 u0.1 fan     Felidar Retreat                lie fan 3 · 0 power
-  lands  2.0.2 u2.3 stack   Forest                         lie well 9 lands 7 open · die 11
+  rest   2.0.0 u-1.9 fan     Beast                          lie notch fan 4 · 9 power
+  works  2.0.1 u-0.1 fan     Felidar Retreat                lie fan 3 · 0 power
+  lands  2.0.2 u1.8 stack   Forest                         lie well 9 lands 7 open · die 11
   seat {"creatures":13,"power":34,"flyingPower":0,"keywords":[],"lands":9,"open":7,"works":3}
   parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2; floor 53.2
 
@@ -51,9 +51,9 @@ policy ready-tapped · row 0 stand v0.8 4 places · row 1 stand v4.2 4 places ·
   second 1.0.0 u-0.9 card    Tezzeret, Cruel Captain        stand 
   second 1.0.1 u0.9 card    Chrome Host Seedshark          stand 
   second 1.0.3 u2.6 card    Thopter                        stand 
-  rest   2.0.0 u-2.2 fan     Thopter                        lie notch fan 3 · 1 power
-  works  2.0.1 u0 fan     Incubator                      lie fan 3 · 0 power
-  lands  2.0.2 u2.2 stack   Island                         lie well 9 lands 8 open · die 12
+  rest   2.0.0 u-1.8 fan     Thopter                        lie notch fan 3 · 1 power
+  works  2.0.1 u-0.1 fan     Incubator                      lie fan 3 · 0 power
+  lands  2.0.2 u1.8 stack   Island                         lie well 9 lands 8 open · die 12
   seat {"creatures":9,"power":21,"flyingPower":0,"keywords":[],"lands":9,"open":8,"works":3}
   parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2
 
@@ -84,9 +84,9 @@ policy ready-tapped · row 0 stand v0.8 4 places · row 1 stand v4.2 4 places ·
   second 1.0.0 u-0.9 card    Herd Baloth                    stand 
   second 1.0.1 u0.6 card    Evolution Sage                 lie notch 
   second 1.0.3 u2.6 card    Evolution Witness              stand 
-  rest   2.0.0 u-2.8 fan     Beast                          lie notch fan 11 · 22 power · proud Beast (threat)
-  works  2.0.1 u0.1 fan     Felidar Retreat                lie fan 5 · 0 power
-  lands  2.0.2 u2.8 stack   Forest                         lie well 14 lands 10 open · die 16
+  rest   2.0.0 u-1.9 fan     Beast                          lie notch fan 11 · 22 power · proud Beast (threat)
+  works  2.0.1 u-0.1 fan     Felidar Retreat                lie fan 5 · 0 power
+  lands  2.0.2 u1.8 stack   Forest                         lie well 14 lands 10 open · die 16
   attention threat: Beast
   seat {"creatures":33,"power":92,"flyingPower":0,"keywords":[],"lands":14,"open":10,"works":5}
   parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2
@@ -101,9 +101,9 @@ policy ready-tapped · row 0 stand v0.8 4 places · row 1 stand v4.2 4 places ·
   second 1.0.0 u-0.9 card    Tekuthal, Inquiry Dominus      stand 
   second 1.0.1 u0.9 card    Paladin Class                  stand 
   second 1.0.3 u2.6 card    Brimaz, Blight of Oreskos      stand 
-  rest   2.0.0 u-2.9 fan     Cankerbloom                    lie fan 10 · 8 power
-  works  2.0.1 u0 fan     Tezzeret, Cruel Captain        lie fan 6 · 0 power · proud Wrenn and Realmbreaker (threat)
-  lands  2.0.2 u2.9 stack   Swamp                          lie well 14 lands 13 open · die 19
+  rest   2.0.0 u-1.9 fan     Cankerbloom                    lie fan 10 · 8 power
+  works  2.0.1 u-0.2 fan     Tezzeret, Cruel Captain        lie fan 6 · 0 power · proud Wrenn and Realmbreaker (threat)
+  lands  2.0.2 u1.8 stack   Swamp                          lie well 14 lands 13 open · die 19
   attention threat: Wrenn and Realmbreaker
   seat {"creatures":21,"power":42,"flyingPower":0,"keywords":[],"lands":14,"open":13,"works":6}
   parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2
@@ -118,9 +118,9 @@ policy ready-tapped · row 0 stand v0.8 4 places · row 1 stand v4.2 4 places ·
   second 1.0.0 u-0.9 card    Rule of Law                    stand 
   second 1.0.1 u0.9 card    Smothering Tithe               stand 
   second 1.0.3 u2.6 card    Suppression Field              stand 
-  rest   2.0.0 u-2.5 fan     Restoration Angel              lie notch fan 7 · 9 power
-  works  2.0.1 u0.3 fan     Cursed Totem                   lie fan 3 · 0 power · proud Deafening Silence (threat), Defense Grid (threat)
-  lands  2.0.2 u2.5 stack   Plains                         lie well 14 lands 19 open · die 28
+  rest   2.0.0 u-1.9 fan     Restoration Angel              lie notch fan 7 · 9 power
+  works  2.0.1 u-0.1 fan     Cursed Totem                   lie fan 3 · 0 power · proud Deafening Silence (threat), Defense Grid (threat)
+  lands  2.0.2 u1.8 stack   Plains                         lie well 14 lands 19 open · die 28
   attention binds-me: Deafening Silence, Defense Grid
   seat {"creatures":13,"power":21,"flyingPower":0,"keywords":[],"lands":14,"open":19,"works":8}
   parted: tap-patch 4; tap-patch 4; tap-patch 4

@@ -39,7 +39,7 @@ import { kindOf } from "./policies/kinds";
 import { readyTapped } from "./policies/ready-tapped";
 import { rowsOf } from "./rows";
 import type { RowGeo } from "./rows";
-import { S_TABLE, SLOT } from "./scale";
+import { S_TABLE, SLOT, fanExtent } from "./scale";
 import { validateIntent } from "./validate";
 
 /** Audits after the first, each a row made one place tighter (§5.1 step 3). */
@@ -478,7 +478,7 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       acting: false,
       retyped: false,
       stands: false,
-      width: (SLOT.lie + SLOT.fanStep * Math.max(0, n - 1)) * s,
+      width: Math.max(SLOT.lie, fanExtent(n)) * s,
       arrival: Math.min(...sorted.map((g) => g.arrival)),
       prefer: null,
     });

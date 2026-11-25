@@ -78,7 +78,7 @@ policy ready-tapped · row 0 stand v0.8 4 places · row 1 stand v4.2 4 places ·
   second 1.0.0 u-0.9 card    Bear 11                        stand 
   second 1.0.1 u0.9 card    Bear 1                         stand 
   second 1.0.3 u2.6 card    Typhoid Rats                   stand 
-  rest   2.0.0 u-0.6 fan     Bear 0                         lie fan 6 · 12 power
+  rest   2.0.0 u-0.2 fan     Bear 0                         lie fan 6 · 12 power
   seat {"creatures":14,"power":36,"flyingPower":0,"keywords":["deathtouch"],"lands":0,"open":0,"works":0}
 
 == a sweep of 25 (the moment lights; nothing moves) (25 permanents)
@@ -91,7 +91,7 @@ policy ready-tapped · row 0 stand v0.8 4 places · row 1 stand v4.2 4 places ·
   second 1.0.0 u-0.9 card    Soldier 1                      stand 
   second 1.0.1 u0.9 card    Soldier 0                      stand 
   second 1.0.3 u2.6 card    Soldier 4                      stand 
-  rest   2.0.0 u-0.6 fan     Soldier 0                      lie fan 14 · 24 power · proud Soldier 0 (threat), Soldier 4 (threat)
+  rest   2.0.0 u-0.2 fan     Soldier 0                      lie fan 14 · 24 power · proud Soldier 0 (threat), Soldier 4 (threat)
   attention in-danger: Soldier 1, Soldier 3, Soldier 0, Soldier 0, Soldier 0, Soldier 2, Soldier 3, Soldier 4, Soldier 4, Soldier 4, Soldier 1, Soldier 2, Soldier 3
   seat {"creatures":25,"power":61,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
 

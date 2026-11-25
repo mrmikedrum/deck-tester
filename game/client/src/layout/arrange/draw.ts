@@ -7,10 +7,7 @@ import type { CardPlace, Container, SurfaceFrame, UnitKind } from "./contract";
 import { CARD, LEAN, NOTCH, cardPlace, liePose, onFrame, standPose, surfaceQuad } from "./frame";
 import type { Pose } from "./frame";
 import type { RowGeo } from "./rows";
-import { SLOT } from "./scale";
-
-/** A fan: each card under the top turned this much more, about the top's foot-left corner. */
-export const FAN_TURN = (2 * Math.PI) / 180;
+import { FAN_TURN, fanExtent } from "./scale";
 
 export interface Drawn {
   readonly cards: CardPlace[];
@@ -114,7 +111,8 @@ export function drawUnit(c: Container, f: SurfaceFrame, row: RowGeo, d: DrawSpec
     // From the top's foot-left corner, each card under it two degrees further clockwise, a slab lower; the hidden ones
     // lie under the last shown. Centred in its slot by its spread.
     const n = d.members.length, shown = Math.max(1, Math.min(n, d.show));
-    const spread = SLOT.fanStep * (shown - 1) * s;
+    // centred in its slot by what it reaches across
+    const spread = (fanExtent(shown) - CARD.w) * s;
     const topPose = liePose(f, d.u - spread / 2, v + (CARD.h * s) / 2, s, 0);
     const pivot = madd(topPose.foot, topPose.right, (-CARD.w * s) / 2);
     const turned = (i: number): Pose => {

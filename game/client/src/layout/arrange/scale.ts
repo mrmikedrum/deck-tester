@@ -15,13 +15,20 @@ export const SLOT = {
   stand: CARD.h,
   /** A lying tier's place: a card turned a notch (its corners may cross the gap, where nothing is written). */
   lie: CARD.w * Math.cos(NOTCH) + CARD.h * Math.sin(NOTCH),
-  /** How far each further shown member widens a fan. */
-  fanStep: 0.12,
   /** The count strip in front of a stack row, for its marker (designer §7.2). */
   strip: 0.3,
   /** Side margins inside a frame. */
   margin: 0.2,
 } as const;
+
+/** A fan's members turn this much more each, about the top's foot-left corner (designer §2). */
+export const FAN_TURN = (2 * Math.PI) / 180;
+
+/** How wide a fan of `shown` cards reaches across, in card scale units: its deepest card turned about the corner. */
+export const fanExtent = (shown: number): number => {
+  const t = FAN_TURN * Math.max(0, shown - 1);
+  return CARD.w * Math.cos(t) + CARD.h * Math.sin(t);
+};
 
 /** A row whose first card must meet a floor: where it lies and how. */
 export interface FloorRow {
