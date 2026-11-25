@@ -1084,7 +1084,13 @@ class SiftView implements PieceView {
   constructor(host: Host, v: ActorView) {
     this.card = new CardPart(host, v.face, false);
     this.group.add(this.card.obj.group);
-    this.card.obj.group.traverse((o) => (o.renderOrder = 16));
+    // Drawn in the transparent pass, after the shade and its vellum (order 15): an opaque card is drawn before every
+    // transparent thing, so the vellum, depth-tested, painted over a card of the top row standing farther off than it.
+    this.card.obj.group.traverse((o) => {
+      o.renderOrder = 16;
+      const m = (o as Mesh).material;
+      for (const x of Array.isArray(m) ? m : m ? [m] : []) x.transparent = true;
+    });
   }
   front(): Mesh | null {
     return this.card.obj.front;
