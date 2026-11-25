@@ -294,7 +294,7 @@ function tapDefault(tx: Tx, on: play.Target): void {
     return;
   }
   const me = tx.s.model?.viewer.perspective;
-  if (g?.kind === "plate" && g.seat !== null && g.seat !== me && !isOpen(f, "sift")) {
+  if ((g?.kind === "plate" || g?.kind === "read") && g.seat !== null && g.seat !== me && !isOpen(f, "sift")) {
     const leaning = f.layers.find((e) => e.layer === "lean")?.seat === g.seat;
     tx.s = { ...tx.s, focus: leaning ? close(f, "lean") : open(f, entry("lean", { seat: g.seat, restore: tx.origin ?? null })) };
     return;
@@ -303,7 +303,7 @@ function tapDefault(tx: Tx, on: play.Target): void {
     tx.s = { ...tx.s, focus: dismiss(f).focus };
     return;
   }
-  const one = g && g.kind !== "plate" && g.kind !== "zone" && g.members.length === 1 ? g.members[0] : undefined;
+  const one = g && g.kind !== "plate" && g.kind !== "zone" && g.kind !== "read" && g.members.length === 1 ? g.members[0] : undefined;
   if (one !== undefined) inspect(tx, one);
 }
 

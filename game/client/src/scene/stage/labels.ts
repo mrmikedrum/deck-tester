@@ -25,7 +25,8 @@ export interface LabelAsk {
   readonly mine: boolean;
   /** "Elemental", "Creatures": the name, its count apart. */
   readonly name: string;
-  readonly count: number;
+  /** Null: a tag with no count (a regiment's count is on its die). */
+  readonly count: number | null;
   /** "↷4", or null. */
   readonly tap: string | null;
 }
@@ -47,6 +48,12 @@ const strips = (q: HitGroup["quad"]): Box[] => {
   return [band(5 / 6, 1), band(0, 1 / 6)];
 };
 
+/** A tag said shorter: its clauses dropped from the end ("8 more · 11 power · biggest 3/2", "8 more · 11 power"). */
+function clauses(tag: string): string[] {
+  const parts = tag.split(" · ");
+  return parts.map((_, i) => parts.slice(0, parts.length - i).join(" · "));
+}
+
 /** The ways to say a name shorter: whole; without its leading words; its last word ellipsized, to five letters. */
 export function shorter(name: string): string[] {
   const clean = name.replace(/\s*\([^)]*\)/g, "").trim();
@@ -58,7 +65,7 @@ export function shorter(name: string): string[] {
   return [...new Set(out)];
 }
 
-export const labelText = (name: string, count: number, tap: string | null): string => [name, String(count), tap].filter(Boolean).join(" ");
+export const labelText = (name: string, count: number | null, tap: string | null): string => [name, count === null ? "" : String(count), tap].filter(Boolean).join(" ");
 
 /** Places every ask's label (in order: mine first, then by seat), or leaves it to the count chip (absent from the map). */
 export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure: Measure = estimate): Map<string, PlacedLabel> {
@@ -78,7 +85,7 @@ export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure:
     const want = a.mine ? LABEL_PX.mine : LABEL_PX.theirs;
     let done: PlacedLabel | null = null;
     find: for (const slide of [0, 0.125, -0.125, 0.25, -0.25])
-      for (const name of shorter(a.name))
+      for (const name of a.count === null ? clauses(a.name) : shorter(a.name))
         for (let px = want; px >= LABEL_PX.floor; px--) {
           const tw = measure(labelText(name, a.count, a.tap), px), bw = tw + LABEL_PX.pad * px, bh = LABEL_PX.tall * px;
           if (bw > room) continue;

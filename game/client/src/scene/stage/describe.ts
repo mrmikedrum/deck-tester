@@ -11,6 +11,7 @@ import type { CardId } from "../../protocol";
 import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
+import { readWords, tagWords, wellWords } from "../../narrative";
 import { canonical, faceKey, shortName } from "../../theme";
 import type { FaceSpec } from "../../theme";
 import { DIM, SCRIM } from "./motion";
@@ -38,6 +39,8 @@ const HOVER_LIFT = 0.06;
 const SIFT_HEIGHT = { cards: 9, scrim: 8 } as const;
 /** The shade a sift lays over the table (live.js `laySift`, which the old client ran: 0.32 of near-black). */
 export const SIFT_SHADE = 0.32;
+/** How far a card standing down (`ranks`: the question is not about it) is shaded. */
+const STANCE_DOWN = 0.42;
 
 export function describe(input: DescribeInput): Description {
   const { model, plan, cues, focus } = input;
@@ -117,11 +120,33 @@ export function describe(input: DescribeInput): Description {
       needsMembers: false,
     });
 
+    // The page's read (`ranks`): its words inked on a slip propped on the front margin, in the plan's box.
+    const rd = sp.fixtures.read;
+    if (rd) {
+      const lines = readWords(rd.facts);
+      put({
+        id: `read:${seat}`,
+        kind: "read",
+        seat,
+        members: [],
+        face: null,
+        ...placed(seat, { pos: { x: rd.pos.x, y: 0.004, z: rd.pos.z }, rx: 0, ry: rd.yaw, s: 1 }, true),
+        look: { ...LOOK, fade: dimOf(seat) },
+        form: `read|${seat}`,
+        mods: `${lines[0]}|${lines[1] ?? ""}|${rd.w.toFixed(3)}|${rd.d.toFixed(3)}`,
+        mark: null,
+        draw: { t: "read", lines, w: rd.w, d: rd.d, tilt: rd.tilt, colour: colourOf(model, seat) },
+        needsMembers: false,
+      });
+    }
+
     const rows = mine ? wellRows(sp.units) : new Map<string, { alt: boolean; small: boolean }>();
     for (const u of sp.units) {
       const dim = dimOf(seat);
       const off = fighting && !u.fighting ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
-      const piece = unitPiece(input, seat, u, mine, Math.max(dim, off), lookOf, markOf, rows.get(u.id));
+      // Down (`ranks`): it lies shaded at its foot; the question is not about it.
+      const down = u.stance === "down" ? STANCE_DOWN : 0;
+      const piece = unitPiece(input, seat, u, mine, Math.max(dim, off, down), lookOf, markOf, rows.get(u.id));
       // Leaned in, a card grows where it stands (about its foot) as well as with its page; taps are still measured from
       // where the plan put it.
       const grow = lean && lean.seat === seat && !u.fighting && lean.grow !== 1 ? lean.grow : 1;
@@ -281,6 +306,11 @@ export function describe(input: DescribeInput): Description {
   const asks: LabelAsk[] = [];
   for (const p of pieces.values()) {
     if (p.draw.t !== "unit" || !p.draw.title || p.draw.well) continue;
+    // A fold's tag (`ranks`) says its own words; its count is on its die.
+    if (p.draw.die !== undefined || p.draw.fan) {
+      asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: p.draw.title, count: null, tap: null });
+      continue;
+    }
     const m = /^(.*?)\s*(\d+)$/.exec(p.draw.title);
     if (m) asks.push({ id: p.id, seat: p.seat, mine: p.seat === me, name: m[1]!, count: +m[2]!, tap: p.draw.tapNote });
   }
@@ -448,7 +478,18 @@ function unitPiece(
     .map((c) => ({ card: c.id, face: faceOfCard(model, c) }));
   const { copies, tapNote } = copiesOf(model, u);
   // A pile of a creature's copies is titled by its name and count, so a count of bodies never reads as a counter's chip.
-  const title = u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null);
+  const title = u.tag ? tagWords(u.tag) : (u.title ?? (u.role === "creature" && u.members.length > 1 && top ? `${shortName(top.face.name)} ${u.members.length}` : null));
+  const lit = new Set(u.lit ?? []);
+  const fan =
+    u.fan && (u.look === "tail" || u.look === "column")
+      ? {
+          kind: u.look,
+          cards: u.fan
+            .map((id) => model.cards.get(id))
+            .filter((c): c is Card => !!c)
+            .map((c) => ({ face: faceOfCard(model, c, markOf(c.id) ?? null), tapped: c.tapped, lit: lit.has(c.id) })),
+        }
+      : null;
   const draw: Draw = {
     t: "unit",
     unit: u.kind,
@@ -463,10 +504,13 @@ function unitPiece(
     colours: well ? well.colours : top ? top.face.colors : [],
     well,
     copies,
-    tapNote,
+    // (A fold's tapped cards show on its cards: turned behind a regiment, shaded in a fan.)
+    tapNote: u.look === undefined ? tapNote : null,
     label: null,
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
+    ...(u.look === "regiment" ? { die: u.members.length } : {}),
+    ...(fan ? { fan } : {}),
   };
   return {
     id: u.id,
@@ -476,9 +520,9 @@ function unitPiece(
     face: u.top,
     pose: unitPose(plan.projector, u.placement, u.tapped),
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
-    form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
+    form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}|${u.look ?? ""}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.die ?? "", fan ? fan.cards.map((c) => faceKey(c.face) + c.tapped + c.lit).join(",") : ""].join("#"),
     mark,
     draw,
     needsMembers: true,
@@ -567,6 +611,13 @@ function wellLook(model: TableModel, u: Unit, mine: boolean): Omit<WellLook, "al
   const colours = wellColours(cards),
     spent = n > 0 && tapped === n,
     shown = Math.min(n, 4);
+  if (!mine && !u.title && u.look !== undefined) {
+    // `ranks`: what matters about their mana leads, what makes it under.
+    const lands = cards.filter(isLand).length,
+      tr = cards.filter(isTreasure).length;
+    const [sign, sub] = wellWords(n - tapped, lands, n - lands - tr, tr);
+    return { sign, sub, colours, spent, shown, theirs: true };
+  }
   if (!mine && !u.title) {
     const lands = cards.filter(isLand).length,
       tr = cards.filter(isTreasure).length,

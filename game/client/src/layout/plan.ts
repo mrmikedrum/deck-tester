@@ -15,6 +15,7 @@ import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
 import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
+import type { Question } from "./relevance";
 import { designUnit } from "./types";
 
 // Planning a seat with the hard-limit audit and a fold-harder retry, and planning the table: four seats, plates, the
@@ -156,9 +157,13 @@ export interface TableInput {
   readonly layout?: SeatLayout;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
+  /** What the moment asks: every seat answers it (`ranks`). */
+  readonly question?: Question;
+  /** The turn and who is active: a page tidies at its own untap step (`ranks`). */
+  readonly clock?: { readonly turn: number; readonly active: SeatId | null };
 }
 
-export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack";
+export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack" | "read";
 
 export interface HitGroup {
   /** Stable for as long as the group lasts: unit id (kind letter and first card), "plate:<seat>", "command:<seat>", "zone:<zone>:<seat>", "stack:<key>". */
@@ -222,7 +227,8 @@ export function planTable(input: TableInput): TablePlan {
   const vp = input.viewport, projector = pinhole(tpl.camera, vp), reserve = reservations(vp, input.mode, input.safe);
   const mk = (i: number): Omit<SeatInput, "pressure"> => {
     const { seat, board } = input.seats[i]!, slot = tpl.slots[i]!;
-    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null };
+    const clock = input.clock ? { clock: { turn: input.clock.turn, active: input.clock.active === seat } } : {};
+    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null, ...(input.question ? { question: input.question } : {}), ...clock };
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);
@@ -519,6 +525,11 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
     groups.push({ id, kind: "zone", seat: p.seat, members: [], quad: shape(id).face, order: shape(id).order });
   }
   for (const p of plans) groups.push({ id: `plate:${p.seat}`, kind: "plate", seat: p.seat, members: [], quad: shape(`plate:${p.seat}`).face, order: shape(`plate:${p.seat}`).order });
+  // A page's read: a tap on it leans in on the seat, as its plaque does.
+  for (const p of plans) {
+    const id = `read:${p.seat}`, sh = byGroup.get(id);
+    if (p.fixtures.read && sh) groups.push({ id, kind: "read", seat: p.seat, members: [], quad: sh.face, order: sh.order });
+  }
   for (const p of plans) {
     const c = p.fixtures.commander, id = `command:${p.seat}`;
     if (c) groups.push({ id, kind: "card", seat: p.seat, members: [c.card], quad: shape(id).face, order: shape(id).order });

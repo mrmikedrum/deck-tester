@@ -11,6 +11,7 @@ import {
   isSpecialLand,
   isTreasure,
   sig,
+  tableReach,
   typeWord,
 } from "../model";
 import type { Card, TableModel } from "../model";
@@ -72,6 +73,12 @@ export interface BoardCard {
   readonly power: number | null;
   readonly toughness: number | null;
   readonly keywords: readonly string[];
+  /** Summoning sick: came under its controller's control this turn (the engine's fact). */
+  readonly sick: boolean;
+  /** Its loyalty, a planeswalker's; null else. */
+  readonly loyalty: number | null;
+  /** Whether its text reaches other players (`tableReach`): the shelf's "Binds everyone" column. */
+  readonly reach: "table" | "self";
   /** The permanent this one is attached to (an Aura, Equipment). A host not on this board makes it a card of its own. */
   readonly attachedTo: CardId | null;
 }
@@ -129,6 +136,9 @@ export function boardCard(c: Card): BoardCard {
     power: c.power,
     toughness: c.toughness,
     keywords: c.keywords,
+    sick: c.sick,
+    loyalty: c.loyalty,
+    reach: tableReach(c),
     attachedTo: c.attachedTo,
   };
 }

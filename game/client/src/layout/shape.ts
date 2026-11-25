@@ -1,5 +1,5 @@
 import type { Projector } from "./projector";
-import type { Placement, Posture, SeatPlan, Unit } from "./seat";
+import type { Placement, Posture, ReadPlace, SeatPlan, Unit } from "./seat";
 import type { CardId, Point, Rect, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 import { FLOOR, TAP_PX } from "./board";
@@ -11,7 +11,7 @@ import { CH, CW, PILE_LEAN, TAP_LEAN } from "./seat/geometry";
 
 export type Quad = readonly [Point, Point, Point, Point];
 
-export type ItemKind = "unit" | "plate" | "zone" | "stack";
+export type ItemKind = "unit" | "plate" | "zone" | "stack" | "read";
 
 export interface Shape {
   /** The group a tap on it reaches: a unit's id, "plate:<seat>", "command:<seat>", "zone:<zone>:<seat>", "stack:<key>". */
@@ -74,8 +74,8 @@ export function cardMiddle(proj: Projector, p: Placement, tapped: boolean): V3 {
 }
 
 // A card of scale s on `frame`, its middle half a card up. Tapped it lies turned: its top points right.
-function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = CW, h = CH, at: At = AT_REST): { face: Quad; name: Quad; foot: Quad; width: number } {
-  const c = { x: fr.base.x + fr.up.x * (h / 2) * s, y: fr.base.y + fr.up.y * (h / 2) * s, z: fr.base.z + fr.up.z * (h / 2) * s };
+function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = CW, h = CH, at: At = AT_REST, dx = 0): { face: Quad; name: Quad; foot: Quad; width: number } {
+  const c = { x: fr.base.x + fr.up.x * (h / 2) * s + dx * s, y: fr.base.y + fr.up.y * (h / 2) * s, z: fr.base.z + fr.up.z * (h / 2) * s };
   const hx = ((tapped ? h : w) / 2) * s, hu = ((tapped ? w : h) / 2) * s;
   // a window of the card's own frame: its up-axis fraction t0..t1 (0 foot, 1 top)
   const win = (t0: number, t1: number): Quad => {
@@ -93,7 +93,11 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
 
 export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean, at: At = AT_REST): Shape {
   const p: Placement = u.placement;
-  const q = cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
+  // A fan (a tail's slivers to the right, a column's strips behind) is one unit: its face is the whole fan.
+  const right = u.spread?.right ?? 0, back = u.spread?.back ?? 0;
+  const q = right || back
+    ? { ...cardQuads(proj, frameOf(proj, p.pos, p.posture, false), p.scale, false, CW * (1 + right), CH * (1 + back), at, (CW * right) / 2), width: cardQuads(proj, frameOf(proj, p.pos, p.posture, false), p.scale, false, CW, CH, at).width }
+    : cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
   const creature = u.role === "creature";
   return {
     group: u.id,
@@ -135,9 +139,25 @@ export function stackShape(group: string, face: Quad, order: number, members: re
   return { group, kind: "stack", seat: null, face, name: strip(5 / 6, 1), foot: strip(0, 1 / 6), order, floor: FLOOR.any, width, members };
 }
 
+/**
+ * A page's read: ink on its front margin, propped up a little. Nothing may cover its words; a tap on it reaches the
+ * account (it leans in on the seat). Its order is its near edge's: it lies in front of everything on its page.
+ */
+export function readShape(proj: Projector, seat: string, r: ReadPlace, at: At = AT_REST): Shape {
+  const ax = { x: Math.cos(r.yaw), z: -Math.sin(r.yaw) }, back = { x: -Math.sin(r.yaw), z: -Math.cos(r.yaw) };
+  const pt = (a: number, t: number): Point => {
+    const d = t * r.d;
+    return proj.project(at({ x: r.pos.x + ax.x * a * (r.w / 2) + back.x * d * Math.cos(r.tilt), y: d * Math.sin(r.tilt), z: r.pos.z + ax.z * a * (r.w / 2) + back.z * d * Math.cos(r.tilt) }));
+  };
+  const quad = (t0: number, t1: number): Quad => [pt(-1, t0), pt(1, t0), pt(1, t1), pt(-1, t1)];
+  const face = quad(0, 1);
+  return { group: `read:${seat}`, kind: "read", seat, face, name: quad(0.45, 1), foot: quad(0, 0.45), order: r.pos.z, floor: 0, width: Math.abs(face[1].x - face[0].x), members: [] };
+}
+
 export function seatShapes(proj: Projector, plan: SeatPlan, mine: boolean): Shape[] {
   return [
     ...plan.units.map((u) => unitShape(proj, plan.seat, u, mine)),
+    ...(plan.fixtures.read ? [readShape(proj, plan.seat, plan.fixtures.read)] : []),
     ...plan.fixtures.zones.map((z) => zoneShape(proj, plan.seat, z.zone, z.placement, mine)),
     plateShape(proj, plan.seat, plan.fixtures.plate),
     ...(plan.fixtures.commander ? [commanderShape(proj, plan.seat, plan.fixtures.commander)] : []),

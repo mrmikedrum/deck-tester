@@ -3,6 +3,7 @@ import type { Projector } from "./projector";
 import type { Reservations } from "./reservations";
 import type { SeatSlot } from "./template";
 import type { CardId, SeatId, V3, Viewport } from "./types";
+import type { Question, ReadFacts, Stance, TagFacts } from "./relevance";
 
 // The seam for the opponent-board exploration: one seat's board in, a plan out. `mat` (seat/mat.ts) is today's page.
 
@@ -14,6 +15,12 @@ export type UnitKind = "card" | "pile" | "well" | "summary";
  * propped up a little (my support); flat lies on the page.
  */
 export type Posture = "stand" | "prop" | "lean" | "flat";
+/**
+ * What a unit is to look at (`ranks`): one card; a regiment (identical cards as one standing card under a die); a tail
+ * (small things lying shingled sideways, each showing its right-hand sliver); a column (cards shingled away from me, each
+ * showing its name strip). `mat`'s units leave it unset: a card, or a pile.
+ */
+export type UnitLook = "card" | "regiment" | "tail" | "column";
 
 /** The region a seat's page may take: its slot, scaled (a lean-in is a bigger, lifted region). */
 export interface SeatRegion extends SeatSlot {
@@ -50,6 +57,30 @@ export interface Unit {
   /** Whether the card it shows lies turned, tapped (never a well's: its spent state is its stain and its sign). */
   readonly tapped: boolean;
   readonly placement: Placement;
+  /** `ranks`: how it looks; its stance under the question; its tag's facts. */
+  readonly look?: UnitLook;
+  readonly stance?: Stance;
+  readonly tag?: TagFacts;
+  /** A fan's cards as they lie, top first (a tail's or a column's), at most the ones it shows. */
+  readonly fan?: readonly CardId[];
+  /** Its fan's members that answer the question (lit). */
+  readonly lit?: readonly CardId[];
+  /** How far a fan reaches past its top card, in card widths to the right (a tail) and card heights back (a column). */
+  readonly spread?: { readonly right: number; readonly back: number };
+  /** It arrived since the last plan (a newcomer): it may stand forward a moment. */
+  readonly fresh?: boolean;
+}
+
+/** A page's read: one or two lines inked on its front margin, numbers first; the box it lies in on the page. */
+export interface ReadPlace {
+  /** The middle of its near edge, on the table. */
+  readonly pos: V3;
+  readonly w: number;
+  readonly d: number;
+  readonly yaw: number;
+  /** How far it is propped up from lying flat (radians), toward me. */
+  readonly tilt: number;
+  readonly facts: ReadFacts;
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */
@@ -60,6 +91,8 @@ export interface Fixtures {
   readonly zones: readonly { readonly zone: "graveyard" | "exile"; readonly placement: Placement }[];
   /** The commander standing beside the plaque while it is in the command zone (h.js `banner`). */
   readonly commander?: { readonly card: CardId; readonly placement: Placement };
+  /** The page's read, where it speaks (`ranks`). */
+  readonly read?: ReadPlace;
 }
 
 /** A summary: what a folded or last-resort unit holds, in the terms that matter. */
@@ -94,6 +127,10 @@ export interface SeatInput {
   readonly memory: LayoutMemory | null;
   /** Fold this many notches harder than the layout likes (set by `planSeat`'s retry, 0 to start). */
   readonly pressure: number;
+  /** What the moment asks (`ranks`): stance and words follow it. Rest when absent. */
+  readonly question?: Question;
+  /** The turn, and whether this seat is the active one (`ranks` tidies a page at its own untap step). */
+  readonly clock?: { readonly turn: number; readonly active: boolean };
 }
 
 export interface SeatPlan {

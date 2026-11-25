@@ -20,6 +20,7 @@ import {
 } from "three";
 import type { Material, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { RANKS } from "../../layout/seat/ranks";
 import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
@@ -306,8 +307,18 @@ function standeeShadow(env: PieceEnv, tapped: boolean, lean: number): { mesh: Me
 const TAPPED_SHOW = 0.18;
 const WELL_TURN = Math.PI / 12;
 
+/** A fan's cards: a tail's sliver and a column's strip (shares of a card), how far each lies under the one before, its
+ * turn off square (radians, at most), the shade on cards that do not answer; a regiment's die (world units). */
+const FAN = { sliver: RANKS.sliver, strip: RANKS.strip, under: 0.006, turn: 0.03, unlit: 0.38, die: 0.3 } as const;
+/** A seeded number in [-1, 1]. */
+const jitter = (n: number): number => {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return (x - Math.floor(x)) * 2 - 1;
+};
+
 class UnitView implements PieceView {
   readonly group = new Group();
+  private lit: boolean[] = [];
   private cards: CardPart[] = [];
   private dress: CardPart[] = [];
   private dressKey = "";
@@ -348,10 +359,13 @@ class UnitView implements PieceView {
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "unit" }>;
     const well = d.well;
-    const copies = Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown)));
+    const fan = d.fan ?? null;
+    const copies = fan
+      ? Math.max(1, Math.min(fan.cards.length, v.shown))
+      : Math.min(Math.max(1, d.copies.length), well ? Math.max(1, Math.min(well.shown, v.shown)) : Math.max(1, Math.min(SIZE.copies, v.shown)));
     // Each copy stands for members of the pile and wears their state (while members are still arriving, the first).
-    const plan = d.copies.slice(0, copies);
-    const copyKey = plan.map((c) => (c.tapped ? "t" : "r")).join("") + `|${copies}|${d.posture}`;
+    const plan = fan ? fan.cards.slice(0, copies).map((c) => ({ face: c.face, tapped: c.tapped })) : d.copies.slice(0, copies);
+    const copyKey = plan.map((c) => (c.tapped ? "t" : "r")).join("") + `|${copies}|${d.posture}|${fan?.kind ?? ""}`;
     if (this.cards.length !== copies || this.copyKey !== copyKey) {
       for (const c of this.cards) {
         this.group.remove(c.obj.group);
@@ -363,6 +377,19 @@ class UnitView implements PieceView {
       for (let i = 0; i < copies; i++) {
         const cp = plan[i];
         const c = new CardPart(this.host, cp?.face ?? v.face, d.token);
+        if (fan) {
+          // A tail: each card under the one before, a sliver further right; a column: each a strip further back. Laid by
+          // a hand: a degree or two off square, the same every time.
+          const j = jitter(d.seed + i * 7919);
+          if (fan.kind === "tail") c.obj.group.position.set(i * FAN.sliver * CW, j * 0.01, -FAN.under * i);
+          else c.obj.group.position.set(j * 0.012, i * FAN.strip * CH, -FAN.under * i);
+          c.obj.group.rotation.z = i ? j * FAN.turn : 0;
+          c.obj.group.userData["tapped"] = !!cp?.tapped;
+          c.obj.group.userData["fan"] = i;
+          this.cards.push(c);
+          this.group.add(c.obj.group);
+          continue;
+        }
         if (well) {
           // A well's lands lie in a short stack, a little proud of the page, the top one first; its tapped ones at the
           // bottom, turned 15° about the stack's middle (all of them, when every one is spent).
@@ -385,12 +412,14 @@ class UnitView implements PieceView {
         this.group.add(c.obj.group);
       }
     } else this.cards.forEach((c, i) => c.face(plan[i]?.face ?? v.face));
+    this.lit = fan ? fan.cards.map((c) => c.lit) : [];
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
     // A pile whose title gave way (no room on screen) shows its count as a chip on its face.
     const chip = (d.title === null || d.label === null) && v.shown > 1 && !well;
-    const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
+    const die = d.die !== undefined ? Math.min(d.die, v.shown) : null;
+    const key = `${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}|${die ?? ""}`;
     if (key === this.key) return;
     this.key = key;
     this.sign?.dispose();
@@ -403,7 +432,15 @@ class UnitView implements PieceView {
     }
     this.chips = [];
     // (A well's count is on its sign.)
-    const specs = [...d.chips, ...(chip ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
+    const specs = [...d.chips, ...(chip && d.die === undefined && !fan ? [{ text: `×${v.shown}`, ink: colour.ink, sub: null }] : [])];
+    // A regiment's count sits on its card as a brass die (`ranks`), its top corner, above any counters.
+    if (die !== null) {
+      const dc = new Decal(this.host.painter.chip({ text: String(die), ink: colour.ink, sub: null }), FAN.die, FAN.die, { renderOrder: 6 });
+      // On its top corner, mostly off the card: the name and the art stay clear.
+      dc.mesh.position.set(CW / 2 - FAN.die * 0.12, CH / 2 + FAN.die * 0.08, TH / 2 + 0.035);
+      this.cards[0]!.obj.body.add(dc.mesh);
+      this.chips.push(dc);
+    }
     specs.forEach((spec, i) => {
       const chip = new Decal(this.host.painter.chip(spec), SIZE.chip, SIZE.chip, { renderOrder: 6 });
       chip.mesh.position.set(SIZE.chipAt.x - i * SIZE.chipStep, SIZE.chipAt.y, SIZE.chipAt.z);
@@ -418,7 +455,7 @@ class UnitView implements PieceView {
    */
   private titleTab(d: Extract<Draw, { t: "unit" }>, turned: boolean): Decal {
     const l = d.label!;
-    const count = /(\d+)$/.exec(d.title ?? "")?.[1] ?? "";
+    const count = d.die !== undefined || d.fan ? "" : (/(\d+)$/.exec(d.title ?? "")?.[1] ?? "");
     const lease = this.host.painter.sign({ text: [l.name, count, d.tapNote].filter(Boolean).join(" "), colour: null, sub: null });
     const top = turned ? CW / 2 : CH / 2, across = turned ? CH : CW;
     const tab = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
@@ -496,8 +533,16 @@ class UnitView implements PieceView {
     // A well's card lies square however spent it is: its shade (and its badge) say tapped, never a turn.
     const spent = !!d.well?.spent;
     // A copy standing for tapped members is turned (a pile's) or shaded (a well's) on its own; the rest follow the pile.
+    const anyLit = this.lit.some(Boolean);
     for (const c of this.cards) {
       const own = c.obj.group.userData["tapped"] === true;
+      const k = c.obj.group.userData["fan"] as number | undefined;
+      if (k !== undefined) {
+        // A fan's cards lie square (a tapped one shaded, never turned over its neighbour); where some answer the
+        // question, the others are shaded a little.
+        c.look(0, Math.max(s.fade, anyLit && !this.lit[k] ? FAN.unlit : 0), v.mark, s.glow, own);
+        continue;
+      }
       c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own);
     }
     for (const c of this.dress) c.look(0, s.fade, null, 0);
@@ -913,6 +958,51 @@ export function buildPage(host: Host, w: number, d: number, place: SeatPlace, mi
 /** The turn's edge handed from page to page (h.js `floorGlowTex`, LOOK.md): out in the first half, in in the second. */
 const HANDOFF_S = motion.turnHandoff / 1000;
 
+// ---- a page's read -----------------------------------------------------------------------------------------------------
+
+/**
+ * A page's read (`ranks`): its lines on a slip lying on the front margin, propped up a little toward me, as large as fits
+ * the box the plan gave it (so what the audit measured is what is drawn). It dims with its page.
+ */
+class ReadView implements PieceView {
+  readonly group = new Group();
+  private sign: Decal | null = null;
+  private key = "";
+  constructor(
+    private readonly host: Host,
+    v: ActorView,
+  ) {
+    this.patch(v);
+  }
+  patch(v: ActorView): void {
+    const d = v.draw as Extract<Draw, { t: "read" }>;
+    const key = `${d.lines.join("|")}|${d.w}|${d.d}|${d.tilt}|${d.colour}`;
+    if (key === this.key) return;
+    this.key = key;
+    if (this.sign) {
+      this.group.remove(this.sign.mesh);
+      this.sign.dispose();
+    }
+    const lease = this.host.painter.sign({ text: d.lines[0], colour: d.colour, sub: d.lines[1] });
+    const w = lease.width * SIGN_U, h = lease.height * SIGN_U, k = Math.min(d.w / w, d.d / h);
+    const sign = new Decal(lease, w * k, h * k, { renderOrder: 6 });
+    sign.mesh.rotation.x = -Math.PI / 2 + d.tilt;
+    const back = (h * k) / 2;
+    sign.mesh.position.set(0, Math.sin(d.tilt) * back + 0.01, -Math.cos(d.tilt) * back);
+    this.group.add(sign.mesh);
+    this.sign = sign;
+  }
+  front(): Mesh | null {
+    return null;
+  }
+  look(v: ActorView): void {
+    this.sign?.tone(1 - 0.8 * v.sample.fade);
+  }
+  dispose(): void {
+    this.sign?.dispose();
+  }
+}
+
 class PageView implements PieceView {
   readonly group = new Group();
   private parts: PageParts | null = null;
@@ -1056,6 +1146,8 @@ export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
       return new StackView(env, v);
     case "page":
       return new PageView(env.host, v);
+    case "read":
+      return new ReadView(env.host, v);
     case "sift":
       return new SiftView(env.host, v);
     case "scrim":

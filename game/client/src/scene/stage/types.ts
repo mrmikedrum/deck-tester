@@ -161,7 +161,7 @@ export const LOOK: Look = { fade: 0, lift: 0, tap: 0, glow: 0, alpha: 1, w: 0, d
  * What a piece is: a layout unit, a zone pile, a plate, a stack entry, a page, a hidden count (a hand), or a sifted card
  * (a pile's card fanned out in front of the camera, and the scrim behind them).
  */
-export type PieceKind = "unit" | "zone" | "plate" | "stack" | "page" | "hidden" | "sift";
+export type PieceKind = "unit" | "zone" | "plate" | "stack" | "page" | "hidden" | "sift" | "read";
 
 /** A mana well's sign and light (old h.js `well`): what it says, its colours, and whether every land in it is spent. */
 export interface WellLook {
@@ -220,6 +220,11 @@ export type Draw =
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
       readonly seed: number;
+      /** A regiment's count, on a brass die on its card (its tag then says no count). */
+      readonly die?: number;
+      /** A fan (`ranks`): a tail's cards lying shingled sideways, or a column's shingled away from me, top first; `lit`
+       * where it answers the question. */
+      readonly fan?: { readonly kind: "tail" | "column"; readonly cards: readonly { readonly face: FaceSpec; readonly tapped: boolean; readonly lit: boolean }[] };
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }
@@ -240,6 +245,8 @@ export type Draw =
       readonly slip: string | null;
     }
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
+  /** A page's read: its lines, inked on a slip lying propped on the page's front margin, in a box w x d (tilted up). */
+  | { readonly t: "read"; readonly lines: readonly [string, string | null]; readonly w: number; readonly d: number; readonly tilt: number; readonly colour: string }
   | { readonly t: "hidden" }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
   | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }

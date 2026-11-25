@@ -29,7 +29,7 @@ export function reached(t: Target, groups: readonly Group[], f: Facts): Reached 
   const g = groups.find((x) => x.id === t.group);
   if (!g || g.members.length !== t.members.length || g.members.some((m, i) => m !== t.members[i])) return null;
   if (g.kind === "plate") return { ids: [], seat: g.seat, table: true };
-  if (g.kind === "zone") return { ids: [], seat: null, table: true };
+  if (g.kind === "zone" || g.kind === "read") return { ids: [], seat: null, table: true };
   return { ids: g.members, seat: null, table: true };
 }
 

@@ -59,6 +59,9 @@ export function card(o: CardInput): BoardCard {
     power: null,
     toughness: null,
     keywords: [],
+    sick: false,
+    loyalty: null,
+    reach: "self",
     ...rest,
     attachedTo: attachedTo == null ? null : cid(attachedTo),
   };

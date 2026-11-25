@@ -114,6 +114,9 @@ function boardCard(e: Entry, id: number): BoardCard {
     power: creature ? (e.power ?? 1) : null,
     toughness: creature ? (e.toughness ?? 1) : null,
     keywords: e.keywords ?? [],
+    sick: false,
+    loyalty: null,
+    reach: "self",
     attachedTo: null,
   };
 }

@@ -30,3 +30,4 @@ export {
   TOASTS_KEPT,
 } from "./narrate";
 export { logSheetView, logStripView, lossReport, recapView, restoreView, watching } from "./view";
+export { readWords, tagWords, wellWords } from "./table-words";
