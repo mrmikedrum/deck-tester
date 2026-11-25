@@ -24,7 +24,7 @@ const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 /** The line's places, the line's size on screen (design px: side pages, across), the ranks' most places. */
 export const RANKS = {
   line: 3,
-  linePx: { side: 62, across: 60 },
+  linePx: { side: 62, across: 58 },
   ranks: { most: 4, least: 3 },
   /** A line card steps this far toward the front edge when it stands forward (world units); forward is this much larger. */
   step: 0.32,
@@ -260,9 +260,9 @@ function plan(input: SeatInput): SeatPlan {
   const LADDER = [
     { own: RANKS.ranks.least, merge: false, walkersIn: false },
     { own: 2, merge: false, walkersIn: false },
+    { own: 1, merge: false, walkersIn: false },
     { own: 1, merge: true, walkersIn: false },
-    { own: 0, merge: true, walkersIn: false },
-    { own: 0, merge: true, walkersIn: true },
+    { own: 1, merge: true, walkersIn: true },
   ] as const;
   let rung: { ranks: { own: Cand[]; tail: Cand[] }; cols: Col[]; walkersIn: boolean; w: number } | null = null;
   for (let k = Math.min(pressure, LADDER.length - 1); k < LADDER.length; k++) {
@@ -417,7 +417,8 @@ function plan(input: SeatInput): SeatPlan {
   const second = out.slice(nLine);
   const rowTop = Math.min(
     ...second.map((u) => bounds(unitShape(projector, seat, { ...u, placement: { ...u.placement, posture: u.placement.posture === "flat" && u.role === "creature" ? "stand" : u.placement.posture } }, false).face).t),
-    bounds(probe(aRanks, sR, "stand").face).t,
+    // (Room for a standing card where the row holds creatures; a row of things that do not fight is lower.)
+    second.some((u) => u.role === "creature") ? bounds(probe(aRanks, sR, "stand").face).t : Infinity,
   );
   const tagged = second.some((u) => u.tag);
   const plateA = groundAt(rowTop - (tagged ? 22 : 4) * g.u) + 0.1;

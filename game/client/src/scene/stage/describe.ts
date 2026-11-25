@@ -135,7 +135,7 @@ export function describe(input: DescribeInput): Description {
         form: `read|${seat}`,
         mods: `${lines[0]}|${lines[1] ?? ""}|${rd.w.toFixed(3)}|${rd.d.toFixed(3)}`,
         mark: null,
-        draw: { t: "read", lines, w: rd.w, d: rd.d, tilt: rd.tilt, colour: colourOf(model, seat) },
+        draw: { t: "read", lines, w: rd.w, d: rd.d, tilt: rd.tilt, colour: colourOf(model, seat), sum: rd.facts.q === "rest" || rd.facts.q === "threat" ? [rd.facts.power, rd.facts.creatures] : null },
         needsMembers: false,
       });
     }

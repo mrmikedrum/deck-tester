@@ -457,10 +457,13 @@ class UnitView implements PieceView {
     const l = d.label!;
     const count = d.die !== undefined || d.fan ? "" : (/(\d+)$/.exec(d.title ?? "")?.[1] ?? "");
     const lease = this.host.painter.sign({ text: [l.name, count, d.tapNote].filter(Boolean).join(" "), colour: null, sub: null });
-    const top = turned ? CW / 2 : CH / 2, across = turned ? CH : CW;
+    // A fan's tag stands on the whole fan as the plan measured it: above a column's last strip, along a tail's width.
+    const n = d.fan ? d.fan.cards.length - 1 : 0;
+    const back = d.fan?.kind === "column" ? FAN.strip * n * CH : 0, wide = d.fan?.kind === "tail" ? FAN.sliver * n * CW : 0;
+    const top = (turned ? CW / 2 : CH / 2) + back, across = (turned ? CH : CW) + wide;
     const tab = new Decal(lease, lease.width * SIGN_U, lease.height * SIGN_U);
     tab.mesh.userData[LABEL] = { fonts: [SIGN_FONT.text], h: lease.height, want: l.px, foot: top, overlap: LABEL_OVERLAP } satisfies LabelTag;
-    tab.mesh.position.set(l.slide * across, top, TH / 2 + 0.03);
+    tab.mesh.position.set(wide / 2 + l.slide * across, top, TH / 2 + 0.03);
     this.group.add(tab.mesh);
     return tab;
   }
@@ -968,22 +971,39 @@ class ReadView implements PieceView {
   readonly group = new Group();
   private sign: Decal | null = null;
   private key = "";
+  private draw: Extract<Draw, { t: "read" }>;
+  /** The sum last shown, and a change's difference while it is held (from when it was first drawn, s). */
+  private sum: readonly [number, number] | null = null;
+  private diff: { text: string; at: number | null } | null = null;
   constructor(
     private readonly host: Host,
     v: ActorView,
   ) {
-    this.patch(v);
+    this.draw = v.draw as Extract<Draw, { t: "read" }>;
+    this.sum = this.draw.sum;
+    this.paint();
   }
   patch(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "read" }>;
-    const key = `${d.lines.join("|")}|${d.w}|${d.d}|${d.tilt}|${d.colour}`;
+    this.draw = d;
+    // A number that changes holds its difference a moment: "50 power · 18 creatures (+18 · +5)".
+    if (d.sum && this.sum && (d.sum[0] !== this.sum[0] || d.sum[1] !== this.sum[1])) {
+      const sign = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "±0");
+      this.diff = { text: ` (${sign(d.sum[0] - this.sum[0])} · ${sign(d.sum[1] - this.sum[1])})`, at: null };
+    } else if (!d.sum) this.diff = null;
+    this.sum = d.sum;
+    this.paint();
+  }
+  private paint(): void {
+    const d = this.draw, first = d.lines[0] + (this.diff ? this.diff.text : "");
+    const key = `${first}|${d.lines[1] ?? ""}|${d.w}|${d.d}|${d.tilt}|${d.colour}`;
     if (key === this.key) return;
     this.key = key;
     if (this.sign) {
       this.group.remove(this.sign.mesh);
       this.sign.dispose();
     }
-    const lease = this.host.painter.sign({ text: d.lines[0], colour: d.colour, sub: d.lines[1] });
+    const lease = this.host.painter.sign({ text: first, colour: d.colour, sub: d.lines[1] });
     const w = lease.width * SIGN_U, h = lease.height * SIGN_U, k = Math.min(d.w / w, d.d / h);
     const sign = new Decal(lease, w * k, h * k, { renderOrder: 6 });
     sign.mesh.rotation.x = -Math.PI / 2 + d.tilt;
@@ -995,13 +1015,23 @@ class ReadView implements PieceView {
   front(): Mesh | null {
     return null;
   }
-  look(v: ActorView): void {
+  look(v: ActorView, clock: Clock): void {
+    if (this.diff) {
+      if (this.diff.at === null) this.diff.at = clock.t;
+      else if (clock.still || clock.t - this.diff.at > READ_DIFF_S) {
+        this.diff = null;
+        this.paint();
+      }
+    }
     this.sign?.tone(1 - 0.8 * v.sample.fade);
   }
   dispose(): void {
     this.sign?.dispose();
   }
 }
+
+/** How long a read holds a change's difference (s). */
+const READ_DIFF_S = 1.5;
 
 class PageView implements PieceView {
   readonly group = new Group();

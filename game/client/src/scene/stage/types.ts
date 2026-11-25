@@ -246,7 +246,16 @@ export type Draw =
     }
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
   /** A page's read: its lines, inked on a slip lying propped on the page's front margin, in a box w x d (tilted up). */
-  | { readonly t: "read"; readonly lines: readonly [string, string | null]; readonly w: number; readonly d: number; readonly tilt: number; readonly colour: string }
+  | {
+      readonly t: "read";
+      readonly lines: readonly [string, string | null];
+      readonly w: number;
+      readonly d: number;
+      readonly tilt: number;
+      readonly colour: string;
+      /** The sum it leads with (power, creatures), where it says one: a change shows its difference for a moment. */
+      readonly sum: readonly [number, number] | null;
+    }
   | { readonly t: "hidden" }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
   | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }
