@@ -1,7 +1,8 @@
 // The table's magic (old fx.js, ported): a cast spell crackles with its colours, an aim is a live arc of that energy, a
 // card in danger has a sigil branded into the page at its foot, a card you can act on has embers stirring under it, a
-// card you chose has a pool of gilt under it, a land is a well of its mana's light, a creature stands in the ash it was
-// cast into, and a spell ignites as it is cast. Particles are textured points moved by turbulence in the shader, drawn
+// card you chose has a pool of gilt under it, a land is a well of its mana's light, a presented card stands lifted on a
+// pale pool (in mist while it is not yet awake), a pile holding something that matters glows and sends up a mote, and a
+// spell ignites as it is cast. Particles are textured points moved by turbulence in the shader, drawn
 // brighter than white so the bloom turns them into light. Everything is seeded (by the card it belongs to) and timed by
 // the frame's `now`, so the same frame draws the same particles. Reduced motion drops the particles and the jitter and
 // holds every breath still. Each effect rides the object it belongs to and is disposed with it.
@@ -32,10 +33,15 @@ const HDR = palette.hdr;
 const FX = {
   spell: { crackle: 80, motes: 24, smoke: 36 },
   ember: { n: 70, size: 5, rise: 0.5, spread: 0.04, speed: 0.45, turb: 0.06 },
-  ash: { r: 1.7, tilt: 0.4 },
   sigil: { w: 0.62, at: 0.42, beat: 2.4, base: 0.55, swing: 0.45 },
   well: { wash: 0.72, heart: 0.8, breath: 0.08, rate: 0.9, stain: 0.6 },
   chosen: { w: 1.0, d: 0.42, at: 0.2, opacity: 0.7 },
+  /** The pale pool a presented card stands on; the mist at the foot of one not yet awake. */
+  pale: { w: 1.45, d: 0.6, at: 0.1, opacity: 0.78 },
+  mist: { w: 1.5, d: 0.66, at: 0.1, opacity: 0.7 },
+  emberPool: { w: 1.5, d: 0.62, at: 0.1, opacity: 0.85 },
+  /** "Something in here for you": a few motes rising slowly from a pile, and a low glow under it. */
+  mote: { n: 5, size: 7, rise: 0.55, spread: 0.05, speed: 0.12, turb: 0.03, glow: 0.38 },
   burst: { ms: 600, n: 140, size: 14, spread: 0.9 },
   /** A plaque struck as its life drops (h.js `buildBoard`): blood and bone, longer, denser and wider than a cast's. */
   strike: { ms: 700, n: 160, size: 14, spread: 1.4 },
@@ -298,24 +304,6 @@ export function emberFx(kit: FxKit, seed: number, w = 0.9, d = 0.5, y = 0.012): 
   };
 }
 
-// ---- ash where a creature was cast ----------------------------------------------------------------------------------
-
-/** The vellum singed round a standee's foot, turned and mirrored its own way (seeded), drawn as page, never as light. */
-export function ashFx(kit: FxKit, seed: number, r: number = FX.ash.r): Effect {
-  const rand = seeded(seed * 2654435761 + 11);
-  const m = flatPlane(kit.map("ash"), r, r * 0.6);
-  m.rotation.z = (rand() - 0.5) * FX.ash.tilt;
-  m.position.set(0, 0.005, 0.04);
-  m.scale.set(rand() < 0.5 ? -1 : 1, rand() < 0.5 ? -1 : 1, 1);
-  const mat = m.material;
-  return {
-    object: m,
-    tick: (_t, level) => {
-      mat.opacity = level;
-    },
-    dispose: () => disposeMesh(m),
-  };
-}
 
 // ---- the danger sigil -----------------------------------------------------------------------------------------------
 
@@ -852,4 +840,70 @@ export class Ribbon implements Effect {
       f.sparks.dispose();
     }
   }
+}
+
+// ---- the light a card stands in ------------------------------------------------------------------------------------
+
+/** The light a card stands in: pale (presented), mist (not yet awake), ember (I can act on it now). */
+export type StandTone = "pale" | "mist" | "ember";
+
+/**
+ * Under a presented card's foot: a pale pool of light it stands lifted on (`pale`), or, where it is not yet awake, a mist
+ * instead of a clean pool (`mist`). Still: at rest nothing on the table moves.
+ */
+export function standFx(kit: FxKit, tone: StandTone): Effect {
+  const c = FX[tone === "ember" ? "emberPool" : tone];
+  // Pale and mist are laid on, not added (on cream vellum added white would not show); the ember is light, and blooms.
+  const m = flatPlane(kit.map("pool"), c.w, c.d, {
+    color: tone === "ember" ? new Color(signal.option).multiplyScalar(1.4) : new Color(tone === "pale" ? palette.pale : palette.mist),
+    opacity: c.opacity,
+    blending: tone === "ember" ? AdditiveBlending : NormalBlending,
+  });
+  m.position.set(0, 0.008, c.at);
+  return {
+    object: m,
+    tick: (_t, level) => {
+      m.material.opacity = c.opacity * level;
+    },
+    dispose: () => disposeMesh(m),
+  };
+}
+
+/**
+ * The cue, "there is something in here for you", on a pile: a low glow under it in the cue's colour (ember: I can act on
+ * something inside; red, banked: something inside can hurt me; pale: news or an answer), and a mote rising slowly every
+ * couple of seconds. Under reduced motion the glow alone says it.
+ */
+export function moteFx(kit: FxKit, seed: number, cue: "act" | "threat" | "news", w = 0.9, d = 1.1): Effect {
+  const rand = seeded(seed * 2654435761 + 23);
+  const c = FX.mote;
+  const colour = cue === "act" ? palette.embers[0] : cue === "threat" ? palette.threat : palette.pale;
+  const group = new Group();
+  const glow = flatPlane(kit.map("pool"), w * 1.5, d * 1.3, { color: new Color(colour).multiplyScalar(0.8), opacity: c.glow, blending: AdditiveBlending });
+  glow.position.set(0, 0.006, 0);
+  const em = emitter(kit, rand, {
+    n: c.n,
+    colours: [colour],
+    size: c.size,
+    rise: c.rise,
+    spread: c.spread,
+    speed: c.speed,
+    turb: c.turb,
+    start: () => new Vector3((rand() - 0.5) * w * 0.6, 0.05, (rand() - 0.5) * d * 0.5),
+    dir: () => new Vector3(0, 1, 0),
+  });
+  group.add(glow, em.points);
+  return {
+    object: group,
+    tick: (t, level, still) => {
+      glow.material.opacity = c.glow * level;
+      em.points.visible = !still && level > 0.02;
+      em.material.uniforms["uTime"]!.value = t;
+      em.material.uniforms["uHdr"]!.value = em.hdr * level;
+    },
+    dispose: () => {
+      disposeMesh(glow);
+      em.dispose();
+    },
+  };
 }

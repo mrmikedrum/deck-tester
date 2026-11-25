@@ -29,7 +29,8 @@ import { SIFT_SHADE } from "../stage/describe";
 import { createCard } from "./card";
 import { Block, CastShadow, Contact, blockHeight } from "./slab";
 import type { CardObject, CardOptions } from "./card";
-import { ashFx, burstFx, chosenFx, emberFx, sigilFx, spellFx, wellFx } from "./fx";
+import { burstFx, chosenFx, emberFx, moteFx, sigilFx, spellFx, standFx, wellFx } from "./fx";
+import type { StandTone } from "./fx";
 import type { Effect, FxKit } from "./fx";
 import type { Host } from "./host";
 import { setLook, setSignal } from "./materials";
@@ -68,8 +69,6 @@ const SIZE = {
   dressing: { s: 0.8, x: 0.16, dx: 0.1, y: 0.34, dy: 0.2, z: -0.03, dz: -0.02, turn: -0.08 },
   /** A stack card's drop shadow (h.js `buildStack`), keeping it off the page. */
   drop: { x: 0.05, y: -0.08, z: -TH * 3, s: 0.95 },
-  /** A standee's ash, a card's width and a bit across (h.js `ash(one, { r: CW * 1.7 })`). */
-  ash: CW * 1.7,
 } as const;
 
 /** The frame's clock for the effects: seconds, and whether motion is reduced. */
@@ -316,7 +315,10 @@ class UnitView implements PieceView {
   private copyKey = "";
   private readonly ground: Ground;
   private readonly marks: MarkFx;
-  private ash: Effect | null = null;
+  /** The light it stands in: a pale pool, or mist while it is not yet awake. */
+  private stand: { effect: Effect; tone: StandTone } | null = null;
+  /** The cue on a pile that holds something that matters. */
+  private mote: { effect: Effect; cue: "act" | "threat" } | null = null;
   private well: { effect: Effect; key: string } | null = null;
   private wellSign: Decal | null = null;
   private wellAlts: Decal[] = [];
@@ -331,11 +333,6 @@ class UnitView implements PieceView {
     this.group.add(this.cast.mesh);
     this.ground = new Ground(this.group);
     this.marks = new MarkFx(env.fx, this.ground.group, d.seed, d.unit !== "well", d.posture !== "stand");
-    // A standee stands in the ash it was cast into, on its shadow (h.js `standee`: the first card only).
-    if (d.posture === "stand") {
-      this.ash = ashFx(env.fx, d.seed, SIZE.ash);
-      this.ground.group.add(this.ash.object);
-    }
     this.patch(v);
   }
 
@@ -396,6 +393,7 @@ class UnitView implements PieceView {
       this.cards.forEach((c, i) => c.face(drawn[i]?.face ?? v.face));
     }
     this.presence(v, d);
+    this.light(d, v.mark);
     this.dressing(d);
     this.wellLook(d);
     const turned = !!v.face?.tapped;
@@ -421,6 +419,34 @@ class UnitView implements PieceView {
       this.cards[0]!.obj.body.add(chip.mesh);
       this.chips.push(chip);
     });
+  }
+
+  /**
+   * The light under it: a presented (standing) card is lifted on a pale pool, or stands in mist while it is not yet
+   * awake; a pile holding something that matters glows low under it and a mote rises from it.
+   */
+  private light(d: Extract<Draw, { t: "unit" }>, mark: ActorView["mark"]): void {
+    const tone: StandTone | null = mark === "option" ? "ember" : d.posture === "stand" ? (d.sick ? "mist" : "pale") : null;
+    if (this.stand && this.stand.tone !== tone) {
+      this.ground.group.remove(this.stand.effect.object);
+      this.stand.effect.dispose();
+      this.stand = null;
+    }
+    if (tone && !this.stand) {
+      this.stand = { effect: standFx(this.env.fx, tone), tone };
+      this.ground.group.add(this.stand.effect.object);
+    }
+    if (this.mote && this.mote.cue !== d.cue) {
+      this.ground.group.remove(this.mote.effect.object);
+      this.mote.effect.dispose();
+      this.mote = null;
+    }
+    if (d.cue && !this.mote) {
+      this.mote = { effect: moteFx(this.env.fx, d.seed, d.cue), cue: d.cue };
+      // On the page under the pile's middle: behind a standing pile's foot, a card's length in from a lying one's.
+      this.ground.group.add(this.mote.effect.object);
+      this.mote.effect.object.position.set(0, 0, uprightOf(d.posture) ? -0.25 : -CH / 2);
+    }
   }
 
   /**
@@ -581,7 +607,10 @@ class UnitView implements PieceView {
     const level = fxLevel(s.fade);
     this.marks.set(v.mark);
     this.marks.tick(clock, level);
-    this.ash?.tick(clock.t, level, clock.still);
+    // Tapped loses the light (but what I can act on keeps its ember); gilt and the sigil replace the pale pool.
+    const lit = this.stand?.tone === "ember" ? 1 : s.tap > 0.5 || v.mark ? 0 : 1;
+    this.stand?.effect.tick(clock.t, level * lit, clock.still);
+    this.mote?.effect.tick(clock.t, level, clock.still);
     this.well?.effect.tick(clock.t, level, clock.still);
     // The block and the contact shadow turn with the pile; the cast shadow is the lamp's own.
     this.pile.rotation.z = d.well ? 0 : -s.tap * (Math.PI / 2);
@@ -599,7 +628,8 @@ class UnitView implements PieceView {
     for (const a of this.wellAlts) a.dispose();
     for (const c of this.chips) c.dispose();
     this.marks.clear();
-    this.ash?.dispose();
+    this.stand?.effect.dispose();
+    this.mote?.effect.dispose();
     this.well?.effect.dispose();
     this.block?.dispose();
     this.contact?.dispose();

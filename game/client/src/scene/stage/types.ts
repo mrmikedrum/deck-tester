@@ -220,6 +220,10 @@ export type Draw =
       readonly seatColour: string;
       /** A seed for its effects (its first card's id): the same card, the same ash and embers. */
       readonly seed: number;
+      /** Not yet awake on its controller's turn (summoning sick): mist at its foot instead of a clean pool. */
+      readonly sick: boolean;
+      /** A pile holding something that matters says so with a rising mote: why (I can act on it, it can hurt me), or null. */
+      readonly cue: "act" | "threat" | null;
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }

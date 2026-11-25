@@ -95,6 +95,8 @@ function unit(id: string, art: string): ActorView {
       label: null,
       seatColour: "#000",
       seed: 1,
+      sick: false,
+      cue: null,
     },
     mark: null,
     face: { ...FACE_DEFAULTS, name: id, art },

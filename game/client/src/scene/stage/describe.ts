@@ -186,6 +186,8 @@ export function describe(input: DescribeInput): Description {
           label: null,
           seatColour: colourOf(model, seat),
           seed: cmd.card,
+          sick: false,
+          cue: null,
         },
         needsMembers: true,
       });
@@ -471,6 +473,9 @@ function unitPiece(
     label: null,
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
+    sick: !!top && top.sick && model.active === seat,
+    // A pile with an option or a danger inside it signals it (the arrangement engine's `notable` will say which, and why).
+    cue: u.members.length > 1 ? (mark === "option" ? "act" : mark === "danger" ? "threat" : null) : null,
   };
   return {
     id: u.id,
@@ -482,7 +487,7 @@ function unitPiece(
     look: lookOf(fade, mark, input.hover === u.id, u.tapped),
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(",")].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.sick, draw.cue ?? ""].join("#"),
     mark,
     draw,
     needsMembers: true,
