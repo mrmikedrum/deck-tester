@@ -60,18 +60,22 @@ export function auditUnits(c: Container, units: readonly AuditUnit[], designUnit
       // place: the region holds the face it reaches
       const q = un.face.quad, mid = { x: (q[0].x + q[2].x) / 2, y: (q[0].y + q[2].y) / 2 };
       if (!q.every((p) => inQuad(un.region, ...xy(inward(p, mid, 1.5))))) out.push({ rule: "place", unit: un.id, measured: 0, limit: 1 });
-      // nothing of another unit over its name strip or foot
-      const over = units.flatMap((o) => (o.id === un.id ? [] : o.faces.filter((x) => x.paint > un.paint)));
-      for (const [rule, s] of [["covers-name", strip(q, 5 / 6, 1)], ["covers-foot", strip(q, 0, 1 / 6)]] as const) {
-        const f = covered(s, over.map((x) => x.quad));
-        if (f > COVER) out.push({ rule, unit: un.id, measured: f, limit: COVER });
-      }
+      // nothing of another unit over its name strip or foot (only what is painted later and reaches its face)
+      const fb = boxOf(q);
+      const over = units.flatMap((o) => (o.id === un.id || !meets(boxes.get(o.id)!, fb) ? [] : o.faces.filter((x) => x.paint > un.paint && meets(boxOf(x.quad), fb)).map((x) => x.quad)));
+      if (over.length)
+        for (const [rule, s] of [["covers-name", strip(q, 5 / 6, 1)], ["covers-foot", strip(q, 0, 1 / 6)]] as const) {
+          const f = covered(s, over);
+          if (f > COVER) out.push({ rule, unit: un.id, measured: f, limit: COVER });
+        }
     }
     // a finger's patch on its region, less what has precedence, the keepouts and the unsafe edges
     const bb = boxes.get(un.id)!;
     const above = units.filter((o) => o.id !== un.id && o.order > un.order && meets(boxes.get(o.id)!, bb)).map((o) => o.region);
-    const patch = largestSquare(un.region, bb, above, screen, c.safe);
-    if (patch < c.floors.tapPx - 1e-6) out.push({ rule: "tap-patch", unit: un.id, measured: patch, limit: c.floors.tapPx });
+    if (!hasSquare(un.region, bb, above, screen, c.safe, c.floors.tapPx)) {
+      const patch = largestSquare(un.region, bb, above, screen, c.safe);
+      out.push({ rule: "tap-patch", unit: un.id, measured: patch, limit: c.floors.tapPx });
+    }
   }
   return out;
 }
@@ -113,6 +117,30 @@ function overlap(a: Quad, b: Quad): boolean {
 }
 
 /**
+ * Whether a `side` px square lies wholly inside `q`, inside `safe`, off the keepouts and off everything `above`: tried at
+ * the region's middle first, then across it on a 2 px grid. Exact for the square it finds (its corners inside a convex
+ * quad; no overlap by separating axes), so it never certifies a patch that is not there.
+ */
+export function hasSquare(q: Quad, bb: Box, above: readonly Quad[], keep: readonly { left: number; top: number; right: number; bottom: number }[], safe: { left: number; top: number; right: number; bottom: number }, side: number): boolean {
+  const x0 = Math.max(bb.l, safe.left), x1 = Math.min(bb.r, safe.right) - side, y0 = Math.max(bb.t, safe.top), y1 = Math.min(bb.b, safe.bottom) - side;
+  if (x1 < x0 || y1 < y0) return false;
+  const near = (a: Box) => above.filter((o) => meets(boxOf(o), a));
+  const zone = near({ l: x0, r: x1 + side, t: y0, b: y1 + side });
+  const keepNear = keep.filter((k) => k.left < x1 + side && k.right > x0 && k.top < y1 + side && k.bottom > y0);
+  const fits = (x: number, y: number): boolean => {
+    const sq: Quad = [{ x, y }, { x: x + side, y }, { x: x + side, y: y + side }, { x, y: y + side }];
+    if (!sq.every((p) => inQuad(q, p.x, p.y))) return false;
+    for (const k of keepNear) if (x < k.right && x + side > k.left && y < k.bottom && y + side > k.top) return false;
+    for (const o of zone) if (overlap(o, sq)) return false;
+    return true;
+  };
+  const cx = Math.min(x1, Math.max(x0, (bb.l + bb.r) / 2 - side / 2)), cy = Math.min(y1, Math.max(y0, (bb.t + bb.b) / 2 - side / 2));
+  if (fits(cx, cy)) return true;
+  for (let y = y0; y <= y1 + 1e-9; y += 2) for (let x = x0; x <= x1 + 1e-9; x += 2) if (fits(x, y)) return true;
+  return false;
+}
+
+/**
  * The side of the largest square (px, on a 4 px grid) wholly inside `q`, inside `safe`, off the keepouts and `above`.
  * A cell counts only when it lies wholly inside the quad and touches nothing excluded, so the answer is never more than
  * the space: a patch it certifies is really there.
@@ -122,6 +150,8 @@ export function largestSquare(q: Quad, bb: Box, above: readonly Quad[], keep: re
   const t = Math.max(Math.ceil(safe.top / CELL), Math.floor(bb.t / CELL)), b = Math.min(Math.floor(safe.bottom / CELL), Math.ceil(bb.b / CELL));
   const w = r - l, h = b - t;
   if (w <= 0 || h <= 0) return 0;
+  // (Too small on screen for a patch at all: its narrow side, in whole cells, is the most it could hold.)
+  if (Math.min(w, h) * CELL < 44) return Math.max(0, Math.min(w, h) - 1) * CELL;
   const kk = keep.filter((k) => k.left < bb.r && k.right > bb.l && k.top < bb.b && k.bottom > bb.t);
   const sum = new Int32Array((w + 1) * (h + 1));
   for (let j = 0; j < h; j++)

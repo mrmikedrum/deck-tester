@@ -4,7 +4,7 @@
 // "done", and send the results (Copy, or `window.__bench` through the Web Inspector).
 import { after, frame, now } from "../../platform";
 import type { TablePlan } from "../../layout";
-import { VIEWPORT, WARM, benchInputs, course, planFrame, planMatOnly } from "./bench-inputs";
+import { VIEWPORT, WARM, benchInputs, course, planFrame, planFrameChanged, planMatOnly } from "./bench-inputs";
 import type { Frame, Named } from "./bench-inputs";
 
 const design = import.meta.glob<unknown>("../../../../../tests/fixtures/boards/design-pass.json", { import: "default" });
@@ -28,6 +28,8 @@ interface Row {
   readonly what: string;
   readonly plans: number;
   readonly withShadow: Stats;
+  /** The same, as if the leaf's cards had just changed (what the engine keeps between plans forgotten). */
+  readonly leafChanged: Stats;
   readonly matOnly: Stats;
   readonly engine: { readonly units: number; readonly candidates: number; readonly audits: number; readonly overflow: number; readonly errors: number };
 }
@@ -116,17 +118,18 @@ export async function bench(root: HTMLElement): Promise<void> {
   const run = async () => {
     const rows: Row[] = [];
     const table = $("b-table");
-    table.innerHTML = `<tr><th align=left>input</th><th>with the shadow leaf: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>mat only: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
+    table.innerHTML = `<tr><th align=left>input</th><th>with the shadow leaf: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>leaf changed: median</th><th>worst</th><th>batch mean</th><th>mat only: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
     for (const input of inputs) {
       $("b-status").textContent = `Timing ${input.name} (${input.what})…`;
       await wait(50);
-      const on = await time(input, planFrame), off = await time(input, planMatOnly);
+      const on = await time(input, planFrame), changed = await time(input, planFrameChanged), off = await time(input, planMatOnly);
       const most = (g: (d: EngineDid) => number) => Math.max(0, ...on.plans.map(g));
       const row: Row = {
         input: input.name,
         what: input.what,
         plans: on.plans.length,
         withShadow: on.stats,
+        leafChanged: changed.stats,
         matOnly: off.stats,
         engine: {
           units: most((d) => d.units),
@@ -140,7 +143,7 @@ export async function bench(root: HTMLElement): Promise<void> {
       const over = (x: number) => (x > 8 ? ` style="color:#e06a4f"` : "");
       table.insertAdjacentHTML(
         "beforeend",
-        `<tr><td>${row.input}</td><td align=right${over(row.withShadow.median)}>${ms(row.withShadow.median)}</td><td align=right${over(row.withShadow.p90)}>${ms(row.withShadow.p90)}</td><td align=right${over(row.withShadow.worst)}>${ms(row.withShadow.worst)}</td><td align=right>${ms(row.withShadow.batchMean)}</td><td align=right>${ms(row.matOnly.median)}</td><td align=right>${ms(row.matOnly.worst)}</td><td align=right>${ms(row.matOnly.batchMean)}</td><td align=right>${row.engine.units}</td><td align=right>${row.engine.candidates}</td><td align=right>${row.engine.audits}</td></tr>`,
+        `<tr><td>${row.input}</td><td align=right${over(row.withShadow.median)}>${ms(row.withShadow.median)}</td><td align=right${over(row.withShadow.p90)}>${ms(row.withShadow.p90)}</td><td align=right${over(row.withShadow.worst)}>${ms(row.withShadow.worst)}</td><td align=right>${ms(row.withShadow.batchMean)}</td><td align=right${over(row.leafChanged.median)}>${ms(row.leafChanged.median)}</td><td align=right${over(row.leafChanged.worst)}>${ms(row.leafChanged.worst)}</td><td align=right>${ms(row.leafChanged.batchMean)}</td><td align=right>${ms(row.matOnly.median)}</td><td align=right>${ms(row.matOnly.worst)}</td><td align=right>${ms(row.matOnly.batchMean)}</td><td align=right>${row.engine.units}</td><td align=right>${row.engine.candidates}</td><td align=right>${row.engine.audits}</td></tr>`,
       );
     }
     last = { userAgent: navigator.userAgent, screen: { w: screen.width, h: screen.height, dpr: devicePixelRatio }, viewport: VIEWPORT, clockResolutionMs: res, plansPerInput: PLANS, budgetMs: 8, rows };

@@ -18,3 +18,4 @@ export type { PlanSeatOptions, StackEntry, StackAtRest, TableInput, GroupKind, H
 export { LEAN_LIFT, SIFT_PAGE, carry, leanOf, siftOf, siftPages, siftQuad } from "./focus";
 export type { Lean } from "./focus";
 export type { ShadowInput, ShadowOptions, ShadowPlan } from "./arrange/shadow";
+export { clearArrangeCaches } from "./arrange/memo";

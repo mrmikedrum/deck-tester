@@ -1,15 +1,29 @@
 // A card's facts for the arrangement engine, from its CURRENT type line every plan (§1.2): the engine's, which is what
 // the card is now (a stationed Spacecraft is a creature, an animated land is both), never the catalog's printed line.
 // The flags are non-exclusive; policies decide precedence. Nothing here caches a classification.
-import { RULE_CARDS, cardKey, isTreasure, manaValue, tableReach } from "../../model";
+import { RULE_CARDS, cardKey, costValue, isTreasure, textReach } from "../../model";
 import type { Card, TableModel } from "../../model";
 import type { CardId } from "../types";
 import type { ArrCard, TypeSet } from "./contract";
 
 type CardType = "Creature" | "Land" | "Artifact" | "Enchantment" | "Planeswalker" | "Battle";
 
+/** Pure functions of a string, kept by it: the same type lines and rules text come back every plan. */
+function kept<T>(f: (s: string) => T): (s: string) => T {
+  const m = new Map<string, T>();
+  return (s) => {
+    let v = m.get(s);
+    if (v === undefined) {
+      if (m.size > 2048) m.clear();
+      m.set(s, (v = f(s)));
+    }
+    return v;
+  };
+}
+
 /** A type line's parts: card types (non-exclusive flags), supertypes, subtypes. "Creature" alone face down. */
-export function typesOf(typeLine: string): { types: TypeSet; subtypes: string[]; legendary: boolean; basic: boolean } {
+export const typesOf = kept(parseTypes);
+function parseTypes(typeLine: string): { types: TypeSet; subtypes: string[]; legendary: boolean; basic: boolean } {
   const [left = "", right = ""] = typeLine.split(/\s+[—-]\s+/, 2);
   const words = new Set(left.split(/\s+/).filter(Boolean));
   const has = (t: CardType): boolean => words.has(t);
@@ -31,9 +45,11 @@ export function typesOf(typeLine: string): { types: TypeSet; subtypes: string[];
 const typeKey = (t: TypeSet): string =>
   (["creature", "land", "artifact", "enchantment", "planeswalker", "battle"] as const).map((k) => (t[k] ? k[0] : "")).join("");
 
+const tapsForMana = kept((text) => /(^|\n|— )\{T\}[^:\n]*: Add/.test(text));
 /** It makes mana: the catalog says what it produces, it is a Treasure, or it taps for mana in its text. */
-const makesMana = (c: Card): boolean =>
-  !RULE_CARDS.has(c.name) && (c.face.produces.length > 0 || isTreasure(c) || /(^|\n|— )\{T\}[^:\n]*: Add/.test(c.face.rules || c.face.text));
+const makesMana = (c: Card): boolean => !RULE_CARDS.has(c.name) && (c.face.produces.length > 0 || isTreasure(c) || tapsForMana(c.face.rules || c.face.text));
+const reachOf = kept(textReach);
+const valueOf = kept(costValue);
 
 const counterTotal = (c: Card): number => Object.values(c.counters).reduce((t, n) => t + Math.max(0, n), 0);
 
@@ -72,8 +88,8 @@ export function arrCardOf(c: Card): ArrCard {
     keywords: c.keywords.map((k) => k.toLowerCase()),
     counters: counterTotal(c),
     attachedTo: c.attachedTo,
-    reach: tableReach(c),
-    manaValue: manaValue(c),
+    reach: reachOf(c.face.text),
+    manaValue: valueOf(c.face.cost),
     produces: c.face.produces,
   };
 }

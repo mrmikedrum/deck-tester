@@ -185,6 +185,9 @@ export interface ArrangeInput {
   readonly clock: Clock;
   /** Start the ladder at least this far (the composer's retry). */
   readonly minEdit?: number;
+  /** Audit the arrangement under each of the container's poses too (`report.poses`). It only reports (nothing is
+   *  changed for a pose), so a plan the player sees does not pay for it; goldens and design measurements ask. */
+  readonly auditPoses?: boolean;
 }
 
 // ---- 1.3 the output -----------------------------------------------------------------------------------------------

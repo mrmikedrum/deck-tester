@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { largestSquare } from "../../../src/layout/arrange/audit";
+import { hasSquare, largestSquare } from "../../../src/layout/arrange/audit";
 import type { ArrCard, ArrangeResult, Policy } from "../../../src/layout/arrange/contract";
 import { collect } from "../../../src/layout/arrange/policies/common";
 import { readyTapped } from "../../../src/layout/arrange/policies/ready-tapped";
@@ -64,6 +64,13 @@ describe("2: a tap patch is measured on whole cells", () => {
     expect(largestSquare(q, bb(q), [], [], safe)).toBeGreaterThanOrEqual(44);
     const cut = largestSquare(q, bb(q), [], [{ left: 22.5, right: 23.5, top: 0, bottom: 48 }, { left: 66.5, right: 67.5, top: 0, bottom: 48 }], safe);
     expect(cut).toBeLessThan(44);
+  });
+  it("the geometric check agrees: no 44 px square in 42 px, none across the slivers, one in the open", () => {
+    const small = box(1, 1, 43, 43), open = box(0, 0, 100, 48);
+    expect(hasSquare(small, bb(small), [], [], safe, 44)).toBe(false);
+    expect(hasSquare(open, bb(open), [], [], safe, 44)).toBe(true);
+    expect(hasSquare(open, bb(open), [], [{ left: 22.5, right: 23.5, top: 0, bottom: 48 }, { left: 66.5, right: 67.5, top: 0, bottom: 48 }], safe, 44)).toBe(false);
+    expect(hasSquare(open, bb(open), [box(22.5, -10, 23.5, 60), box(66.5, -10, 67.5, 60)], [], safe, 44)).toBe(false);
   });
   it("an overlapping quad narrower than a cell, between centres, cuts it too", () => {
     const q = box(0, 0, 100, 48);

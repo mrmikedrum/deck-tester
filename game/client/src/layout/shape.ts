@@ -4,6 +4,10 @@ import type { CardId, Point, Rect, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 import { FLOOR, TAP_PX } from "./board";
 import { CH, CW, PILE_LEAN, TAP_LEAN } from "./seat/geometry";
+import { hasSquare } from "./arrange/audit";
+
+/** Audit with the cell grid alone (tests show the geometric first pass changes no verdict). */
+export const GRID_ONLY = { on: false };
 
 // Where things are on screen at rest: each card face as a quad, with its name strip (top sixth) and foot (bottom sixth),
 // from the same posture rules the scene poses pieces with, and the audit of the hard limits over those quads: the
@@ -247,7 +251,9 @@ export function audit(shapes: readonly Shape[], vp: Viewport, opts: AuditOptions
     }
     // tappable: a window of tap x tap px that the hit test gives to this group
     // (A plaque is not a card or a pile: intent.md's patch rule is for those. It still draws over what it stands on.)
-    const best = s.kind === "plate" ? tap : tapPatch(s, near, area, tap);
+    // A whole square found geometrically is a patch the cell grid would find too, so the grid runs only to measure a
+    // failure (the verdicts are the grid's; arrange/audit.ts `hasSquare`).
+    const best = s.kind === "plate" || (!GRID_ONLY.on && hasSquare(s.face, bb, near.map((o) => o.face), area.chrome, area.safe, tap)) ? tap : tapPatch(s, near, area, tap);
     if (best < tap - 1e-6) out.push({ rule: "tap-patch", group: s.group, seat: s.seat, measured: best, limit: tap });
   }
   return out;

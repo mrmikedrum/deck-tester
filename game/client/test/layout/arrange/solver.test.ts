@@ -5,6 +5,8 @@ import { readyTapped } from "../../../src/layout/arrange/policies/ready-tapped";
 import { works } from "../../../src/layout/arrange/policies/works";
 import { collect, emphasisOf, factsOf, mattersOf, promoteRule, seatOf, tidyRule, topOf } from "../../../src/layout/arrange/policies/common";
 import { S_TABLE } from "../../../src/layout/arrange/scale";
+import { clearArrangeCaches } from "../../../src/layout/arrange/memo";
+import { BATCHING } from "../../../src/layout/arrange/solver";
 import type { CardId } from "../../../src/layout/types";
 import { prng } from "../boards";
 import { SUPPORTED, THEM, ac, board, many, resetIds, run } from "./cards";
@@ -62,6 +64,39 @@ describe("determinism, order independence, memory as JSON, the fixed point", () 
       const shuffled = [...cards].sort(() => rnd() - 0.5);
       expect(JSON.stringify(run({ cards: shuffled }).fit, mapJson)).toBe(JSON.stringify(run({ cards }).fit, mapJson));
     }
+  });
+
+  it("what is kept between plans changes nothing: a kept arrangement is the one computing it gives, and any change misses", () => {
+    for (const seed of SEEDS) {
+      const cards = board(seed, 50);
+      const a = run({ cards });
+      clearArrangeCaches();
+      const b = run({ cards });
+      expect(JSON.stringify(b.fit, mapJson)).toBe(JSON.stringify(a.fit, mapJson));
+      expect(run({ cards })).toBe(b); // the same input: kept
+      const tapped = cards.map((c, i) => (i === 3 ? { ...c, tapped: !c.tapped } : c));
+      const t = run({ cards: tapped });
+      expect(t).not.toBe(b);
+      clearArrangeCaches();
+      expect(JSON.stringify(run({ cards: tapped }).fit, mapJson)).toBe(JSON.stringify(t.fit, mapJson));
+    }
+  });
+
+  it("batching moves out of an overflowing band changes nothing: the same arrangement, with fewer estimates", () => {
+    for (const seed of [...SEEDS, 21, 34, 55])
+      for (const n of [30, 60, 100, 150]) {
+        const cards = board(seed * 13 + n, n);
+        clearArrangeCaches();
+        BATCHING.on = false;
+        const plain = run({ cards });
+        clearArrangeCaches();
+        BATCHING.on = true;
+        const batched = run({ cards });
+        const { report: r1, ...a } = plain.fit, { report: r2, ...b } = batched.fit;
+        expect(JSON.stringify(b, mapJson), `seed ${seed} n ${n}`).toBe(JSON.stringify(a, mapJson));
+        expect(r2.edits.filter((e) => e.ran)).toEqual(r1.edits.filter((e) => e.ran));
+        expect(r2.candidates).toBeLessThanOrEqual(r1.candidates);
+      }
   });
 
   it("memory survives JSON, and a plan fed its own memory is a fixed point", () => {

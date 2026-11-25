@@ -31,6 +31,7 @@ import type {
   UnitKind,
 } from "./contract";
 import { auditUnits } from "./audit";
+import { Lru, containerKey, inputKey, memoryHash } from "./memo";
 import { attachmentRoots } from "./card";
 import type { AuditUnit } from "./audit";
 import { drawUnit } from "./draw";
@@ -43,6 +44,13 @@ import type { Band, RowGeo } from "./rows";
 import { S_TABLE, SLOT, fanExtent } from "./scale";
 import { validateGroups, validateIntent } from "./validate";
 import type { Intent } from "./validate";
+
+/** Rows per container geometry, and audits per drawn arrangement, kept between plans (memo.ts). */
+const PLANNERS = new Lru<RowPlanner>(32, true);
+const AUDITS = new Lru<ArrViolation[]>(256);
+const RESULTS = new Lru<ArrangeResult>(64);
+/** The walk's batching of moves out of an overflowing band (tests turn it off to show it changes nothing). */
+export const BATCHING = { on: true };
 
 /** Audits after the first, each a band made one place tighter (§5.1 step 3). */
 const RETRIES = 4;
@@ -110,7 +118,23 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 // ---- arrange --------------------------------------------------------------------------------------------------------
 
+/**
+ * One container's arrangement. Kept by its whole input (memo.ts `inputKey`): a container whose cards, memory, moment
+ * and everything else are unchanged since a plan is arranged again only once, so a snapshot that changes one seat
+ * arranges one seat.
+ */
 export function arrange(input: ArrangeInput): ArrangeResult {
+  const c = input.container;
+  const s = S_TABLE, u = designUnit(c.projector.viewport);
+  const key = inputKey(input, containerKey(c, s, u, bandsOf(input.policy.tiers)));
+  const hit = RESULTS.get(key);
+  if (hit) return hit;
+  const r = arrangeNow(input);
+  memoryHash(r.fit.memory);
+  return RESULTS.set(key, r);
+}
+
+function arrangeNow(input: ArrangeInput): ArrangeResult {
   const c = input.container;
   const cards = [...input.cards].sort((a, b) => a.id - b.id);
   const byId = new Map(cards.map((x) => [x.id, x]));
@@ -140,7 +164,9 @@ export function arrange(input: ArrangeInput): ArrangeResult {
   const pm = input.memory?.policies[policy.id] ?? null;
   // Rows come from the space and the cards: bands of tiers, each taking the rows its units need (rows.ts).
   const bands = bandsOf(policy.tiers);
-  const planner = new RowPlanner(c, s, u);
+  // A container's rows are its geometry's, not its cards': the planner is kept between plans of the same container.
+  const geometry = containerKey(c, s, u, bands);
+  const planner = PLANNERS.get(geometry) ?? PLANNERS.set(geometry, new RowPlanner(c, s, u));
   const tierOf = new Map(policy.tiers.map((t) => [t.id, t]));
   const bandOf = new Map(bands.flatMap((b) => b.tiers.map((t) => [t.id, b] as const)));
   const standingTiers = policy.tiers.filter((t) => t.posture === "stand");
@@ -179,7 +205,7 @@ export function arrange(input: ArrangeInput): ArrangeResult {
     const forceSummary = attempt === RETRIES + 1;
     const walked = walk(policy, groups, gByKey, edits, bands, bandOf, planner, tierOf, held, tight, input.clock.settling, s, forceSummary);
     candidates += walked.estimates;
-    const cand = place(input, policy, ctx, bands, planner, tight, walked, pm, tidy, s, u);
+    const cand = place(input, policy, ctx, bands, planner, tight, walked, pm, tidy, s, u, geometry);
     audits += 1;
     if (!best || cand.violations.length < best.violations.length) best = cand;
     // Only crowding is folding's to fix: a patch taken or a strip covered. A floor or a stray region is geometry.
@@ -193,7 +219,10 @@ export function arrange(input: ArrangeInput): ArrangeResult {
   const cand = best!;
 
   // ---- poses: the same arrangement, slid along `away` (nothing changes; the audit says what holds) ----
-  const poses = c.poses.map((p) => ({ id: p.id, violations: auditAt(input, cand, s, u, p.shift) }));
+  const poses = (input.auditPoses ? c.poses : []).map((p) => {
+    const key = `${geometry}@${p.shift}#${cand.signature}`;
+    return { id: p.id, violations: AUDITS.get(key) ?? AUDITS.set(key, auditAt(input, cand, s, u, p.shift)) };
+  });
 
   // ---- memory out ----
   const memory: ContainerMemory = {
@@ -431,10 +460,21 @@ function walk(
   const records: EditRecord[] = [], ran: string[] = [];
   let estimates = 0;
   // Which bands overflow, now, with `slack` places held back from the band `held` names.
+  let batch: { step: number; band: Band; held: boolean; budget: number; filled: Set<number> } | null = null;
+  // The units and their layout change only when an edit runs: estimates between are answered from the last one.
+  let units: U[] | null = null;
+  const unitCache: UnitCache = new Map();
+  const laid = new Map<string, Laid>();
   const over = (band: Band | null, slack: boolean): boolean => {
-    estimates++;
-    const laid = lay(bands, planner, draftUnits(policy, groups, st, tierOf, s), tight, slack && band ? band.index : null);
-    return band ? laid.over.has(band.index) : laid.over.size > 0;
+    const hold = slack && band ? band.index : null;
+    let l = laid.get(String(hold));
+    if (!l) {
+      estimates++;
+      units ??= draftUnits(policy, groups, st, tierOf, s, unitCache);
+      l = lay(bands, planner, units, tight, hold);
+      laid.set(String(hold), l);
+    }
+    return band ? l.over.has(band.index) : l.over.size > 0;
   };
   for (const e of edits) {
     const step = e.step;
@@ -459,10 +499,31 @@ function walk(
       if (!groupsHit.length) continue;
     }
     const wasHeld = held.has(e.id);
-    const need = forceSummary && step.op === "summary" ? true : settling && wasHeld ? true : over(target, wasHeld);
+    // Moving groups out of a standing band that overflows by a known number of places needs no estimate until that many
+    // have gone (its rows stay as they are while it overflows and the band they go to already holds something).
+    const moves = (step.op === "demote" || step.op === "split-spent") && e.group !== null;
+    const g = e.group !== null ? gByKey.get(e.group)! : null;
+    const dest = (k: string): Band | undefined => (step.op === "split-spent" ? bandOf.get(step.to) : step.op === "demote" ? bandOf.get(typeof step.to === "string" ? step.to : gByKey.get(k)!.creature ? step.to.creature : step.to.other) : undefined);
+    const ownUnits = (k: string) => (st.stacked.has(k) ? 1 : gByKey.get(k)!.members.length);
+    let need: boolean;
+    if (BATCHING.on && batch && moves && g && batch.step === e.index && target === batch.band && wasHeld === batch.held && batch.filled.has(dest(g.key)?.index ?? -1)) {
+      need = true;
+      batch.budget -= ownUnits(g.key);
+      if (batch.budget <= 0) batch = null;
+    } else {
+      batch = null;
+      need = forceSummary && step.op === "summary" ? true : settling && wasHeld ? true : over(target, wasHeld);
+      const l = laid.get(String(wasHeld && target ? target.index : null));
+      if (need && moves && g && target && target.posture === "stand" && l) {
+        const d = dest(g.key), left: number = (l.excess.get(target.index) ?? 0) - ownUnits(g.key);
+        if (d && (l.count.get(d.index) ?? 0) > 0 && left > 0) batch = { step: e.index, band: target, held: wasHeld, budget: left, filled: new Set([...l.count].filter(([, n]) => n > 0).map(([b]) => b)) };
+      }
+    }
     records.push({ index: e.index, op: step.op, groups: groupsHit, ran: need });
     if (!need) continue;
     ran.push(e.id);
+    units = null;
+    laid.clear();
     for (const k of groupsHit) {
       // spent copies leave as a sibling stack, with their own count
       if (step.op === "split-spent") {
@@ -482,13 +543,13 @@ function walk(
 
 const FAN_SHOW = 6;
 
-function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: ReadonlyMap<TierId, Policy["tiers"][number]>, s: number): U[] {
+/** A group's own units by its state (tier and squared), reused across a walk's estimates while that state holds. */
+type UnitCache = Map<string, { readonly state: string; readonly units: readonly U[] }>;
+
+function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: ReadonlyMap<TierId, Policy["tiers"][number]>, s: number, cache?: UnitCache): U[] {
   const out: U[] = [];
   const fans = new Map<TierId, G[]>(), summary: G[] = [];
-  const showOf = (t: TierId): number => {
-    const f = policy.ladder.find((x) => x.op === "fan" && "tier" in x.where && x.where.tier === t);
-    return f && f.op === "fan" ? f.show : FAN_SHOW;
-  };
+  const showOf = (t: TierId): number => fanShow(policy).get(t) ?? FAN_SHOW;
   const lying = (t: TierId) => tierOf.get(t)?.posture === "lie";
   for (const g of groups) {
     if (st.summary.has(g.key)) {
@@ -501,15 +562,24 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       fans.set(f, [...(fans.get(f) ?? []), g]);
       continue;
     }
+    const stacked = st.stacked.has(g.key), state = `${tier}|${stacked}`;
+    const hit = cache?.get(g.key);
+    if (hit && hit.state === state) {
+      out.push(...hit.units);
+      continue;
+    }
     const common = { tier, imp: g.imp, pinned: g.pinned, acting: g.acting, retyped: g.retyped, arrival: g.arrival, prefer: g.prefer, groups: [g.key], show: 1 };
     // It stands where its tier stands (or it acts, or its types just changed where it lies); demoted, it lies.
     const stands = g.presented && (!lying(tier) || g.acting || g.retyped);
-    if (st.stacked.has(g.key)) {
+    const mine: U[] = [];
+    if (stacked) {
       const kind: UnitKind = g.members.length > 1 ? "stack" : "card";
-      out.push({ ...common, key: `s${g.key}`, kind, members: g.members, dressing: g.dressing, stands, width: SLOT.lie * s });
+      mine.push({ ...common, key: `s${g.key}`, kind, members: g.members, dressing: g.dressing, stands, width: SLOT.lie * s });
     } else
       for (const id of g.members)
-        out.push({ ...common, key: `c${id}`, kind: "card", members: [id], dressing: g.dressing.filter((d) => g.dressOn.get(d) === id), stands, width: SLOT.lie * s });
+        mine.push({ ...common, key: `c${id}`, kind: "card", members: [id], dressing: g.dressing.filter((d) => g.dressOn.get(d) === id), stands, width: SLOT.lie * s });
+    cache?.set(g.key, { state, units: mine });
+    out.push(...mine);
   }
   for (const [tier, gs] of fans) {
     const sorted = [...gs].sort((a, b) => b.imp - a.imp || cmp(a.key, b.key));
@@ -554,7 +624,11 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       show: 1,
     });
   }
-  return out.sort((a, b) => cmp(a.key, b.key));
+  // In the order lying bands pack them (tier, a retyped card first, then the heaviest), so no band sorts again.
+  const ix = tierIndex(policy);
+  const keyed = out.map((u) => ({ u, t: ix.get(u.tier)!, r: u.retyped ? 0 : 1 }));
+  keyed.sort((a, b) => a.t - b.t || a.r - b.r || b.u.imp - a.u.imp || cmp(a.u.key, b.u.key));
+  return keyed.map((k) => k.u);
 }
 
 
@@ -563,6 +637,9 @@ interface Laid {
   readonly rows: RowGeo[];
   readonly byBand: Map<number, RowGeo[]>;
   readonly over: Set<number>;
+  /** Per band, how many units it holds; per standing band, by how many places they overflow its rows. */
+  readonly count: Map<number, number>;
+  readonly excess: Map<number, number>;
 }
 
 /**
@@ -571,8 +648,11 @@ interface Laid {
  * from a band an audit found crowded; `slackFor` holds back one more (a fold's deadband).
  */
 function lay(bands: readonly Band[], planner: RowPlanner, units: readonly U[], tight: ReadonlyMap<number, number>, slackFor: number | null): Laid {
-  const per = bands.map((b) => units.filter((x) => b.tiers.some((t) => t.id === x.tier)));
+  const bandOf = new Map(bands.flatMap((b) => b.tiers.map((t) => [t.id, b.index] as const)));
+  const per: U[][] = bands.map(() => []);
+  for (const x of units) per[bandOf.get(x.tier)!]!.push(x);
   const rows: RowGeo[] = [], byBand = new Map<number, RowGeo[]>(), over = new Set<number>();
+  const count = new Map<number, number>(), excess = new Map<number, number>();
   let prev: RowGeo | null = null;
   const roomAfter = (row: RowGeo, later: readonly Band[]): boolean => {
     let p: RowGeo | null = row;
@@ -592,9 +672,11 @@ function lay(bands: readonly Band[], planner: RowPlanner, units: readonly U[], t
       prev = next;
     }
     if (!fitsBand(b, mine, got, less)) over.add(b.index);
+    count.set(b.index, mine.length);
+    if (b.posture === "stand" && got.length) excess.set(b.index, mine.reduce((t, x) => t + span(x, got[0]!), 0) - (got.reduce((t, r) => t + placesOf(r), 0) - less));
     rows.push(...got);
   }
-  return { rows, byBand, over };
+  return { rows, byBand, over, count, excess };
 }
 
 const span = (x: U, row: RowGeo): number => Math.max(1, Math.ceil(x.width / row.base - EPS));
@@ -606,10 +688,28 @@ function fitsBand(b: Band, units: readonly U[], rows: readonly RowGeo[], less: n
 }
 
 /** A lying band's units in their tier order, then the heaviest first. */
-function ordered(b: Band, units: readonly U[]): U[] {
-  const ix = new Map(b.tiers.map((t, i) => [t.id, i]));
-  return [...units].sort((a, c) => ix.get(a.tier)! - ix.get(c.tier)! || Number(c.retyped) - Number(a.retyped) || c.imp - a.imp || cmp(a.key, c.key));
+/** A lying band's units in their tier order, then the heaviest first: as `draftUnits` already gives them. */
+function ordered(_b: Band, units: readonly U[]): readonly U[] {
+  return units;
 }
+
+/** Per policy, kept: each tier's index and each fan step's edges. */
+const TIER_INDEX = new WeakMap<Policy, Map<TierId, number>>();
+const tierIndex = (p: Policy): Map<TierId, number> => {
+  let m = TIER_INDEX.get(p);
+  if (!m) TIER_INDEX.set(p, (m = new Map(p.tiers.map((t, i) => [t.id, i]))));
+  return m;
+};
+const FAN_SHOWS = new WeakMap<Policy, Map<TierId, number>>();
+const fanShow = (p: Policy): Map<TierId, number> => {
+  let m = FAN_SHOWS.get(p);
+  if (!m) {
+    m = new Map();
+    for (const x of p.ladder) if (x.op === "fan" && "tier" in x.where && x.where.tier !== undefined && !m.has(x.where.tier)) m.set(x.where.tier, x.show);
+    FAN_SHOWS.set(p, m);
+  }
+  return m;
+};
 
 interface Packed {
   readonly key: string;
@@ -661,6 +761,8 @@ interface Candidate {
   /** Cards no place could hold: acting, the commander or a retyped card (past every place), or anything else. */
   readonly unplaced: { readonly actors: CardId[]; readonly other: CardId[] };
   readonly bandOfUnit: ReadonlyMap<string, number>;
+  /** Where each unit is and what it shows: what its drawing, so its audit, follows from. */
+  readonly signature: string;
   readonly rows: readonly RowGeo[];
   readonly edits: EditRecord[];
   readonly used: Arrangement["used"];
@@ -669,7 +771,7 @@ interface Candidate {
   memory(ranking: readonly string[], tidy: boolean): PolicyMemory;
 }
 
-function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: readonly Band[], planner: RowPlanner, tight: ReadonlyMap<number, number>, walked: Walked, pm: PolicyMemory | null, tidy: boolean, s: number, du: number): Candidate {
+function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: readonly Band[], planner: RowPlanner, tight: ReadonlyMap<number, number>, walked: Walked, pm: PolicyMemory | null, tidy: boolean, s: number, du: number, geometry: string): Candidate {
   const c = input.container;
   const tierOf = new Map(policy.tiers.map((t) => [t.id, t]));
   const all = draftUnits(policy, walked.groups, walked.st, tierOf, s);
@@ -749,9 +851,10 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
   // ---- units out ----
   const units: ArrUnit[] = [];
   const drafts: DraftUnit[] = all.map((x) => ({ key: x.key, kind: x.kind, tier: x.tier, members: x.members, dressing: x.dressing, groups: x.groups }));
+  const draftByKey = new Map(drafts.map((y) => [y.key, y]));
   for (const x of order) {
     const d = drawn.get(x.key)!, sl = slots.get(x.key)!, id = ids.get(x.key)!;
-    const draft = drafts.find((y) => y.key === x.key)!;
+    const draft = draftByKey.get(x.key)!;
     const em = policy.emphasis(draft, input.moment, ctx);
     units.push({
       id,
@@ -795,7 +898,16 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
       paint: facesPainted.get(un.key)!.at(-1)?.paint ?? 0,
     };
   });
-  const violations = auditUnits(c, audited, du);
+  // What is drawn follows from where each unit is and what it shows: the same placement is the same audit.
+  const signature = order
+    .map((x) => {
+      const sl = slots.get(x.key)!, top = x.members[0];
+      const bits = [...x.members, ...x.dressing].map((id) => (cardOf(id).tapped ? "t" : "r")).join("");
+      return `${ids.get(x.key)}:${x.kind}:${sl.row.index}:${sl.row.v.toFixed(6)}:${sl.u.toFixed(6)}:${sl.w.toFixed(6)}:${x.stands ? 1 : 0}:${x.show}:${x.members.join(",")}/${x.dressing.join(",")}:${bits}:${top !== undefined && cardOf(top).types.creature ? 1 : 0}`;
+    })
+    .join(";");
+  const auditKey = `${geometry}#${signature}`;
+  const violations = AUDITS.get(auditKey) ?? AUDITS.set(auditKey, auditUnits(c, audited, du));
   const bandOfUnit = new Map(units.map((un) => [un.id, slots.get(un.key)!.band.index]));
 
   // ---- used bounds ----
@@ -808,7 +920,8 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     ? { left: Math.min(...pts.map((p) => p.x)), right: Math.max(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), bottom: Math.max(...pts.map((p) => p.y)) }
     : { left: 0, right: 0, top: 0, bottom: 0 };
 
-  const placedList = order.map((x) => ({ unit: units.find((un) => un.key === x.key)!, row: slots.get(x.key)!.row, u: slots.get(x.key)!.u, w: slots.get(x.key)!.w, stands: x.stands, show: x.show }));
+  const unitByKey = new Map(units.map((un) => [un.key, un]));
+  const placedList = order.map((x) => ({ unit: unitByKey.get(x.key)!, row: slots.get(x.key)!.row, u: slots.get(x.key)!.u, w: slots.get(x.key)!.w, stands: x.stands, show: x.show }));
 
   return {
     units,
@@ -820,6 +933,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     unplaced: { actors: [...new Set(actors)].sort((a, b) => a - b), other: [...new Set(other)].sort((a, b) => a - b) },
     bandOfUnit,
     rows: laid.rows,
+    signature,
     edits: walked.records,
     used: { frame: frameRect, screen: screenRect },
     placed: placedList,

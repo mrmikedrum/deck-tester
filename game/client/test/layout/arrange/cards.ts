@@ -128,6 +128,7 @@ export function inputOf(r: Run): ArrangeInput {
     memory: r.memory ?? null,
     clock: { ...CLOCK, ...r.clock },
     ...(r.selection ? { selection: r.selection } : {}),
+    ...(r.poses?.length ? { auditPoses: true } : {}),
   } as ArrangeInput;
 }
 

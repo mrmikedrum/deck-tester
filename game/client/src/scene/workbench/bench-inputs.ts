@@ -4,7 +4,7 @@
 // `planTable`, with memory carried from one plan to the next. Pure: no DOM, no clock (the callers time it).
 import { decodeCatalog, modelOf, playerViewer } from "../../model";
 import type { TableModel } from "../../model";
-import { planTable, tableInputOf } from "../../layout";
+import { clearArrangeCaches, planTable, tableInputOf } from "../../layout";
 import type { TablePlan } from "../../layout";
 import { decodeSnapshot } from "../../protocol";
 
@@ -34,6 +34,16 @@ export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
 }
 
 export const VIEWPORT = { w: 1180, h: 820 } as const;
+
+/**
+ * The same plan as if the shadow leaf's cards had just changed: what the engine keeps between plans is forgotten (all but
+ * its rows, which follow the container's geometry), so the leaf is arranged from scratch. A snapshot that changes a seat
+ * costs this; one that does not, `planFrame`'s.
+ */
+export function planFrameChanged(f: Frame, prev: TablePlan | null): TablePlan {
+  clearArrangeCaches(true);
+  return planFrame(f, prev);
+}
 
 /** The same frame planned by `mat` alone, memory carried the same way: what the shadow leaf adds is the difference. */
 export function planMatOnly(f: Frame, prev: TablePlan | null): TablePlan {

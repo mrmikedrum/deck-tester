@@ -26,6 +26,8 @@ export interface ShadowInput {
   readonly memory: ContainerMemory | null;
   /** Force a policy (a debug switch); else the seat's choice from its battlefield. */
   readonly policy?: string;
+  /** Audit the leaf under the parted pose too (goldens, the bench's report): it only reports. */
+  readonly auditPoses?: boolean;
 }
 
 export interface ShadowPlan {
@@ -40,6 +42,7 @@ export interface ShadowOptions {
   readonly decision?: DecisionFacts;
   readonly memory?: ContainerMemory | null;
   readonly policy?: string;
+  readonly auditPoses?: boolean;
 }
 
 /** The across seat's input from the model: its battlefield as `boardOf` draws it, read from current types. */
@@ -57,6 +60,7 @@ export function shadowInputOf(model: TableModel, seat: SeatId, involved: Readonl
     clock: { turn: model.turn, phase: model.phase, active: model.active, settling },
     memory: o.memory ?? null,
     ...(o.policy !== undefined ? { policy: o.policy } : {}),
+    ...(o.auditPoses ? { auditPoses: true } : {}),
   };
 }
 
@@ -76,6 +80,7 @@ export function shadowPlan(s: ShadowInput, slot: SeatSlot, projector: Projector,
       ...(chosen.selection ? { selection: chosen.selection } : {}),
       memory: s.memory,
       clock: s.clock,
+      ...(s.auditPoses ? { auditPoses: true } : {}),
     });
     return { seat: s.seat, policy: result.fit.policy, result, error: null };
   } catch (e) {

@@ -11,3 +11,4 @@ export { readyTapped } from "./policies/ready-tapped";
 export { works } from "./policies/works";
 export { POLICIES, policyFor, creatureShare } from "./policies/select";
 export { validateIntent } from "./validate";
+export { clearArrangeCaches } from "./memo";

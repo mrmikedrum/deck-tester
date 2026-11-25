@@ -110,8 +110,13 @@ export const hasAbilities = (c: Card): boolean =>
 
 /** live.js `manaValue`: the braced cost's mana value, X counting 0 and every other symbol 1. */
 export function manaValue(c: Card): number {
+  return costValue(c.face.cost);
+}
+
+/** A braced cost's mana value ("{2}{G}{G}" is 4), X counting 0. */
+export function costValue(cost: string): number {
   let n = 0;
-  for (const t of c.face.cost.match(/\{([^}]+)\}/g) ?? []) {
+  for (const t of cost.match(/\{([^}]+)\}/g) ?? []) {
     const x = t.slice(1, -1);
     n += /^\d+$/.test(x) ? +x : x === "X" ? 0 : 1;
   }
@@ -130,6 +135,11 @@ export function handOrder(a: Card, b: Card): number {
  * sorts a card, never decides what is legal. (From the by-relevance exploration.)
  */
 export function tableReach(c: Card): "table" | "self" {
-  const text = c.face.text.replace(/\([^)]*\)/g, "");
+  return textReach(c.face.text);
+}
+
+/** `tableReach` of a rules text. */
+export function textReach(rules: string): "table" | "self" {
+  const text = rules.replace(/\([^)]*\)/g, "");
   return /\beach player\b|\beach spell\b|\bopponents?\b|\bspells?\s[^.]*\bcosts?\s+\{|\bcosts? \{[^}]+\} more\b|\bcan't\b/i.test(text) ? "table" : "self";
 }

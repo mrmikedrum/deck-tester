@@ -11,7 +11,7 @@ import "./ts-hooks.mjs";
 import { readFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 
-const { WARM, benchInputs, course, planFrame, planMatOnly, VIEWPORT } = await import("../client/src/scene/workbench/bench-inputs.ts");
+const { WARM, benchInputs, course, planFrame, planFrameChanged, planMatOnly, VIEWPORT } = await import("../client/src/scene/workbench/bench-inputs.ts");
 
 const args = process.argv.slice(2);
 const json = args.includes("--json");
@@ -53,7 +53,7 @@ function time(input, plan) {
 
 const rows = [];
 for (const input of inputs) {
-  const on = time(input, planFrame), off = time(input, planMatOnly);
+  const on = time(input, planFrame), changed = time(input, planFrameChanged), off = time(input, planMatOnly);
   const e = on.plans;
   const n = (k) => Math.max(...e.map((x) => x[k]));
   rows.push({
@@ -61,6 +61,7 @@ for (const input of inputs) {
     what: input.what,
     plans: on.times.length,
     withShadow: stats(on.times),
+    leafChanged: stats(changed.times),
     matOnly: stats(off.times),
     engine: {
       policy: [...new Set(e.map((x) => x.policy))].join(","),
@@ -79,10 +80,10 @@ if (json) console.log(JSON.stringify({ node: process.version, viewport: VIEWPORT
 else {
   const ms = (x) => x.toFixed(2).padStart(6);
   console.log(`planTable at ${VIEWPORT.w}x${VIEWPORT.h}, Node ${process.version}, ${runs} plans per input (ms per plan; budget 8 on the iPad)`);
-  console.log("input        with the shadow leaf          mat only                      engine: candidates audits(+poses) units violations parted");
-  console.log("             median    p90  worst          median    p90  worst");
+  console.log("input        with the shadow leaf    the leaf changed        mat only                engine: estimates units violations");
+  console.log("             median   p90 worst       median   p90 worst       median   p90 worst");
   for (const r of rows)
     console.log(
-      `${r.input.padEnd(12)} ${ms(r.withShadow.median)} ${ms(r.withShadow.p90)} ${ms(r.withShadow.worst)}        ${ms(r.matOnly.median)} ${ms(r.matOnly.p90)} ${ms(r.matOnly.worst)}          ${String(r.engine.candidates).padStart(4)} ${String(r.engine.audits).padStart(6)} ${String(r.engine.units).padStart(10)} ${String(r.engine.violations).padStart(5)} ${String(r.engine.partedViolations).padStart(6)}  ${r.engine.policy}${r.engine.errors ? ` ERRORS ${r.engine.errors}` : ""}`,
+      `${r.input.padEnd(12)} ${ms(r.withShadow.median)}${ms(r.withShadow.p90)}${ms(r.withShadow.worst)}      ${ms(r.leafChanged.median)}${ms(r.leafChanged.p90)}${ms(r.leafChanged.worst)}      ${ms(r.matOnly.median)}${ms(r.matOnly.p90)}${ms(r.matOnly.worst)}       ${String(r.engine.candidates).padStart(4)} ${String(r.engine.units).padStart(5)} ${String(r.engine.violations).padStart(5)}  ${r.engine.policy}${r.engine.errors ? ` ERRORS ${r.engine.errors}` : ""}`,
     );
 }

@@ -67,7 +67,7 @@ function onAcross(model: TableModel, seat: SeatId, policy?: Policy) {
   const clock = { turn: model.turn, phase: model.phase, active: model.active, settling: false };
   const chosen = policy ?? policyFor(cards, null, clock).policy;
   const container = leafContainer({ id: `rest:${seat}`, seat, viewer: model.viewer.perspective, slot: tpl.slots[2]!, projector: proj, safe: { left: 0, top: 0, right: VP.w, bottom: VP.h }, poses: [PARTED] });
-  const r = arrange({ container, cards, relations: NO_RELATIONS, acting: NO_ACTING, moment: momentOf(model), policy: chosen, memory: null, clock });
+  const r = arrange({ container, cards, relations: NO_RELATIONS, acting: NO_ACTING, moment: momentOf(model), policy: chosen, memory: null, clock, auditPoses: true });
   return { r, cards };
 }
 
