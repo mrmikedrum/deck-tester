@@ -1,11 +1,22 @@
 // 9. mulligan / confirm / "Let Forge decide"; 10. refusals; f. new games and reconnects while an answer is pending;
 // g. empty and startup states.
-const { test, expect, NEW, snapshot, withDecision, find, inHand, opponentSpell, keyOf } = require("./harness.js");
+const { test, expect, NEW, snapshot, withDecision, find, inHand, opponentSpell, keyOf, locate } = require("./harness.js");
 const { label } = require("./labels.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
 const mulligan = s => withDecision(s, { kind: "mulligan", prompt: "Keep this hand?", options: ["Keep", "Mulligan"], min: 1, max: 1 });
 const confirm = s => withDecision(s, { kind: "confirm", prompt: "Use Sol Ring?", options: ["Yes", "No"], min: 1, max: 1 });
+
+test("the sift caption keeps the close stud inside its button", async ({ table }) => {
+  test.skip(!NEW, "The sift caption belongs to the TypeScript client");
+  await table.open("main");
+  await table.tap(await locate(table.page, { pile: "ana" }));
+  const close = table.page.locator(".l-sift").getByRole("button", { name: "Put back" });
+  await expect(close).toHaveCSS("position", "relative");
+  expect(await close.evaluate(button => button.offsetWidth)).toBe(44);
+  await table.press("Put back");
+  await expect(table.page.locator(".l-sift")).toBeHidden();
+});
 
 test.describe("mulligan and confirm", () => {
   test("Keep sends [1], Mulligan sends [2]; the hand is over the table", async ({ table }) => {
