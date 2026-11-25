@@ -1,0 +1,307 @@
+{
+ "answer": null,
+ "state": "playing",
+ "gen": 1,
+ "view": {
+  "turn": 2,
+  "label": "T1 main1",
+  "active": "You",
+  "phase": "MAIN1",
+  "priority": "You",
+  "me": "You",
+  "players": [
+   {
+    "name": "You",
+    "life": 40,
+    "manaPool": {},
+    "hand": [
+     {
+      "id": 33,
+      "name": "Haywire Mite",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact Creature - Insect",
+      "cost": "1",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "When Haywire Mite dies, you gain 2 life.\n{G}, Sacrifice Haywire Mite: Exile target noncreature artifact or noncreature enchantment."
+     },
+     {
+      "id": 50,
+      "name": "Plains",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Plains",
+      "text": "({T}: Add {W}.)"
+     },
+     {
+      "id": 37,
+      "name": "Sandstorm Salvager",
+      "owner": "You",
+      "controller": "You",
+      "type": "Creature - Human Artificer",
+      "cost": "2 {G}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "When Sandstorm Salvager enters, create a 3/3 colorless Golem artifact creature token.\n{2}, {T}: Put a +1/+1 counter on each creature token you control. They gain trample until end of turn."
+     },
+     {
+      "id": 23,
+      "name": "Forest",
+      "owner": "You",
+      "controller": "You",
+      "type": "Basic Land - Forest",
+      "text": "({T}: Add {G}.)"
+     },
+     {
+      "id": 55,
+      "name": "Sol Ring",
+      "owner": "You",
+      "controller": "You",
+      "type": "Artifact",
+      "cost": "1",
+      "text": "{T}: Add {C}{C}."
+     },
+     {
+      "id": 27,
+      "name": "Cosmic Rebirth",
+      "owner": "You",
+      "controller": "You",
+      "type": "Instant",
+      "cost": "1 {G} {W}",
+      "text": "Choose target permanent card in your graveyard. If it has mana value 3 or less, you may put it onto the battlefield. If you don't put it onto the battlefield, put it into your hand.\nYou gain 3 life."
+     },
+     {
+      "id": 89,
+      "name": "Dyadrine, Synthesis Amalgam",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Artifact Creature - Construct",
+      "cost": "{X} {G} {W}",
+      "power": 0,
+      "toughness": 1,
+      "sick": true,
+      "keywords": [
+       "Trample"
+      ],
+      "text": "Trample\nDyadrine enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\nWhenever you attack, you may remove a +1/+1 counter from each of two creatures you control. If you do, draw a card and create a colorless 2/2 Robot artifact creature token."
+     },
+     {
+      "id": 30,
+      "name": "Karn's Bastion",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}: Add {C}.\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     }
+    ],
+    "library": 91,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 100,
+      "name": "Marath, Will of the Wild",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Creature - Elemental Beast",
+      "cost": "{R} {G} {W}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "commander": true,
+      "text": "Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\n{X}, Remove X +1/+1 counters from Marath: Choose one —\n• Put X +1/+1 counters on target creature. X can't be 0.\n• Marath deals X damage to any target. X can't be 0.\n• Create an X/X green Elemental creature token. X can't be 0."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Atraxa",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 92,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 301,
+      "name": "Atraxa, Praetors' Voice",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Creature - Phyrexian Angel Horror",
+      "cost": "{G} {W} {U} {B}",
+      "power": 4,
+      "toughness": 4,
+      "sick": true,
+      "commander": true,
+      "keywords": [
+       "Flying",
+       "Vigilance",
+       "Deathtouch",
+       "Lifelink"
+      ],
+      "text": "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Dack",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 92,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 502,
+      "name": "Dack Fayden, Helping Hand",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Creature - Human Advisor",
+      "cost": "4 {W} {W}",
+      "power": 4,
+      "toughness": 6,
+      "sick": true,
+      "commander": true,
+      "text": "When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Princess",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 91,
+    "battlefield": [
+     {
+      "id": 630,
+      "name": "Island",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Island"
+     }
+    ],
+    "command": [
+     {
+      "id": 703,
+      "name": "Princess Yue",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Legendary Creature - Human Noble Ally",
+      "cost": "2 {U}",
+      "power": 3,
+      "toughness": 2,
+      "sick": true,
+      "commander": true,
+      "text": "When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.)\n{T}: Scry 2."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   }
+  ],
+  "stack": [],
+  "log": [
+   {
+    "i": 0,
+    "type": "MULLIGAN",
+    "text": "You has mulliganed down to 7 cards."
+   },
+   {
+    "i": 1,
+    "type": "MULLIGAN",
+    "text": "Atraxa has mulliganed down to 7 cards."
+   },
+   {
+    "i": 2,
+    "type": "MULLIGAN",
+    "text": "Princess has kept a hand of 7 cards"
+   },
+   {
+    "i": 3,
+    "type": "MULLIGAN",
+    "text": "You has kept a hand of 7 cards"
+   },
+   {
+    "i": 4,
+    "type": "MULLIGAN",
+    "text": "Atraxa has kept a hand of 7 cards"
+   },
+   {
+    "i": 5,
+    "type": "MULLIGAN",
+    "text": "Dack has kept a hand of 7 cards"
+   },
+   {
+    "i": 6,
+    "type": "TURN",
+    "text": "Turn 1 (Princess)"
+   },
+   {
+    "i": 11,
+    "type": "LAND",
+    "text": "Princess played Island (630)",
+    "card": 630
+   },
+   {
+    "i": 21,
+    "type": "TURN",
+    "text": "Turn 2 (You)"
+   }
+  ]
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T1 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Plains (land)",
+   "Forest (land)",
+   "Karn's Bastion (land)"
+  ],
+  "details": [
+   "pass priority",
+   "Plains — Basic Land - Plains — ({T}: Add {W}.)",
+   "Forest — Basic Land - Forest — ({T}: Add {G}.)",
+   "Karn's Bastion — Land — {T}: Add {C}. / {4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true,
+  "refs": [
+   {},
+   {
+    "card": 50,
+    "spell": true
+   },
+   {
+    "card": 23,
+    "spell": true
+   },
+   {
+    "card": 30,
+    "spell": true
+   }
+  ],
+  "id": 3
+ },
+ "over": null,
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 6,
+ "error": null,
+ "build": null
+}

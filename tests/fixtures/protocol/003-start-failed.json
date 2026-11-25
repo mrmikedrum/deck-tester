@@ -1,0 +1,7 @@
+{
+ "answer": null,
+ "state": "error",
+ "error": "no deck no-such-deck: the deck database is empty; run deckmaster deck sync",
+ "v": 1,
+ "build": null
+}

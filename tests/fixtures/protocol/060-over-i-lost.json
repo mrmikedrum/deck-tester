@@ -1,0 +1,631 @@
+{
+ "answer": null,
+ "state": "over",
+ "gen": 1,
+ "view": {
+  "turn": 28,
+  "label": "T4 Atraxa first-strike",
+  "active": "Atraxa",
+  "phase": "COMBAT_FIRST_STRIKE_DAMAGE",
+  "priority": "Atraxa",
+  "me": "You",
+  "players": [
+   {
+    "name": "Atraxa",
+    "life": 372,
+    "manaPool": {},
+    "poison": 4,
+    "monarch": true,
+    "handCount": 3,
+    "library": 72,
+    "battlefield": [
+     {
+      "id": 266,
+      "name": "Breeding Pool",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Forest Island",
+      "text": "As Breeding Pool enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 835,
+      "name": "Swamp",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 836,
+      "name": "Swamp",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 837,
+      "name": "Swamp",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Swamp",
+      "tapped": true
+     },
+     {
+      "id": 838,
+      "name": "Mountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 839,
+      "name": "Mountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 840,
+      "name": "Mountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Mountain",
+      "tapped": true
+     },
+     {
+      "id": 239,
+      "name": "Godless Shrine",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Plains Swamp",
+      "text": "As Godless Shrine enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 236,
+      "name": "Arcane Signet",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact",
+      "cost": "2",
+      "text": "{T}: Add one mana of any color in your commander's color identity."
+     },
+     {
+      "id": 251,
+      "name": "The Ozolith",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Artifact",
+      "cost": "1",
+      "text": "<span style=\"color:gray;\">Whenever a creature you control leaves the battlefield, if it had counters on it, put those counters on The Ozolith.</span>\r\n\r\n<span style=\"color:gray;\">At the beginning of combat on your turn, if The Ozolith has counters on it, you may move all counters from The Ozolith onto target creature.</span>"
+     },
+     {
+      "id": 223,
+      "name": "Forest",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Forest",
+      "tapped": true
+     },
+     {
+      "id": 248,
+      "name": "Plains",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Plains",
+      "tapped": true
+     },
+     {
+      "id": 229,
+      "name": "Karn's Bastion",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "tapped": true,
+      "text": "{T}: Add {C}.\r\n\r\n{4}, {T}: Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     },
+     {
+      "id": 276,
+      "name": "Sword of Truth and Justice",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact - Equipment",
+      "cost": "3",
+      "attachedTo": 301,
+      "text": "<span style=\"color:gray;\">Whenever equipped creature deals combat damage to a player, put a +1/+1 counter on a creature you control, then proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)</span>\r\n\r\nEquipped creature gets +2/+2 and has protection from white and from blue.\r\n\r\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)"
+     },
+     {
+      "id": 297,
+      "name": "Reflecting Pool",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}: Add one mana of any type that a land you control could produce."
+     },
+     {
+      "id": 220,
+      "name": "Island",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Basic Land - Island"
+     },
+     {
+      "id": 301,
+      "name": "Atraxa, Praetors' Voice",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Creature - Phyrexian Angel Horror",
+      "cost": "{G} {W} {U} {B}",
+      "power": 228,
+      "toughness": 228,
+      "commander": true,
+      "counters": {
+       "+1/+1": 222
+      },
+      "keywords": [
+       "Flying",
+       "Vigilance",
+       "Deathtouch",
+       "Lifelink",
+       "First strike"
+      ],
+      "text": "Flying, vigilance, deathtouch, lifelink, protection from white, protection from blue, first strike\r\n\r\n<span style=\"color:gray;\">At the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)</span>"
+     },
+     {
+      "id": 206,
+      "name": "Glissa, Herald of Predation",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Creature - Phyrexian Zombie Elf",
+      "cost": "3 {B} {G}",
+      "power": 218,
+      "toughness": 220,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 215
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch\r\n\r\n<span style=\"color:gray;\">At the beginning of combat on your turn, choose one —\r\n• Incubate 2 twice. (To incubate 2, create an Incubator token with two +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)\r\n• Transform all Incubator tokens you control.\r\n• Phyrexians you control gain first strike and deathtouch until end of turn.</span>"
+     },
+     {
+      "id": 900,
+      "name": "Phyrexian Token",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact Creature - Phyrexian",
+      "power": 218,
+      "toughness": 218,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 218
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch"
+     },
+     {
+      "id": 902,
+      "name": "Phyrexian Token",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact Creature - Phyrexian",
+      "power": 218,
+      "toughness": 218,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 218
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch"
+     },
+     {
+      "id": 282,
+      "name": "Ouroboroid",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Plant Wurm",
+      "cost": "2 {G} {G}",
+      "power": 216,
+      "toughness": 218,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 215
+      },
+      "text": "<span style=\"color:gray;\">At the beginning of combat on your turn, put X +1/+1 counters on each creature you control, where X is this creature's power.</span>"
+     },
+     {
+      "id": 904,
+      "name": "Phyrexian Token",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact Creature - Phyrexian",
+      "power": 214,
+      "toughness": 214,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 214
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch"
+     },
+     {
+      "id": 906,
+      "name": "Phyrexian Token",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact Creature - Phyrexian",
+      "power": 214,
+      "toughness": 214,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 214
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch"
+     },
+     {
+      "id": 243,
+      "name": "Loading Zone",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Enchantment",
+      "cost": "3 {G}",
+      "text": "If one or more counters would be put on a creature, Spacecraft, or Planet you control, twice that many of each of those kinds of counters are put on it instead.\r\n\r\nWarp  {G} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)"
+     },
+     {
+      "id": 285,
+      "name": "Temple Garden",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Forest Plains",
+      "text": "As Temple Garden enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 834,
+      "name": "Blighted Agent",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Phyrexian Human Rogue",
+      "cost": "1 {U}",
+      "power": 195,
+      "toughness": 195,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 194
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.), first strike, deathtouch\r\n\r\nBlighted Agent can't be blocked."
+     },
+     {
+      "id": 245,
+      "name": "Hallowed Fountain",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Plains Island",
+      "text": "As Hallowed Fountain enters, you may pay 2 life. If you don't, it enters tapped."
+     },
+     {
+      "id": 910,
+      "name": "Phyrexian Token",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact Creature - Phyrexian",
+      "power": 151,
+      "toughness": 151,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 151
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch"
+     },
+     {
+      "id": 912,
+      "name": "Phyrexian Token",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact Creature - Phyrexian",
+      "power": 151,
+      "toughness": 151,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 151
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch"
+     },
+     {
+      "id": 259,
+      "name": "Cankerbloom",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Phyrexian Fungus",
+      "cost": "1 {G}",
+      "power": 147,
+      "toughness": 146,
+      "tapped": true,
+      "counters": {
+       "+1/+1": 144
+      },
+      "keywords": [
+       "Deathtouch",
+       "First strike"
+      ],
+      "text": "First strike, deathtouch\r\n\r\n{1}, Sacrifice Cankerbloom: Choose one —\r\n• Destroy target artifact.\r\n• Destroy target enchantment.\r\n• Proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     },
+     {
+      "id": 267,
+      "name": "Adagia, Windswept Bastion",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land - Planet",
+      "tapped": true,
+      "counters": {
+       "Charge": 1008
+      },
+      "text": "This land enters tapped.\r\n\r\nSTATION 12+ {3}{W}, {T}: Create a token that's a copy of target artifact or enchantment you control, except it's legendary. Activate only as a sorcery.\r\n\r\n{T}: Add {W}.\r\n\r\n{3}{W}, {T}: Create a token that's a copy of target artifact or enchantment you control, except it's legendary. Activate only as a sorcery.\r\n\r\n Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It’s an artifact creature at 12+.)"
+     },
+     {
+      "id": 203,
+      "name": "Recon Craft Theta",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Artifact - Vehicle",
+      "cost": "4",
+      "keywords": [
+       "Flying"
+      ],
+      "text": "Flying\r\n\r\nCrew 2 (Tap any number of creatures you control with total power 2 or more: This Vehicle becomes an artifact creature until end of turn.)\r\n\r\n<span style=\"color:gray;\">When Recon Craft Theta enters, create a 0/0 blue Alien creature token. Put a +1/+1 counter on it.</span>\r\n\r\n<span style=\"color:gray;\">Whenever Recon Craft Theta attacks, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)</span>"
+     },
+     {
+      "id": 914,
+      "name": "Alien Token",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Alien",
+      "power": 146,
+      "toughness": 146,
+      "sick": true,
+      "tapped": true,
+      "token": true,
+      "counters": {
+       "+1/+1": 146
+      }
+     }
+    ],
+    "command": [],
+    "graveyard": [
+     {
+      "id": 833,
+      "name": "Blighted Agent",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Phyrexian Human Rogue",
+      "cost": "1 {U}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "Infect (This creature deals damage to creatures in the form of -1/-1 counters and to players in the form of poison counters.)\nBlighted Agent can't be blocked."
+     },
+     {
+      "id": 842,
+      "name": "Doom Blade",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Instant",
+      "cost": "1 {B}",
+      "text": "Destroy target nonblack creature."
+     },
+     {
+      "id": 832,
+      "name": "Serra Angel",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Angel",
+      "cost": "3 {W} {W}",
+      "power": 4,
+      "toughness": 4,
+      "sick": true,
+      "keywords": [
+       "Flying",
+       "Vigilance"
+      ],
+      "text": "Flying, vigilance"
+     },
+     {
+      "id": 841,
+      "name": "Lightning Bolt",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Instant",
+      "cost": "{R}",
+      "text": "Lightning Bolt deals 3 damage to any target."
+     },
+     {
+      "id": 260,
+      "name": "Emergency Eject",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Instant",
+      "cost": "2 {W}",
+      "text": "Destroy target nonland permanent. Its controller creates a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")"
+     },
+     {
+      "id": 237,
+      "name": "Sandstorm Salvager",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Creature - Human Artificer",
+      "cost": "2 {G}",
+      "power": 1,
+      "toughness": 1,
+      "sick": true,
+      "text": "When Sandstorm Salvager enters, create a 3/3 colorless Golem artifact creature token.\n{2}, {T}: Put a +1/+1 counter on each creature token you control. They gain trample until end of turn."
+     },
+     {
+      "id": 886,
+      "name": "Gideon Jura",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Planeswalker - Gideon",
+      "cost": "3 {W} {W}",
+      "loyalty": 0,
+      "text": "[+2]: During target opponent's next turn, creatures that player controls attack Gideon Jura if able.\n[-2]: Destroy target tapped creature.\n[0]: Until end of turn, Gideon Jura becomes a 6/6 Human Soldier creature that's still a planeswalker. Prevent all damage that would be dealt to him this turn."
+     },
+     {
+      "id": 202,
+      "name": "Nature's Lore",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Sorcery",
+      "cost": "1 {G}",
+      "text": "Search your library for a Forest card, put that card onto the battlefield, then shuffle."
+     },
+     {
+      "id": 292,
+      "name": "Scalding Tarn",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Scalding Tarn: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 277,
+      "name": "Harmonize",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Sorcery",
+      "cost": "2 {G} {G}",
+      "text": "Draw three cards."
+     }
+    ],
+    "exile": [
+     {
+      "id": 252,
+      "name": "Final Frontier",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Sorcery",
+      "cost": "2 {G}",
+      "text": "Search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\nBeam me up {1}{G} (You may cast this card from your graveyard for {1}{G} if you also return a creature you control to its owner's hand. Then exile this spell.)"
+     }
+    ]
+   }
+  ],
+  "stack": [],
+  "combat": {
+   "attackers": [
+    {
+     "id": 301,
+     "defender": "Dack"
+    }
+   ],
+   "blockers": []
+  },
+  "log": [
+   {
+    "i": 1606,
+    "type": "LIFE",
+    "text": "Life: Dack 34 > -194"
+   },
+   {
+    "i": 1607,
+    "type": "PLAYER_CONTROL",
+    "text": "You has restored control over themself"
+   },
+   {
+    "i": 1608,
+    "type": "PLAYER_CONTROL",
+    "text": "Atraxa has restored control over themself"
+   },
+   {
+    "i": 1609,
+    "type": "PLAYER_CONTROL",
+    "text": "Dack has restored control over themself"
+   },
+   {
+    "i": 1610,
+    "type": "PLAYER_CONTROL",
+    "text": "Princess has restored control over themself"
+   },
+   {
+    "i": 1611,
+    "type": "GAME_OUTCOME",
+    "text": "Match Duration 9m : 20s"
+   },
+   {
+    "i": 1612,
+    "type": "GAME_OUTCOME",
+    "text": "Turn 14"
+   },
+   {
+    "i": 1613,
+    "type": "GAME_OUTCOME",
+    "text": "You has lost because of obtaining 10 poison counters"
+   },
+   {
+    "i": 1614,
+    "type": "GAME_OUTCOME",
+    "text": "Atraxa has won because all opponents have lost"
+   },
+   {
+    "i": 1615,
+    "type": "GAME_OUTCOME",
+    "text": "Dack has lost because life total reached 0"
+   },
+   {
+    "i": 1616,
+    "type": "GAME_OUTCOME",
+    "text": "Princess has lost because life total reached 0"
+   },
+   {
+    "i": 1617,
+    "type": "MATCH_RESULTS",
+    "text": "You: 0 Atraxa: 1 Dack: 0 Princess: 0 "
+   }
+  ],
+  "over": true
+ },
+ "decision": null,
+ "over": "over: Atraxa won",
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 343,
+ "error": null,
+ "build": null
+}

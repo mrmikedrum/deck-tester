@@ -1,0 +1,327 @@
+{
+ "answer": null,
+ "state": "playing",
+ "gen": 1,
+ "view": {
+  "turn": 2,
+  "label": "T1 main1",
+  "active": "You",
+  "phase": "MAIN1",
+  "priority": "You",
+  "me": "You",
+  "players": [
+   {
+    "name": "You",
+    "life": 40,
+    "manaPool": {},
+    "hand": [
+     {
+      "id": 92,
+      "name": "Kavaron, Memorial World",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land - Planet",
+      "text": "This land enters tapped.\n{T}: Add {R}.\nStation (Tap another creature you control: Put charge counters equal to its power on this Planet. Station only as a sorcery.)\nSTATION 12+\n{1}{R}, {T}: Sacrifice a land: Create a 2/2 colorless Robot artifact creature token, then creatures you control get +1/+0 and gain haste until end of turn."
+     },
+     {
+      "id": 65,
+      "name": "Tribute to the World Tree",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment",
+      "cost": "{G} {G} {G}",
+      "text": "Whenever a creature you control enters, draw a card if its power is 3 or greater. Otherwise, put two +1/+1 counters on it."
+     },
+     {
+      "id": 38,
+      "name": "Genesis Device",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Artifact",
+      "cost": "2 {G}",
+      "text": "When Genesis Device enters, search your library for a basic land card or Planet card, put it onto the battlefield tapped, then shuffle.\n{3}{G}{G}, {T}, Sacrifice Genesis Device: Sacrifice any number of lands you control, then search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle. Activate only as a sorcery."
+     },
+     {
+      "id": 3,
+      "name": "Grove of the Burnwillows",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}: Add {C}.\n{T}: Add {R} or {G}. Each opponent gains 1 life."
+     },
+     {
+      "id": 64,
+      "name": "Escape to the Wilds",
+      "owner": "You",
+      "controller": "You",
+      "type": "Sorcery",
+      "cost": "3 {R} {G}",
+      "text": "Exile the top five cards of your library. You may play cards exiled this way until the end of your next turn.\nYou may play an additional land this turn."
+     },
+     {
+      "id": 6,
+      "name": "Flooded Strand",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}, Pay 1 life, Sacrifice Flooded Strand: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle."
+     },
+     {
+      "id": 35,
+      "name": "Song of the Worldsoul",
+      "owner": "You",
+      "controller": "You",
+      "type": "Enchantment",
+      "cost": "4 {W} {W}",
+      "text": "Whenever you cast a spell, populate. (Create a token that's a copy of a creature token you control.)"
+     },
+     {
+      "id": 97,
+      "name": "Reflecting Pool",
+      "owner": "You",
+      "controller": "You",
+      "type": "Land",
+      "text": "{T}: Add one mana of any type that a land you control could produce."
+     }
+    ],
+    "library": 91,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 100,
+      "name": "Marath, Will of the Wild",
+      "owner": "You",
+      "controller": "You",
+      "type": "Legendary Creature - Elemental Beast",
+      "cost": "{R} {G} {W}",
+      "power": 0,
+      "toughness": 0,
+      "sick": true,
+      "commander": true,
+      "text": "Marath, Will of the Wild enters with a number of +1/+1 counters on it equal to the amount of mana spent to cast it.\n{X}, Remove X +1/+1 counters from Marath: Choose one —\n• Put X +1/+1 counters on target creature. X can't be 0.\n• Marath deals X damage to any target. X can't be 0.\n• Create an X/X green Elemental creature token. X can't be 0."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Atraxa",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 92,
+    "battlefield": [],
+    "command": [
+     {
+      "id": 301,
+      "name": "Atraxa, Praetors' Voice",
+      "owner": "Atraxa",
+      "controller": "Atraxa",
+      "type": "Legendary Creature - Phyrexian Angel Horror",
+      "cost": "{G} {W} {U} {B}",
+      "power": 4,
+      "toughness": 4,
+      "sick": true,
+      "commander": true,
+      "keywords": [
+       "Flying",
+       "Vigilance",
+       "Deathtouch",
+       "Lifelink"
+      ],
+      "text": "Flying, vigilance, deathtouch, lifelink\nAt the beginning of your end step, proliferate. (Choose any number of permanents and/or players, then give each another counter of each kind already there.)"
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   },
+   {
+    "name": "Dack",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 5,
+    "library": 92,
+    "battlefield": [
+     {
+      "id": 483,
+      "name": "Gemstone Caverns",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Land",
+      "counters": {
+       "Luck": 1
+      },
+      "text": "If Gemstone Caverns is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.\r\n\r\n{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color."
+     }
+    ],
+    "command": [
+     {
+      "id": 502,
+      "name": "Dack Fayden, Helping Hand",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Legendary Creature - Human Advisor",
+      "cost": "4 {W} {W}",
+      "power": 4,
+      "toughness": 6,
+      "sick": true,
+      "commander": true,
+      "text": "When Dack Fayden enters, reveal cards from the top of your library until you reveal X creature cards, where X is the number of opponents you have. Put those creature cards onto the battlefield, then shuffle. They're goaded for the rest of the game. For each of those permanents, choose a different opponent. Each opponent gains control of the permanent for which they were chosen."
+     }
+    ],
+    "graveyard": [],
+    "exile": [
+     {
+      "id": 485,
+      "name": "Deafening Silence",
+      "owner": "Dack",
+      "controller": "Dack",
+      "type": "Enchantment",
+      "cost": "{W}",
+      "text": "Each player can't cast more than one noncreature spell each turn."
+     }
+    ]
+   },
+   {
+    "name": "Princess",
+    "life": 40,
+    "manaPool": {},
+    "handCount": 7,
+    "library": 91,
+    "battlefield": [
+     {
+      "id": 643,
+      "name": "Island",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Basic Land - Island"
+     }
+    ],
+    "command": [
+     {
+      "id": 703,
+      "name": "Princess Yue",
+      "owner": "Princess",
+      "controller": "Princess",
+      "type": "Legendary Creature - Human Noble Ally",
+      "cost": "2 {U}",
+      "power": 3,
+      "toughness": 2,
+      "sick": true,
+      "commander": true,
+      "text": "When Princess Yue dies, if she was a nonland creature, return this card to the battlefield tapped under your control. She's a land named Moon. She gains \"{T}: Add {C}.\" (She's still legendary.)\n{T}: Scry 2."
+     }
+    ],
+    "graveyard": [],
+    "exile": []
+   }
+  ],
+  "stack": [],
+  "log": [
+   {
+    "i": 0,
+    "type": "MULLIGAN",
+    "text": "You has mulliganed down to 7 cards."
+   },
+   {
+    "i": 1,
+    "type": "MULLIGAN",
+    "text": "Atraxa has mulliganed down to 7 cards."
+   },
+   {
+    "i": 2,
+    "type": "MULLIGAN",
+    "text": "Dack has mulliganed down to 7 cards."
+   },
+   {
+    "i": 3,
+    "type": "MULLIGAN",
+    "text": "Princess has kept a hand of 7 cards"
+   },
+   {
+    "i": 4,
+    "type": "MULLIGAN",
+    "text": "You has kept a hand of 7 cards"
+   },
+   {
+    "i": 5,
+    "type": "MULLIGAN",
+    "text": "Atraxa has kept a hand of 7 cards"
+   },
+   {
+    "i": 6,
+    "type": "MULLIGAN",
+    "text": "Dack has kept a hand of 7 cards"
+   },
+   {
+    "i": 7,
+    "type": "TURN",
+    "text": "Turn 1 (Princess)"
+   },
+   {
+    "i": 12,
+    "type": "LAND",
+    "text": "Princess played Island (643)",
+    "card": 643
+   },
+   {
+    "i": 22,
+    "type": "TURN",
+    "text": "Turn 2 (You)"
+   }
+  ]
+ },
+ "decision": {
+  "kind": "play",
+  "turn": "T1 main1",
+  "prompt": "",
+  "options": [
+   "pass",
+   "Kavaron, Memorial World (land)",
+   "Grove of the Burnwillows (land)",
+   "Flooded Strand (land)",
+   "Reflecting Pool (land)"
+  ],
+  "details": [
+   "pass priority",
+   "Kavaron, Memorial World — Land - Planet — This land enters tapped. / {T}: Add {R}. / Station (Tap another creature you control: Put charge counters equal to its power on this Planet. Station only as a sorcery.) / STATION 12+ / {1}{R}, {T}: Sacrifice a land: Create a 2/2 colorless Robot artifact creature token, then creatures you control get +1/+0 and gain haste until end of turn.",
+   "Grove of the Burnwillows — Land — {T}: Add {C}. / {T}: Add {R} or {G}. Each opponent gains 1 life.",
+   "Flooded Strand — Land — {T}, Pay 1 life, Sacrifice Flooded Strand: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle.",
+   "Reflecting Pool — Land — {T}: Add one mana of any type that a land you control could produce."
+  ],
+  "min": 1,
+  "max": 1,
+  "repeat": false,
+  "mine": true,
+  "refs": [
+   {},
+   {
+    "card": 92,
+    "spell": true
+   },
+   {
+    "card": 3,
+    "spell": true
+   },
+   {
+    "card": 6,
+    "spell": true
+   },
+   {
+    "card": 97,
+    "spell": true
+   }
+  ],
+  "id": 3
+ },
+ "over": null,
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 6,
+ "error": null,
+ "build": null
+}

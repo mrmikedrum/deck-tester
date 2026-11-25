@@ -171,13 +171,23 @@ public final class Server {
             case "decision":
                 return progress(session);
             case "answer": {
+                String by = request.has("by") ? request.get("by").getAsString() : "agent";
+                Double confidence = request.has("p") ? request.get("p").getAsDouble() : null;
+                boolean defer = request.has("defer") && request.get("defer").getAsBoolean();
+                if (request.has("id")) {
+                    // a client that shows the game names the decision it answers: refused unless it is still parked
+                    List<Integer> picks = new ArrayList<>();
+                    if (!defer) {
+                        request.getAsJsonArray("answer").forEach(e -> picks.add(e.getAsInt()));
+                    }
+                    session.channel.answerIf(request.get("id").getAsLong(), defer ? Channel.DEFER : picks, by, confidence);
+                    return progress(session);
+                }
                 Decision pending = session.channel.pending();
                 if (pending == null) {
                     return progress(session);
                 }
-                String by = request.has("by") ? request.get("by").getAsString() : "agent";
-                Double confidence = request.has("p") ? request.get("p").getAsDouble() : null;
-                if (request.has("defer") && request.get("defer").getAsBoolean()) {
+                if (defer) {
                     session.channel.defer(by, confidence);
                     return progress(session);
                 }
@@ -199,9 +209,9 @@ public final class Server {
             case "view": {
                 // no waiting: a client shows the game while Forge plays it
                 Map<String, Object> reply = ok();
-                Decision pending = session.channel.pending();
-                if (pending != null) {
-                    reply.put("decision", pending);
+                Channel.Parked parked = session.channel.parked();
+                if (parked != null) {
+                    reply.put("decision", numbered(parked));
                 } else if (session.channel.isFinished()) {
                     reply.put("over", session.over);
                 }
@@ -430,7 +440,8 @@ public final class Server {
     /** Wait for the game to park on a decision or finish, then describe where it stands. A fork that does neither
      * in time has stalled: that is recorded on its parent with where Forge was, and the request fails. */
     private Map<String, Object> progress(Session session) throws InterruptedException {
-        Decision decision = session.channel.await(session.parent == null ? WAIT_MILLIS : FORK_WAIT_MILLIS);
+        Channel.Parked parked = session.channel.awaitParked(session.parent == null ? WAIT_MILLIS : FORK_WAIT_MILLIS);
+        Decision decision = parked == null ? null : parked.decision();
         if (decision == null && !session.channel.isFinished() && session.parent != null) {
             String where = session.where();
             Session parent = sessions.get(session.parent);
@@ -444,12 +455,19 @@ public final class Server {
         reply.put("session", session.id);
         reply.put("records", session.recordFile.toString());
         if (decision != null) {
-            reply.put("decision", decision);
+            reply.put("decision", numbered(parked));
         } else if (session.channel.isFinished()) {
             reply.put("over", session.over);
         } else {
             reply.put("running", true);
         }
         return reply;
+    }
+
+    /** A parked decision as clients read it: its fields and its number, `id`, which an answer may name. */
+    private static JsonObject numbered(Channel.Parked parked) {
+        JsonObject json = GSON.toJsonTree(parked.decision()).getAsJsonObject();
+        json.addProperty("id", parked.id());
+        return json;
     }
 }

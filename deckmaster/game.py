@@ -5,11 +5,19 @@ table engine. Card art comes from Scryfall, cached in .deckmaster/cache/cards/ a
 canvases stay same-origin.
 
     bin/deckmaster game [--port 8765]     then open http://<this machine>:<port>/live.html
+
+The rebuilt client (game/client/src, TypeScript) is served from its build at /next/, rebuilt on start when stale. The
+protocol both clients read is in docs/architecture.md ("The game's protocol").
 """
+import collections
+import hashlib
 import json
 import mimetypes
+import os
 import re
+import shutil
 import socket
+import subprocess
 import threading
 import time
 import traceback
@@ -21,8 +29,11 @@ from pathlib import Path
 from . import decks, engine, model, table
 
 ROOT = Path(__file__).resolve().parent.parent
-CLIENT = ROOT / "game" / "client"
+GAME = ROOT / "game"
+CLIENT = GAME / "client"
+DIST = CLIENT / "dist"   # the new client's build, served at /next/
 CACHE = engine.HOME / "cache" / "cards"
+CLIENTLOG = engine.HOME / "clientlog.jsonl"
 UA = {"User-Agent": "deckmaster-game/0.1", "Accept": "application/json"}
 ARGS = None
 
@@ -33,8 +44,12 @@ class Table:
     def __init__(self):
         self.lock = threading.Condition()
         self.version = 0
-        self.snapshot = {"state": "no game"}
-        self.mine = None
+        self.snapshot = {"state": "no game", "answer": None}
+        self.status = None   # the last forwarded answer: {key, id, attempt, state: working|applied|refused, error?}
+        self.answers = 0     # numbers each forwarded answer (its `attempt`), so a late reply never overwrites a newer
+                             # status; a new game bumps it too, so an attempt never repeats while the bridge runs
+        self.mine = None     # my seat's engine session in the newest game (opened before its first view arrives)
+        self.session = None  # the engine session whose view the snapshot shows: where its decision is answered
         self.seats = {}
         self.generation = 0
         self.error = None
@@ -44,11 +59,43 @@ class Table:
         self.outcomes = {}
 
     def publish(self, snap):
+        """A snapshot no engine session stands behind (starting, a failed start): nothing in it can be answered."""
         with self.lock:
-            if snap != self.snapshot:
-                self.snapshot = snap
-                self.version += 1
-                self.lock.notify_all()
+            self.session = None
+            self._store(dict(snap, answer=self.status))
+
+    def show(self, snap, gen, session):
+        """A view `session` sent for game `gen`, unless a newer game has begun since it was asked for. Whether shown."""
+        with self.lock:
+            if gen != self.generation:
+                return False
+            self.session = session
+            self._store(dict(snap, answer=self.status))
+            return True
+
+    def begin(self):
+        """A new game: its gen, published as starting; whatever the last game's answer and watcher do now is ignored."""
+        with self.lock:
+            self.generation += 1
+            self.answers += 1
+            self.status = None
+            self.session = None
+            self._store({"state": "starting", "gen": self.generation, "answer": None})
+            return self.generation
+
+    def _store(self, snap):
+        """Hold the lock. A changed snapshot is a new version, and wakes the long polls."""
+        if snap != self.snapshot:
+            self.snapshot = snap
+            self.version += 1
+            self.lock.notify_all()
+
+    def _answered(self, serial, status):
+        """The answer status, unless a newer answer or a new game has replaced the answer it is about."""
+        with self.lock:
+            if serial == self.answers:
+                self.status = status
+                self._store(dict(self.snapshot, answer=status))
 
     def wait(self, since, timeout=20):
         with self.lock:
@@ -64,13 +111,11 @@ class Table:
         mine = decks.get(me[:-4] if me.endswith(".txt") else me)
         agents = [configured_seat(slug) for slug in others]
         model.key()  # check configured Jev access; never expose the key in a response or log
+        gen = self.begin()
         try:
             engine.request({"cmd": "table_end"})
         except engine.EngineError:
             pass
-        self.generation += 1
-        gen = self.generation
-        self.publish({"state": "starting", "gen": gen})
         seats = []
         self.usage, self.outcomes, self.pilots = model.Usage(), {}, {"You": "human"}
         names = {"You"}
@@ -102,7 +147,7 @@ class Table:
         for agent in agents:
             sid = self.seats[agent.name]
             threading.Thread(target=self.jev_seat, args=(agent, sid, gen, len(seats)), daemon=True).start()
-        threading.Thread(target=self.watch, args=(gen,), daemon=True).start()
+        threading.Thread(target=self.watch, args=(gen, self.mine), daemon=True).start()
         return reply
 
     def jev_seat(self, seat, sid, gen, players):
@@ -113,14 +158,15 @@ class Table:
                 self.error = f"{seat.name}'s Jev pilot stopped: {error}"
                 print(self.error, flush=True)
 
-    def watch(self, gen):
+    def watch(self, gen, session):
+        """Game `gen`'s watcher: polls its own seat's view until a newer game begins. A view that comes back after that
+        is dropped (`show` checks the gen under the lock), so it never overwrites the newer game's snapshot."""
         last_ok = time.time()
         while gen == self.generation:
             try:
-                reply = engine.request({"cmd": "view", "session": self.mine})
-                snap = {"state": "over" if "over" in reply else "playing", "gen": gen, "view": reply.get("view"),
-                        "decision": reply.get("decision"), "over": reply.get("over"), "pilots": self.pilots}
-                self.publish(snap)
+                reply = engine.request({"cmd": "view", "session": session})
+                if not self.show(snapshot(reply, gen, self.pilots), gen, session):
+                    return
                 last_ok = time.time()
                 time.sleep(0.12 if reply.get("decision") else 0.25)
             except Exception as error:  # a read while Forge moves cards can fail: read again
@@ -129,12 +175,31 @@ class Table:
                 time.sleep(0.1)
 
     def answer(self, body):
-        pending = self.snapshot.get("decision")
-        if not pending:
-            return {"ok": False, "error": "nothing to answer"}
-        if body.get("key") and body["key"] != key(pending):
-            return {"ok": False, "error": "that decision has passed"}
-        req = {"cmd": "answer", "session": self.mine}
+        """Forward an answer to the pending decision. The reply is the engine's refusal if it comes at once, else
+        {ok: true} after 0.6 s (the old client reads only this), with the answer's `attempt` once it is forwarded; the snapshot's `answer` status follows it to the end:
+        working while the engine plays on to the next decision, then applied or refused. The decision is named by the
+        engine's `id` when it has one (the new client sends it; the old client's key is checked, then the pending
+        decision's id goes to the engine), so the engine answers only that decision, never the one after it. Ids restart
+        with each engine session, so the new client also names the game (`gen`): an answer meant for the last game is
+        refused even when the next game asks the same question under the same id. The session is the one whose view
+        showed the decision, taken under the same lock as the checks."""
+        with self.lock:
+            pending, session = self.snapshot.get("decision"), self.session
+            if not pending or session is None:
+                return {"ok": False, "error": "nothing to answer"}
+            k, did = key(pending), pending.get("id")
+            if (body.get("key") and body["key"] != k or "id" in body and body["id"] != did
+                    or "gen" in body and body["gen"] != self.snapshot.get("gen")):
+                return {"ok": False, "error": "that decision has passed"}
+            if self.status and self.status["state"] == "working" and same(self.status, k, did):
+                return {"ok": False, "error": "an answer is already being worked on"}
+            self.answers += 1
+            serial = self.answers
+            self.status = {"key": k, "id": did, "attempt": serial, "state": "working"}
+            self._store(dict(self.snapshot, answer=self.status))
+        req = {"cmd": "answer", "session": session}
+        if did is not None:
+            req["id"] = did
         if body.get("defer"):
             req.update(defer=True, by="ai")
         else:
@@ -145,14 +210,17 @@ class Table:
             try:
                 engine.request(req)
                 result["ok"] = True
+                self._answered(serial, {"key": k, "id": did, "attempt": serial, "state": "applied"})
             except Exception as error:
                 result["error"] = str(error)
+                self._answered(serial, {"key": k, "id": did, "attempt": serial, "state": "refused",
+                                        "error": str(error)})
         t = threading.Thread(target=send, daemon=True)
         t.start()
         t.join(0.6)  # a refused answer comes back at once; an accepted one waits for the next decision
         if "error" in result:
-            return {"ok": False, "error": result["error"]}
-        return {"ok": True}
+            return {"ok": False, "error": result["error"], "attempt": serial}
+        return {"ok": True, "attempt": serial}
 
     def override(self, args):
         try:
@@ -162,8 +230,30 @@ class Table:
             return {"ok": False, "error": str(error)}
 
 
+def snapshot(reply, gen, pilots):
+    """The snapshot the browser polls for, from the engine's `view` reply."""
+    return {"state": "over" if "over" in reply else "playing", "gen": gen, "view": reply.get("view"),
+            "decision": reply.get("decision"), "over": reply.get("over"), "pilots": pilots}
+
+
+def envelope(snap, version, error, build=None):
+    """What /api/view sends: the snapshot (with its answer status) plus its version, the bridge's last error and the
+    client build served at /next/."""
+    out = {"answer": None}
+    out.update(snap)
+    out.update(v=version, error=error, build=build)
+    return out
+
+
 def key(decision):
+    """A decision's identity: the client sends it with each answer, and an answer whose key is not the pending
+    decision's is refused. game/client/src/protocol/key.ts computes the same."""
     return "|".join([decision["kind"], decision["turn"], decision.get("prompt", ""), str(len(decision.get("options", [])))] + decision.get("options", [])[:6])
+
+
+def same(status, k, did):
+    """Whether an answer status is about this decision: by the engine's id when there is one, else by key."""
+    return status["id"] == did if did is not None else status["key"] == k
 
 
 def short(commander):
@@ -275,6 +365,156 @@ def cards(names):
         return {n: CARDS[n] for n in names if n in CARDS}
 
 
+# ---- The new client: its build, its log ----------------------------------------------------------------------------
+
+# Relative to game/, with `node --version`: what a build depends on. The same list as vite.config.mts's BUILD_INPUTS,
+# the workbench's bundled inputs (its import.meta.glob of the protocol corpus and a test catalog) included.
+STAMP_INPUTS = ("client/src", "client/index.html", "client/workbench.html", "client/public", "package-lock.json",
+                "vite.config.mts", "../tests/fixtures/protocol", "client/test/model/catalog.json")
+
+
+def client_stamp(node_version):
+    """The build's stamp: a hash of the client's sources, the lockfile, the Vite config, the workbench's fixtures and
+    the Node version."""
+    files = []
+    for rel in STAMP_INPUTS:
+        p = GAME / rel
+        if p.is_dir():
+            files += [f for f in p.rglob("*") if f.is_file()
+                      and not any(part.startswith(".") for part in f.relative_to(p).parts)]
+        elif p.is_file():
+            files.append(p)
+
+    def name(f):   # as vite.config.mts names it: relative to game/, "../" for the corpus
+        return os.path.relpath(f, GAME).replace(os.sep, "/")
+    h = hashlib.sha256(node_version.strip().encode() + b"\0")
+    for f in sorted(files, key=name):
+        data = f.read_bytes()
+        h.update(f"{name(f)}\0{len(data)}\0".encode() + data)
+    return h.hexdigest()
+
+
+def ensure_client(run=subprocess.run, which=shutil.which, say=lambda line: print(line, flush=True)):
+    """Build the new client into game/client/dist when its stamp is stale: into a staging directory, published only
+    when the build succeeds. Without Node, or when the build fails, what is there is served. Returns what happened:
+    "current", "built", "no node" or "failed"."""
+    node, npm = which("node"), which("npm")
+    if not node or not npm:
+        say("The new client (/next/) can't be rebuilt: Node isn't installed. " +
+            ("Serving its last build." if (DIST / "index.html").exists() else "It has no build to serve."))
+        return "no node"
+    version = run([node, "--version"], capture_output=True, text=True).stdout
+    stamp = client_stamp(version)
+    old = DIST / ".stamp"
+    if (DIST / "index.html").exists() and old.exists() and old.read_text().strip() == stamp:
+        return "current"
+    staging, retired = DIST.with_name("dist.staging"), DIST.with_name("dist.old")
+    shutil.rmtree(staging, ignore_errors=True)
+    say("Building the new client for /next/ ...")
+    built = run([npm, "run", "build", "--", "--outDir", str(staging)], cwd=str(GAME), capture_output=True, text=True)
+    if built.returncode != 0 or not (staging / "index.html").is_file():
+        shutil.rmtree(staging, ignore_errors=True)
+        tail = "\n".join((built.stdout + built.stderr).strip().splitlines()[-15:])
+        say(f"The new client's build failed (is `npm ci` done in game/?); /next/ serves "
+            f"{'its last build' if (DIST / 'index.html').exists() else 'nothing'}.\n{tail}")
+        return "failed"
+    (staging / ".stamp").write_text(stamp + "\n")
+    shutil.rmtree(retired, ignore_errors=True)
+    if DIST.exists():
+        DIST.rename(retired)
+    staging.rename(DIST)
+    shutil.rmtree(retired, ignore_errors=True)
+    say("The new client is built.")
+    return "built"
+
+
+_BUILD = {"mtime": None, "build": None}
+
+
+def client_build():
+    """The build id of the client served at /next/ (dist/build.json, written by the Vite build), or None."""
+    f = DIST / "build.json"
+    try:
+        mtime = f.stat().st_mtime_ns
+    except OSError:
+        return None
+    if mtime != _BUILD["mtime"]:
+        try:
+            build = json.loads(f.read_text()).get("build")
+        except (OSError, ValueError, AttributeError):
+            build = None
+        _BUILD.update(mtime=mtime, build=build if isinstance(build, str) else None)
+    return _BUILD["build"]
+
+
+class ClientLog:
+    """POST /api/clientlog: the client's structured reports, appended to a JSON-lines file that rotates at 1 MB
+    (one old file kept). At most 50 entries a request and 50 a minute overall; messages at most 2 KB."""
+    LEVELS = ("debug", "info", "warn", "error")
+    FIELDS = {"level", "code", "build", "rev", "stop", "message"}
+    MESSAGE_BYTES, CODE_LENGTH, BUILD_LENGTH, PER_REQUEST, PER_MINUTE = 2048, 64, 64, 50, 50
+    CODE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+    def __init__(self, path, limit=1 << 20, clock=time.time):
+        self.path, self.limit, self.clock = Path(path), limit, clock
+        self.lock = threading.Lock()
+        self.recent = collections.deque()
+
+    @classmethod
+    def entries(cls, body):
+        """The entries of a request body, normalised; ValueError naming the first problem."""
+        if not isinstance(body, dict) or set(body) != {"entries"} or not isinstance(body["entries"], list):
+            raise ValueError("expected {entries: [...]}")
+        entries = body["entries"]
+        if not entries or len(entries) > cls.PER_REQUEST:
+            raise ValueError(f"send 1 to {cls.PER_REQUEST} entries")
+        out = []
+        for n, e in enumerate(entries):
+            where = f"entries[{n}]"
+            if not isinstance(e, dict) or not set(e) <= cls.FIELDS or not {"level", "code", "message"} <= set(e):
+                raise ValueError(f"{where}: expected {{level, code, message, build?, rev?, stop?}}")
+            level, code, message = e["level"], e["code"], e["message"]
+            build, rev, stop = e.get("build"), e.get("rev"), e.get("stop")
+            if level not in cls.LEVELS:
+                raise ValueError(f"{where}.level: one of {', '.join(cls.LEVELS)}")
+            if not isinstance(code, str) or not cls.CODE.match(code) or len(code) > cls.CODE_LENGTH:
+                raise ValueError(f"{where}.code: up to {cls.CODE_LENGTH} letters, digits, '.', '_' or '-'")
+            if not isinstance(message, str) or len(message.encode()) > cls.MESSAGE_BYTES:
+                raise ValueError(f"{where}.message: text of at most {cls.MESSAGE_BYTES} bytes")
+            if build is not None and (not isinstance(build, str) or len(build) > cls.BUILD_LENGTH):
+                raise ValueError(f"{where}.build: null or a short string")
+            for name, value in (("rev", rev), ("stop", stop)):
+                if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+                    raise ValueError(f"{where}.{name}: null or a whole number")
+            out.append({"level": level, "code": code, "build": build, "rev": rev, "stop": stop, "message": message})
+        return out
+
+    def add(self, body):
+        """(HTTP status, reply) for a request body."""
+        try:
+            entries = self.entries(body)
+        except ValueError as error:
+            return 400, {"ok": False, "error": str(error)}
+        with self.lock:
+            now = self.clock()
+            while self.recent and self.recent[0] <= now - 60:
+                self.recent.popleft()
+            room = self.PER_MINUTE - len(self.recent)
+            if room <= 0:
+                return 429, {"ok": False, "error": f"more than {self.PER_MINUTE} entries a minute; try later"}
+            kept = entries[:room]
+            self.recent.extend([now] * len(kept))
+            lines = "".join(json.dumps(dict(at=round(now, 3), **e)) + "\n" for e in kept).encode()
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            if self.path.exists() and self.path.stat().st_size + len(lines) > self.limit:
+                os.replace(self.path, self.path.with_name(self.path.name + ".1"))
+            with open(self.path, "ab") as f:
+                f.write(lines)
+        return 200, {"ok": True, "kept": len(kept), "dropped": len(entries) - len(kept)}
+
+
+CLIENT_LOG = ClientLog(CLIENTLOG)
+
 # ---- HTTP ----------------------------------------------------------------------------------------------------------
 
 
@@ -284,25 +524,59 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
-    def send(self, code, body, ctype="application/json"):
+    def send(self, code, body, ctype="application/json", cache=None, headers=()):
         data = body if isinstance(body, bytes) else json.dumps(body).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store" if ctype == "application/json" or ctype.startswith("text/") or "javascript" in ctype else "max-age=86400")
+        self.send_header("Cache-Control", cache or ("no-store" if ctype == "application/json" or ctype.startswith("text/") or "javascript" in ctype else "max-age=86400"))
+        for name, value in headers:
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(data)
 
-    def body(self):
-        n = int(self.headers.get("Content-Length") or 0)
-        return json.loads(self.rfile.read(n) or b"{}")
+    def file(self, root, rel, cache=None):
+        base = root.resolve()
+        f = (base / rel).resolve()
+        if base not in f.parents or not f.is_file():
+            return self.send(404, {"error": "not found"})
+        return self.send(200, f.read_bytes(), mimetypes.guess_type(str(f))[0] or "application/octet-stream", cache)
+
+    def next_client(self, rel):
+        """/next/...: the new client's build. Its hashed assets never change, so they may be cached for good."""
+        if not (DIST / "index.html").is_file():
+            return self.send(404, b"The new client isn't built: run bin/deckmaster game with Node installed, or "
+                                  b"(cd game && npm ci && npm run build).\n", "text/plain; charset=utf-8")
+        return self.file(DIST, rel or "index.html",
+                         "public, max-age=31536000, immutable" if rel.startswith("assets/") else None)
+
+    def length(self):
+        """The request's Content-Length: 0 when absent, ValueError unless it is a whole number of bytes."""
+        raw = self.headers.get("Content-Length")
+        if raw is None:
+            return 0
+        raw = raw.strip()
+        if not raw.isdigit() or not raw.isascii():
+            raise ValueError(f"bad Content-Length {raw!r}")
+        return int(raw)
+
+    def body(self, n):
+        """Exactly `n` bytes of JSON ({} when empty); ValueError when they are not JSON."""
+        return json.loads(self.rfile.read(n) or b"{}") if n else {}
 
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(url.query)
+        if url.path == "/next":
+            return self.send(301, b"", "text/plain", headers=[("Location", "/next/")])
+        if url.path.startswith("/next/"):
+            rel = url.path[len("/next/"):]
+            if not rel.startswith(("api/", "cache/")):   # the new client's relative api/ and cache/ reach the same server
+                return self.next_client(rel)
+            url = url._replace(path="/" + rel)
         if url.path == "/api/view":
             v, snap = TABLE.wait(int(q.get("v", ["0"])[0]))
-            return self.send(200, dict(snap, v=v, error=TABLE.error))
+            return self.send(200, envelope(snap, v, TABLE.error, client_build()))
         if url.path == "/api/diagnostics":
             return self.send(200, {"pilots": TABLE.pilots,
                                    "usage": TABLE.usage.summary() if TABLE.usage else None,
@@ -314,15 +588,28 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, [d.slug for d in decks.all_decks()])
         path = url.path.lstrip("/") or "live.html"
         root, rel = (CACHE, path[len("cache/"):]) if path.startswith("cache/") else (CLIENT, path)
-        f = (root / rel).resolve()
-        if not str(f).startswith(str(root.resolve())) or not f.is_file():
-            return self.send(404, {"error": "not found"})
-        return self.send(200, f.read_bytes(), mimetypes.guess_type(str(f))[0] or "application/octet-stream")
+        return self.file(root, rel)
 
     def do_POST(self):
         url = urllib.parse.urlparse(self.path)
+        if url.path.startswith("/next/api/"):
+            url = url._replace(path=url.path[len("/next"):])
         try:
-            b = self.body()
+            n = self.length()
+        except ValueError as error:
+            self.close_connection = True   # the body stays unread: its end is unknown
+            return self.send(400, {"ok": False, "error": str(error)})
+        if n > 256 * 1024:
+            self.close_connection = True   # the body stays unread
+            return self.send(413, {"ok": False, "error": "too large"})
+        if url.path == "/api/clientlog":
+            try:
+                body = self.body(n)
+            except ValueError:
+                return self.send(400, {"ok": False, "error": "not JSON"})
+            return self.send(*CLIENT_LOG.add(body))
+        try:
+            b = self.body(n)
             if url.path == "/api/answer":
                 return self.send(200, TABLE.answer(b))
             if url.path == "/api/override":
@@ -398,7 +685,9 @@ def serve(args):
     load_cards()
     if args.start:
         threading.Thread(target=lambda: safe_open(args.deck, args.opponents.split(","), args.seed, "creatures"), daemon=True).start()
+    threading.Thread(target=ensure_client, daemon=True).start()   # /next/ serves its last build until a new one is done
     server = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     server.daemon_threads = True
     print(f"Deckmaster game: http://{lan_address()}:{args.port}/live.html  (the first game takes about a minute to start)", flush=True)
+    print(f"The new client, in progress: http://{lan_address()}:{args.port}/next/", flush=True)
     server.serve_forever()

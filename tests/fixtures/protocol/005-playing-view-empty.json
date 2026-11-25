@@ -1,0 +1,17 @@
+{
+ "answer": null,
+ "state": "playing",
+ "gen": 1,
+ "view": {},
+ "decision": null,
+ "over": null,
+ "pilots": {
+  "You": "human",
+  "Atraxa": "forge ai",
+  "Dack": "forge ai",
+  "Princess": "forge ai"
+ },
+ "v": 2,
+ "error": null,
+ "build": null
+}
