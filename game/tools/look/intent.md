@@ -5,6 +5,9 @@ meets it better; it may not give up the goal. A finding that a goal itself is wr
 
 When goals pull against each other, or a finding offers several fixes, choose whatever gives the player the most clarity.
 
+A regression a reviewer or judge names in look or legibility blocks the change and goes to the owner; it is never traded
+against gains elsewhere.
+
 ## Goals
 - **Understand the board at a glance.** Clarity over density: open space, instant recognition, a composed tabletop
   rather than a dashboard. *Why:* density is the bane of understandability; Arena is the minimum bar.
@@ -48,6 +51,20 @@ When goals pull against each other, or a finding offers several fixes, choose wh
 - **One look, not a collage.** *Now:* the Grimoire (vellum pages with ruled borders in the seat colour, bronze mounts,
   brass plaques, scorched ash under standees, a red sigil under a card in danger, wells glowing under lands, a
   crackling arc for aim). Details may change; a consistent world may not.
+- **The hand holds the real cards.** At rest, bunched or opened, a card in my hand is its printed image, not a
+  label over an art crop. *Why:* the printed card is what a player knows at a glance (frame, name, art, cost), and it
+  is what they hold at a real table.
+- **Chrome is made of the Grimoire's materials.** Buttons, sheets and plaques are cast bronze, vellum and ink, the
+  same stuff as the table, never generic UI (pills, flat fills, web controls). *Why:* one world; a control that looks
+  borrowed breaks it.
+- **The prompt says the least, in game terms.** It names what happened and what I may do in the game's words (casts,
+  targets, attacks, blocks, resolves), and says nothing the table already shows by lighting it. *Why:* every word is
+  read under time pressure; instructions for what is already lit are noise.
+- **Tapped shows on the cards.** A pile that says "N tapped" shows those cards turned, and a well its spent lands.
+  *Why:* tapped is read from the cards themselves on a real table; a count alone is easy to miss.
+- **Cards belong to the table they lie on.** Labels, counts and highlights are sized and placed for the cards they
+  name, at their place on screen, and never land on a neighbour. *Why:* a label that floats over the wrong card, or is
+  bigger than the card it names, misleads.
 - **Quiet chrome.** The table shows life only; counts and details go behind a tap. Pop-ups close with ✕, a tap
   outside or Escape.
 
