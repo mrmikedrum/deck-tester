@@ -406,7 +406,9 @@ function plan(input: SeatInput): SeatPlan {
   // (The first notch of pressure folds the support's title columns; heads give way from the second.)
   const S0 = Math.max(-1, Math.min(depth0, Math.max(0, ...cols.map((c) => c.length - 1))) - Math.max(0, input.pressure - 1));
   const ways: { S: number; shared: boolean }[] = [];
-  for (let k = S0; k >= Math.min(0, S0); k--) ways.push({ S: k, shared: false }, { S: k, shared: true });
+  // (Where the support is many, it shares first: the spent heap kept compact so what acts on me has room to be named.)
+  const shareFirst = sup.length > 5 && spent.length > 0;
+  for (let k = S0; k >= Math.min(0, S0); k--) ways.push({ S: k, shared: shareFirst }, { S: k, shared: !shareFirst });
   const fitsBack = (w: { S: number; shared: boolean }, f: ReturnType<typeof fits>): boolean => {
     if (!back) return true;
     let a = f.back + 0.1;
