@@ -23,21 +23,30 @@ const take = (st, v) => `window.Live.take(${JSON.stringify({ v, state: "playing"
 // The new entry's form of a mocked live state: the envelope the bridge would send, in the engine's full shape (the
 // behaviour harness's: the new entry decodes strictly), and its card data, the same as the current client's (data.js).
 const H = require("./behaviour/harness.js");
-// The engine sends each card's keywords on the card (tests/fixtures/protocol); the mocks leave them to the card data,
-// where the current client also looks: they are filled from there.
-const keyworded = view => {
-  const fill = c => { if (c && c.keywords == null) { const e = H.CARDS[c.name]; c.keywords = e ? (e.faces[0].keywords || []).slice() : []; } };
+// Keep the original reels' catalog decoration (including Master of Waves's Protection glyph).
+const withCatalogKeywords = view => {
+  const fill = c => { if (c) c.keywords = H.CARDS[c.name]?.faces[0].keywords?.slice() || []; };
   view.players.forEach(p => ["battlefield", "command", "graveyard", "exile", "hand"].forEach(z => (p[z] || []).forEach(fill)));
   (view.stack || []).forEach(it => fill(it.source));
   return view;
 };
-const env = (st, v) => H.engineShape({ state: "playing", gen: 1, view: keyworded(H.clone(st.view)), decision: st.decision ? H.decision(st.view, H.clone(st.decision)) : null, pilots: {}, v, error: null });
+const env = (st, v, catalogKeywords) => {
+  const view = H.clone(st.view);
+  if (catalogKeywords) withCatalogKeywords(view);
+  return H.engineShape({ state: "playing", gen: 1, view, decision: st.decision ? H.decision(view, H.clone(st.decision)) : null, pilots: {}, v, error: null });
+};
 // A clip of the current client's, also on the new entry: its first state and every `take` as envelopes; `news` gives
 // a beat its new-entry form by index where it is not a snapshot (a gesture in place of `__h`).
-function bothEntries(clip, first, states, news = {}) {
-  const liveNew = env(first, 1), pushes = states.map((st, i) => (st ? env(st, i + 2) : null));
+function bothEntries(clip, first, states, news = {}, catalogKeywords = true) {
+  const liveNew = env(first, 1, catalogKeywords), pushes = states.map((st, i) => (st ? env(st, i + 2, catalogKeywords) : null));
   return Object.assign(clip, { entries: ["old", "new"], liveNew, catalogNew: catalogFor([liveNew, ...pushes.filter(Boolean)], H.CARDS),
     beats: clip.beats.map((b, i) => Object.assign(b, { new: news[i] || { push: pushes[i] } })) });
+}
+
+function playClip([name, about, labels], catalogKeywords) {
+  const { first, steps } = PLAYS[name];
+  return bothEntries({ name, live: first, ms: 2000 * labels.length + 1800, about, audit: true,
+    beats: steps.map((st, i) => ({ at: 300 + 2000 * i, label: labels[i], js: take(st, i + 2) })) }, first, steps, {}, catalogKeywords);
 }
 
 // Tap the biggest pile on a seat's page, as a player would to look through it.
@@ -89,8 +98,7 @@ module.exports = [
     ["tokens", "Marath activates his commander; the ability resolves and he gets an Elemental and four more Beasts, joining the tokens he already has.", ["Marath's ability goes on the stack", "it resolves: an Elemental and four Beasts arrive"]],
     ["combat", "Marath attacks me with Marath, Herd Baloth and a Beast; I block the Baloth with Master of Waves and the Beast with Meloku; damage: my Master of Waves and his Beast die, Marath hits me; combat ends.", ["Marath declares three attackers at me", "I declare two blockers", "combat damage: Master of Waves and the Beast die", "combat ends"]],
     ["wipe", "Dack casts Sunfall: it goes on the stack, then resolves, exiling every creature on the table; Dack gets an Incubator token.", ["Dack casts Sunfall", "Sunfall resolves: every creature is exiled"]],
-  ].map(([name, about, labels]) => bothEntries({ name, live: PLAYS[name].first, ms: 2000 * labels.length + 1800, about, audit: true,
-    beats: PLAYS[name].steps.map((st, i) => ({ at: 300 + 2000 * i, label: labels[i], js: take(st, i + 2) })) }, PLAYS[name].first, PLAYS[name].steps)),
+  ].map(beat => playClip(beat, true)),
   bothEntries({ name: "stack", live: PLAYS.counter.first, ms: 6200, audit: true,
     about: "Dack casts Swords to Plowshares at my Meloku. I tap the open table to set the stack aside and see the whole board, then tap the small stack to look at it again.",
     beats: [{ at: 300, label: "Dack casts Swords to Plowshares at Meloku", js: take(PLAYS.counter.steps[0], 2) },
@@ -101,6 +109,22 @@ module.exports = [
   { name: "scenarios", manual: true, live: null, ms: 5000, setup: ['__h.loadScenario("early")'], about: "The game jumps ahead: from an early board to a mid-game board to a late-game board, each side gaining many permanents.",
     beats: [{ at: 300, label: "mid-game board", js: '__h.loadScenario("mid")' },
             { at: 2600, label: "late-game board", js: '__h.loadScenario("late")' }] },
+  ...[
+    ["attack15", "On turn 15 Forge asks which of my creatures attack and where. I send six at Marath.",
+      ["Forge asks me to declare attackers", "I attack Marath with six creatures"]],
+    ["block15", "On turn 15 Marath attacks me with eleven creatures. Forge offers me the legal pairs of blockers and attackers.",
+      ["Marath attacks me with eleven creatures", "Forge asks me to declare blockers"]],
+    ["threat15", "It's Marath's main phase on turn 15. He has priority and has yet to attack.",
+      ["Marath has priority in his main phase"]],
+    ["alpha15", "On turn 15 Marath attacks me with eleven creatures. I block seven attackers. One Beast and two Cat Beasts die.",
+      ["Marath attacks me with eleven creatures", "I block four Beasts, two Cat Beasts and an Elemental", "Combat damage kills one Beast and two Cat Beasts"]],
+    ["wipe15", "On turn 15 Dack casts Sunfall. It exiles all creatures and Dack gets an Incubator.",
+      ["Dack casts Sunfall", "Sunfall resolves: every creature is exiled"]],
+    ["snipe15", "On turn 15 I cast Snap targeting Marath's Kami of Whispered Hopes. It returns to his hand.",
+      ["I cast Snap targeting Kami of Whispered Hopes", "Snap resolves: Kami of Whispered Hopes returns to Marath's hand"]],
+    ["snipeToken15", "On turn 15 I cast Snap targeting one of Marath's nine Beast tokens. That Beast leaves the battlefield and ceases to exist.",
+      ["I cast Snap targeting one Beast token", "Snap resolves: the targeted Beast token leaves"]],
+  ].map(beat => playClip(beat, false)),
 ];
 
 if (require.main === module) module.exports.forEach(c => console.log(`${c.name}${c.manual ? " (by name only)" : ""}: ${c.about}`));

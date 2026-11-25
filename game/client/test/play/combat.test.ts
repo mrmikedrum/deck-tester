@@ -3,8 +3,47 @@
 // toast). Corpus 037 (one attacker, six defenders) and 033 (blockers that can each block only Gideon); the multi-creature
 // attack and the blockers with choices are those envelopes with their decisions extended (said per test).
 import { describe, expect, it } from "vitest";
+import { createRequire } from "node:module";
 import type { CardId } from "../../src/protocol";
-import { Table, edited, ofKind, withDecision } from "./rig";
+import { Table, decoded, edited, idsOf, ofKind, withDecision } from "./rig";
+
+function clipBeat(name: string, index: number): Record<string, unknown> {
+  const clips: { name: string; beats: { new?: { push?: Record<string, unknown> } }[] }[] =
+    createRequire(import.meta.url)("../../../tools/clips.js");
+  const push = clips.find((c) => c.name === name)?.beats[index]?.new?.push;
+  if (!push) throw new Error(`no envelope for ${name} beat ${index}`);
+  return push;
+}
+
+describe("turn-15 reel decisions", () => {
+  it("sends one attack option per creature at the chosen seat", () => {
+    const env = clipBeat("attack15", 0), decision = decoded(env).decision;
+    if (decision?.kind !== "attack") throw new Error("expected attack decision");
+    const picks = decision.refs.flatMap((ref, i) => ref.to === "Atraxa" ? [i + 1] : []);
+    expect(picks.length).toBeGreaterThan(10);
+    const t = new Table();
+    t.open(env);
+    t.tapSeat("Atraxa");
+    t.press("Everyone attacks");
+    t.press(`Attack (${picks.length})`);
+    expect(t.answers()).toEqual([picks]);
+  });
+
+  it("sends the selected blocker-attacker pair during Marath's turn", () => {
+    const env = clipBeat("block15", 1), decision = decoded(env).decision;
+    if (decision?.kind !== "block") throw new Error("expected block decision");
+    const [blocker] = idsOf(env, "You", "Princess Yue"), [attacker] = idsOf(env, "Marath", "Marath, Will of the Wild");
+    if (blocker === undefined || attacker === undefined) throw new Error("missing combatants");
+    const index = decision.refs.findIndex((ref) => ref.card === blocker && ref.blocks === attacker);
+    expect(index).toBeGreaterThanOrEqual(0);
+    const t = new Table();
+    t.open(env);
+    t.tapCard(blocker);
+    t.tapCard(attacker);
+    t.press("Block (1)");
+    expect(t.answers()).toEqual([[index + 1]]);
+  });
+});
 
 const ATTACK = "037-attack-poison.json";
 const DEFENDERS = ["Atraxa", 872, "Dack", 873, "Princess", 874] as const; // Gideon, Chandra, Ajani are planeswalkers
