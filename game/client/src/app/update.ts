@@ -8,7 +8,7 @@
 // `working` event. Play never reads the bridge's status itself. Play's state lives for the page: a new game, a restart
 // or teardown reaches it as a snapshot event, never as a reset to `initial`.
 import { diff, modelOf, playerViewer } from "../model";
-import { siftPages } from "../layout";
+import { groupById, siftPages } from "../layout";
 import type { HitGroup } from "../layout";
 import type { ChangeSet, TableModel } from "../model";
 import * as narrative from "../narrative";
@@ -279,7 +279,7 @@ function sifts(s: AppState, g: HitGroup): boolean {
 function tapDefault(tx: Tx, on: play.Target): void {
   if ("card" in on) return inspect(tx, on.card);
   const f = tx.s.focus, t = top(f);
-  const g = "group" in on ? tx.s.plan?.hits.groups.find((x) => x.id === on.group) : undefined;
+  const g = "group" in on && tx.s.plan ? groupById(tx.s.plan.hits, on.group) : undefined;
   if (g?.kind === "stack" && isAside(f, "stack")) {
     tx.s = { ...tx.s, focus: restore(f, "stack") };
     return;

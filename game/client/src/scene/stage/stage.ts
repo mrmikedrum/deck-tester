@@ -615,7 +615,10 @@ export class Stage {
       if (p.kind === "hidden") continue;
       // A piece showing none of its cards (on their way to it, or still the chrome's) is not there to be tapped.
       const target = st.actor.target();
-      const rest = p.base ? { ...target, ...p.base } : target;
+      // Where its hit group was measured: the plan's place for it (a lean-in draws it elsewhere), or, for the stack as the
+      // focus, where it stands up (its focus group's quad).
+      const up = p.draw.t === "stack" && p.draw.up;
+      const rest = p.base && !up ? { ...target, ...p.base } : target;
       if (p.draw.t === "page") {
         // The turn's edge moving to another page: the view fades it over its handover, so the frames keep coming.
         const was = this.pageTurns.get(st.id);
@@ -629,7 +632,7 @@ export class Stage {
         this.stackUps.set(st.id, p.draw.up);
       }
       const sift = p.draw.t === "sift" ? { sift: { card: p.draw.card, seat: p.seat, roll: siftRoll(p.draw.tapped, sample.alpha) } } : {};
-      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...sift });
+      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...(up ? { up } : {}), ...sift });
       const faceCard = p.kind === "zone" ? (st.shown[st.shown.length - 1] ?? null) : p.kind === "unit" ? (st.shown.includes(p.face!) ? p.face : (st.shown[0] ?? p.face)) : p.face;
       const fm = this.faceOf(st, faceCard, p.mark);
       const face = fm?.face ?? null;

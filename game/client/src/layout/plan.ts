@@ -176,7 +176,14 @@ export interface HitGroup {
 export interface HitGroups {
   /** Changes when any group appears, goes, or its members or their order change; not when things merely move. */
   readonly rev: number;
+  /** The table at rest, the stack set aside: what `hitTest` reaches and the audit measures. */
   readonly groups: readonly HitGroup[];
+  /**
+   * The stack as the table's focus, top first: each card shown with a patch of its own, at its `stackUp` quad, drawn
+   * over the whole table. While the focus is up these are the stack's groups (a card the open middle had no room for
+   * at rest is reached here too).
+   */
+  readonly up?: readonly HitGroup[];
 }
 
 export interface TablePlan {
@@ -278,8 +285,9 @@ export function planTable(input: TableInput): TablePlan {
   for (const s of c.stack)
     if (s.spilled) v = [...v, { rule: "no-room", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
-  const hits = hitGroups(final, shapes, stack);
-  const stackUp = stackFocus(input, tpl, projector, final, shapes, reserve, reserve.safe);
+  const focus = stackFocus(input, projector, final, shapes, reserve, reserve.safe), stackUp = focus.up;
+  if (focus.covers && stackUp[0]) v = [...v, { rule: "focus-covers", group: `stack:${stackUp[0].key}`, seat: null, measured: 0, limit: 1 }];
+  const hits = hitGroups(final, shapes, stack, stackUp);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
@@ -379,8 +387,20 @@ const boxOf = (q: Quad, u: number): Box => {
 const meets = (a: Box, b: Box): boolean => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
 
 /** The stack as the focus: its card's height as a share of the screen's, and never under this (design px), about life
- * size so its rules read. Shingled, each card under the top shows this share of its width. */
+ * size so its rules read. Shingled, each card under the top shows this share of its width, and never less than a
+ * finger's patch (`TAP_PX`, with room for the grid). */
 export const STACK_FOCUS = { share: 0.52, floor: 360, shingle: 0.3, top: 46, margin: 8, clear: 10 } as const;
+
+interface FocusAt {
+  readonly h: number;
+  readonly row: boolean;
+  /** Each card under the top shows this share of its width (shingled), or stands a step apart (a row). */
+  readonly share: number;
+  /** The cards shown, top first; any past them lie under the last one shown. */
+  readonly shown: number;
+  readonly x: number;
+  readonly y: number;
+}
 
 /**
  * The stack as the table's focus: the printed card held up large (0.52 of the screen's height, never under 360), centred
@@ -388,13 +408,15 @@ export const STACK_FOCUS = { share: 0.52, floor: 360, shingle: 0.3, top: 46, mar
  * cards it does not involve, never a target, a plaque it targets, the prompt or the hand: where one is in the way it
  * moves first (centre, right, left, up) and shrinks only after, to its floor. Several items stand in a row while all
  * fit at the floor or more; past that the top stands at full size and the ones under it shingle to the side they step
- * toward (what they aim at, else whose they are), each showing a strip. Where nothing at the floor is clear (a crowded
- * table), it stands centred in the open middle as large as that gap holds clear of what it touches. Top first, each
- * square to the camera at the focus height.
+ * toward (what they aim at, else whose they are), each showing a strip. Where nothing is clear at the floor so, the top
+ * stays at the floor and the rest overlap further (each strip down to a finger's patch), then it looks anywhere on the
+ * open screen nearest the middle; still crowded, the deepest lie under the last one shown (not reachable here, as set
+ * aside past the open middle's room). Only if the top alone has no clear place does it stand where it covers least, and
+ * that is a broken limit (`focus-covers`). Top first, each square to the camera at the focus height.
  */
-function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], shapes: readonly Shape[], reserve: Reservations, safe: Rect): StackAtRest[] {
+function stackFocus(input: TableInput, proj: Projector, plans: readonly SeatPlan[], shapes: readonly Shape[], reserve: Reservations, safe: Rect): { up: StackAtRest[]; covers: boolean } {
   const items = [...input.stack].reverse();
-  if (!items.length) return [];
+  if (!items.length) return { up: [], covers: false };
   const u = designUnit(input.viewport), n = items.length;
   const vw = input.viewport.w / u, vh = input.viewport.h / u;
   const step = items.some((s) => s.answers) ? 1.12 : 0.9;
@@ -432,49 +454,84 @@ function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plan
   // A card h tall: its width, and the room under it its tag (or an ability's slip) takes.
   const below = items[0]!.ability ? 92 : 28;
   /** The group's offsets from the top card's middle, per card (in card widths), and its box, for a height. */
-  const shape = (h: number, row: boolean) => {
-    const w = CW * h, k = (i: number) => (i === 0 ? 1 : row ? 0.8 : 1);
-    const at = items.map((_, i) => (row ? i * step : i * STACK_FOCUS.shingle) * dir);
-    const ls = at.map((o, i) => (o * w) - (k(i) * w) / 2), rs = at.map((o, i) => o * w + (k(i) * w) / 2);
+  const shape = (f: Pick<FocusAt, "h" | "row" | "share" | "shown">) => {
+    const w = CW * f.h, k = (i: number) => (i === 0 ? 1 : f.row ? 0.8 : 1);
+    const at = items.map((_, i) => Math.min(i, f.shown - 1) * (f.row ? step : f.share) * dir);
+    const ls = at.map((o, i) => o * w - (k(i) * w) / 2), rs = at.map((o, i) => o * w + (k(i) * w) / 2);
     return { at, k, l: Math.min(...ls), r: Math.max(...rs), w };
   };
-  const boxAt = (h: number, row: boolean, x: number, y: number): Box => {
-    const g = shape(h, row), mid = (g.l + g.r) / 2;
-    return { l: x - mid + g.l, r: x - mid + g.r, t: y - h / 2, b: y + h / 2 + below };
+  const boxAt = (f: Omit<FocusAt, "x" | "y">, x: number, y: number): Box => {
+    const g = shape(f), mid = (g.l + g.r) / 2;
+    return { l: x - mid + g.l, r: x - mid + g.r, t: y - f.h / 2, b: y + f.h / 2 + below };
   };
-  const fits = (b: Box): boolean =>
-    b.l >= sl && b.r <= sr && b.t >= st && b.b <= sb && !aimed.some((a) => meets(a, b)) && !chrome.some((a) => meets(a, b));
+  const inside = (b: Box): boolean => b.l >= sl && b.r <= sr && b.t >= st && b.b <= sb;
+  const clear = (b: Box): boolean => !aimed.some((a) => meets(a, b)) && !chrome.some((a) => meets(a, b));
+  const fits = (b: Box): boolean => inside(b) && clear(b);
   /** Where a group h tall may stand: the middle, then to the right, the left, then up. */
-  const ways = (h: number, row: boolean): [number, number][] => {
-    const g = shape(h, row), w = g.r - g.l, out: [number, number][] = [[xm, ym]];
+  const ways = (f: Omit<FocusAt, "x" | "y">): [number, number][] => {
+    const b = boxAt(f, 0, 0), w = b.r - b.l, out: [number, number][] = [[xm, ym]];
     for (const k of [0.5, 1, 1.5]) out.push([xm + w * k, ym]);
     for (const k of [0.5, 1, 1.5]) out.push([xm - w * k, ym]);
-    for (const k of [0.15, 0.3]) out.push([xm, ym - h * k]);
+    for (const k of [0.15, 0.3]) out.push([xm, ym - f.h * k]);
     return out;
   };
-  const most = Math.max(STACK_FOCUS.floor, STACK_FOCUS.share * vh);
-  let found: { h: number; row: boolean; x: number; y: number } | null = null;
-  find: for (const row of n > 1 ? [true, false] : [true])
-    for (let h = most; h >= STACK_FOCUS.floor - 0.01; h -= 10)
-      for (const [x, y] of ways(h, row))
-        if (fits(boxAt(h, row, x, y))) {
-          found = { h, row, x, y };
-          break find;
-        }
-  // A crowded table: the open middle, as large as it holds clear of what the stack aims at (the old search's last way).
+  /** Anywhere it lies wholly on the safe area, nearest the middle first. */
+  const anywhere = (f: Omit<FocusAt, "x" | "y">): [number, number][] => {
+    const b = boxAt(f, 0, 0), out: [number, number][] = [];
+    for (let x = sl - b.l; x + b.r <= sr; x += 12) for (let y = st - b.t; y + b.b <= sb; y += 12) out.push([x, y]);
+    return out.sort((p, q) => Math.hypot(p[0] - xm, p[1] - ym) - Math.hypot(q[0] - xm, q[1] - ym));
+  };
+  const first = (f: Omit<FocusAt, "x" | "y">, at: [number, number][]): FocusAt | null => {
+    for (const [x, y] of at) if (fits(boxAt(f, x, y))) return { ...f, x, y };
+    return null;
+  };
+  const floor = STACK_FOCUS.floor, most = Math.max(floor, STACK_FOCUS.share * vh);
+  // The narrowest strip a card under the top may show at the floor: a finger's patch, with room for the grid.
+  const least = Math.min(STACK_FOCUS.shingle, (TAP_PX * 1.12) / u / (CW * floor));
+  const narrower: number[] = [];
+  for (let k = STACK_FOCUS.shingle; k > least + 0.005; k -= 0.03) narrower.push(k);
+  narrower.push(least);
+  const search = (): FocusAt | null => {
+    // At full size or down to the floor: all in a row, then shingled.
+    for (const row of n > 1 ? [true, false] : [true])
+      for (let h = most; h >= floor - 0.01; h -= 10) {
+        const f = { h, row, share: STACK_FOCUS.shingle, shown: n };
+        const got = first(f, ways(f));
+        if (got) return got;
+      }
+    if (n > 1)
+      // The top at the floor; the rest overlapping further, nearest the middle, anywhere on the open screen.
+      for (const share of narrower) {
+        const f = { h: floor, row: false, share, shown: n };
+        const got = first(f, ways(f)) ?? first(f, anywhere(f));
+        if (got) return got;
+      }
+    // Still crowded: the deepest lie under the last one shown.
+    for (let shown = n - 1; shown >= 1; shown--) {
+      const f = { h: floor, row: false, share: least, shown };
+      const got = first(f, anywhere(f));
+      if (got) return got;
+    }
+    return null;
+  };
+  let found = search(), covers = false;
   if (!found) {
-    const M = openMiddle(tpl, proj, plans, u), least = (FLOOR.any * 1.1) / CW;
-    let h = Math.min(STACK_FOCUS.floor, M.b - M.t + 12);
-    for (; h > least; h -= 4) if (!aimed.some((a) => meets(a, boxAt(h, false, (M.l + M.r) / 2, (M.t + M.b) / 2)))) break;
-    found = { h: Math.max(least, h), row: false, x: (M.l + M.r) / 2, y: (M.t + M.b) / 2 };
+    // Nowhere clear for the top alone: it stands at the floor where it covers least of what it must not, and says so.
+    const f = { h: floor, row: false, share: least, shown: 1 };
+    const cost = (b: Box): number =>
+      [...aimed, ...chrome].reduce((t, a) => t + Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t)), 0);
+    const at = anywhere(f);
+    const [x, y] = at.length ? at.reduce((best, p) => (cost(boxAt(f, p[0], p[1])) < cost(boxAt(f, best[0], best[1])) ? p : best)) : [xm, ym];
+    found = { ...f, x, y };
+    covers = true;
   }
-  const g = shape(found.h, found.row), box = boxAt(found.h, found.row, found.x, found.y);
+  const g = shape(found), box = boxAt(found, found.x, found.y);
   const x0 = box.l - g.l, cy = found.y;
   const along = (p: V3, d: V3, t: number): V3 => ({ x: p.x + d.x * t, y: p.y + d.y * t, z: p.z + d.z * t });
   const at0 = proj.onTable(x0 * u, cy * u, STACK_POSE.up);
   const per = Math.abs(proj.project(along(at0, proj.up, 0.5)).y - proj.project(along(at0, proj.up, -0.5)).y) / u;
   const sc0 = found.h / per;
-  return items.map((s, i) => {
+  const up = items.map((s, i) => {
     const sc = sc0 * g.k(i);
     // Laid out on screen at the top's depth (the scene stands each under it further back along its ray, the same
     // pixels); a smaller one in a row stands on the same foot line.
@@ -482,8 +539,9 @@ function stackFocus(input: TableInput, tpl: TableTemplate, proj: Projector, plan
     const pt = (a: number, b: number): Point => proj.project(along(along(ctr, proj.right, a * sc), proj.up, b * sc));
     const quad: Quad = [pt(-CW / 2, -CH / 2), pt(CW / 2, -CH / 2), pt(CW / 2, CH / 2), pt(-CW / 2, CH / 2)];
     const b = bounds(quad);
-    return { key: s.key, card: s.card, quad, reachable: b.l >= safe.left && b.t >= safe.top && b.r <= safe.right && b.b <= safe.bottom };
+    return { key: s.key, card: s.card, quad, reachable: i < found.shown && b.l >= safe.left && b.t >= safe.top && b.r <= safe.right && b.b <= safe.bottom };
   });
+  return { up, covers };
 }
 
 /** The open table in the middle, in design units: below the page across, between the side pages, above my creatures' tops. */
@@ -508,7 +566,7 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };
 }
 
-function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"]): HitGroups {
+function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"], stackUp: TablePlan["stackUp"]): HitGroups {
   const groups: HitGroup[] = [];
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
@@ -525,8 +583,19 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   }
   // The stack, top first, by its depth like any card; under the plates.
   for (const s of stack) if (s.reachable) groups.push({ id: `stack:${s.key}`, kind: "stack", seat: null, members: [s.card], quad: s.quad, order: shape(`stack:${s.key}`).order });
-  const rev = fnv(groups.map((x) => `${x.id}:${x.members.join(",")}`).join(";"));
-  return { rev, groups };
+  // The stack as the focus stands over the whole table, top nearest, as it is drawn.
+  const top = Math.max(0, ...groups.map((g) => g.order)) + stackUp.length + 1;
+  const up: HitGroup[] = [];
+  stackUp.forEach((s, i) => {
+    if (s.reachable) up.push({ id: `stack:${s.key}`, kind: "stack", seat: null, members: [s.card], quad: s.quad, order: top - i });
+  });
+  const rev = fnv([...groups, ...up.map((x) => ({ ...x, id: `up:${x.id}` }))].map((x) => `${x.id}:${x.members.join(",")}`).join(";"));
+  return { rev, groups, up };
+}
+
+/** A group by its id: at rest, else one only the stack as the focus reaches (its cards the open middle had no room for). */
+export function groupById(hits: HitGroups, id: string): HitGroup | undefined {
+  return hits.groups.find((g) => g.id === id) ?? hits.up?.find((g) => g.id === id);
 }
 
 /**

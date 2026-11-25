@@ -43,6 +43,33 @@ describe("the stack as the table's focus", () => {
       expect(b.b - b.t, `${vp.w}x${vp.h}`).toBeGreaterThanOrEqual(Math.max(360 * u, 0.52 * vp.h) - 1);
     }
   });
+  it("a tall stack keeps the top at its floor and overlaps the rest further, clear of what it aims at and the chrome", () => {
+    const model = modelOf(corpusSnapshot("014-play-opponent-spell-targets-me-stack-targets-card.json"), catalog, viewerOf())!;
+    const base = tableInputOf(model, { viewport: VP });
+    const u = designUnit(VP);
+    const rectQuad = (r: { left: number; top: number; right: number; bottom: number }): Quad =>
+      [{ x: r.left, y: r.top }, { x: r.right, y: r.top }, { x: r.right, y: r.bottom }, { x: r.left, y: r.bottom }] as unknown as Quad;
+    for (const n of [5, 8, 12, 20])
+      for (const pick of [[0], [1], [0, 1, 2]]) {
+        const stack = Array.from({ length: n }, (_, i) => ({ ...base.stack[pick[i % pick.length]!]!, key: `k${i}` }));
+        const plan = planTable({ ...base, stack });
+        const why = `${n} of ${pick.join("")}`;
+        const top = bounds(plan.stackUp[0]!.quad);
+        expect(top.b - top.t, why).toBeGreaterThanOrEqual(360 * u - 1);
+        // What it aims at, the hand and the prompt stay clear of every card it shows; each has its own group while it is up.
+        const aimed = new Set(stack.flatMap((s) => s.targets ?? []));
+        const keep = plan.hits.groups.filter((g) => g.kind !== "stack" && g.members.some((m) => aimed.has(m)));
+        const chrome = plan.reserve.items.filter((i) => i.kind === "hand" || i.kind === "prompt");
+        const shown = plan.stackUp.filter((s) => s.reachable);
+        expect(shown.length, why).toBeGreaterThan(0);
+        for (const s of shown) {
+          for (const g of keep) expect(meets(s.quad, g.quad), `${why}: ${s.key} over ${g.id}`).toBe(false);
+          for (const r of chrome) expect(meets(s.quad, rectQuad(r.rect)), `${why}: ${s.key} over the ${r.kind}`).toBe(false);
+          expect((plan.hits.up ?? []).map((g) => g.id), why).toContain(`stack:${s.key}`);
+        }
+        expect(plan.violations.filter((v) => v.rule === "focus-covers"), why).toEqual([]);
+      }
+  });
   it("every corpus stack: the focus never covers what the stack aims at", () => {
     for (const name of ["013-play-stack.json", "014-play-opponent-spell-targets-me-stack-targets-card.json", "025-play-stack-targets-player.json"]) {
       const { model, plan } = planOf(name);

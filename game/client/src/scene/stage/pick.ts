@@ -17,6 +17,8 @@ export interface DrawnPiece {
   readonly now: Sample;
   readonly rest: Sample;
   readonly pickable: boolean;
+  /** A stack card drawn as the table's focus: reached by the plan's `hits.up` group, measured where it stands up. */
+  readonly up?: boolean;
   /** A sifted card: its card, whose it is, and its turn as drawn (poses `siftRoll`). */
   readonly sift?: { readonly card: CardId; readonly seat: SeatId | null; readonly roll: number };
 }
@@ -25,9 +27,10 @@ export interface DrawnPiece {
 export const siftGroupId = (card: CardId): string => `sift:${card}`;
 
 /**
- * The highest group in draw order under `p`, its quad moved to where its piece was drawn (`hitTest` at rest). While a
- * sift is open only its cards are reached (each as a group of one card, kind "card"); a tap anywhere else reaches
- * nothing, which takes the sift down. Groups in `skip` are looked through (the layout audit sets a focus aside).
+ * The highest group in draw order under `p`, its quad moved to where its piece was drawn (`hitTest` at rest). While the
+ * stack is the focus its cards are its focus groups (`hits.up`), in the order they are drawn. While a sift is open only
+ * its cards are reached (each as a group of one card, kind "card"); a tap anywhere else reaches nothing, which takes the
+ * sift down. Groups in `skip` are looked through (the layout audit sets a focus aside).
  */
 export function pickDrawn(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece>, p: Point, skip?: ReadonlySet<string>): HitGroup | null {
   const sifted = [...drawn.entries()].filter(([, d]) => d.sift);
@@ -39,8 +42,11 @@ export function pickDrawn(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece
     });
     return hit;
   }
+  // The stack as the focus: its cards are reached where they stand up, in the order they are drawn, over everything.
+  const up = plan.stack.some((s) => drawn.get(`stack:${s.key}`)?.up);
+  const groups = up ? [...plan.hits.groups.filter((g) => g.kind !== "stack"), ...(plan.hits.up ?? [])] : plan.hits.groups;
   let best: HitGroup | null = null;
-  for (const g of plan.hits.groups) {
+  for (const g of groups) {
     if ((best && g.order < best.order) || skip?.has(g.id)) continue;
     const d = drawn.get(g.id);
     if (d && !d.pickable) continue;

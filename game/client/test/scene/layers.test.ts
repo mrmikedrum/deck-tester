@@ -2,8 +2,13 @@
 // reaches it there), its arcs run to what it aims at, a lean-in carries one seat up over the middle, a sift fans a
 // pile's cards out (a tap reaching each card), and my wells say what they hold.
 import { describe as group, expect, it } from "vitest";
-import { bounds } from "../../src/layout/shape";
+import { bounds, inQuad } from "../../src/layout/shape";
+import { planTable, tableInputOf } from "../../src/layout";
 import type { Point, Quad } from "../../src/layout";
+import { diff, modelOf } from "../../src/model";
+import { groupsOf } from "../../src/play/reach";
+import { decodeSnapshot } from "../../src/protocol";
+import { catalog, rawCorpus, viewerOf } from "../model/fixtures";
 import { NO_FOCUS, SCRIM, Stage, chipsOf, describe, pickDrawn, poseQuad, siftRoll } from "../../src/scene/stage";
 import type { FocusTop, StageView } from "../../src/scene/stage";
 import { NO_CUES, corpusSteps, frameOf } from "./corpus";
@@ -64,6 +69,32 @@ group("the stack as the table's focus", () => {
     const view = rest(bolt, at({ layer: "stack" }));
     const g = pickDrawn(bolt.plan, view.drawn, centre(bolt.plan.stackUp[0]!.quad));
     expect(g?.id).toBe(`stack:${bolt.plan.stack[0]!.key}`);
+  });
+  it("every card the focus shows is reached, though the open middle had no room for it set aside", () => {
+    // Eight spells on the opponent-spell table: set aside, the eighth lies under the seventh; held up, all eight show.
+    const raw = rawCorpus.get("014-play-opponent-spell-targets-me-stack-targets-card.json")!;
+    const view = raw.view as { stack: { id: number; source: { id: number } }[] };
+    const thorn = view.stack[view.stack.length - 1]!;
+    const stack = Array.from({ length: 8 }, (_, i) => ({ ...thorn, id: 900 + i, source: { ...thorn.source, id: 9000 + i } }));
+    const snap = decodeSnapshot({ ...raw, decision: null, view: { ...view, stack } });
+    if (!snap.ok) throw new Error(snap.error.summary);
+    const model = modelOf(snap.value, catalog, viewerOf())!;
+    const plan = planTable(tableInputOf(model, { viewport: { w: 1180, h: 820 } }));
+    const spilled = plan.stack.findIndex((s) => !s.reachable);
+    expect(spilled).toBeGreaterThan(0);
+    expect(plan.stackUp[spilled]!.reachable).toBe(true);
+    const shown = rest({ name: "eight", model, plan, set: diff(null, model, 1) }, at({ layer: "stack" }));
+    // The strip of it no card nearer the eye covers.
+    const q = plan.stackUp[spilled]!.quad, b = bounds(q);
+    let strip: Point | null = null;
+    for (let x = b.l + 2; x < b.r && !strip; x += 4)
+      for (let y = b.t + 2; y < b.b && !strip; y += 4)
+        if (inQuad(q, x, y) && !plan.stackUp.slice(0, spilled).some((s) => inQuad(s.quad, x, y))) strip = { x, y };
+    expect(strip).not.toBeNull();
+    expect(pickDrawn(plan, shown.drawn, strip!)?.id).toBe(`stack:${plan.stack[spilled]!.key}`);
+    // Play takes a tap on it (its group is one a tap can reach), and every card the focus shows is reached.
+    expect(groupsOf(plan.hits).map((g) => g.id)).toContain(`stack:${plan.stack[spilled]!.key}`);
+    for (const s of plan.stackUp) expect(pickDrawn(plan, shown.drawn, centre(s.quad))?.id).toMatch(/^stack:/);
   });
   it("its arc runs from the spell to Princess's plate, ending at the plate's top", () => {
     const view = rest(bolt, at({ layer: "stack" }));

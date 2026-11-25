@@ -10,8 +10,9 @@ import type { Facts } from "./facts";
 import type { Group } from "./state";
 import type { Target } from "./types";
 
+/** Every group a tap can reach: the table at rest, and the stack's cards only its focus reaches. */
 export const groupsOf = (hits: HitGroups): Group[] =>
-  hits.groups.map((g) => ({ id: g.id, kind: g.kind, seat: g.seat, members: [...g.members] }));
+  [...hits.groups, ...(hits.up ?? []).filter((u) => !hits.groups.some((g) => g.id === u.id))].map((g) => ({ id: g.id, kind: g.kind, seat: g.seat, members: [...g.members] }));
 
 /** A target as cards and a seat: a plate is its seat, a pile its members, a zone pile nothing a decision reads. */
 export interface Reached {

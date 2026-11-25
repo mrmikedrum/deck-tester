@@ -435,7 +435,9 @@ export interface TablePlan {
 export interface HitGroups {
   readonly rev: number;                                  // changes when any group's members or their order change
   readonly groups: readonly HitGroup[];                  // id, kind (card, pile, well, summary, plate, zone, stack),
-}                                                        // seat, members in order, quad on screen, draw order
+                                                         // seat, members in order, quad on screen, draw order
+  readonly up?: readonly HitGroup[];                     // the stack as the focus: a group per card it shows, at its
+}                                                        // stackUp quad, over the whole table, top nearest
 // A group's id is stable for as long as the unit lasts (its first card's id and kind, as today's piece keys).
 export function hitTest(plan: TablePlan, p: Point): HitGroup | null;
 ```
@@ -449,7 +451,10 @@ inside the safe area and off visible chrome, nothing covering a card's name, foo
 where seats collide or the stack covers them, down to a last resort that is always reachable: the whole seat as one
 summary that opens a sift. The stack stands in the open middle the pages leave; an entry with no room there
 (`no-room`), off the safe area (`off-screen`) or without a patch of its own is not `reachable`: it has no hit group, a
-sheet offers it, and the plan reports the violation. Portrait viewports, planned with the landscape template, still
+sheet offers it, and the plan reports the violation. As the focus, the top never stands under its floor: past what
+fits, the cards under it overlap further (each keeping a finger's strip), then the deepest lie under the last one shown.
+While the focus is up the stack is reached through `hits.up`, so every card it shows is tappable, even one with no room
+set aside; the focus clears what the stack aims at and the chrome, or reports `focus-covers`. Portrait viewports, planned with the landscape template, still
 break limits on dense boards.
 
 `hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
