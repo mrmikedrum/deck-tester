@@ -16,5 +16,5 @@ export { combatLanes, engineCombat, fighters, mergeCombat } from "./combat";
 export type { CombatPairs, LaneEnd, LaneSpec } from "./combat";
 export type { TableInputOptions } from "./table-input";
 export type { PlanSeatOptions, StackEntry, StackAtRest, TableInput, GroupKind, HitGroup, HitGroups, TablePlan } from "./plan";
-export { LEAN_LIFT, SIFT_PAGE, carry, leanOf, siftOf, siftPages, siftQuad } from "./focus";
+export { LEAN_LIFT, SIFT_PAGE, carry, leanOf, siftGroupsOf, siftOf, siftPages, siftQuad } from "./focus";
 export type { Lean } from "./focus";

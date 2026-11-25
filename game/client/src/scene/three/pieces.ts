@@ -397,7 +397,7 @@ class UnitView implements PieceView {
     const turned = !!v.face?.tapped;
     // A pile whose title gave way (no room on screen) shows its count as a chip on its face.
     const coin = d.coin !== undefined && d.coin !== null;
-    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well && !coin;
+    const chip = (d.title === null || d.label === null) && v.shown > 1 && !well && !coin && !d.chipless;
     const key = `${coin ? v.shown : ""}|${d.tapNote ?? ""}|${d.title ?? ""}|${d.label ? `${d.label.name}|${d.label.px}|${d.label.slide}` : ""}|${turned}|${d.chips.map((c) => c.text + c.sub).join(",")}|${chip ? v.shown : ""}|${!!well}`;
     if (key === this.key) return;
     this.key = key;
@@ -1064,10 +1064,19 @@ class PageView implements PieceView {
 class SiftView implements PieceView {
   readonly group = new Group();
   private readonly card: CardPart;
+  private coin: Decal | null = null;
   constructor(host: Host, v: ActorView) {
     this.card = new CardPart(host, v.face, false);
     this.group.add(this.card.obj.group);
-    this.card.obj.group.traverse((o) => (o.renderOrder = 16));
+    // (A spread of runs: one card for its identical copies, their count on a coin on its shoulder.)
+    const n = (v.draw as Extract<Draw, { t: "sift" }>).count;
+    if (n && n > 1) {
+      const c = SIZE.coin;
+      this.coin = new Decal(host.painter.chip({ text: String(n), ink: colour.ink, sub: null }), c.s * 0.8, c.s * 0.8, { renderOrder: 17 });
+      this.coin.mesh.position.set(c.x, c.y, c.z);
+      this.card.obj.body.add(this.coin.mesh);
+    }
+    this.card.obj.group.traverse((o) => (o.renderOrder = o === this.coin?.mesh ? 17 : 16));
   }
   front(): Mesh | null {
     return this.card.obj.front;
@@ -1083,6 +1092,7 @@ class SiftView implements PieceView {
   }
   dispose(): void {
     this.card.dispose();
+    this.coin?.dispose();
   }
 }
 

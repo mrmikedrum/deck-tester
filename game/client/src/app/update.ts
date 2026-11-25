@@ -47,7 +47,7 @@ import {
   sceneHas,
   takeOver,
 } from "./moments";
-import { replan } from "./plan";
+import { LAYOUT, replan } from "./plan";
 import { offersNewGame } from "./readout";
 import { NOTICE_MS } from "./slots";
 import type { RenderReport } from "./slots";
@@ -102,7 +102,9 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const live = c.mayAnswer && s.model !== null;
   const mulligan = live && c.prompt?.style === "overlay" && !c.prompt.busy;
   const groups = s.plan?.hits.groups;
-  const has = (id: string): boolean => groups?.some((g) => g.id === id) ?? false;
+  // (A seat's spread is no hit group: it lasts while its seat is on the table.)
+  const spread = (id: string): boolean => id.startsWith("spread:") && !!s.plan?.seats.has(id.slice("spread:".length) as never);
+  const has = (id: string): boolean => spread(id) || (groups?.some((g) => g.id === id) ?? false);
   const pages = (id: string): number => siftPages(s.model && s.plan ? (siftCards(s.model, s.plan, id)?.ids.length ?? 0) : 0);
   const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), groups: has, pages }, origin);
   return focus === s.focus ? s : { ...s, focus };
@@ -294,6 +296,12 @@ function tapDefault(tx: Tx, on: play.Target): void {
     return;
   }
   const me = tx.s.model?.viewer.perspective;
+  // (Battle lines: another seat's plaque opens its whole board as a spread, every run once, in titled groups.)
+  if (g?.kind === "plate" && g.seat !== null && g.seat !== me && !sifting && LAYOUT.id === "lines") {
+    const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
+    tx.s = { ...tx.s, focus: open(under, entry("sift", { group: `spread:${g.seat}`, restore: tx.origin ?? null })) };
+    return;
+  }
   if (g?.kind === "plate" && g.seat !== null && g.seat !== me && !isOpen(f, "sift")) {
     const leaning = f.layers.find((e) => e.layer === "lean")?.seat === g.seat;
     tx.s = { ...tx.s, focus: leaning ? close(f, "lean") : open(f, entry("lean", { seat: g.seat, restore: tx.origin ?? null })) };

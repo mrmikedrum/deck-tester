@@ -222,6 +222,8 @@ export type Draw =
       readonly seed: number;
       /** Its copies counted by a coin on its shoulder, their edges standing up behind it (a battle line's run), or null. */
       readonly coin?: number | null;
+      /** No count chip on its face, whatever its title does (a battle line's: a count there means copies, a coin). */
+      readonly chipless?: boolean;
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | {
@@ -259,7 +261,7 @@ export type Draw =
     }
   | { readonly t: "hidden" }
   /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
-  | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }
+  | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string; readonly count?: number }
   /** The shade a sift lays over the table, and the vellum behind its cards (a screen rect, CSS px). */
   | { readonly t: "scrim"; readonly back: Rect; readonly screen: { readonly w: number; readonly h: number } };
 

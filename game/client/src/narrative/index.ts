@@ -30,4 +30,4 @@ export {
   TOASTS_KEPT,
 } from "./narrate";
 export { logSheetView, logStripView, lossReport, recapView, restoreView, watching } from "./view";
-export { musterWords, noteWords } from "./muster";
+export { musterWords, noteWords, tallyWords } from "./muster";

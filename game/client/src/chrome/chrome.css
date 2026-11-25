@@ -781,6 +781,18 @@
     box-shadow: var(--sheet-shadow);
     white-space: nowrap;
   }
+  /* A spread's group caption (battle lines' seat spread): what each row of cards is, over its first card. */
+  .l-sift-group {
+    position: absolute;
+    z-index: 30;
+    padding: calc(2 * var(--u)) calc(10 * var(--u));
+    border-radius: 3px;
+    background: var(--sheet);
+    color: var(--ink);
+    font: italic 400 calc(15 * var(--u)) / 1.2 var(--serif);
+    white-space: nowrap;
+    pointer-events: none;
+  }
   .l-sift > span:first-child {
     display: grid;
     gap: 1px;
@@ -808,8 +820,11 @@
     padding: 0 calc(10 * var(--u));
     font-size: calc(22 * var(--u));
   }
+  /* (In the flow of the caption, but still the box its stud is drawn in: static, the stud would cover the caption.) */
   .l-sift .g-close {
-    position: static;
+    position: relative;
+    top: auto;
+    right: auto;
   }
   .l-back {
     pointer-events: auto;

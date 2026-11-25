@@ -59,6 +59,8 @@ interface Memory {
   few: boolean;
   /** Each card's unit id, so a run that loses its first card keeps its id. */
   uid: Record<string, string>;
+  /** Each column's front cards, as last planned: while they are away (tapped, fighting) the front place stays open. */
+  front?: Record<string, string[]>;
   /** Theirs: how deep the support row stood, so it holds its place when what is in front of it goes (a wipe). */
   supA?: number;
   /** My support and wells are mat's: its memory. */
@@ -70,20 +72,26 @@ const readMemory = (m: LayoutMemory | null): Memory | null => (m && m.paradigm =
 function weight(r: { rep: BoardCard; ids: readonly CardId[] }, dressed: boolean): number {
   const c = r.rep;
   const notable = c.legendary || dressed || c.keywords.some((k) => COMBAT.has(k.toLowerCase()));
-  return (c.commander ? 1e4 : 0) + (notable ? 1e3 : 0) + (c.power ?? 0) * 20 + (c.toughness ?? 0) + Math.min(9, r.ids.length) * 0.1;
+  // (Power first: a legend or a keyword only breaks a tie, so a 6/6 never stands behind a 3/4 for being plain.)
+  return (c.commander ? 1e4 : 0) + (c.power ?? 0) * 20 + (notable ? 10 : 0) + (c.toughness ?? 0) + Math.min(9, r.ids.length) * 0.1;
 }
 
 const arrived = (a: BoardCard, b: BoardCard): number => Number(b.commander) - Number(a.commander) || a.id - b.id;
 
-function runsOf(list: readonly BoardCard[], hosts: ReadonlySet<CardId>, involved: ReadonlySet<CardId>): Run[] {
+/**
+ * Runs: cards identical to the eye. What acts groups only with what acts alike: attackers at the same defender, unblocked,
+ * stand together as one detachment (its coin says how many); a blocked attacker, or a card aimed at, stands alone.
+ */
+function runsOf(list: readonly BoardCard[], hosts: ReadonlySet<CardId>, role: (id: CardId) => string | null): Run[] {
   const out: Run[] = [], by = new Map<string, Run>();
   for (const c of list.slice().sort(arrived)) {
-    const alone = hosts.has(c.id) || c.commander || involved.has(c.id);
-    const k = c.sig;
+    const act = role(c.id);
+    const alone = hosts.has(c.id) || c.commander || act === "";
+    const k = act === null ? c.sig : `${c.sig}#${act}`;
     const run = alone ? undefined : by.get(k);
     if (run) run.ids.push(c.id);
     else {
-      const r: Run = { ids: [c.id], rep: c, w: 0, acting: involved.has(c.id) };
+      const r: Run = { ids: [c.id], rep: c, w: 0, acting: act !== null };
       out.push(r);
       if (!alone) by.set(k, r);
     }
@@ -200,8 +208,21 @@ function plan(input: SeatInput): SeatPlan {
   const bf = board.cards.filter((c) => !attached.has(c.id));
   const hosts = new Set(dressedBy.keys());
   const creatures = bf.filter((c) => c.creature);
-  const ready = runsOf(creatures.filter((c) => !c.tapped), hosts, involved);
-  const spent = runsOf(creatures.filter((c) => c.tapped), hosts, involved);
+  // How each card acts: null at rest; "" alone (aimed at, or blocked); else the role it shares with its detachment.
+  const fight = input.combat ?? null;
+  const roleOf = (id: CardId): string | null => {
+    if (!involved.has(id)) return null;
+    const a = fight?.attacks.find((x) => x.attacker === id);
+    if (a) return fight!.blocks.some((b) => b.attacker === id) ? "" : `at:${"seat" in a.defender ? a.defender.seat : a.defender.card}`;
+    const b = fight?.blocks.find((x) => x.blocker === id);
+    return b ? `blocks:${b.attacker}` : "";
+  };
+  const ready = runsOf(creatures.filter((c) => !c.tapped), hosts, roleOf);
+  const spentAll = runsOf(creatures.filter((c) => c.tapped), hosts, roleOf);
+  // A tapped creature that fights (an attacker) stands at its own place on the line, which the combat row takes it from;
+  // the rest lie in the spent row.
+  const spent = spentAll.filter((x) => !x.acting);
+  const fighting = spentAll.filter((x) => x.acting);
   const ids = new Ids(mem?.uid ?? {});
   const units: Unit[] = [];
   const dressOf = (run: Run): CardId[] => run.ids.flatMap((id) => dressedBy.get(id) ?? []);
@@ -239,47 +260,82 @@ function plan(input: SeatInput): SeatPlan {
   const sFloor = scaleAt(g, at(g, r, span.uc, aLine), px);
   const K = Math.max(1, Math.min(me ? MOST.me : MOST.them, Math.floor(span.w / (sFloor * CW * PITCH))));
   const depth0 = me ? DEPTH.near : r.position === "across" ? DEPTH.across : DEPTH.side;
-  const few = ready.length <= K;
-  const colOf = (run: Run): number | null => {
-    if (!mem || mem.few !== few || (!few && mem.k !== K)) return null;
-    const votes = run.ids.map((id) => mem.col[String(id)]).filter((x): x is number => x !== undefined);
+  // Each creature's column last time. A column holds its place while any of its creatures is still on the battlefield,
+  // tapped or away fighting: what stands back up comes back to it, and nothing else moves along the line meanwhile.
+  const memCol = new Map<CardId, number>();
+  if (mem) for (const [k, v] of Object.entries(mem.col)) memCol.set(+k as CardId, v);
+  const present = new Set(creatures.map((c) => c.id));
+  const readyIds = new Set(ready.flatMap((x) => x.ids));
+  const vote = (run: Run): number | null => {
+    const votes = run.ids.map((id) => memCol.get(id)).filter((x): x is number => x !== undefined);
     if (!votes.length) return null;
     const n = new Map<number, number>();
     votes.forEach((v) => n.set(v, (n.get(v) ?? 0) + 1));
     return [...n.entries()].sort((x, y) => y[1] - x[1] || x[0] - y[0])[0]![0];
   };
-  let cols: Run[][];
-  if (few) {
-    // Few: every run a front, bigger than the floor, in the order it came (a card that stays keeps its side).
-    const order = ready.slice().sort((x, y) => (colOf(x) ?? 1e3) - (colOf(y) ?? 1e3) || arrived(x.rep, y.rep));
-    cols = order.map((run) => [run]);
-  } else {
+  const heldIn = (pred: (id: CardId) => boolean): Set<number> => {
+    const out = new Set<number>();
+    for (const [id, c] of memCol) if (present.has(id) && pred(id)) out.add(c);
+    return out;
+  };
+  // Few: every run a front, bigger than the floor, in its own place.
+  let few = false, cols: Run[][] = [], oldIdx: (number | null)[] = [];
+  if (!mem || mem.few) {
+    const slots = new Map<number, Run | null>();
+    if (mem) for (const c of heldIn(() => true)) slots.set(c, null);
+    const fresh: Run[] = [];
+    for (const run of ready.slice().sort((x, y) => arrived(x.rep, y.rep))) {
+      const c = vote(run);
+      if (c !== null && slots.get(c) === null) slots.set(c, run);
+      else fresh.push(run);
+    }
+    if (slots.size + fresh.length <= K) {
+      few = true;
+      const order = [...slots.keys()].sort((x, y) => x - y);
+      cols = [...order.map((c) => (slots.get(c) ? [slots.get(c)!] : [])), ...fresh.map((run) => [run])];
+      oldIdx = [...order, ...fresh.map(() => null)];
+      // (A held place whose creatures are all gone frees itself: nothing holds it but cards on the battlefield.)
+    }
+  }
+  if (!few) {
+    const keep = !!mem && !mem.few && mem.k === K;
     cols = Array.from({ length: K }, () => [] as Run[]);
+    oldIdx = cols.map((_, i) => (keep ? i : null));
+    const held = keep ? heldIn(() => true) : new Set<number>();
     const byW = ready.slice().sort((x, y) => y.w - x.w || arrived(x.rep, y.rep));
     const free: Run[] = [];
     for (const run of byW) {
-      const c = colOf(run);
+      const c = keep ? vote(run) : null;
       if (c !== null && c < K) cols[c]!.push(run);
       else free.push(run);
     }
-    const fresh = !mem || mem.few !== few || mem.k !== K;
     free.forEach((run, i) => {
-      if (fresh) return void cols[i % K]!.push(run);
-      // A newcomer joins its namesake's file; else an empty column; else the file whose front it outweighs (lightest
-      // front first); else the shortest file.
+      if (!keep) return void cols[i % K]!.push(run);
+      // A newcomer joins its namesake's file; else an empty column no one holds; else the file whose front it outweighs
+      // (lightest front first); else the shortest file.
       const name = cols.findIndex((c) => c.some((x) => x.rep.name === run.rep.name));
       if (name >= 0) return void cols[name]!.push(run);
-      const empty = cols.findIndex((c) => !c.length);
+      const empty = cols.findIndex((c, j) => !c.length && !held.has(j));
       if (empty >= 0) return void cols[empty]!.push(run);
-      const front = (c: Run[]) => Math.max(...c.map((x) => x.w));
-      const lightest = cols.map((c, i) => [i, front(c)] as const).sort((x, y) => x[1] - y[1])[0]!;
+      const front = (c: Run[]) => (c.length ? Math.max(...c.map((x) => x.w)) : Infinity);
+      const lightest = cols.map((c, j) => [j, front(c)] as const).sort((x, y) => x[1] - y[1])[0]!;
       if (run.w > lightest[1]) return void cols[lightest[0]]!.push(run);
-      const shortest = cols.map((c, i) => [i, c.length, front(c)] as const).sort((x, y) => x[1] - y[1] || x[2] - y[2])[0]!;
+      const shortest = cols.map((c, j) => [j, c.length || Infinity, front(c)] as const).sort((x, y) => x[1] - y[1] || x[2] - y[2])[0]!;
       cols[shortest[0]]!.push(run);
     });
     cols.forEach((c) => c.sort((x, y) => y.w - x.w || arrived(x.rep, y.rep)));
-    cols = cols.filter((c) => c.length);
+    // (An empty column stays only while it is held.)
+    const kept = cols.map((c, j) => c.length > 0 || held.has(j));
+    oldIdx = oldIdx.filter((_, j) => kept[j]);
+    cols = cols.filter((_, j) => kept[j]);
   }
+  /** Where a creature's place is now: its old column's new index. */
+  const placeOf = (id: CardId): number | null => {
+    const c = memCol.get(id);
+    if (c === undefined) return null;
+    const j = oldIdx.indexOf(c);
+    return j < 0 ? null : j;
+  };
   const n = cols.length;
   const sFront = few ? Math.max(sFloor, Math.min(me ? PREF.me : PREF.them, span.w / Math.max(1, n) / (CW * PITCH))) : sFloor;
   const pitch = Math.max(sFront * CW * PITCH, few ? 0 : span.w / Math.max(1, n));
@@ -290,20 +346,30 @@ function plan(input: SeatInput): SeatPlan {
   const back = me ? null : backBand();
   const fits = (S: number) => {
     const placed = cols.map((c, i) => {
+      // (A place held open for creatures away, tapped or fighting: nothing stands there now.)
+      if (!c.length) return { f: [] as Placed[], rearguard: null, closed: null, hole: false };
+      // (Its front away, tapped or fighting: its place on the line stays open and the rest stand where they stood.)
+      const was = oldIdx[i] === null || oldIdx[i] === undefined ? undefined : mem?.front?.[String(oldIdx[i])];
+      const away = (was ?? []).map((id) => +id as CardId).filter((id) => present.has(id) && !readyIds.has(id));
+      const hole: Run | null = away.length && !c.some((x) => x.ids.some((id) => (was ?? []).includes(String(id)))) ? { ids: [], rep: cards.need(away[0]!), w: Infinity, acting: false } : null;
       // (Pressed past every head, a file closes up into its front: one pile of what it holds.)
       if (S < 0 && c.length > 1) {
         const all: Run = { ids: c.flatMap((x) => x.ids), rep: c[0]!.rep, w: c[0]!.w, acting: false };
-        return { f: fileOf(g, r, uOf(i), aLine, sFront, [all], px), rearguard: null, closed: c };
+        return { f: fileOf(g, r, uOf(i), aLine, sFront, [all], px), rearguard: null, closed: c, hole: false };
       }
       // (What acts never folds: a card aimed at stands in its file, pulled up, however deep.)
       const shown = [...c.slice(0, S + 1), ...c.slice(S + 1).filter((x) => x.acting)], rest = c.slice(S + 1).filter((x) => !x.acting);
       // (Past S heads the lightest fold into one rearguard behind the last; one alone is just a head.)
       const rear: Run | null = rest.length > 1 ? { ids: rest.flatMap((x) => x.ids), rep: rest[0]!.rep, w: 0, acting: false } : (rest[0] ?? null);
-      return { f: fileOf(g, r, uOf(i), aLine, sFront, rear ? [...shown, rear] : shown, px), rearguard: rest.length > 1 ? rest : null, closed: null };
+      const runs = rear ? [...shown, rear] : shown;
+      const f = fileOf(g, r, uOf(i), aLine, sFront, hole ? [hole, ...runs] : runs, px);
+      // (The open place is a step the file keeps, not a card: the rest are ranked from the front again.)
+      return { f: hole ? f.slice(1).map((p) => ({ ...p, rank: p.rank - 1, raised: p.raised && p.rank > 1 })) : f, rearguard: rest.length > 1 ? rest : null, closed: null, hole: !!hole };
     });
     let behind = aLine + 0.5;
     placed.forEach(({ f }) => {
-      const last = f[f.length - 1]!;
+      const last = f[f.length - 1];
+      if (!last) return;
       behind = Math.max(behind, clearBehind(g, r, last.a, last.s, tallOf(last.run.ids.length)));
     });
     return { placed, back: behind };
@@ -392,6 +458,29 @@ function plan(input: SeatInput): SeatPlan {
       });
     }
   });
+  // Attackers away from the line: each detachment stands in its own place (the combat row takes it from there), the
+  // copies that stayed home keeping the file with their coin; one with no place yet lies with the spent.
+  for (const run of fighting) {
+    const j = placeOf(run.ids[0]!);
+    if (j === null) {
+      spent.push({ ...run, acting: false });
+      continue;
+    }
+    units.push({
+      id: ids.take("c", run.ids),
+      role: "creature",
+      kind: run.ids.length > 1 ? "pile" : "card",
+      members: run.ids,
+      dressing: dressOf(run),
+      top: run.rep.id,
+      title: null,
+      mixed: false,
+      acting: true,
+      tapped: true,
+      placement: { pos: at(g, r, uOf(j), aLine), scale: sFront, posture: "stand" },
+      ...(run.ids.length > 1 ? { coin: true } : {}),
+    });
+  }
   const line = { a: at(g, r, span.lo + 0.1, aLine), b: at(g, r, span.hi - 0.1, aLine) };
 
   // ---- theirs: the spent row, the support row, the back band --------------------------------------------------------
@@ -430,15 +519,26 @@ function plan(input: SeatInput): SeatPlan {
   const heads = units.some((u) => u.head);
   const muster = heads || (shingled && !me) || (!me && spent.length > 0) ? musterOf(creatures) : null;
   const page: Fixtures["page"] = { pos: at(g, r, 0, r.d / 2), w: r.w, d: r.d, yaw: r.yaw };
-  fixtures = { ...fixtures, page, ...(creatures.length || !me ? { line } : {}), ...(notes.length ? { notes } : {}), ...(muster ? { muster } : {}) };
+  fixtures = { ...fixtures, page, ...(creatures.length || !me ? { line } : {}), ...(notes.length ? { notes } : {}), ...(muster ? { muster } : {}), ...(me ? { tally: true } : {}) };
 
   const col: Record<string, number> = {};
   cols.forEach((c, i) => c.forEach((run) => run.ids.forEach((id) => (col[String(id)] = i))));
-  // (A spent creature keeps the column it left, for when it stands back up.)
-  for (const run of spent) for (const id of run.ids) if (mem?.col[String(id)] !== undefined && col[String(id)] === undefined) col[String(id)] = mem.col[String(id)]!;
+  // (A creature away, tapped or fighting, keeps the place it left, for when it stands back up.)
+  for (const run of spentAll)
+    for (const id of run.ids) {
+      const j = placeOf(id);
+      if (j !== null && col[String(id)] === undefined) col[String(id)] = j;
+    }
+  const front: Record<string, string[]> = {};
+  files.placed.forEach(({ f, hole }, i) => {
+    // (A front still away keeps its claim on the place it left.)
+    const was = oldIdx[i] === null || oldIdx[i] === undefined ? undefined : mem?.front?.[String(oldIdx[i])];
+    if (hole && was) front[String(i)] = was;
+    else if (f[0]) front[String(i)] = f[0].run.ids.map(String);
+  });
   const uid: Record<string, string> = {};
   for (const u of units) for (const id of u.members) uid[String(id)] = u.id;
-  const memory: LayoutMemory = { v: 1, paradigm: "lines", fit: { col, k: K, few, uid, mat: matPlan?.memory ?? null, ...(supA !== undefined ? { supA } : {}) } satisfies Memory };
+  const memory: LayoutMemory = { v: 1, paradigm: "lines", fit: { col, k: K, few, uid, front, mat: matPlan?.memory ?? null, ...(supA !== undefined ? { supA } : {}) } satisfies Memory };
   return new Ledger(board.cards.map((c) => c.id)).seal({
     seat: board.seat,
     units,
@@ -449,7 +549,9 @@ function plan(input: SeatInput): SeatPlan {
 
   // ---- the spent row: tapped creatures lying turned, clear while they fit, else shingled; one heap to a tap ------------
   function layoutSpent(a0: number, sS: number, within?: { lo: number; hi: number; w: number; uc: number }, compact = false): void {
-    const order = spent.slice().sort((x, y) => (colOf2(x) ?? 1e3) - (colOf2(y) ?? 1e3) || y.w - x.w);
+    // (A commander or a legend lies first and clear of the heap: never a sliver in a shingle.)
+    const legend = (x: Run) => x.rep.commander || x.rep.legendary;
+    const order = spent.slice().sort((x, y) => Number(legend(y)) - Number(legend(x)) || (colOf2(x) ?? 1e3) - (colOf2(y) ?? 1e3) || y.w - x.w);
     const aC = a0 + (CW * sS) / 2; // its middle's depth
     const sp = within ?? bandSpan(g, r, me, me ? a0 : aC);
     const len = CH * sS, clearStep = len * 1.05;
@@ -464,12 +566,20 @@ function plan(input: SeatInput): SeatPlan {
       row = [...keep, { ids: rest.flatMap((x) => x.ids), rep: rest[0]!.rep, w: 0, acting: false }];
     }
     const clear = row.length * clearStep <= sp.w;
-    const step = clear ? clearStep : Math.min(clearStep, (sp.w - len) / Math.max(1, row.length - 1));
     shingled = !clear;
-    const u0 = sp.uc - ((row.length - 1) * step) / 2;
+    // Where each lies: clear while they fit; else the legends clear at the head and the rest shingled after them.
+    let nClear = clear ? row.length : row.filter(legend).length;
+    let step = clear ? clearStep : (sp.w - nClear * clearStep - len) / Math.max(1, row.length - nClear - 1);
+    if (!clear && (step < minStep || nClear >= row.length)) {
+      nClear = 0;
+      step = Math.min(clearStep, (sp.w - len) / Math.max(1, row.length - 1));
+    }
+    const xs = row.map((_, i) => (i < nClear ? i * clearStep : nClear * clearStep + (i - nClear) * step));
+    const width = xs[xs.length - 1]! + len;
+    const u0 = sp.uc - width / 2 + len / 2;
     const fileId = `${board.seat}:spent`;
     row.forEach((run, i) => {
-      const c = at(g, r, u0 + i * step, aC);
+      const c = at(g, r, u0 + xs[i]!, aC);
       // A lying card's placement is its near edge, its middle half a card behind; each lies a hair over the one before
       // it, so the left end of each, where its numbers are, shows when they shingle.
       const pos: V3 = { x: c.x, y: 0.004 * i, z: c.z + (CH * sS) / 2 + 0.002 * i };
@@ -491,9 +601,11 @@ function plan(input: SeatInput): SeatPlan {
         file: { id: fileId, rank: 1 },
         ...(run.acting ? { raised: true } : {}),
         ...(run.ids.length > 1 && !mixed ? { coin: true } : {}),
+        chipless: true,
       });
     });
-    if ((shingled || !me) && !compact) {
+    // (A sign whenever the row shingles, never over cards that lie clear.)
+    if (shingled) {
       const all = spent.flatMap((x) => x.ids.map((id) => cards.need(id)));
       const big = all.slice().sort((x, y) => (y.power ?? 0) - (x.power ?? 0))[0];
       notes.push({
@@ -579,6 +691,7 @@ function plan(input: SeatInput): SeatPlan {
         mixed: !!d.title && new Set(d.ids.map((id) => cards.need(id).name)).size > 1,
         acting: false,
         tapped: cards.need(top).tapped,
+        chipless: true,
         // (Propped a little, as my own support is: it lies back out of the way, its name still facing me.)
         // (A tapped one stands nearly upright, so turned it is still as tall as a finger needs.)
         placement: { pos: at(g, r, u, p.a), scale: p.s, posture: cards.need(top).tapped ? "prop" : "lean" },

@@ -8,11 +8,11 @@
 import { abilityText, entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
-import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
+import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftGroupsOf, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, shortName } from "../../theme";
-import { musterWords, noteWords } from "../../narrative";
+import { musterWords, noteWords, tallyWords } from "../../narrative";
 import type { FaceSpec } from "../../theme";
 import { DIM, SCRIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
@@ -202,7 +202,10 @@ export function describe(input: DescribeInput): Description {
 
     const plateMark = cues.marks.seats.get(seat) ?? null;
     const spec = plateOf(model, seat, plateMark);
-    const slip = sp.fixtures.muster ? musterWords(sp.fixtures.muster) : null;
+    // (An attack on me is counted on my plaque's slip while it lasts: how much comes, and with blocks drafted, how much
+    // gets through. Counted from the cards, never judged.)
+    const tally = sp.fixtures.tally ? tallyOf(model, cues, seat) : null;
+    const slip = tally ? tallyWords(tally.at, tally.through) : sp.fixtures.muster ? musterWords(sp.fixtures.muster) : null;
     // The rest of the command zone (a partner) is shown by its plate (the seal's art); it is counted there.
     const command = model.zone(seat, "command").filter((id) => id !== cmd?.card);
     put({
@@ -282,7 +285,7 @@ export function describe(input: DescribeInput): Description {
   });
 
   // A sift: the pile's cards fanned out in front of the camera over a shade, each flying out of the pile.
-  if (sifting) for (const p of siftPieces(model, plan, sifting, table?.page ?? 0)) pieces.set(p.id, p);
+  if (sifting) for (const p of siftPieces(model, plan, sifting, table?.page ?? 0, home)) pieces.set(p.id, p);
 
   // While I lean in on a seat the stack is set aside, and its arcs with it.
   const aims = lean ? [] : aimsOf(model, pieces, home, stackUp);
@@ -319,6 +322,19 @@ export function describe(input: DescribeInput): Description {
   };
 }
 
+/** An attack on `seat` (the engine's, or the draft over it): the power coming, and with any blocks, what is unblocked. */
+function tallyOf(model: TableModel, cues: BoardCues, seat: SeatId): { at: number; through: number | null } | null {
+  const combat = mergeCombat(engineCombat(model), cues.combat);
+  if (!combat) return null;
+  const mine = combat.attacks.filter((a) => "seat" in a.defender && a.defender.seat === seat);
+  if (!mine.length) return null;
+  const power = (id: CardId) => Math.max(0, model.cards.get(id)?.power ?? 0);
+  const blocked = new Set(combat.blocks.map((b) => b.attacker));
+  const at = mine.reduce((t, a) => t + power(a.attacker), 0);
+  const through = combat.blocks.length ? mine.filter((a) => !blocked.has(a.attacker)).reduce((t, a) => t + power(a.attacker), 0) : null;
+  return { at, through };
+}
+
 const quadHeight = (q: readonly { readonly y: number }[]): number => Math.max(...q.map((p) => p.y)) - Math.min(...q.map((p) => p.y));
 
 /** A sift of a group: its cards in the order it fans them, and which of them lie turned (tapped on the battlefield). */
@@ -327,6 +343,82 @@ export interface SiftCards {
   readonly tapped: readonly boolean[];
   /** A graveyard or exile, which keeps its order; else a pile on the battlefield. */
   readonly zone: "graveyard" | "exile" | null;
+  /** Whose cards they are. */
+  readonly seat: SeatId | null;
+  /** A spread of runs (battle lines): how many identical copies each card shown stands for. */
+  readonly counts?: readonly number[];
+  /** A spread in titled groups: each group's caption and how many of the cards are in it, in order. */
+  readonly groups?: readonly { readonly label: string; readonly size: number }[];
+  /** Its caption, where the spread says more than the pile's name ("Marath's file · 8 creatures · 21 power"). */
+  readonly title?: string;
+}
+
+/** Cards as runs of identical ones (name, numbers, tapped), each once with its count, in the order they come. */
+function runsIn(model: TableModel, ids: readonly CardId[]): { id: CardId; n: number; c: Card }[] {
+  const out: { id: CardId; n: number; c: Card }[] = [], by = new Map<string, { id: CardId; n: number; c: Card }>();
+  for (const id of ids) {
+    const c = model.cards.get(id);
+    if (!c) continue;
+    const k = `${c.face.name}|${c.power}/${c.toughness}|${c.tapped}`;
+    const r = by.get(k);
+    if (r) r.n++;
+    else {
+      const nr = { id, n: 1, c };
+      by.set(k, nr);
+      out.push(nr);
+    }
+  }
+  return out;
+}
+
+/** Battle lines' spreads: a file (its front and every head), the spent heap, a whole seat (`spread:<seat>`). */
+function spreadOf(model: TableModel, plan: TablePlan, group: string): SiftCards | null {
+  const seatSpread = /^spread:(.+)$/.exec(group)?.[1];
+  const name = (seat: SeatId) => (seat === model.viewer.perspective ? "Your" : `${seat}'s`);
+  const power = (rs: readonly { n: number; c: Card }[]) => rs.reduce((t, r) => t + r.n * Math.max(0, r.c.power ?? 0), 0);
+  const count = (rs: readonly { n: number }[]) => rs.reduce((t, r) => t + r.n, 0);
+  if (seatSpread !== undefined) {
+    const seat = seatSpread as SeatId, sp = plan.seats.get(seat);
+    if (!sp) return null;
+    const cs = [...sp.home.keys()].map((id) => model.cards.get(id)).filter((c): c is Card => !!c && c.attachedTo === null);
+    const creature = (c: Card) => !isLand(c) && /Creature/.test(c.face.type);
+    const heavy = (a: { c: Card }, b: { c: Card }) => (b.c.power ?? 0) - (a.c.power ?? 0) || (b.c.toughness ?? 0) - (a.c.toughness ?? 0) || (a.c.face.name < b.c.face.name ? -1 : 1);
+    const ready = runsIn(model, cs.filter((c) => creature(c) && !c.tapped).map((c) => c.id)).sort(heavy);
+    const spent = runsIn(model, cs.filter((c) => creature(c) && c.tapped).map((c) => c.id)).sort(heavy);
+    const other = runsIn(model, cs.filter((c) => !creature(c) && !isLand(c) && !isTreasure(c) && !/\{T\}[^:\n]*: Add/.test(c.face.text)).map((c) => c.id));
+    const groups = [
+      { label: `Ready · ${count(ready)} · ${power(ready)} power`, rs: ready },
+      { label: `Tapped · ${count(spent)}`, rs: spent },
+      { label: `Other permanents · ${count(other)}`, rs: other },
+    ].filter((g) => g.rs.length);
+    const rs = groups.flatMap((g) => g.rs);
+    return {
+      ids: rs.map((r) => r.id),
+      tapped: rs.map((r) => r.c.tapped),
+      zone: null,
+      seat,
+      counts: rs.map((r) => r.n),
+      groups: groups.map((g) => ({ label: g.label, size: g.rs.length })),
+      title: `${name(seat)} board`,
+    };
+  }
+  const file = /^tail:(.+)$/.exec(group)?.[1];
+  if (file === undefined) return null;
+  const g = plan.hits.groups.find((x) => x.id === group);
+  if (!g) return null;
+  // A file's spread holds its front too, the runs in the order they stand.
+  const units = [...plan.seats.values()].flatMap((sp) => sp.units).filter((u) => u.file?.id === file).sort((a, b) => a.file!.rank - b.file!.rank);
+  const rs = runsIn(model, units.flatMap((u) => u.members));
+  const spent = file.endsWith(":spent");
+  const n = count(rs);
+  return {
+    ids: rs.map((r) => r.id),
+    tapped: rs.map((r) => r.c.tapped),
+    zone: null,
+    seat: g.seat,
+    counts: rs.map((r) => r.n),
+    title: g.seat === null ? "" : `${name(g.seat)} ${spent ? "tapped" : "file"} · ${n} creature${n === 1 ? "" : "s"} · ${power(rs)} power`,
+  };
 }
 
 /**
@@ -334,6 +426,8 @@ export interface SiftCards {
  * before tapped); a graveyard or exile in its order. Null when the plan has no such group.
  */
 export function siftCards(model: TableModel, plan: TablePlan, group: string): SiftCards | null {
+  const spread = spreadOf(model, plan, group);
+  if (spread) return spread;
   const g = plan.hits.groups.find((x) => x.id === group);
   if (!g) return null;
   const m = /^zone:(graveyard|exile):(.+)$/.exec(group);
@@ -348,19 +442,49 @@ export function siftCards(model: TableModel, plan: TablePlan, group: string): Si
     const tapped = (id: CardId) => model.cards.get(id)?.tapped ?? false;
     ids = [...by.values()].sort((a, b) => b.length - a.length).flatMap((cs) => [...cs.filter((id) => !tapped(id)), ...cs.filter(tapped)]);
   }
-  return { ids, tapped: ids.map((id) => (!zone && model.cards.get(id)?.tapped) || false), zone };
+  return { ids, tapped: ids.map((id) => (!zone && model.cards.get(id)?.tapped) || false), zone, seat: g.seat };
+}
+
+/** Where a sift's cards stand: in titled groups for a spread of one page, else in rows. */
+export function siftPlaces(plan: TablePlan, all: SiftCards, page: number): { places: ReturnType<typeof siftOf>; heads: { x: number; y: number }[] } {
+  const p = Math.max(0, Math.min(siftPages(all.ids.length) - 1, page));
+  const tapped = all.tapped.slice(p * SIFT_PAGE, (p + 1) * SIFT_PAGE);
+  if (all.groups && siftPages(all.ids.length) === 1) {
+    let at = 0;
+    const gs = all.groups.map((g) => tapped.slice(at, (at += g.size)));
+    return siftGroupsOf(plan.viewport, gs);
+  }
+  return { places: siftOf(plan.viewport, tapped), heads: [] };
+}
+
+/**
+ * How high a sifted card stands over its place on screen: on one plane square to the camera, as deep as the middle of the
+ * screen at the sift's height, so every card stands before the sift's sheet however high on the screen (a card far up the
+ * screen at the sift's height would stand behind the sheet, which is drawn over it).
+ */
+function siftHeight(proj: TablePlan["projector"], r: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }): number {
+  const f = { x: proj.up.y * proj.right.z - proj.up.z * proj.right.y, y: proj.up.z * proj.right.x - proj.up.x * proj.right.z, z: proj.up.x * proj.right.y - proj.up.y * proj.right.x };
+  const depth = (p: { x: number; y: number; z: number }) => Math.abs((p.x - proj.eye.x) * f.x + (p.y - proj.eye.y) * f.y + (p.z - proj.eye.z) * f.z);
+  const vp = proj.viewport, want = depth(proj.onTable(vp.w / 2, vp.h / 2, SIFT_HEIGHT.cards));
+  const x = (r.left + r.right) / 2, y = (r.top + r.bottom) / 2;
+  let lo = -20, hi = proj.eye.y - 0.5;
+  for (let k = 0; k < 30; k++) {
+    const m = (lo + hi) / 2;
+    if (depth(proj.onTable(x, y, m)) > want) lo = m;
+    else hi = m;
+  }
+  return (lo + hi) / 2;
 }
 
 /** A sift's pieces: the shade, and one page of the group's cards in rows (`siftCards`'s order). */
-function siftPieces(model: TableModel, plan: TablePlan, group: string, page: number): Piece[] {
+function siftPieces(model: TableModel, plan: TablePlan, group: string, page: number, home: ReadonlyMap<CardId, string>): Piece[] {
   const all = siftCards(model, plan, group);
   if (!all || !all.ids.length) return [];
-  const g = plan.hits.groups.find((x) => x.id === group)!;
   const zone = all.zone;
   const p = Math.max(0, Math.min(siftPages(all.ids.length) - 1, page));
   const ids = all.ids.slice(p * SIFT_PAGE, (p + 1) * SIFT_PAGE);
-  const tapped = all.tapped.slice(p * SIFT_PAGE, (p + 1) * SIFT_PAGE);
-  const places = siftOf(plan.viewport, tapped);
+  const counts = all.counts?.slice(p * SIFT_PAGE, (p + 1) * SIFT_PAGE);
+  const { places } = siftPlaces(plan, all, p);
   const proj = plan.projector;
   const xs = places.flatMap((p) => [p.rect.left, p.rect.right]),
     ys = places.flatMap((p) => [p.rect.top, p.rect.bottom]);
@@ -389,15 +513,16 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
     out.push({
       id: `sift:${id}`,
       kind: "sift",
-      seat: g.seat,
+      seat: all.seat,
       members: [],
       face: id,
-      pose: screenPose(proj, { rect: pl.rect, rotation: 0, scale: 1 }, SIFT_HEIGHT.cards),
+      pose: screenPose(proj, { rect: pl.rect, rotation: 0, scale: 1 }, siftHeight(proj, pl.rect)),
       look: { ...LOOK, tap: pl.turn !== 0 ? 1 : 0 },
       form: `sift|${id}`,
-      mods: `${pl.turn}`,
+      mods: `${pl.turn}|${counts?.[i] ?? 1}`,
       mark: null,
-      draw: { t: "sift", card: id, tapped: !!c?.tapped && !zone, from: group },
+      // (A spread's card comes out of the piece it stands in on the table: a spread is no pile of its own.)
+      draw: { t: "sift", card: id, tapped: !!c?.tapped && !zone, from: all.counts ? (home.get(id) ?? group) : group, ...((counts?.[i] ?? 1) > 1 ? { count: counts![i]! } : {}) },
       needsMembers: false,
     });
   });
@@ -488,6 +613,7 @@ function unitPiece(
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
     coin,
+    ...(u.chipless ? { chipless: true } : {}),
   };
   return {
     id: u.id,

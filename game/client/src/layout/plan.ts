@@ -222,7 +222,7 @@ export function planTable(input: TableInput): TablePlan {
   const vp = input.viewport, projector = pinhole(tpl.camera, vp), reserve = reservations(vp, input.mode, input.safe);
   const mk = (i: number): Omit<SeatInput, "pressure"> => {
     const { seat, board } = input.seats[i]!, slot = tpl.slots[i]!;
-    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, settling: input.settling, memory: input.memory?.get(seat) ?? null };
+    return { seat, board, region: { ...slot, lift: 0 }, projector, reserve, viewport: vp, involved: input.involved, combat: input.combat ?? null, settling: input.settling, memory: input.memory?.get(seat) ?? null };
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);

@@ -20,3 +20,8 @@ export function noteWords(f: NoteFacts): { readonly text: string; readonly sub: 
   if (f.kind === "spent") return { text: `${f.count} tapped · ${f.big ? `${f.big.name.split(",")[0]} ${f.big.p}/${f.big.t}` : `${f.power} power`}`, sub: null };
   return { text: `${f.gone} gone · ${f.exiled} in exile`, sub: null };
 }
+
+/** The tally at the head of the lanes, on my plaque's slip: "32 at you", and once blocks are drafted "9 through". */
+export function tallyWords(at: number, through: number | null): { readonly text: string; readonly sub: string | null } {
+  return { text: `${at} at you`, sub: through === null ? null : `${through} through` };
+}

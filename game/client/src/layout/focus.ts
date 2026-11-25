@@ -43,8 +43,12 @@ export interface Lean {
 
 /** A point of the leaning seat carried with its page: turned square to me, scaled about the page's middle, held up. */
 export function carry(l: Lean, p: V3): V3 {
-  const c = Math.cos(l.yaw), s = Math.sin(l.yaw), dx = p.x - l.from.x, dz = p.z - l.from.z;
-  const u = (dx * c - dz * s) * l.scale, v = (dx * s + dz * c) * l.scale;
+  const c = Math.cos(l.yaw),
+    s = Math.sin(l.yaw),
+    dx = p.x - l.from.x,
+    dz = p.z - l.from.z;
+  const u = (dx * c - dz * s) * l.scale,
+    v = (dx * s + dz * c) * l.scale;
   return { x: l.to.x + u, y: l.to.y + p.y * l.scale, z: l.to.z + v };
 }
 
@@ -59,14 +63,16 @@ export function carriedAbout(l: Lean, c: V3): At {
 
 /** A leaning seat's unit as drawn, grown `g` where it stands (about its foot) first. */
 export function leanedUnitAt(proj: Projector, l: Lean, u: Unit, g: number): At {
-  const f = u.placement.pos, about = carriedAbout(l, cardMiddle(proj, { ...u.placement, scale: u.placement.scale * g }, u.tapped));
+  const f = u.placement.pos,
+    about = carriedAbout(l, cardMiddle(proj, { ...u.placement, scale: u.placement.scale * g }, u.tapped));
   return (v) => about({ x: f.x + (v.x - f.x) * g, y: f.y + (v.y - f.y) * g, z: f.z + (v.z - f.z) * g });
 }
 
 const seatsOf = (plan: TablePlan): SeatId[] => [...plan.seats.keys()];
 /** A seat's place by its order in the plan (the perspective first, then clockwise), as the template's slots. */
 const placeOf = (plan: TablePlan, seat: SeatId): "near" | "left" | "across" | "right" => {
-  const i = seatsOf(plan).indexOf(seat), n = plan.seats.size;
+  const i = seatsOf(plan).indexOf(seat),
+    n = plan.seats.size;
   if (i <= 0) return "near";
   if (n === 4) return (["near", "left", "across", "right"] as const)[i]!;
   return i * 2 === n ? "across" : i * 2 < n ? "left" : "right";
@@ -80,18 +86,33 @@ const placeOf = (plan: TablePlan, seat: SeatId): "near" | "left" | "across" | "r
  * vellum. Null for my own seat or one the plan does not have.
  */
 export function leanOf(plan: TablePlan, seat: SeatId): Lean | null {
-  const sp = plan.seats.get(seat), proj = plan.projector;
+  const sp = plan.seats.get(seat),
+    proj = plan.projector;
   if (!sp || placeOf(plan, seat) === "near") return null;
-  const u = designUnit(plan.viewport), page = sp.fixtures.page;
+  const u = designUnit(plan.viewport),
+    page = sp.fixtures.page;
   const from: V3 = { x: page.pos.x, y: 0, z: page.pos.z };
   const toU = (p: Point): Point => ({ x: p.x / u, y: p.y / u });
   const pageBox = (s: SeatId) => {
-    const f = plan.seats.get(s)!.fixtures.page, c = Math.cos(f.yaw), sn = Math.sin(f.yaw);
-    const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
-      const lu = a! * (f.w / 2), lv = b! * (f.d / 2);
+    const f = plan.seats.get(s)!.fixtures.page,
+      c = Math.cos(f.yaw),
+      sn = Math.sin(f.yaw);
+    const pts = [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ].map(([a, b]) => {
+      const lu = a! * (f.w / 2),
+        lv = b! * (f.d / 2);
       return toU(proj.project({ x: f.pos.x + lu * c + lv * sn, y: 0, z: f.pos.z - lu * sn + lv * c }));
     });
-    return { l: Math.min(...pts.map((p) => p.x)), r: Math.max(...pts.map((p) => p.x)), t: Math.min(...pts.map((p) => p.y)), b: Math.max(...pts.map((p) => p.y)) };
+    return {
+      l: Math.min(...pts.map((p) => p.x)),
+      r: Math.max(...pts.map((p) => p.x)),
+      t: Math.min(...pts.map((p) => p.y)),
+      b: Math.max(...pts.map((p) => p.y)),
+    };
   };
   const groups = (s: SeatId) => plan.hits.groups.filter((g) => g.seat === s);
   const me = seatsOf(plan)[0]!;
@@ -102,14 +123,20 @@ export function leanOf(plan: TablePlan, seat: SeatId): Lean | null {
     const g = plan.hits.groups.find((x) => x.id === un.id);
     if (g) bot = Math.min(bot, bounds(g.quad).t / u - 10);
   }
-  const cy = (LEAN_BOX.t + bot) / 2, home = proj.project(from).x / u;
+  const cy = (LEAN_BOX.t + bot) / 2,
+    home = proj.project(from).x / u;
   const side = placeOf(plan, seat) !== "across";
-  let L: number = LEAN_BOX.l, R: number = LEAN_BOX.r, slide: Lean["slide"] = null;
+  let L: number = LEAN_BOX.l,
+    R: number = LEAN_BOX.r,
+    slide: Lean["slide"] = null;
   const across = seatsOf(plan).find((s) => placeOf(plan, s) === "across");
   if (side && across) {
-    const right = page.pos.x > 0, far = seatsOf(plan).find((s) => s !== seat && s !== me && placeOf(plan, s) !== "across");
-    const ab = pageBox(across), fb = far ? pageBox(far) : null;
-    const room = fb ? Math.max(0, right ? ab.l - fb.r - 10 : fb.l - ab.r - 10) : 0, shift = right ? -room : room;
+    const right = page.pos.x > 0,
+      far = seatsOf(plan).find((s) => s !== seat && s !== me && placeOf(plan, s) !== "across");
+    const ab = pageBox(across),
+      fb = far ? pageBox(far) : null;
+    const room = fb ? Math.max(0, right ? ab.l - fb.r - 10 : fb.l - ab.r - 10) : 0,
+      shift = right ? -room : room;
     const ap = plan.seats.get(across)!.fixtures.page.pos;
     const per = (proj.project({ x: ap.x + 1, y: 0, z: ap.z }).x - proj.project(ap).x) / u;
     if (room > 0) slide = { seat: across, dx: shift / per };
@@ -122,13 +149,22 @@ export function leanOf(plan: TablePlan, seat: SeatId): Lean | null {
     else R = m - 10;
   }
   const corners = (to: V3, S: number): Point[] =>
-    [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => toU(proj.project({ x: to.x + (a! * page.w * S) / 2, y: LEAN_LIFT, z: to.z + (b! * page.d * S) / 2 })));
+    [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ].map(([a, b]) =>
+      toU(proj.project({ x: to.x + (a! * page.w * S) / 2, y: LEAN_LIFT, z: to.z + (b! * page.d * S) / 2 })),
+    );
   // Centred in that box as it looks (its near edge looks larger than its far one), across from its own seat, shifted in
   // only as far as it must be to fit.
   const place = (S: number): { to: V3; fits: boolean } => {
     let to = proj.onTable(home * u, cy * u, LEAN_LIFT);
     for (let it = 0; it < 3; it++) {
-      const q = corners(to, S), xs = q.map((p) => p.x), ys = q.map((p) => p.y);
+      const q = corners(to, S),
+        xs = q.map((p) => p.x),
+        ys = q.map((p) => p.y);
       const off = cy - (Math.min(...ys) + Math.max(...ys)) / 2;
       const dx = Math.max(0, L - Math.min(...xs)) - Math.max(0, Math.max(...xs) - R);
       const at = toU(proj.project(to));
@@ -137,15 +173,26 @@ export function leanOf(plan: TablePlan, seat: SeatId): Lean | null {
     const fits = corners(to, S).every((p) => p.x >= L - 1 && p.x <= R + 1 && p.y >= LEAN_BOX.t - 1 && p.y <= bot + 1);
     return { to, fits };
   };
-  let lo: number = LEAN_SCALE.lo, hi: number = LEAN_SCALE.hi, best = place(lo);
+  let lo: number = LEAN_SCALE.lo,
+    hi: number = LEAN_SCALE.hi,
+    best = place(lo);
   for (let it = 0; it < 14; it++) {
-    const S = (lo + hi) / 2, p = place(S);
+    const S = (lo + hi) / 2,
+      p = place(S);
     if (p.fits) {
       lo = S;
       best = p;
     } else hi = S;
   }
-  const held: Lean = { seat, from, yaw: page.yaw, to: { x: best.to.x, y: LEAN_LIFT, z: best.to.z }, scale: lo, slide, grow: 1 };
+  const held: Lean = {
+    seat,
+    from,
+    yaw: page.yaw,
+    to: { x: best.to.x, y: LEAN_LIFT, z: best.to.z },
+    scale: lo,
+    slide,
+    grow: 1,
+  };
   // Its cards then grow where they stand, as far as the room between them allows, so leaning in brings them closer even
   // where the page itself can't grow: none moves, none comes nearer than LEAN_GAP to another or to the plaque and zones
   // (which keep their size), and none passes the page's far edge or the box (the page across, my row, the gutters).
@@ -162,7 +209,9 @@ interface Box {
 
 /** How much a leaned page's cards may grow (h.js `lean`'s second step), searched between 1 and LEAN_GROW. */
 function leanGrow(plan: TablePlan, l: Lean, room: Box): number {
-  const sp = plan.seats.get(l.seat)!, proj = plan.projector, u = designUnit(plan.viewport);
+  const sp = plan.seats.get(l.seat)!,
+    proj = plan.projector,
+    u = designUnit(plan.viewport);
   const box = (q: Quad): Box => {
     const b = bounds(q);
     return { l: b.l / u, r: b.r / u, t: b.t / u, b: b.b / u };
@@ -186,7 +235,8 @@ function leanGrow(plan: TablePlan, l: Lean, room: Box): number {
   // the commander by its card's middle.
   const pl = sp.fixtures.plate.pos;
   fixed(plateShape(proj, l.seat, sp.fixtures.plate, carriedAbout(l, { x: pl.x, y: pl.y + 0.02, z: pl.z })).face);
-  for (const z of sp.fixtures.zones) fixed(zoneShape(proj, l.seat, z.zone, z.placement, false, carriedAbout(l, z.placement.pos)).face);
+  for (const z of sp.fixtures.zones)
+    fixed(zoneShape(proj, l.seat, z.zone, z.placement, false, carriedAbout(l, z.placement.pos)).face);
   const cmd = sp.fixtures.commander;
   if (cmd) fixed(commanderShape(proj, l.seat, cmd, carriedAbout(l, cardMiddle(proj, cmd.placement, false))).face);
   const gap = (a: Box, b: Box): number => Math.max(b.l - a.r, a.l - b.r, b.t - a.b, a.t - b.b);
@@ -199,9 +249,14 @@ function leanGrow(plan: TablePlan, l: Lean, room: Box): number {
     }),
   );
   const inside = (x: Item, e: Box): boolean =>
-    e.l >= Math.min(room.l, x.now.l) && e.r <= Math.max(room.r, x.now.r) && e.t >= Math.min(room.t, x.now.t) && e.b <= Math.max(room.b, x.now.b);
-  const ok = (g: number): boolean => items.every((x) => x.fixed || inside(x, x.at(g))) && pairs.every(([a, b, m]) => gap(a.at(g), b.at(g)) >= m);
-  let g0 = 1, g1 = LEAN_GROW;
+    e.l >= Math.min(room.l, x.now.l) &&
+    e.r <= Math.max(room.r, x.now.r) &&
+    e.t >= Math.min(room.t, x.now.t) &&
+    e.b <= Math.max(room.b, x.now.b);
+  const ok = (g: number): boolean =>
+    items.every((x) => x.fixed || inside(x, x.at(g))) && pairs.every(([a, b, m]) => gap(a.at(g), b.at(g)) >= m);
+  let g0 = 1,
+    g1 = LEAN_GROW;
   for (let it = 0; it < 10; it++) {
     const g = (g0 + g1) / 2;
     if (ok(g)) g0 = g;
@@ -219,7 +274,15 @@ export interface SiftPlace {
 }
 
 /** How a sift lays its cards out (old h.js `sift`): rows by count, the share of the screen they may take, the gaps. */
-const SIFT = { width: 0.86, height: 0.7, gapX: 0.08, gapY: 0.1, tappedTurn: Math.PI / 12, tappedSize: 0.86, drop: 0.04 } as const;
+const SIFT = {
+  width: 0.86,
+  height: 0.7,
+  gapX: 0.08,
+  gapY: 0.1,
+  tappedTurn: Math.PI / 12,
+  tappedSize: 0.86,
+  drop: 0.04,
+} as const;
 /** The largest a sifted card is, as a share of the screen's height: the old 1.25 world units at 6 from the camera. */
 const SIFT_MAX = 0.3;
 /**
@@ -238,23 +301,85 @@ export const siftPages = (n: number): number => Math.max(1, Math.ceil(n / SIFT_P
 export function siftOf(viewport: Viewport, tapped: readonly boolean[]): SiftPlace[] {
   const n = tapped.length;
   if (!n) return [];
-  const rows = n <= 6 ? 1 : n <= 14 ? 2 : 3, cols = Math.ceil(n / rows);
+  const rows = n <= 6 ? 1 : n <= 14 ? 2 : 3,
+    cols = Math.ceil(n / rows);
   const { w: W, h: H } = viewport;
   // A card's height on screen, px: as the old world scale (in card heights at the sift's depth).
-  const h = Math.min(SIFT_MAX * H, (W * SIFT.width) / (cols * (CW + SIFT.gapX)), (H * SIFT.height) / (rows * (CH + SIFT.gapY)));
-  const cx = W / 2, cy = H / 2 + H * SIFT.drop;
+  const h = Math.min(
+    SIFT_MAX * H,
+    (W * SIFT.width) / (cols * (CW + SIFT.gapX)),
+    (H * SIFT.height) / (rows * (CH + SIFT.gapY)),
+  );
+  const cx = W / 2,
+    cy = H / 2 + H * SIFT.drop;
   return tapped.map((t, i) => {
-    const r = Math.floor(i / cols), k = i % cols, inRow = Math.min(cols, n - r * cols);
-    const x = cx + (k - (inRow - 1) / 2) * (CW + SIFT.gapX) * h, y = cy - ((rows - 1) / 2 - r) * (CH + SIFT.gapY) * h;
-    const s = t ? SIFT.tappedSize : 1, hw = (CW * h * s) / 2, hh = (CH * h * s) / 2;
+    const r = Math.floor(i / cols),
+      k = i % cols,
+      inRow = Math.min(cols, n - r * cols);
+    const x = cx + (k - (inRow - 1) / 2) * (CW + SIFT.gapX) * h,
+      y = cy - ((rows - 1) / 2 - r) * (CH + SIFT.gapY) * h;
+    const s = t ? SIFT.tappedSize : 1,
+      hw = (CW * h * s) / 2,
+      hh = (CH * h * s) / 2;
     return { rect: { left: x - hw, top: y - hh, right: x + hw, bottom: y + hh }, turn: t ? -SIFT.tappedTurn : 0 };
   });
 }
 
+/**
+ * A spread in titled groups (battle lines' seat spread): each group starts a row of its own, wrapping at `per` cards, all
+ * rows sized alike to fit the sift's room with a caption's height over each group. Each group's head: where its caption
+ * sits (CSS px, the top-left of its first row).
+ */
+export function siftGroupsOf(
+  viewport: Viewport,
+  groups: readonly (readonly boolean[])[],
+  per = 9,
+): { places: SiftPlace[]; heads: Point[] } {
+  const rowsOf = groups.map((g) => Math.max(1, Math.ceil(g.length / per)));
+  const rows = rowsOf.reduce((t, n) => t + n, 0),
+    cols = Math.min(per, Math.max(1, ...groups.map((g) => g.length)));
+  const { w: W, h: H } = viewport,
+    cap = 22 * designUnit(viewport);
+  const h = Math.min(
+    SIFT_MAX * H,
+    (W * SIFT.width) / (cols * (CW + SIFT.gapX)),
+    (H * SIFT.height - cap * groups.length) / (rows * (CH + SIFT.gapY)),
+  );
+  const total = rows * (CH + SIFT.gapY) * h + cap * groups.length;
+  let y = H / 2 + H * SIFT.drop - total / 2;
+  const places: SiftPlace[] = [],
+    heads: Point[] = [];
+  groups.forEach((g, gi) => {
+    y += cap;
+    for (let r = 0; r < rowsOf[gi]!; r++) {
+      const row = g.slice(r * per, (r + 1) * per),
+        cy = y + ((CH + SIFT.gapY) * h) / 2;
+      row.forEach((t, k) => {
+        const x = W / 2 + (k - (row.length - 1) / 2) * (CW + SIFT.gapX) * h;
+        const s = t ? SIFT.tappedSize : 1,
+          hw = (CW * h * s) / 2,
+          hh = (CH * h * s) / 2;
+        if (r === 0 && k === 0) heads.push({ x: x - (CW * h) / 2, y: y - cap });
+        places.push({
+          rect: { left: x - hw, top: cy - hh, right: x + hw, bottom: cy + hh },
+          turn: t ? -SIFT.tappedTurn : 0,
+        });
+      });
+      y += (CH + SIFT.gapY) * h;
+    }
+  });
+  return { places, heads };
+}
+
 /** A sift card's quad on screen (foot-left, foot-right, top-right, top-left), turned as it lies. */
 export function siftQuad(p: SiftPlace): Quad {
-  const r = p.rect, cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2, hw = (r.right - r.left) / 2, hh = (r.bottom - r.top) / 2;
-  const c = Math.cos(p.turn), s = Math.sin(p.turn);
+  const r = p.rect,
+    cx = (r.left + r.right) / 2,
+    cy = (r.top + r.bottom) / 2,
+    hw = (r.right - r.left) / 2,
+    hh = (r.bottom - r.top) / 2;
+  const c = Math.cos(p.turn),
+    s = Math.sin(p.turn);
   // Screen y runs down; a turn is clockwise as the player sees it for a negative angle (the old quaternion about z): the
   // card's right edge goes down.
   const pt = (a: number, b: number): Point => ({ x: cx + a * c - b * s, y: cy - (a * s + b * c) });

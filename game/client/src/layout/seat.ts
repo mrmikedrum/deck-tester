@@ -60,6 +60,8 @@ export interface Unit {
   readonly raised?: boolean;
   /** Shown as a head (`lines`): its face's name strip carries its numbers, keywords and copies on a second line. */
   readonly head?: boolean;
+  /** Never a count chip on its face (`lines`): a count there means identical copies only, said by a coin. */
+  readonly chipless?: boolean;
   /** Its copies are counted by a coin on its shoulder and shown as card edges behind it, not by a title (`lines`). */
   readonly coin?: boolean;
   /** The lightest of a file folded behind its last head (`lines`): how many, and their power. */
@@ -107,6 +109,8 @@ export interface Fixtures {
   readonly notes?: readonly Note[];
   /** The muster slip under the plaque (`lines`), when the board is past a glance. */
   readonly muster?: Muster;
+  /** The plaque's slip counts an attack on this seat ("32 at you", "9 through"): `lines`, the viewer's own seat. */
+  readonly tally?: boolean;
 }
 
 /** A summary: what a folded or last-resort unit holds, in the terms that matter. */
@@ -135,6 +139,8 @@ export interface SeatInput {
   readonly viewport: Viewport;
   /** Cards acting now (combat, aimed at): they leave their piles while they act. */
   readonly involved: ReadonlySet<CardId>;
+  /** Who attacks and blocks whom (a draft over the engine's), for layouts that stand fighters together (`lines`). */
+  readonly combat?: { readonly attacks: readonly { readonly attacker: CardId; readonly defender: { readonly seat: SeatId } | { readonly card: CardId } }[]; readonly blocks: readonly { readonly blocker: CardId; readonly attacker: CardId }[] } | null;
   /** True while cards are still flying off the battlefield (the app's virtual clock says so): the page holds its shape. */
   readonly settling: boolean;
   /** The previous plan's memory: kept places, held rows. Ignored when it was written by another paradigm. */

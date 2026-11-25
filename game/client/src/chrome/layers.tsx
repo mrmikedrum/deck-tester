@@ -11,7 +11,13 @@ import { Close, onScrim } from "./sheet";
 import type { ChipView, GameRequest, HandSheetView, MenuView, MulliganView, SiftView } from "./view";
 
 /** The opening hand: the question, the cards (a tap inspects one), and play's buttons (Mulligan, Keep). */
-export function Mulligan(p: { view: MulliganView; prompt: PromptView; now: Ms; send: Send; style?: string }): JSX.Element {
+export function Mulligan(p: {
+  view: MulliganView;
+  prompt: PromptView;
+  now: Ms;
+  send: Send;
+  style?: string;
+}): JSX.Element {
   return (
     <div class="l-mull" data-layer="mulligan" data-scrim="" style={p.style} onClick={onScrim(p.send)}>
       <div class="l-mullbox" role="dialog" aria-modal="true" aria-labelledby="l-mull-title" tabIndex={-1}>
@@ -45,7 +51,12 @@ const MANA: readonly (readonly [GameRequest["mana"], string])[] = [
   ["auto", "Forge pays"],
 ];
 /** live.js `menu`'s first choices, before a game has been asked for on this device. */
-const DEFAULTS = ["blue-moon-combat-revision", "eternities-living-worlds-iii", "eternities-assimilation-iii", "dack-cedh"] as const;
+const DEFAULTS = [
+  "blue-moon-combat-revision",
+  "eternities-living-worlds-iii",
+  "eternities-assimilation-iii",
+  "dack-cedh",
+] as const;
 const SEATS = ["Your deck", "Left (Jev)", "Across (Jev)", "Right (Jev)"] as const;
 const FIELDS = ["deck", "left", "across", "right"] as const;
 
@@ -65,7 +76,17 @@ const startOn =
     el.dataset["started"] = "1";
   };
 
-function DeckField({ label, name, decks, wanted }: { label: string; name: string; decks: readonly string[]; wanted: string }): JSX.Element {
+function DeckField({
+  label,
+  name,
+  decks,
+  wanted,
+}: {
+  label: string;
+  name: string;
+  decks: readonly string[];
+  wanted: string;
+}): JSX.Element {
   return (
     <label class="l-field">
       <span>{label}</span>
@@ -101,7 +122,13 @@ export function Menu({ view: v, send, style }: { view: MenuView; send: Send; sty
   const decks = v.decks;
   return (
     <div class="l-sheet" data-layer="menu" data-scrim="" style={style} onClick={onScrim(send)}>
-      <form class="l-box l-menu-box" aria-modal="true" aria-labelledby="l-menu-title" tabIndex={-1} onSubmit={(e) => e.preventDefault()}>
+      <form
+        class="l-box l-menu-box"
+        aria-modal="true"
+        aria-labelledby="l-menu-title"
+        tabIndex={-1}
+        onSubmit={(e) => e.preventDefault()}
+      >
         <h3 id="l-menu-title">New game</h3>
         {decks === null ? (
           <p class="l-note">Listing the decks…</p>
@@ -129,7 +156,9 @@ export function Menu({ view: v, send, style }: { view: MenuView; send: Send; sty
             Start
           </button>
         </div>
-        <p class="l-note">Jev and the deck advisors pilot the other three seats. Starting a game ends the one in progress.</p>
+        <p class="l-note">
+          Jev and the deck advisors pilot the other three seats. Starting a game ends the one in progress.
+        </p>
         <Close send={send} />
       </form>
     </div>
@@ -213,7 +242,12 @@ export function GameButton({ send }: { send: Send }): JSX.Element {
 /** "View hand": the hand as a list, above the fan. */
 export function ViewHand({ send }: { send: Send }): JSX.Element {
   return (
-    <button type="button" class="l-hand-view" data-fk="hand" onClick={() => send({ t: "open", layer: "hand", card: null })}>
+    <button
+      type="button"
+      class="l-hand-view"
+      data-fk="hand"
+      onClick={() => send({ t: "open", layer: "hand", card: null })}
+    >
       View hand
     </button>
   );
@@ -225,7 +259,13 @@ export function Chips({ chips, send }: { chips: readonly ChipView[]; send: Send 
   return (
     <div class="l-chips">
       {chips.map((c) => (
-        <button key={c.layer} type="button" class="l-stackchip" data-fk={`chip:${c.layer}`} onClick={() => send({ t: "restore", layer: c.layer })}>
+        <button
+          key={c.layer}
+          type="button"
+          class="l-stackchip"
+          data-fk={`chip:${c.layer}`}
+          onClick={() => send({ t: "restore", layer: c.layer })}
+        >
           {c.label}
         </button>
       ))}
@@ -251,25 +291,44 @@ export function BackBar({ text, send }: { text: string; send: Send }): JSX.Eleme
  */
 export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Element {
   return (
-    <div class="l-sift" data-focus="" style={`top:${view.top.toFixed(1)}px`}>
-      <span>
-        <b>
-          {view.title}
-          {view.tapped ? <i> · {view.tapped} tapped</i> : null}
-        </b>
-      </span>
-      {view.range !== null ? (
-        <span class="pager">
-          <button type="button" aria-label="Previous cards" data-fk="sift:prev" disabled={view.page === 0} onClick={() => send({ t: "siftPage", group: view.group, delta: -1 })}>
-            ‹
-          </button>
-          <span>{view.range}</span>
-          <button type="button" aria-label="More cards" data-fk="sift:next" disabled={view.page >= view.pages - 1} onClick={() => send({ t: "siftPage", group: view.group, delta: 1 })}>
-            ›
-          </button>
+    <>
+      {(view.groups ?? []).map((g) => (
+        <div class="l-sift-group" data-focus="" style={`left:${g.x.toFixed(1)}px;top:${g.y.toFixed(1)}px`}>
+          {g.label}
+        </div>
+      ))}
+      <div class="l-sift" data-focus="" style={`top:${view.top.toFixed(1)}px`}>
+        <span>
+          <b>
+            {view.title}
+            {view.tapped ? <i> · {view.tapped} tapped</i> : null}
+          </b>
         </span>
-      ) : null}
-      <Close label="Put back" send={send} />
-    </div>
+        {view.range !== null ? (
+          <span class="pager">
+            <button
+              type="button"
+              aria-label="Previous cards"
+              data-fk="sift:prev"
+              disabled={view.page === 0}
+              onClick={() => send({ t: "siftPage", group: view.group, delta: -1 })}
+            >
+              ‹
+            </button>
+            <span>{view.range}</span>
+            <button
+              type="button"
+              aria-label="More cards"
+              data-fk="sift:next"
+              disabled={view.page >= view.pages - 1}
+              onClick={() => send({ t: "siftPage", group: view.group, delta: 1 })}
+            >
+              ›
+            </button>
+          </span>
+        ) : null}
+        <Close label="Put back" send={send} />
+      </div>
+    </>
   );
 }
