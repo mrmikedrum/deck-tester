@@ -24,6 +24,8 @@ export interface LeafInput {
   readonly involved: ReadonlySet<CardId>;
   readonly offered: ReadonlySet<CardId>;
   readonly choosing: boolean;
+  /** The decision's kind (null: none). */
+  readonly decision?: string | null;
   readonly moment: Moment;
   readonly clock: Clock;
   readonly memory: ContainerMemory | null;
@@ -75,6 +77,7 @@ export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlyS
     involved,
     offered: new Set(decision.options),
     choosing: decision.kind !== null,
+    decision: decision.kind,
     moment: momentOf(model, decision),
     clock: { turn: model.turn, phase: model.phase, active: model.active, settling },
     memory: o.memory ?? null,

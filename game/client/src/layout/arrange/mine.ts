@@ -107,11 +107,13 @@ export function planMine(s: LeafInput, o: Omit<MineOptions, "seat">): LeafPlan {
   try {
     const container = mineContainer({ ...o, seat: s.seat });
     const here = new Set(s.cards.map((c) => c.id));
+    // What I may play while I hold priority is usable (light), never stepped out: my row holds still at every stop.
+    const play = s.decision === "play", mineOffered = new Set([...s.offered].filter((id) => here.has(id)));
     const input: ArrangeInput = {
       container,
       cards: s.cards,
       relations: NO_RELATIONS,
-      acting: { involved: new Set([...s.involved].filter((id) => here.has(id))), offered: s.offered, usable: new Set([...s.offered].filter((id) => here.has(id))), choosing: s.choosing },
+      acting: { involved: new Set([...s.involved].filter((id) => here.has(id))), offered: play ? new Set() : s.offered, usable: play ? mineOffered : new Set(), choosing: s.choosing },
       moment: s.moment,
       policy: mine,
       memory: s.memory,

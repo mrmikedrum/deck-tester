@@ -1,7 +1,7 @@
 // The physical table's exposure (the new entry only): a card the clash lifts toward the lamp is lit as it is on the
 // table. Atraxa's six attackers on the design pass's turn-15 table, untapped (as with vigilance: the lift alone is
 // measured, not the tapped look), at rest on their leaf and then gathered in a fight at me: each one's face, as drawn,
-// keeps its mean luminance within a fifth of the same card at rest (before the gathering's exposure was matched, the
+// keeps its mean luminance within a quarter of the same card at rest (before the gathering's exposure was matched, the
 // cards nearest the lamp came out up to 1.75 times as bright, milky).
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
@@ -91,7 +91,9 @@ test.describe("the physical table's exposure", () => {
       expect(home.aloft[id], `card ${id} rests at home`).toBe(false);
       const ratio = gathered[id] / rest[id];
       expect(ratio, `card ${id}: gathered ${gathered[id].toFixed(1)}, at rest ${rest[id].toFixed(1)}`).toBeGreaterThan(0.8);
-      expect(ratio, `card ${id}: gathered ${gathered[id].toFixed(1)}, at rest ${rest[id].toFixed(1)}`).toBeLessThan(1.2);
+      // (1.25: the clash ends above my field row, which the engine stands lower than `mat` did, so its fighters stand
+      // nearer the lamp's pool than they did; the guard is against the milky 1.75)
+      expect(ratio, `card ${id}: gathered ${gathered[id].toFixed(1)}, at rest ${rest[id].toFixed(1)}`).toBeLessThan(1.25);
     }
   });
 });

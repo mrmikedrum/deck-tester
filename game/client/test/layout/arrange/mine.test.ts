@@ -105,11 +105,31 @@ describe("my side's policy (`mine`)", () => {
     const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
     const creatures = Array.from({ length: 9 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
     const cards = [...lands, ...creatures];
-    const r = mineRun({ cards, acting: { offered: new Set([lands[9]!.id]), usable: new Set([lands[9]!.id]) } });
+    // while I hold priority what I can play is usable: light, never moved
+    const r = mineRun({ cards, acting: { usable: new Set([lands[9]!.id]), choosing: true } });
     const pile = unitOf(r, lands[9]!.id);
     expect(pile.kind).toBe("fan");
     expect(r.fit.attention).toContainEqual({ unit: pile.id, cards: [lands[9]!.id], why: "offered" });
     expect(pile.notable).toContainEqual({ card: lands[9]!.id, cue: "act" });
+  });
+
+  it("what a decision offers steps out of my piles where the row holds it, else its pile opens with it lit", () => {
+    resetIds();
+    const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const creatures = Array.from({ length: 6 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const cards = [...lands, ...creatures];
+    const rest = mineRun({ cards });
+    expect(unitOf(rest, lands[3]!.id).kind).toBe("fan");
+    // a target among my lands: it lies on its own, where it can be tapped
+    const two = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set([lands[3]!.id, lands[9]!.id]), choosing: true } });
+    for (const l of [lands[3]!, lands[9]!]) expect(unitOf(two, l.id).members, l.name).toEqual([l.id]);
+    expect(two.fit.report.violations).toEqual([]);
+    expect(two.overflow).toBeNull();
+    // every land offered (a payment): more than the row holds, so they fold as at rest and the pile names them
+    const all = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(lands.map((l) => l.id)), choosing: true } });
+    const pile = unitOf(all, lands[3]!.id);
+    expect(pile.kind).toBe("fan");
+    expect(all.fit.attention.some((a) => a.unit === pile.id && a.why === "offered")).toBe(true);
   });
 
   it("classification follows current types: a stationed spacecraft that becomes a creature stands with the creatures", () => {

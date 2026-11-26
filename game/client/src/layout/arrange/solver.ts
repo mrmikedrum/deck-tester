@@ -202,24 +202,33 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   const held = new Set(pm?.folds ?? []);
 
   // ---- walk, draw, audit; a failing band folds one place tighter, at most RETRIES times ----
-  let tight = new Map<number, number>();
-  let best: Candidate | null = null, audits = 0, candidates = 0;
-  for (let attempt = 0; attempt <= RETRIES + 1; attempt++) {
-    const forceSummary = attempt === RETRIES + 1;
-    const walked = walk(policy, groups, gByKey, edits, bands, bandOf, planner, tierOf, held, tight, input.clock.settling, s, forceSummary);
-    candidates += walked.estimates;
-    const cand = place(input, policy, ctx, bands, planner, tight, walked, pm, tidy, s, u, geometry);
-    audits += 1;
-    if (!best || cand.violations.length < best.violations.length) best = cand;
-    // Only crowding is folding's to fix: a patch taken or a strip covered. A floor or a stray region is geometry.
-    const crowded = cand.violations.filter((v) => v.rule === "tap-patch" || v.rule === "covers-name" || v.rule === "covers-foot");
-    if (!crowded.length) break;
-    const bad = new Set(crowded.map((v) => cand.bandOfUnit.get(v.unit)).filter((r): r is number => r !== undefined));
-    if (!bad.size) break;
-    tight = new Map(tight);
-    for (const r of bad) tight.set(r, (tight.get(r) ?? 0) + 1);
-  }
-  const cand = best!;
+  let audits = 0, candidates = 0;
+  const attempt = (exempt: ReadonlySet<string>): Candidate => {
+    let tight = new Map<number, number>();
+    let best: Candidate | null = null;
+    for (let k = 0; k <= RETRIES + 1; k++) {
+      const forceSummary = k === RETRIES + 1;
+      const walked = walk(policy, groups, gByKey, edits, bands, bandOf, planner, tierOf, held, tight, input.clock.settling, s, forceSummary, exempt);
+      candidates += walked.estimates;
+      const cand = place(input, policy, ctx, bands, planner, tight, walked, pm, tidy, s, u, geometry);
+      audits += 1;
+      if (!best || cand.violations.length < best.violations.length) best = cand;
+      // Only crowding is folding's to fix: a patch taken or a strip covered. A floor or a stray region is geometry.
+      const crowded = cand.violations.filter((v) => v.rule === "tap-patch" || v.rule === "covers-name" || v.rule === "covers-foot");
+      if (!crowded.length) break;
+      const bad = new Set(crowded.map((v) => cand.bandOfUnit.get(v.unit)).filter((r): r is number => r !== undefined));
+      if (!bad.size) break;
+      tight = new Map(tight);
+      for (const r of bad) tight.set(r, (tight.get(r) ?? 0) + 1);
+    }
+    return best!;
+  };
+  // On my side, while I choose, what the decision offers steps out of the piles it would fold into (§2.6: a land to pay
+  // with is tapped where it lies, not found in a pile), where the space holds them all; where it does not, they fold
+  // as at rest and their pile opens with them lit.
+  const offered = ctx.mine && input.acting.choosing ? new Set(groups.filter((g) => !g.pinned && g.members.some((id) => input.acting.offered.has(id))).map((g) => g.key)) : new Set<string>();
+  let cand = attempt(offered);
+  if (offered.size && (cand.unplaced.other.length || cand.unplaced.actors.length || cand.violations.length || cand.units.some((x) => x.kind === "summary"))) cand = attempt(new Set());
 
   // ---- poses: the same arrangement, slid along `away` (nothing changes; the audit says what holds) ----
   const poses = (input.auditPoses ? c.poses : []).map((p) => {
@@ -459,6 +468,7 @@ function walk(
   settling: boolean,
   s: number,
   forceSummary: boolean,
+  exempt: ReadonlySet<string> = new Set(),
 ): Walked {
   const st: State = { tier: new Map(groups.map((g) => [g.key, g.base])), stacked: new Set(groups.filter((g) => g.squared).map((g) => g.key)), fan: new Map(), summary: new Set() };
   const records: EditRecord[] = [], ran: string[] = [];
@@ -503,6 +513,7 @@ function walk(
       const g = gByKey.get(e.group)!;
       const tier = st.tier.get(g.key)!;
       if (st.summary.has(g.key) || st.fan.has(g.key)) continue;
+      if (exempt.has(g.key) && step.op === "demote") continue;
       if (!matches(step.where, g, tier, groups, st)) continue;
       if (step.op === "stack" && (st.stacked.has(g.key) || !g.stacks)) continue;
       target = bandOf.get(tier)!;
@@ -510,12 +521,12 @@ function walk(
     } else if (step.op === "fan") {
       const tier = "tier" in step.where ? step.where.tier : undefined;
       if (tier === undefined) continue;
-      groupsHit = groups.filter((g) => !g.pinned && st.tier.get(g.key) === tier && !st.summary.has(g.key) && !st.fan.has(g.key)).map((g) => g.key);
+      groupsHit = groups.filter((g) => !g.pinned && !exempt.has(g.key) && st.tier.get(g.key) === tier && !st.summary.has(g.key) && !st.fan.has(g.key)).map((g) => g.key);
       if (groupsHit.reduce((t, k) => t + gByKey.get(k)!.members.length, 0) < 2) continue;
       target = bandOf.get(tier) ?? null;
       if (!target) continue;
     } else {
-      groupsHit = groups.filter((g) => !g.pinned && !st.summary.has(g.key)).map((g) => g.key);
+      groupsHit = groups.filter((g) => !g.pinned && !exempt.has(g.key) && !st.summary.has(g.key)).map((g) => g.key);
       if (!groupsHit.length) continue;
     }
     const wasHeld = held.has(e.id);
@@ -526,11 +537,10 @@ function walk(
     const dest = (k: string): Band | undefined => (step.op === "split-spent" ? bandOf.get(step.to) : step.op === "demote" ? bandOf.get(typeof step.to === "string" ? step.to : gByKey.get(k)!.creature ? step.to.creature : step.to.other) : undefined);
     const ownUnits = (k: string) => (st.stacked.has(k) ? 1 : gByKey.get(k)!.members.length);
     let need: boolean;
-    const into = step.op === "demote" && g ? dest(g.key) : undefined;
-    const inner = step.op === "demote" && g && into === target && target !== null && fannedLater(st.tier.get(g.key) === undefined ? "" : (typeof step.to === "string" ? step.to : g.creature ? step.to.creature : step.to.other), e.index);
-    if (inner && target) {
+    const to = step.op === "demote" && g ? (typeof step.to === "string" ? step.to : g.creature ? step.to.creature : step.to.other) : undefined;
+    if (to !== undefined && target && bandOf.get(to) === target && fannedLater(to, e.index)) {
       batch = null;
-      need = forceSummary ? false : settling && wasHeld ? true : overFanned(target, wasHeld, typeof step.to === "string" ? step.to : g!.creature ? step.to.creature : step.to.other);
+      need = settling && wasHeld ? true : overFanned(target, wasHeld, to);
     } else if (BATCHING.on && batch && moves && g && batch.step === e.index && target === batch.band && wasHeld === batch.held && batch.filled.has(dest(g.key)?.index ?? -1)) {
       need = true;
       batch.budget -= ownUnits(g.key);
@@ -859,7 +869,8 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     const why = new Map<AttentionWhy, CardId[]>();
     for (const id of hidden) {
       const card = cardOf(id);
-      const w = input.acting.offered.has(id) ? "offered" : x.kind === "stack" ? null : policy.matters(card, input.moment, ctx);
+      // (a card I can use now counts as one I may act on: the pile that hides it says so)
+      const w = input.acting.offered.has(id) || input.acting.usable.has(id) ? "offered" : x.kind === "stack" ? null : policy.matters(card, input.moment, ctx);
       if (w) why.set(w, [...(why.get(w) ?? []), id]);
     }
     const unitId = drawn.has(x.key) ? ids.get(x.key)! : c.entry;
