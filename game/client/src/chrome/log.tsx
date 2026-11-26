@@ -27,7 +27,7 @@ export function LogStrip({
 }): JSX.Element | null {
   if (!view.heading) return null;
   return (
-    <button type="button" class="l-feed" data-audit="log" data-fk="log" aria-label="What happened" onClick={onOpen} {...(width !== null ? { style: `width:${width}px;max-width:${width}px` } : {})}>
+    <button type="button" class="l-feed" data-audit="log" data-fk="log" aria-label="What happened" onClick={onOpen} {...(width !== null ? { style: `max-width:${width}px` } : {})}>
       <span class="l-feed-turn">{view.heading}</span>
       {view.lines.length ? (
         <span class={STRIP_TONE[view.tone]}>
