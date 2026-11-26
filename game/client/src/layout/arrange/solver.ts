@@ -215,7 +215,9 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   const gByKey = new Map(groups.map((g) => [g.key, g]));
 
   // ---- the compiled edit list (§5.1 step 1) ----
-  const edits = compile(policy, groups, tidy ? new Set() : incumbentKeys);
+  // (where each group sat last plan: what a demote into a standing tier seated there goes first)
+  const seatedIn = new Map(groups.flatMap((g) => { const t = pm?.tiers[pm.held[g.members[0]!] ?? ""]; return t ? [[g.key, t] as const] : []; }));
+  const edits = compile(policy, groups, tidy ? new Set() : incumbentKeys, tidy ? new Map() : seatedIn);
   const held = new Set(pm?.folds ?? []);
 
   // ---- walk, draw, audit; a failing band folds one place tighter, at most RETRIES times ----
@@ -240,25 +242,32 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
     }
     return best!;
   };
-  // On my side, while I choose, what the decision offers steps out of the piles it would fold into (§2.6: a land to pay
-  // with is tapped where it lies, not found in a pile), as much of it as the space holds, in the acting rank; what does
-  // not fit folds as at rest and its pile opens with it lit.
-  const offered = ctx.mine && input.acting.choosing ? groups.filter((g) => !g.pinned && g.members.some((id) => input.acting.offered.has(id))) : [];
-  const clean = (x: Candidate): boolean => !x.unplaced.other.length && !x.unplaced.actors.length && !x.violations.length && !x.units.some((y) => y.kind === "summary");
+  // The moment's cards step out of the piles they would fold into, as many as the space holds, in the acting rank: on my
+  // side while I choose, what the decision offers (§2.6: a land to pay with is tapped where it lies, not found in a
+  // pile); anywhere, what the stack aims at. Never at another card's cost: what rest shows (alone, on top, or in a block
+  // of its copies) stays shown where it is, so nothing sits down, shifts over or is swallowed by a pile. What does not step out folds as at
+  // rest, lit, and its pile opens with it.
+  const aimed = input.acting.aimed ?? NONE;
+  const movable = groups.filter((g) => !g.pinned && g.members.some((id) => aimed.has(id) || (ctx.mine && input.acting.choosing && input.acting.offered.has(id))));
   let cand: Candidate;
-  if (!offered.length) cand = attempt(new Set());
+  if (!movable.length) cand = attempt(new Set());
   else {
-    cand = attempt(new Set(offered.map((g) => g.key)));
-    if (!clean(cand)) {
-      const rest = attempt(new Set());
+    const rest = attempt(new Set()), shown = shownIn(rest);
+    const fits = (x: Candidate, out: readonly G[]): boolean => {
+      if (x.unplaced.other.length || x.unplaced.actors.length || x.violations.length || x.units.some((y) => y.kind === "summary")) return false;
+      const moved = new Set(out.flatMap((g) => g.members)), now = shownIn(x);
+      return [...shown].every(([id, at]) => moved.has(id) || now.get(id) === at);
+    };
+    cand = attempt(new Set(movable.map((g) => g.key)));
+    if (!fits(cand, movable)) {
       // The acting rank: what rest hides among unlike cards first (a copy in its block is already one tap), then the
       // policy's importance, then the oldest. The longest prefix that still fits steps out (a bounded halving search).
       const hides = new Set(rest.units.filter((y) => y.kind === "fan" || y.kind === "summary").flatMap((y) => y.members));
-      const ranked = [...offered].sort((a, b) => Number(!a.members.some((id) => hides.has(id))) - Number(!b.members.some((id) => hides.has(id))) || b.imp - a.imp || a.arrival - b.arrival || cmp(a.key, b.key));
+      const ranked = [...movable].sort((a, b) => Number(!a.members.some((id) => hides.has(id))) - Number(!b.members.some((id) => hides.has(id))) || b.imp - a.imp || a.arrival - b.arrival || cmp(a.key, b.key));
       let lo = 0, hi = ranked.length - 1, best = rest;
       while (lo < hi) {
         const k = Math.ceil((lo + hi) / 2), x = attempt(new Set(ranked.slice(0, k).map((g) => g.key)));
-        if (clean(x)) [lo, best] = [k, x];
+        if (fits(x, ranked.slice(0, k))) [lo, best] = [k, x];
         else hi = k - 1;
       }
       cand = best;
@@ -437,15 +446,19 @@ function planGroups(
 // ---- the compiled edit list -----------------------------------------------------------------------------------------
 
 /** Which tiers a group might be in when a step runs: its base, or one a demote or split could send it to. */
-function compile(policy: Policy, groups: readonly G[], incumbents: ReadonlySet<string>): Edit[] {
+function compile(policy: Policy, groups: readonly G[], incumbents: ReadonlySet<string>, seatedIn: ReadonlyMap<string, TierId> = new Map()): Edit[] {
   const out: Edit[] = [];
   const free = groups.filter((g) => !g.pinned);
+  const standing = new Set(policy.tiers.filter((t) => t.posture === "stand").map((t) => t.id));
   policy.ladder.forEach((step, index) => {
     if (step.op === "fan") return void out.push({ id: `${index}:fan:${"tier" in step.where ? step.where.tier : "*"}`, index, step, group: null });
     if (step.op === "summary") return void out.push({ id: `${index}:summary`, index, step, group: null });
-    // ascending importance (ties by key); a demote keeps incumbents past the promotion margin
+    // ascending importance (ties by key); a demote keeps incumbents past the promotion margin. A demote into a standing
+    // tier (my mana spilling into my field's free places) is the other way round: what sat there last plan goes first,
+    // so the same cards keep those places plan after plan.
     const asc = [...free].sort((a, b) => a.imp - b.imp || cmp(a.key, b.key));
-    const order = step.op === "demote" ? weakestFirst(asc, incumbents, policy) : asc;
+    const into = step.op === "demote" && typeof step.to === "string" && standing.has(step.to) ? step.to : null;
+    const order = into !== null ? [...asc.filter((g) => seatedIn.get(g.key) === into), ...asc.filter((g) => seatedIn.get(g.key) !== into)] : step.op === "demote" ? weakestFirst(asc, incumbents, policy) : asc;
     for (const g of order) out.push({ id: `${index}:${step.op}:${g.key}`, index, step, group: g.key });
   });
   return out;
@@ -477,6 +490,8 @@ function matches(sel: Selector, g: G, tier: TierId, groups: readonly G[], st: St
 }
 
 interface Walked {
+  /** What the moment steps out (exempt from folds): it lies after what rest shows, in the places left free. */
+  readonly exempt: ReadonlySet<string>;
   readonly groups: readonly G[];
   readonly st: State;
   readonly records: EditRecord[];
@@ -541,9 +556,8 @@ function walk(
     }
     return l.over.has(band.index);
   };
-  // (within a step, what the decision offers goes first: into free places before anything else takes them)
-  const order = exempt.size ? [...edits].sort((a, b) => a.index - b.index || Number(!exempt.has(a.group ?? "")) - Number(!exempt.has(b.group ?? ""))) : edits;
-  for (const e of order) {
+  // (what the moment steps out takes its turn with the rest: it never takes a place from what rest shows)
+  for (const e of edits) {
     const step = e.step;
     let target: Band | null = null, groupsHit: string[];
     if (e.group !== null) {
@@ -623,7 +637,7 @@ function walk(
       else st.summary.add(k);
     }
   }
-  return { groups, st, records, ran, estimates };
+  return { exempt, groups, st, records, ran, estimates };
 }
 
 // ---- units ----------------------------------------------------------------------------------------------------------
@@ -875,7 +889,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
       for (const [k, v] of placed.at) slots.set(k, { band: b, ...v });
       for (const x of placed.left) (x.pinned ? actors : other).push(...x.members, ...x.dressing);
     } else {
-      const units = ordered(b, here);
+      const units = ordered(b, walked.exempt.size ? [...here.filter((x) => !x.groups.every((k) => walked.exempt.has(k))), ...here.filter((x) => x.groups.every((k) => walked.exempt.has(k)))] : here);
       let n = units.length;
       while (n > 0 && packBand(rows, units.slice(0, n)) === null) n--;
       for (const p of packBand(rows, units.slice(0, n)) ?? []) slots.set(p.key, { row: p.row, band: b, ref: { row: p.k, interval: p.interval, place: p.place }, u: p.u, w: p.w });
@@ -918,12 +932,12 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
   for (const x of all) for (const id of x.members) groupImp.set(id, x.imp);
   for (const x of all) {
     // tucked attachments count as hidden when offered or aimed: their strip is no place to choose them
-    const hidden = [...hiddenOf(x), ...x.dressing.filter((d) => input.acting.offered.has(d) || input.acting.usable.has(d) || input.acting.involved.has(d))];
+    const hidden = [...hiddenOf(x), ...x.dressing.filter((d) => input.acting.offered.has(d) || input.acting.usable.has(d) || input.acting.involved.has(d) || !!input.acting.aimed?.has(d))];
     const why = new Map<AttentionWhy, CardId[]>();
     for (const id of hidden) {
       const card = cardOf(id);
       // (a card I can use now counts as one I may act on: the pile that hides it says so)
-      const w = input.acting.offered.has(id) || input.acting.usable.has(id) ? "offered" : x.kind === "stack" ? null : policy.matters(card, input.moment, ctx);
+      const w = input.acting.offered.has(id) || input.acting.usable.has(id) ? "offered" : input.acting.aimed?.has(id) ? "aimed" : x.kind === "stack" ? null : policy.matters(card, input.moment, ctx);
       if (w) why.set(w, [...(why.get(w) ?? []), id]);
     }
     const unitId = drawn.has(x.key) ? ids.get(x.key)! : c.entry;
@@ -1156,6 +1170,19 @@ function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemor
 }
 
 /** Members not drawn as their own face: under a stack's top, under a fan's top (its spines are blank), in a summary. */
+const NONE: ReadonlySet<CardId> = new Set();
+
+/** The cards a candidate shows, each a tap away (alone, on top of a pile, or in a block of its copies), and where. */
+function shownIn(x: Candidate): Map<CardId, string> {
+  const out = new Map<CardId, string>();
+  for (const un of x.units) {
+    const at = `${un.tier}|${un.slot.row}|${un.slot.interval}|${un.slot.place}`;
+    if (un.kind === "card" || un.kind === "stack") for (const id of un.members) out.set(id, at);
+    else if (un.top !== null) out.set(un.top, at);
+  }
+  return out;
+}
+
 function hiddenOf(x: U): CardId[] {
   if (x.kind === "summary") return [...x.members];
   if (x.kind === "fan" || x.kind === "stack") return x.members.slice(1);

@@ -22,6 +22,8 @@ export interface LeafInput {
   readonly viewer: SeatId;
   readonly cards: readonly ArrCard[];
   readonly involved: ReadonlySet<CardId>;
+  /** What the stack aims at that does not fight: lit in place (`Acting.aimed`). */
+  readonly aimed?: ReadonlySet<CardId>;
   readonly offered: ReadonlySet<CardId>;
   readonly choosing: boolean;
   /** The decision's kind (null: none). */
@@ -67,7 +69,7 @@ export interface EngineOptions {
 }
 
 /** A seat's leaf input from the model: its battlefield as `boardOf` draws it, read from current types. */
-export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlySet<CardId>, settling: boolean, o: Omit<EngineOptions, "memory"> & { readonly memory?: ContainerMemory | null }, board: SeatBoard = boardOf(model, seat)): LeafInput {
+export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlySet<CardId>, settling: boolean, o: Omit<EngineOptions, "memory"> & { readonly memory?: ContainerMemory | null }, board: SeatBoard = boardOf(model, seat), aimed: ReadonlySet<CardId> = new Set()): LeafInput {
   const cards = board.cards.map((c) => arrCard(model, c.id)).filter((c): c is ArrCard => c !== null);
   const decision = o.decision ?? { kind: null, options: [], draft: [] };
   return {
@@ -75,6 +77,7 @@ export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlyS
     viewer: model.viewer.perspective,
     cards,
     involved,
+    aimed,
     offered: new Set(decision.options),
     choosing: decision.kind !== null,
     decision: decision.kind,
@@ -97,7 +100,7 @@ export function planLeaf(s: LeafInput, slot: SeatSlot, leaf: LeafGeometry, part:
       container,
       cards: s.cards,
       relations: NO_RELATIONS,
-      acting: { involved: new Set([...s.involved].filter((id) => here.has(id))), offered: s.offered, usable: new Set(), choosing: s.choosing },
+      acting: { involved: new Set([...s.involved].filter((id) => here.has(id))), aimed: new Set([...(s.aimed ?? [])].filter((id) => here.has(id))), offered: s.offered, usable: new Set(), choosing: s.choosing },
       moment: s.moment,
       policy: chosen.policy,
       ...(chosen.selection ? { selection: chosen.selection } : {}),

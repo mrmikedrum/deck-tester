@@ -101,7 +101,7 @@ export function planMine(s: LeafInput, o: Omit<MineOptions, "seat">): LeafPlan {
       container,
       cards: s.cards,
       relations: NO_RELATIONS,
-      acting: { involved: new Set([...s.involved].filter((id) => here.has(id))), offered: play ? new Set() : s.offered, usable: play ? mineOffered : new Set(), choosing: s.choosing },
+      acting: { involved: new Set([...s.involved].filter((id) => here.has(id))), aimed: new Set([...(s.aimed ?? [])].filter((id) => here.has(id))), offered: play ? new Set() : s.offered, usable: play ? mineOffered : new Set(), choosing: s.choosing },
       moment: s.moment,
       policy: mine,
       memory: s.memory,

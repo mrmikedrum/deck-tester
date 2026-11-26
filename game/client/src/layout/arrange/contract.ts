@@ -159,8 +159,11 @@ export interface Relations {
 }
 
 export interface Acting {
-  /** Acting now (fighting, aimed at): they leave their units and stand. */
+  /** Acting now (fighting): they leave their units and stand. */
   readonly involved: ReadonlySet<CardId>;
+  /** Aimed at by a spell or ability on the stack, not fighting: lit where they are, stepping out of a pile only into a
+   *  free place (a moment never makes a standing card sit down). */
+  readonly aimed?: ReadonlySet<CardId>;
   /** Options of the decision up. */
   readonly offered: ReadonlySet<CardId>;
   /** Mine with something I could use while I hold priority (light only). */

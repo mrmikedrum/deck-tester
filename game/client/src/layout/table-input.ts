@@ -49,7 +49,11 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
   };
   for (const id of fighters(combat)) involved.add(id);
   const blocked = new Set<CardId>([...(o.blocked ?? []), ...(model.combat?.attackers.filter((a) => a.blocked === true).map((a) => a.attacker) ?? [])]);
+  // What the stack aims at acts too; on the engine's containers it is lit where it is instead (a moment makes nothing sit
+  // down), unless it also fights.
+  const fighting = new Set(involved);
   for (const it of model.stack) for (const t of it.targets) if ("card" in t) involved.add(t.card);
+  const aimed = new Set([...involved].filter((id) => !fighting.has(id)));
   const spells = new Set(model.stack.filter((s) => s.spell && s.source !== null).map((s) => s.source));
   const stack: StackEntry[] = model.stack.map((s) => ({
     key: String(s.id),
@@ -79,16 +83,16 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.
     ...(blocked.size ? { blocked } : {}),
     ...(o.order?.length ? { order: o.order } : {}),
-    ...(o.engine && seats.length <= 4 ? { engine: engineInputOf(model, seats, involved, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
+    ...(o.engine && seats.length <= 4 ? { engine: engineInputOf(model, seats, fighting, aimed, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
   };
 }
 
 /** Every opponent's leaf (every seat but the perspective's) and my side, each with its own memory: given, or carried in
  *  the layout memory. */
-function engineInputOf(model: TableModel, seats: TableInput["seats"], involved: ReadonlySet<CardId>, settling: boolean, o: EngineOptions, memory: ReadonlyMap<SeatId, LayoutMemory> | null) {
+function engineInputOf(model: TableModel, seats: TableInput["seats"], involved: ReadonlySet<CardId>, aimed: ReadonlySet<CardId>, settling: boolean, o: EngineOptions, memory: ReadonlyMap<SeatId, LayoutMemory> | null) {
   const inputOf = ({ seat, board }: TableInput["seats"][number]) => {
     const m = o.memory?.has(seat) ? (o.memory.get(seat) ?? null) : arrangedMemory(memory?.get(seat));
-    return leafInputOf(model, seat, involved, settling, { ...o, memory: m }, board);
+    return leafInputOf(model, seat, involved, settling, { ...o, memory: m }, board, aimed);
   };
   // My side too, unless asked to keep `mat`'s (the comparisons and the bench's "mat alone").
   return { leaves: seats.slice(1).map(inputOf), ...(seats[0] && o.mine !== false ? { mine: inputOf(seats[0]) } : {}), draw: !!o.draw };
