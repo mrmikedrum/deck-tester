@@ -21,6 +21,9 @@ export function batched<M extends Mesh>(m: M): M {
   return m;
 }
 
+/** A batch unused for this many frames is disposed. */
+const IDLE_FRAMES = 120;
+
 const keyOf = (o: Mesh, above: boolean): string => {
   const m = o.material as MeshBasicMaterial;
   return [m.map?.uuid ?? "-", m.alphaMap?.uuid ?? "-", m.blending, m.transparent, m.depthTest, m.depthWrite, m.side, o.renderOrder, above ? 1 : 0].join("|");
@@ -29,6 +32,8 @@ const keyOf = (o: Mesh, above: boolean): string => {
 class Batch {
   readonly mesh: InstancedMesh;
   readonly alpha: InstancedBufferAttribute;
+  /** Frames since it last drew anything. */
+  idle = 0;
   constructor(
     geo: PlaneGeometry,
     like: Mesh,
@@ -102,7 +107,19 @@ export class DecalBatch {
       if (!g) groups.set(k, (g = []));
       g.push(m);
     });
-    for (const [k, b] of this.batches) if (!groups.has(k)) b.mesh.count = 0;
+    // A batch nothing has used for a while goes (its texture or its kind of draw may never come back).
+    for (const [k, b] of this.batches) {
+      if (groups.has(k)) {
+        b.idle = 0;
+        continue;
+      }
+      b.mesh.count = 0;
+      if (++b.idle > IDLE_FRAMES) {
+        this.group.remove(b.mesh);
+        b.dispose();
+        this.batches.delete(k);
+      }
+    }
     for (const [k, list] of groups) {
       let b = this.batches.get(k);
       if (!b || b.capacity < list.length) {

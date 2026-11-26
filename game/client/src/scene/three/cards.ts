@@ -491,6 +491,8 @@ class Batch {
   readonly rim: InstancedBufferAttribute;
   readonly more: InstancedBufferAttribute;
   n = 0;
+  /** Frames since it last drew anything. */
+  idle = 0;
   constructor(
     base: BufferGeometry,
     material: MeshStandardMaterial,
@@ -526,6 +528,8 @@ class Batch {
 }
 
 const ZERO = new Color(0, 0, 0);
+/** A batch unused for this many frames is disposed. */
+const IDLE_FRAMES = 120;
 
 /**
  * The deck: the face atlas, the card's geometry and materials, and the instanced meshes every card is drawn with. `sync`
@@ -581,7 +585,19 @@ export class CardDeck {
       if (!g) groups.set(k, (g = []));
       g.push(f);
     }
-    for (const [k, b] of this.batches) if (!groups.has(k)) b.mesh.count = 0;
+    // A batch nothing has used for a while goes (its texture or its kind of draw may never come back).
+    for (const [k, b] of this.batches) {
+      if (groups.has(k)) {
+        b.idle = 0;
+        continue;
+      }
+      b.mesh.count = 0;
+      if (++b.idle > IDLE_FRAMES) {
+        this.group.remove(b.mesh);
+        b.dispose();
+        this.batches.delete(k);
+      }
+    }
     const casters: number[] = [];
     for (const [k, list] of groups) {
       const [page, above, transparent, order, shadow] = k.split("|");
