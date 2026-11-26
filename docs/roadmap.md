@@ -15,10 +15,10 @@ and targets, nameplates at the top. The build follows the [arrangement engine](g
 steps. Today only the seat across is laid out by the engine; the side seats, my side and the focuses (stack, hand,
 pile, nameplate) still run on the old layout.
 
-1. Combat that reads from one still: the gathering as a focus.
-2. The side seats without a reserved middle (step 8), my side (9), moments (10).
-3. The focuses on the engine (11), then the old layout deleted (12).
-4. The look loop resumes on the whole table.
+1. The side seats without a reserved middle (step 8), with a fight between opponents shown as duels in the middle
+   (today it raises the clash); my side (9); moments (10).
+2. The focuses on the engine (11), then the old layout deleted (12).
+3. The look loop resumes on the whole table.
 
 Done when every board and focus runs on the engine, and stills of an early, a mid, a combat and a late game read
 cleanly at full sharpness on the iPad. The policy stage (grouping, ranking, order) stays swappable: a trained
