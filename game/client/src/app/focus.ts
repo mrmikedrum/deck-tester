@@ -48,27 +48,20 @@ export interface FocusState {
 
 /**
  * What the app keeps for one combat, from its first sight to its end (whatever its fighters or its form do meanwhile):
- * where it began in Forge's log (its damage is read from the entries after it), the attackers the engine has shown
- * blocked (one whose blockers all left stays blocked), the order the clash first stood its attackers in, and whether
- * the combat raises the clash now.
+ * the order the clash first stood its attackers in, and whether the combat raises the clash now. What happened in it
+ * (who is blocked, what damage was dealt) is the engine's, read from each snapshot.
  */
 export interface CombatMemory {
-  /** The combat's identity: its game and turn ("" never: no memory outside combat). */
+  /** The combat's identity: its game, turn and Forge's combat ordinal. */
   readonly key: string;
-  /** The last log entry's index when the combat began. */
-  readonly since: number;
-  readonly blocked: readonly CardId[];
   readonly order: readonly CardId[];
   readonly wanted: boolean;
 }
 
-/** The combat as `sync` hears of it each time: its identity ("" outside combat), whether it raises the clash, where the
- *  log stood, and the attackers the engine shows blocked now. */
+/** The combat as `sync` hears of it each time: its identity ("" outside combat), and whether it raises the clash. */
 export interface CombatSight {
   readonly key: string;
   readonly wanted: boolean;
-  readonly since: number;
-  readonly blocked: readonly CardId[];
 }
 
 export const NO_FOCUS_STATE: FocusState = { layers: [], aside: [], stackKey: "" };
@@ -175,7 +168,7 @@ export function sync(
 
 /**
  * The combat's memory and the clash kept in step with it. A new combat (or none) starts the memory afresh and takes
- * the clash and its chip down. Within one combat: the attackers seen blocked only grow; the clash comes up while the
+ * the clash and its chip down. Within one combat the clash comes up while the
  * combat raises it and goes (not aside) while it does not; set aside, it stays aside for the rest of that combat. Under
  * the stack, since a spell cast in combat is the focus above it.
  */
@@ -185,12 +178,11 @@ function combatSync(f: FocusState, c: CombatSight | undefined): FocusState {
   if ((sight?.key ?? "") !== (next.combat?.key ?? "")) {
     const { combat: _, ...rest } = close(next, "clash");
     void _;
-    next = sight ? { ...rest, combat: { key: sight.key, since: sight.since, blocked: [], order: [], wanted: false } } : rest;
+    next = sight ? { ...rest, combat: { key: sight.key, order: [], wanted: false } } : rest;
   }
   const mem = next.combat;
   if (!sight || !mem) return next;
-  const blocked = [...mem.blocked, ...sight.blocked.filter((id, i, all) => !mem.blocked.includes(id) && all.indexOf(id) === i)];
-  if (blocked.length !== mem.blocked.length || sight.wanted !== mem.wanted) next = { ...next, combat: { ...mem, blocked, wanted: sight.wanted } };
+  if (sight.wanted !== mem.wanted) next = { ...next, combat: { ...mem, wanted: sight.wanted } };
   const up = isOpen(next, "clash"), aside = isAside(next, "clash");
   if (sight.wanted && !up && !aside) {
     next = open(next, entry("clash"));

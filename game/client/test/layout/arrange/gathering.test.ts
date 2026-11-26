@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { hitTest, planTable, tableInputOf } from "../../../src/layout";
 import type { CombatPairs, TablePlan, Unit } from "../../../src/layout";
-import { CLASH_STEPS } from "../../../src/layout/arrange/gathering";
+import { CLASH, CLASH_STEPS } from "../../../src/layout/arrange/gathering";
 import { bounds } from "../../../src/layout/shape";
 import { modelOf } from "../../../src/model";
 import type { TableModel } from "../../../src/model";
@@ -133,6 +133,11 @@ describe("the clash", () => {
     const xs = g.wings.map((w) => w.columns.map((c) => c.x));
     expect(Math.max(...xs[0]!)).toBeLessThan(Math.min(...xs[1]!));
     expect(g.wings.map((w) => w.unblocked)).toEqual([8 + 3, 3]);
+    // wings stand apart, each at least a plaque wide, so each plaque sits over its own wing (1180 x 820: a design px is 1)
+    for (const w of g.wings) expect(w.w).toBeGreaterThanOrEqual(CLASH.wingMin - 1e-6);
+    const [left, right] = g.wings;
+    expect(right!.plaque.x - right!.w / 2 - (left!.plaque.x + left!.w / 2)).toBeCloseTo(CLASH.wingGap, 3);
+    expect([CLASH.wingMin, CLASH.wingGap]).toEqual([320, 64]);
     expect(plan.violations.filter((v) => v.rule === "clash-covers")).toEqual([]);
   });
 

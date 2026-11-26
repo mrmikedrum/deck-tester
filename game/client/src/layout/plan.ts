@@ -277,7 +277,7 @@ export function planTable(input: TableInput): TablePlan {
   const fieldTop = openMiddle(tpl, projector, plans, geo.u).b * geo.u + 10 * geo.u;
   const cards = new Map(inputs.flatMap((i) => i.board.cards.map((c) => [c.id, c] as const)));
   const seatOf = (id: CardId) => inputs.find((i) => i.board.cards.some((c) => c.id === id))?.seat;
-  const form = input.combatForm ?? combatFormOf(combat, input.seats[0]!.seat, seatOf);
+  const form = input.combatForm ?? combatFormOf(combat, input.seats[0]!.seat, seatOf, input.blocked);
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
   // open middle the pages leave (so it moves when they do), and the fight: the clash over it all, or at home.
   const compose = () => {

@@ -467,8 +467,8 @@ table; what it covers is reached once it is set aside. **The table form** moves 
 trunk per attacking seat and defender. `TablePlan.gathering` carries the columns, wings, plaques and extent for the
 scene (one light shade, a calm ground of the page's tone under the picture, fighters above both, no lanes) and the
 chrome (plaques, brands, clasps, the plates' tallies, `app/clash.ts`). They count the unblocked attackers' current
-power and say "unblocked", never "damage"; once Forge logs combat damage from a wing's attackers to its defender (a
-player or a planeswalker), the plaque says what was dealt. Wings stand apart, each at least a plaque wide; a defender
+power and say "unblocked", never "damage"; once the engine reports combat damage dealt to a wing's defender (a player
+or a planeswalker) by the attackers aimed at it, the plaque says what was dealt. Who is blocked is Forge's verdict. Wings stand apart, each at least a plaque wide; a defender
 whose attackers all wait in "more" keeps its wing and tally.
 
 `hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
@@ -738,8 +738,8 @@ lean-in's seat, a sift's group) and the control keyboard focus returns to when i
 keeps it in step with what its layers stand for (`sync`): a `sheet` entry while play presents a sheet, the mulligan
 while one is asked, and the stack layer for every new stack (a new item brings it up again, even set aside) until the
 stack empties; and the clash while the combat raises it. The combat itself is remembered for its lifetime, a game's
-turn while the engine shows a combat in a combat step, whatever its fighters or form do meanwhile (`CombatMemory`:
-where it began in Forge's log, the attackers seen blocked, the order the clash first stood them in); it ends with the
+turn and Forge's combat ordinal while the engine shows a combat in a combat step, whatever its fighters or form do
+meanwhile (`CombatMemory`: the order the clash first stood its attackers in, and whether it wants the clash); it ends with the
 combat, a jump to the main phase included, and takes the clash and its chip with it. Play keeps its choice draft
 and whether its sheet may close.
 

@@ -22,7 +22,13 @@ function fight({ active, attackers, blockers = [], phase = "COMBAT_DECLARE_BLOCK
   const seat = (n) => e.view.players.find((p) => p.name === n);
   const card = (id) => e.view.players.flatMap((p) => p.battlefield).find((c) => c.id === id);
   if (tap) for (const [id] of attackers) if (!/Vigilance/.test(card(id).text || "")) card(id).tapped = true;
-  e.view = { ...e.view, active, priority, phase, combat: { attackers: attackers.map(([id, defender]) => ({ id, defender })), blockers: blockers.map(([id, blocking]) => ({ id, blocking })) } };
+  e.view = { ...e.view, active, priority, phase, combat: {
+    ordinal: 1,
+    // Forge's verdict per attacker, as the engine sends it
+    attackers: attackers.map(([id, defender]) => ({ id, defender, blocked: blockers.some(([, a]) => a === id) })),
+    blockers: blockers.map(([id, blocking]) => ({ id, blocking })),
+    damage: [],
+  } };
   if (decision) e.decision = { gen: 1, turn: `T15 ${phase.toLowerCase()}`, repeat: false, mine: active === "You", ...decision };
   if (edit) edit(e, seat, card);
   return e;
@@ -52,8 +58,8 @@ const dealt = (v, phase, combat = true) => {
   me.graveyard = [...(me.graveyard || []), me.battlefield[i]];
   me.battlefield.splice(i, 1);
   e.view.combat = combat ? { ...e.view.combat, blockers: e.view.combat.blockers.filter((b) => b.id !== 1057) } : null;
-  // Forge's log of the blow (the plaque reads what was dealt from it)
-  e.view.log = [...(e.view.log || []), { i: 100000, type: "DAMAGE", text: "Tekuthal, Inquiry Dominus (1169) deals 3 combat damage to You.", card: 1169 }];
+  // the engine's combat damage facts (Steel Overseer stays blocked by Forge's verdict though its blocker died)
+  if (combat) e.view.combat.damage = [{ source: 1169, target: "You", amount: 3 }, { source: 1041, target: 1057, amount: 6 }];
   e.v = v;
   return e;
 };

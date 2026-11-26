@@ -22,6 +22,22 @@ function shortfalls(plan: TablePlan): string[] {
   return out;
 }
 
+/**
+ * What the clash covered, reached once it is set aside: the same board planned in the table form (as the app plans it
+ * after a tap on the shade), every group the clash covered given its patch by the picker there.
+ */
+function asideShortfalls(plan: TablePlan, again: () => TablePlan): string[] {
+  const covered = plan.hits.groups.filter((g) => underClash(plan, g)).map((g) => g.id);
+  if (!covered.length) return [];
+  const aside = again(), r = reach(aside), out: string[] = [];
+  for (const g of aside.hits.groups) {
+    if (!covered.includes(g.id)) continue;
+    const side = r.get(g.id)!.side, need = g.kind === "plate" ? 1 : TAP_PX;
+    if (side < need) out.push(`${g.id} ${side}px (aside)`);
+  }
+  return out;
+}
+
 function routed(plan: TablePlan): void {
   const ids = new Set(plan.hits.groups.map((g) => g.id));
   // every permanent is in a group a tap can reach (a pile or summary opens a sift of it)
@@ -63,7 +79,7 @@ describe("the protocol corpus, planned as the app plans it", () => {
   const models = corpusNames.map((name) => ({ name, model: modelOf(corpusSnapshot(name), catalog, viewerOf()) })).filter((m) => m.model !== null);
   for (const vp of SUPPORTED)
     it(`${vp.w}x${vp.h}`, () => {
-      let planned = 0;
+      let planned = 0, asideChecked = 0;
       for (const { name, model } of models) {
         let plan: TablePlan;
         try {
@@ -74,7 +90,11 @@ describe("the protocol corpus, planned as the app plans it", () => {
         planned++;
         routed(plan);
         expect(shortfalls(plan), name).toEqual([]);
+        expect(asideShortfalls(plan, () => planTable(tableInputOf(model!, { viewport: vp, combatForm: "table" }))), name).toEqual([]);
+        if (plan.gathering?.focus && plan.hits.groups.some((g) => underClash(plan, g))) asideChecked++;
       }
       expect(planned).toBeGreaterThan(40);
+      // (the corpus's combats at me do cover part of the table: the check above ran on them)
+      expect(asideChecked).toBeGreaterThan(0);
     });
 });

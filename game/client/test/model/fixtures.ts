@@ -101,7 +101,12 @@ export interface TableSpec {
   readonly seats: Partial<Record<Name, SeatSpec>>;
   /** Bottom first, as the model holds it (the builder sends the wire's top first). */
   readonly stack?: readonly StackSpec[];
-  readonly combat?: { readonly attackers: readonly { id: number; defender: number | string }[]; readonly blockers?: readonly { id: number; blocking: number }[] } | null;
+  readonly combat?: {
+    readonly ordinal?: number;
+    readonly attackers: readonly { id: number; defender: number | string; blocked?: boolean }[];
+    readonly blockers?: readonly { id: number; blocking: number }[];
+    readonly damage?: readonly { source: number; target: number | string; amount: number }[];
+  } | null;
   readonly log?: readonly { i: number; type: string; text: string; card?: number | null }[];
   readonly out?: readonly Name[];
 }
@@ -143,7 +148,7 @@ export function snapshotOf(spec: TableSpec): Snapshot {
         text: s.text ?? `${s.source.name} (${s.source.id})`,
         targets: s.targets ?? [],
       })),
-      combat: spec.combat ? { attackers: spec.combat.attackers, blockers: spec.combat.blockers ?? [] } : null,
+      combat: spec.combat ? { ...spec.combat, blockers: spec.combat.blockers ?? [] } : null,
       log: spec.log ?? [],
     },
   };

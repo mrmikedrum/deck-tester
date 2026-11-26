@@ -77,6 +77,8 @@ export interface ClashWing {
   readonly columns: readonly ClashColumn[];
   /** An attacked planeswalker standing at the end of its wing: its unit, and its top middle on screen (its tally). */
   readonly walker?: { readonly unit: UnitId; readonly card: CardId; readonly x: number; readonly top: number };
+  /** Where a planeswalker's tally stands when its wing waits whole in "more" (over that column), so it is never lost. */
+  readonly tallyAt?: Point;
 }
 
 export interface Gathering {
@@ -118,11 +120,12 @@ interface Formation {
 const add = (a: V3, b: V3, k: number): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k });
 const defKey = (d: Defender): string => ("seat" in d ? `s${d.seat}` : `c${d.card}`);
 
-/** Which form a combat takes by itself: the clash when I am attacked or anyone is blocked; the table form otherwise. */
-export function combatFormOf(combat: CombatPairs | null, perspective: SeatId, seatOf: (card: CardId) => SeatId | undefined): CombatForm {
+/** Which form a combat takes by itself: the clash when I am attacked or anyone is blocked (now, or by Forge's verdict
+ *  after its blockers left: `blocked`); the table form otherwise. */
+export function combatFormOf(combat: CombatPairs | null, perspective: SeatId, seatOf: (card: CardId) => SeatId | undefined, blocked: ReadonlySet<CardId> = new Set()): CombatForm {
   if (!combat || !combat.attacks.length) return "table";
   const atMe = combat.attacks.some((a) => ("seat" in a.defender ? a.defender.seat : seatOf(a.defender.card)) === perspective);
-  return atMe || combat.blocks.length > 0 ? "clash" : "table";
+  return atMe || combat.blocks.length > 0 || combat.attacks.some((a) => blocked.has(a.attacker)) ? "clash" : "table";
 }
 
 export function gathering(input: GatherInput): Gathering {
@@ -386,6 +389,7 @@ export function gathering(input: GatherInput): Gathering {
       w: m.wide(feet.atk),
       unblocked: totals.get(w.key) ?? 0,
       columns: [],
+      ...("card" in w.fs[0]!.defender ? { tallyAt: { x: mx, y: feet.atk - m.tall(feet.atk) } } : {}),
     });
   }
 

@@ -30,31 +30,35 @@ function defenderName(model: TableModel, w: ClashWing): string {
 /** A defender as a key: "s<seat>" or "c<card>". */
 const defenderKey = (d: Defender): string => ("seat" in d ? `s${d.seat}` : `c${d.card}`);
 
+
 /**
- * The combat damage Forge's log records since `since` from these attackers, by defender key: "<source> deals 3 combat
- * damage to You." (a player, by name) and "<source> deals 5 damage to Tezzeret, Cruel Captain (1073)." (a planeswalker
- * or a battle, by its id). Forge owns the facts: nothing here is summed from power or life.
+ * The combat damage dealt in this combat to each defender by the attackers aimed at it, by defender key: Forge's facts
+ * (the engine's `combat.damage`, after prevention, summed over the damage steps), never the client's sum.
  */
-export function combatDamage(model: TableModel, since: number, attackers: ReadonlySet<CardId>): Map<string, number> {
+export function combatDamage(model: TableModel): Map<string, number> {
   const out = new Map<string, number>();
-  const add = (k: string, n: number) => out.set(k, (out.get(k) ?? 0) + n);
-  for (const e of model.log) {
-    if (e.i <= since || e.type !== "DAMAGE" || e.card === null || !attackers.has(e.card)) continue;
-    const player = /\bdeals (\d+) combat damage to (.+?)(?: \([^)]*\))?\.$/.exec(e.text);
-    if (player) {
-      const seat = model.seats.find((s) => String(s.name) === player[2]);
-      if (seat) add(`s${seat.id}`, Number(player[1]));
-      continue;
-    }
-    const card = /\bdeals (\d+) damage(?: \([^)]*\))? to .*\((\d+)\)\.$/.exec(e.text);
-    if (card) add(`c${card[2]}`, Number(card[1]));
+  const combat = model.combat;
+  if (!combat) return out;
+  for (const d of combat.damage) {
+    const k = defenderKey(d.target);
+    const aimed = combat.attackers.some((a) => a.attacker === d.source && a.defender !== null && defenderKey(a.defender) === k);
+    if (aimed && d.amount > 0) out.set(k, (out.get(k) ?? 0) + d.amount);
   }
   return out;
 }
 
+/** The attackers Forge says are blocked (its verdict holds when the blockers leave, and drops when an effect unblocks);
+ *  from an engine that does not say, those with a blocker now. */
+export function blockedOf(model: TableModel | null): CardId[] {
+  const c = model?.combat;
+  if (!c) return [];
+  return c.attackers.filter((a) => (a.blocked === null ? c.blockers.some((b) => b.attacker === a.attacker) : a.blocked)).map((a) => a.attacker);
+}
+
 /**
- * The plaque's words: "Atraxa attacks You · 3 unblocked", "You attack Marath · 9 unblocked"; once Forge logs combat
- * damage from the wing's attackers to its defender (a player or a planeswalker), what they dealt ("· 3 dealt").
+ * The plaque's words: "Atraxa attacks You · 3 unblocked", "You attack Marath · 9 unblocked"; once the engine reports
+ * combat damage dealt to the wing's defender (a player or a planeswalker) by attackers aimed at it, what was dealt
+ * ("· 3 dealt"). Without that fact, what is unblocked.
  */
 export function plaqueWords(model: TableModel, w: ClashWing, dealt: ReadonlyMap<string, number> = new Map()): string {
   const who = String(model.seat(w.attacker)?.name ?? w.attacker);
@@ -64,19 +68,17 @@ export function plaqueWords(model: TableModel, w: ClashWing, dealt: ReadonlyMap<
 }
 
 /**
- * The combat as the focus hears of it (focus.ts `CombatSight`): its identity, a game's turn while the engine shows a
- * combat in a combat step (so it ends with the combat, a jump to the main phase included); whether it raises the clash
- * by itself; where Forge's log stood; and the attackers the engine shows blocked now.
+ * The combat as the focus hears of it (focus.ts `CombatSight`): its identity, a game's turn and Forge's combat ordinal
+ * while the engine shows a combat in a combat step (so it ends with the combat, a jump to the main phase included),
+ * and whether it raises the clash by itself.
  */
 export function combatSightOf(model: TableModel | null, draft: CombatPairs | null): CombatSight {
-  if (!model || !model.combat || !/^COMBAT_/.test(model.phase)) return { key: "", wanted: false, since: -1, blocked: [] };
+  if (!model || !model.combat || !/^COMBAT_/.test(model.phase)) return { key: "", wanted: false };
   const combat = mergeCombat(engineCombat(model), draft);
   const seatOf = (id: CardId) => model.cards.get(id)?.controller ?? undefined;
   return {
-    key: `${model.gen}|${model.turn}`,
-    wanted: combatFormOf(combat, model.viewer.perspective, seatOf) === "clash",
-    since: model.log.reduce((m, e) => Math.max(m, e.i), -1),
-    blocked: model.combat.blockers.map((b) => b.attacker),
+    key: `${model.gen}|${model.turn}|${model.combat.ordinal ?? 0}`,
+    wanted: combatFormOf(combat, model.viewer.perspective, seatOf, new Set(blockedOf(model))) === "clash",
   };
 }
 
@@ -111,11 +113,11 @@ export function spreadPlaques<T extends { x: number; w: number }>(ps: readonly T
 }
 
 /** The clash's chrome: null when it is not up. */
-export function clashViewOf(model: TableModel, plan: TablePlan | null, since = -1): ClashView | null {
+export function clashViewOf(model: TableModel, plan: TablePlan | null): ClashView | null {
   const g: Gathering | null = plan?.gathering ?? null;
   if (!plan || !g?.focus) return null;
   const me = model.viewer.perspective, u = designUnit(plan.viewport);
-  const dealt = combatDamage(model, since, new Set(plan.combat?.attacks.map((a) => a.attacker) ?? []));
+  const dealt = combatDamage(model);
   const plaques: ClashView["plaques"][number][] = [], brands: ClashView["brands"][number][] = [], clasps: ClashView["clasps"][number][] = [];
   for (const w of g.wings) {
     const tone = toneOf(w, me), place = placeOf(model, w.attacker);
@@ -130,7 +132,11 @@ export function clashViewOf(model: TableModel, plan: TablePlan | null, since = -
     }
   }
   // An attacked planeswalker's tally, by its loyalty (on its top edge); the "more" column's count and power.
-  const tallies = g.wings.flatMap((w) => (w.walker && w.unblocked > 0 ? [{ key: w.walker.unit, x: w.walker.x, y: w.walker.top, figure: `−${w.unblocked}`, tone: toneOf(w, me) }] : []));
+  // (A planeswalker whose wing waits whole in "more" keeps its tally there.)
+  const tallies = g.wings.flatMap((w) => {
+    const at = w.walker ? { key: w.walker.unit, x: w.walker.x, y: w.walker.top } : w.tallyAt && "card" in w.defender ? { key: `c${w.defender.card}`, ...w.tallyAt } : null;
+    return at && w.unblocked > 0 ? [{ ...at, figure: `−${w.unblocked}`, tone: toneOf(w, me) }] : [];
+  });
   let more: ClashView["more"] = null;
   if (g.moreAt && g.more.length) {
     const attackers = new Set(plan.combat?.attacks.map((a) => a.attacker) ?? []);

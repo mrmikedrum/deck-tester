@@ -9,6 +9,7 @@ import type { TableModel } from "../model";
 import type { BoardCues } from "../play";
 import type { CardId } from "../protocol";
 import type { AppState } from "./state";
+import { blockedOf } from "./clash";
 
 /** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sift too. */
 export function chromeMode(s: AppState, cues: BoardCues): ChromeMode {
@@ -32,7 +33,7 @@ function pairsKey(cues: BoardCues): string {
 
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${(s.focus.combat?.blocked ?? []).join(",")}|${settling ? "settling" : ""}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${blockedOf(model).join(",")}|${settling ? "settling" : ""}`;
 }
 
 /** The order the clash first stood its attackers in, kept for the combat (so no column jumps as the table replans). */
@@ -78,7 +79,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         involved: new Set(involved),
         combat: cues.combat,
         ...(asideOf(s) ? { combatForm: "table" as const } : {}),
-        ...(s.focus.combat?.blocked.length ? { blocked: new Set(s.focus.combat.blocked) } : {}),
+        ...(blockedOf(model).length ? { blocked: new Set(blockedOf(model)) } : {}),
         ...(s.focus.combat?.order.length ? { order: s.focus.combat.order } : {}),
         // The across leaf is the arrangement engine's (docs/game-arrangement-engine.md, step 6): its memory rides in
         // the layout memory like any seat's.

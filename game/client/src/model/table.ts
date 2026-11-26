@@ -55,14 +55,26 @@ export interface Attack {
   readonly defender: Target | null;
   /** The seat under attack: the defender itself, or the controller of the defending card. */
   readonly defending: SeatId | null;
+  /** Forge's verdict on whether it is blocked; null when the engine does not say. */
+  readonly blocked: boolean | null;
 }
 export interface Block {
   readonly blocker: CardId;
   readonly attacker: CardId;
 }
 export interface Combat {
+  /** Forge's ordinal of this combat in its turn; null when the engine does not say. */
+  readonly ordinal: number | null;
   readonly attackers: readonly Attack[];
   readonly blockers: readonly Block[];
+  /** The combat damage dealt in this combat so far (Forge's facts, after prevention), by source and target. */
+  readonly damage: readonly CombatDamage[];
+}
+/** Combat damage one source dealt one target in this combat. */
+export interface CombatDamage {
+  readonly source: CardId;
+  readonly target: Target;
+  readonly amount: number;
 }
 
 export interface TableModel {
@@ -207,11 +219,13 @@ export function modelOf(
     d === null ? null : "seat" in d ? d.seat : (cards.get(d.card)?.controller ?? null);
   const combat: Combat | null = view.combat
     ? {
+        ordinal: view.combat.ordinal,
         attackers: view.combat.attackers.map((a) => {
           const defender = a.defender === null ? null : targetOf(a.defender);
-          return { attacker: a.id, defender, defending: defending(defender) };
+          return { attacker: a.id, defender, defending: defending(defender), blocked: a.blocked };
         }),
         blockers: view.combat.blockers.map((b) => ({ blocker: b.id, attacker: b.blocking })),
+        damage: view.combat.damage.map((d) => ({ source: d.source, target: targetOf(d.target), amount: d.amount })),
       }
     : null;
 
