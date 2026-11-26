@@ -964,17 +964,21 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     placed: placedList,
     memory(ranking, didTidy) {
       const slotsOut: Record<UnitKey, SlotRef> = {}, lin: Record<UnitKey, string> = {}, tops: Record<string, CardId> = {}, tiers: Record<UnitKey, TierId> = {}, heldOut: Record<string, UnitKey> = {}, bases: Record<string, TierId> = {};
+      // (a card whose data has not arrived is not remembered: placed again once it has, by what it is)
+      const guess = (id: CardId) => !!ctx.cards.get(id)?.provisional;
       for (const un of units) {
-        slotsOut[un.key] = un.slot;
         lin[un.key] = un.id;
-        tiers[un.key] = un.tier;
         if (un.top !== null) tops[un.key] = un.top;
-        for (const id of [...un.members, ...un.dressing]) heldOut[id] = un.key;
+        const all = [...un.members, ...un.dressing];
+        if (all.length && all.every(guess)) continue;
+        slotsOut[un.key] = un.slot;
+        tiers[un.key] = un.tier;
+        for (const id of all) if (!guess(id)) heldOut[id] = un.key;
       }
       for (const g of walked.groups) {
         tops[`g:${g.key.replace(/^(act|re):/, "")}`] ??= g.members[0]!;
         // a retyped card keeps its old seat until it moves; everything else is seated by what it is now
-        for (const id of [...g.members, ...g.dressing]) bases[id] = g.retyped ? (pm?.bases[id] ?? g.base) : g.base;
+        for (const id of [...g.members, ...g.dressing]) if (!guess(id)) bases[id] = g.retyped ? (pm?.bases[id] ?? g.base) : g.base;
       }
       return {
         step: 1,

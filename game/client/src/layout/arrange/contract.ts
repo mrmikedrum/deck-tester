@@ -138,6 +138,9 @@ export interface ArrCard {
   readonly reach: "table" | "self";
   readonly manaValue: number;
   readonly produces: readonly string[];
+  /** Only the snapshot's facts so far: its card data has not arrived, so what it is may still change. Nothing remembers
+   *  where it was put (a card whose data lands is placed by what it is, not held where its guess put it). */
+  readonly provisional?: boolean;
 }
 
 export interface Relations {

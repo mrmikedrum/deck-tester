@@ -91,6 +91,7 @@ export function arrCardOf(c: Card): ArrCard {
     reach: reachOf(c.face.text),
     manaValue: valueOf(c.face.cost),
     produces: c.face.produces,
+    ...(c.face.catalogued ? {} : { provisional: true }),
   };
 }
 

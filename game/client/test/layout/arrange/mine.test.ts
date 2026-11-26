@@ -123,6 +123,20 @@ describe("my side's policy (`mine`)", () => {
     expect(unitOf(after, 50).cards.at(-1)!.posture).toBe("stand");
   });
 
+  it("a card whose data had not arrived is placed by what it is once it has, not held where its guess put it", () => {
+    resetIds();
+    const others = [me({ id: 1, name: "Bear", power: 2 }), me({ id: 2, name: "Wurm", power: 6 }), me({ id: 3, kind: "artifact", name: "Coat of Arms" })];
+    const guessed = { ...me({ id: 9, kind: "artifact", name: "Mind Stone" }), provisional: true };
+    const a = mineRun({ cards: [...others, guessed] });
+    expect(unitOf(a, 9).tier).toBe("works");
+    const b = mineRun({ cards: [...others, me({ id: 9, kind: "rock", name: "Mind Stone" })], memory: a.fit.memory });
+    expect(unitOf(b, 9).tier).toBe("mana");
+    expect(unitOf(b, 9).retyped).toBe(false);
+    expect(across(b, 9)).toBeGreaterThan(Math.max(across(b, 1), across(b, 2)));
+    // what was known stays where it was
+    for (const id of [1, 2, 3]) expect(unitOf(b, id).slot, String(id)).toEqual(unitOf(a, id).slot);
+  });
+
   it("a card that taps turns in place: only its turn changes", () => {
     resetIds();
     const cards = [me({ id: 1, name: "Bear", power: 2 }), me({ id: 2, name: "Wurm", power: 6 }), me({ id: 3, kind: "land", name: "Temple" })];

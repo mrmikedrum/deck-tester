@@ -132,7 +132,7 @@ const cardMix = (m: Mix, c: ArrCard): void => {
   const t = c.types;
   const bits =
     +t.creature | (+t.land << 1) | (+t.artifact << 2) | (+t.enchantment << 3) | (+t.planeswalker << 4) | (+t.battle << 5) | (+c.supertypes.legendary << 6) | (+c.supertypes.basic << 7) |
-    (+c.token << 8) | (+c.commander << 9) | (+c.copy << 10) | (+c.faceDown << 11) | (+c.manaSource << 12) | (+c.tapped << 13) | (+c.sick << 14) | (+(c.reach === "table") << 15);
+    (+c.token << 8) | (+c.commander << 9) | (+c.copy << 10) | (+c.faceDown << 11) | (+c.manaSource << 12) | (+c.tapped << 13) | (+c.sick << 14) | (+(c.reach === "table") << 15) | (+!!c.provisional << 16);
   m.num(c.id).num(bits).str(c.controller).str(c.owner).str(c.cardKey).str(c.lookKey).str(c.name).str(c.subtypes.join(" ")).str(c.keywords.join(","));
   m.opt(c.power).opt(c.toughness).opt(c.loyalty).opt(c.defense).num(c.counters).opt(c.attachedTo).num(c.manaValue).str(c.produces.join(""));
 };
