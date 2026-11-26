@@ -471,9 +471,10 @@ const DIR = new Vector3(),
 
 /**
  * A ribbon facing the camera along the points, raised by `dy`; `aU` runs along it in world units (an attack's pulses),
- * `aV` across. Written into the geometry's own buffers: they are made only when the number of points changes.
+ * `aV` across, and `uv` only for a ribbon that samples a texture. Written into the geometry's own buffers: they are made
+ * only when the number of points changes.
  */
-function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0): void {
+function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0, textured = false): void {
   const n = pts.length;
   let pos = g.getAttribute("position") as BufferAttribute | undefined;
   let au = g.getAttribute("aU") as BufferAttribute | undefined;
@@ -481,12 +482,12 @@ function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0
     pos = new BufferAttribute(new Float32Array(n * 6), 3);
     au = new BufferAttribute(new Float32Array(n * 2), 1);
     const vs = new Float32Array(n * 2),
-      uv = new Float32Array(n * 4),
+      uv = textured ? new Float32Array(n * 4) : null,
       idx: number[] = [];
     for (let i = 0; i < n; i++) {
       vs[i * 2] = 1;
       vs[i * 2 + 1] = -1;
-      uv.set([0.5, 1, 0.5, 0], i * 4);
+      uv?.set([0.5, 1, 0.5, 0], i * 4);
       if (i < n - 1) {
         const j = i * 2;
         idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2);
@@ -495,7 +496,7 @@ function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0
     g.setAttribute("position", pos);
     g.setAttribute("aU", au);
     g.setAttribute("aV", new BufferAttribute(vs, 1));
-    g.setAttribute("uv", new BufferAttribute(uv, 2));
+    if (uv) g.setAttribute("uv", new BufferAttribute(uv, 2));
     g.setIndex(idx);
   }
   const P = pos.array as Float32Array,

@@ -425,7 +425,7 @@ The same table at rest with one post-processing setting changed (a second run, s
 the composer at 1.0x, 10.6 ms; at 1.5x (the policy's), 12.3; bloom off, 11.6 (55 calls); MSAA off, 11.5; all three,
 9.2. On the M4 none of them dominates: the lit table itself is most of the frame. The iPad's run decides.
 
-The iPad baseline at 834 × 1210 and 2× measured 13/14 ms at rest, 16/18 ms in a highlight and 13/17 ms in
+The iPad baseline (an 834 × 1210 screen at 2×, drawing the bench's fixed 1180 × 820 viewport) measured 13/14 ms at rest, 16/18 ms in a highlight and 13/17 ms in
 flight (median/worst). With bloom disabled, rest fell to 10/12 ms. The client now paints glow into its sprites
 and rims and keeps the composer resolution and MSAA.
 
