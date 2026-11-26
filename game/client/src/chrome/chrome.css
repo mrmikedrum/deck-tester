@@ -1440,7 +1440,13 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: calc(28 * var(--u));
   }
+  .l-seat .summary {
+    display: flex;
+    flex-direction: column;
+    gap: calc(14 * var(--u));
+  }
   .l-seat .lines {
+    flex: 1;
     list-style: none;
     margin: 0;
     padding: 0;

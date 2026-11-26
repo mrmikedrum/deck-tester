@@ -168,17 +168,20 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
           <b class="life">{v.life} life</b>
         </header>
         <div class="cols">
-          <ul class="lines">
-            {v.lines.map((l) => (
-              <li key={l.icon} class={l.none ? "none" : undefined}>
-                <Icon kind={l.icon} none={l.none} />
-                <span>
-                  <b>{l.head}</b>
-                  {l.sub ? <small>{l.sub}</small> : null}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div class="summary">
+            <ul class="lines">
+              {v.lines.map((l) => (
+                <li key={l.icon} class={l.none ? "none" : undefined}>
+                  <Icon kind={l.icon} none={l.none} />
+                  <span>
+                    <b>{l.head}</b>
+                    {l.sub ? <small>{l.sub}</small> : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <CommanderDamage rows={v.commanderDamage} />
+          </div>
           <div class="zones">
             <section class="gy">
               <ZoneHead label="Graveyard" n={v.graveyard.length} open={v.graveyard.length ? openZone("graveyard") : undefined} />
@@ -203,7 +206,6 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
                 <div class="l-library" style={`--n:${Math.min(12, Math.ceil(v.library / 6))}`} role="img" aria-label={`${v.library} cards in the library`} />
               </section>
             </div>
-            <CommanderDamage rows={v.commanderDamage} />
             {v.also ? <p class="also">{v.also}</p> : null}
           </div>
         </div>
