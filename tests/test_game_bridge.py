@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from http.server import ThreadingHTTPServer
 from unittest import mock
 
@@ -79,28 +80,119 @@ def settle(t, state, timeout=3):
 
 
 class CardImageTest(unittest.TestCase):
-    def test_cached_normal_print_is_kept_until_its_large_image_is_available(self):
-        name = "Forest"
-        face = {"name": name, "img": "cache/card/forest.jpg", "art": "cache/art/forest.jpg"}
-        catalog = {name: {"faces": [face]}}
-        found = {name: {"image_uris": {"large": "https://example.test/forest.jpg"}}}
-        with tempfile.TemporaryDirectory() as tmp:
-            cache = pathlib.Path(tmp)
-            normal = cache / "card" / "forest.jpg"
-            normal.parent.mkdir()
-            normal.write_bytes(b"normal")
-            with mock.patch.multiple(game, CACHE=cache, CARDS=catalog, CARDS_FILE=cache / "cards.json"), \
-                    mock.patch.object(game, "scryfall", return_value=found) as lookup, \
-                    mock.patch.object(game, "get", side_effect=[OSError(), b"large"]) as download:
-                self.assertEqual(game.cards([name])[name]["faces"][0]["img"], "cache/card/forest.jpg")
-                large_url = "cache/card-large/forest.jpg"
-                self.assertEqual(game.cards([name])[name]["faces"][0]["img"], large_url)
-                self.assertEqual(game.cards([name])[name]["faces"][0]["img"], large_url)
-                self.assertEqual(lookup.call_count, 2)
-                self.assertEqual(download.call_count, 2)
-            self.assertEqual((cache / "card-large" / "forest.jpg").read_bytes(), b"large")
-            self.assertEqual(normal.read_bytes(), b"normal")
-            self.assertEqual(face["art"], "cache/art/forest.jpg")
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.cache = pathlib.Path(tmp.name)
+        self.now = 100
+        patches = mock.patch.multiple(game, CACHE=self.cache, CARDS={}, CARDS_FILE=self.cache / "cards.json", PRINT_RETRY_AT={})
+        patches.start()
+        self.addCleanup(patches.stop)
+        clock = mock.patch.object(game, "time", mock.Mock(wraps=time, monotonic=lambda: self.now))
+        clock.start()
+        self.addCleanup(clock.stop)
+
+    def wait_for_print_job(self, name):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            with game.CARD_LOCK:
+                if game.PRINT_RETRY_AT.get(name) != float("inf"):
+                    return
+            time.sleep(0.01)
+        self.fail(f"print job did not complete for {name}")
+
+    def test_cached_clients_share_background_upgrade_and_retry_after_cooldown(self):
+        normal = "cache/card/forest.jpg"
+        large = "cache/card-large/forest.jpg"
+        forest = {"faces": [{"name": "Forest", "img": normal, "art": "cache/art/forest.jpg"}]}
+        island = {"faces": [{"name": "Island", "img": "cache/card-large/island.jpg"}]}
+        game.CARDS.update(Forest=forest, Island=island)
+        started, release = threading.Event(), threading.Event()
+        found = {"Forest": {"image_uris": {"large": "https://example.test/forest.jpg"}}}
+
+        def outage(names):
+            started.set()
+            if not release.wait(5):
+                raise AssertionError("test never released the upstream request")
+            raise TimeoutError("offline")
+
+        with mock.patch.object(game, "scryfall", side_effect=outage) as lookup, \
+                mock.patch.object(game, "get", return_value=b"large") as download, \
+                mock.patch.object(game.traceback, "print_exc"), \
+                Server(self.cache / "dist", None) as server, ThreadPoolExecutor(2) as clients:
+            try:
+                first = clients.submit(server.get, "/api/cards?n=Forest")
+                self.assertTrue(started.wait(2))
+                second = clients.submit(server.get, "/api/cards?n=Forest&n=Island")
+                for client, expected in [(first, {"Forest": forest}), (second, {"Forest": forest, "Island": island})]:
+                    status, _, data = client.result(timeout=2)
+                    self.assertEqual((status, json.loads(data)), (200, expected))
+                self.assertEqual(lookup.call_count, 1)
+            finally:
+                release.set()
+                self.wait_for_print_job("Forest")
+
+            self.now += game.PRINT_COOLDOWN - 1
+            self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0]["img"], normal)
+            self.assertEqual(lookup.call_count, 1)
+            self.now += 1
+            lookup.side_effect = None
+            lookup.return_value = found
+            game.cards(["Forest"])
+            self.wait_for_print_job("Forest")
+            face = game.cards(["Forest"])["Forest"]["faces"][0]
+            self.assertEqual((face["img"], face["art"]), (large, "cache/art/forest.jpg"))
+            self.assertEqual(lookup.call_count, 2)
+            download.assert_called_once_with(found["Forest"]["image_uris"]["large"], raw=True)
+
+    def test_failed_first_print_recovers_from_the_catalog_after_restart(self):
+        art_url, print_url = "https://example.test/art.jpg", "https://example.test/print.jpg"
+        found = {"Forest": {"type_line": "Basic Land", "image_uris": {"art_crop": art_url, "large": print_url}}}
+        with mock.patch.object(game, "scryfall", return_value=found) as lookup, \
+                mock.patch.object(game, "get", side_effect=[b"art", TimeoutError(), b"large"]) as download:
+            first = game.cards(["Forest"])["Forest"]["faces"][0]
+            self.assertEqual((first["type"], first["art"], first["img"]), ("Basic Land", "cache/art/forest.jpg", None))
+            self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0], first)
+            self.assertEqual(download.call_count, 2)
+
+            game.CARDS.clear()
+            game.PRINT_RETRY_AT.clear()
+            game.load_cards()
+            self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0], first)
+            self.wait_for_print_job("Forest")
+            face = game.cards(["Forest"])["Forest"]["faces"][0]
+            self.assertEqual((face["type"], face["art"], face["img"]),
+                             ("Basic Land", "cache/art/forest.jpg", "cache/card-large/forest.jpg"))
+            self.assertNotIn("printPending", face)
+            lookup.assert_called_once_with(["Forest"])
+            self.assertEqual(download.call_args, mock.call(print_url, raw=True))
+
+    def test_fill_cache_uses_distinct_printing_ids_for_elemental_tokens(self):
+        faces = [f for f in game.fixture_faces() if f["name"] == "Elemental"]
+        tokens = {
+            "elemental-marath": "c5ad13b4-bbf5-4c98-868f-4d105eaf8833",
+            "elemental-waves": "f0e68ed9-d863-4822-b281-e184f3d62faa",
+        }
+        replies = {}
+        for token, printing in tokens.items():
+            path = self.cache / "card-large" / (token + ".jpg")
+            path.parent.mkdir(exist_ok=True)
+            path.write_bytes(b"previous ambiguous print")
+            uri = "https://example.test/" + token
+            replies["https://api.scryfall.com/cards/" + printing] = {"image_uris": {"large": uri, "art_crop": uri + "-art"}}
+            replies[uri] = token.encode()
+            replies[uri + "-art"] = b"art"
+
+        with mock.patch.object(game, "fixture_faces", return_value=faces), \
+                mock.patch.object(game, "scryfall") as by_name, \
+                mock.patch.object(game, "get", side_effect=lambda url, **_: replies[url]) as by_id:
+            self.assertEqual(game.fill_cache(), 0)
+            self.assertEqual(by_id.call_count, 6)
+            self.assertEqual(game.fill_cache(), 0)
+            self.assertEqual(by_id.call_count, 6)
+            by_name.assert_not_called()
+        for token in tokens:
+            self.assertEqual((self.cache / "card-large" / (token + ".jpg")).read_bytes(), token.encode())
 
 
 class AnswerStatusTest(unittest.TestCase):

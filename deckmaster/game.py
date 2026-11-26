@@ -24,6 +24,7 @@ import time
 import traceback
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -279,6 +280,10 @@ CARDS_FILE = CACHE / "cards.json"
 PRINT_DIR = "card-large"
 LEGACY_PRINT = "cache/card/"
 CARD_LOCK = threading.Lock()
+CARD_MISS_LOCK = threading.Lock()
+SCRYFALL_LOCK = threading.Lock()
+PRINT_COOLDOWN = 60
+PRINT_RETRY_AT = {}  # A running job has no finite retry time.
 CARDS = {}
 
 
@@ -321,10 +326,13 @@ def scryfall(names):
     return found
 
 
-def fetch_image(url, path):
-    if path.exists():
+def fetch_image(url, path, replace=False):
+    if path.exists() and not replace:
         return
-    data = get(url, raw=True)
+    write_cache_file(path, get(url, raw=True))
+
+
+def write_cache_file(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
         tmp = Path(output.name)
@@ -352,6 +360,7 @@ def entry(name, c):
     face, uris = card_face(name, c)
     s = slug(name)
     art = img = None
+    pending = {}
     if uris:
         try:
             fetch_image(uris["art_crop"], CACHE / "art" / (s + ".jpg"))
@@ -362,54 +371,114 @@ def entry(name, c):
             fetch_image(uris["large"], CACHE / PRINT_DIR / (s + ".jpg"))
             img = f"cache/{PRINT_DIR}/{s}.jpg"
         except Exception:
+            if uris.get("large"):
+                pending["printPending"] = uris["large"]
             if (CACHE / "card" / (s + ".jpg")).is_file():
                 img = LEGACY_PRINT + s + ".jpg"
     return {"name": name, "faces": [{
         "name": name, "cost": face.get("mana_cost", ""), "type": face.get("type_line", c.get("type_line", "")),
         "text": face.get("oracle_text", c.get("oracle_text", "")), "power": face.get("power"),
         "toughness": face.get("toughness"), "loyalty": face.get("loyalty"), "colors": face.get("colors", c.get("colors", [])),
-        "art": art, "img": img, "keywords": c.get("keywords", [])}],
+        "art": art, "img": img, "keywords": c.get("keywords", []), **pending}],
         "produces": c.get("produced_mana", []), "identity": c.get("color_identity", []), "layout": c.get("layout", "normal")}
 
 
-def upgrade_prints(faces, found):
-    """Keep cached metadata and art, replacing a normal print URL only after its large image is ready."""
-    for face in faces:
-        rel = large_print_path(face["img"])
-        path = CACHE / rel
+def needs_print(face):
+    img = face.get("img") or ""
+    return bool(face.get("printPending") or img.startswith(LEGACY_PRINT) or (not img and face.get("art")))
+
+
+def print_path(face):
+    img = face.get("img") or ""
+    return large_print_path(img) if img.startswith(LEGACY_PRINT) else f"{PRINT_DIR}/{slug(face['name'])}.jpg"
+
+
+def lookup_cards(names):
+    if not names:
+        return {}
+    with SCRYFALL_LOCK:  # Preserve spacing between API requests without tying up cached lookups.
         try:
-            if not path.is_file():
-                _, uris = card_face(face["name"], found or {})
-                fetch_image(uris["large"], path)
-            face["img"] = "cache/" + rel
+            return scryfall(names)
         except Exception:
-            pass
+            traceback.print_exc()
+            time.sleep(0.1)
+            return {}
+
+
+def save_cards():
+    """Persist a complete catalog while holding CARD_LOCK."""
+    write_cache_file(CARDS_FILE, json.dumps(CARDS).encode())
+
+
+def upgrade_prints(upgrades):
+    lookup = [n for n, card in upgrades.items() if any(
+        needs_print(f) and not f.get("printPending") and not (CACHE / print_path(f)).is_file()
+        for f in card["faces"])]
+    found = lookup_cards(lookup)
+
+    def upgrade(name, card):
+        faces = []
+        for face in card["faces"]:
+            if needs_print(face):
+                rel = print_path(face)
+                path = CACHE / rel
+                try:
+                    if not path.is_file():
+                        _, uris = card_face(face["name"], found.get(name, {}))
+                        fetch_image(face.get("printPending") or uris["large"], path)
+                    face = dict(face, img="cache/" + rel)
+                    face.pop("printPending", None)
+                except Exception:
+                    pass
+            faces.append(face)
+        return dict(card, faces=faces)
+
+    with ThreadPoolExecutor(8) as pool:
+        results = list(pool.map(upgrade, upgrades, upgrades.values()))
+    with CARD_LOCK:
+        changed = False
+        for name, card in zip(upgrades, results):
+            if any(needs_print(f) for f in card["faces"]):
+                PRINT_RETRY_AT[name] = time.monotonic() + PRINT_COOLDOWN
+            else:
+                PRINT_RETRY_AT.pop(name, None)
+            if card != CARDS[name]:
+                CARDS[name] = card
+                changed = True
+        if changed:
+            save_cards()
 
 
 def cards(names):
+    names = list(dict.fromkeys(n for n in names if n))
     with CARD_LOCK:
-        missing = [n for n in names if n and n not in CARDS]
-        upgrades = {n: [f for f in CARDS[n]["faces"] if (f.get("img") or "").startswith(LEGACY_PRINT)]
-                    for n in names if n in CARDS}
-        upgrades = {n: faces for n, faces in upgrades.items() if faces}
-        if missing or upgrades:
-            lookup = list(dict.fromkeys(missing + [
-                n for n, faces in upgrades.items()
-                if any(not (CACHE / large_print_path(f["img"])).is_file() for f in faces)]))
-            try:
-                found = scryfall(lookup) if lookup else {}
-            except Exception:
-                traceback.print_exc()
-                found = {}
-            from concurrent.futures import ThreadPoolExecutor
-            with ThreadPoolExecutor(8) as pool:  # images download side by side
-                list(pool.map(lambda n: upgrade_prints(upgrades[n], found.get(n)), upgrades))
-                made = dict(zip(missing, pool.map(lambda n: entry(n, found[n]) if n in found else None, missing)))
-            for n in missing:
-                CARDS[n] = made[n] if made[n] else {"name": n, "faces": [{"name": n, "art": None, "img": None, "keywords": []}], "produces": [], "identity": [], "layout": "normal"}
-            CACHE.mkdir(parents=True, exist_ok=True)
-            CARDS_FILE.write_text(json.dumps(CARDS))
-        return {n: CARDS[n] for n in names if n in CARDS}
+        missing = [n for n in names if n not in CARDS]
+        now = time.monotonic()
+        upgrades = {n: CARDS[n] for n in names if n in CARDS
+                    and PRINT_RETRY_AT.get(n, 0) <= now
+                    and any(needs_print(f) for f in CARDS[n]["faces"])}
+        for n in upgrades:
+            PRINT_RETRY_AT[n] = float("inf")
+        cached = {n: CARDS[n] for n in names if n in CARDS}
+    if upgrades:
+        threading.Thread(target=upgrade_prints, args=(upgrades,), daemon=True).start()
+    if not missing:
+        return cached
+
+    with CARD_MISS_LOCK:
+        with CARD_LOCK:
+            missing = [n for n in missing if n not in CARDS]
+        found = lookup_cards(missing)
+        with ThreadPoolExecutor(8) as pool:  # images download side by side
+            made = list(pool.map(lambda n: entry(n, found[n]) if n in found else None, missing))
+        with CARD_LOCK:
+            for n, card in zip(missing, made):
+                CARDS[n] = card or {"name": n, "faces": [{"name": n, "art": None, "img": None, "keywords": []}], "produces": [], "identity": [], "layout": "normal"}
+                if card and any(needs_print(f) for f in card["faces"]):
+                    PRINT_RETRY_AT[n] = time.monotonic() + PRINT_COOLDOWN
+            if missing:
+                save_cards()
+            return {n: CARDS[n] for n in names}
 
 
 # ---- The new client: its build, its log ----------------------------------------------------------------------------
@@ -765,23 +834,56 @@ def fixture_faces():
     return [f for c in cards.values() for f in c["faces"] if f.get("img")]
 
 
+# Same name, different tokens in the fixture catalog.
+FIXTURE_PRINTINGS = {
+    "cache/card/elemental-marath.jpg": "c5ad13b4-bbf5-4c98-868f-4d105eaf8833",
+    "cache/card/elemental-waves.jpg": "f0e68ed9-d863-4822-b281-e184f3d62faa",
+}
+
+
 def fill_cache():
-    """Fetch the client's fixture card images into the cache: Scryfall's images aren't in git, so a fresh checkout
-    has none. Large prints keep the filenames data.js names in a versioned directory."""
-    missing = [f for f in fixture_faces() if not (CACHE / large_print_path(f["img"])).is_file()
-               or not (CACHE / f["art"][len("cache/"):]).is_file()]
-    found = scryfall(sorted({f["name"] for f in missing})) if missing else {}
-    lost = []
-    for f in missing:
-        c = found.get(f["name"])
-        face = next((x for x in (c or {}).get("card_faces", []) if x["name"] == f["name"] and "image_uris" in x), c or {})
-        uris = face.get("image_uris") or (c or {}).get("image_uris")
-        if not uris or "large" not in uris:
-            lost.append(f["name"])
+    """Fill the fixture cache using exact printings wherever names are ambiguous."""
+    paths_by_name = collections.defaultdict(set)
+    faces = fixture_faces()
+    for face in faces:
+        paths_by_name[face["name"]].add(face["img"])
+    missing, lost = [], []
+    for face in faces:
+        name, img = face["name"], face["img"]
+        printing = FIXTURE_PRINTINGS.get(img)
+        path = CACHE / large_print_path(img)
+        art = CACHE / face["art"][len("cache/"):]
+        if len(paths_by_name[name]) > 1 and not printing:
+            if not ((CACHE / img[len("cache/"):]).is_file() and art.is_file()):
+                lost.append(img)
             continue
-        fetch_image(uris["large"], CACHE / large_print_path(f["img"]))
-        fetch_image(uris["art_crop"], CACHE / f["art"][len("cache/"):])
-    print(f"{len(missing) - len(lost)} fixture card images fetched into {CACHE}" + (f"; not found: {', '.join(lost)}" if lost else ""))
+        stamp = path.with_suffix(".id")
+        # Replace images cached before these tokens were resolved by printing ID.
+        replace = bool(printing and (not stamp.is_file() or stamp.read_text() != printing))
+        if replace or not path.is_file() or not art.is_file():
+            missing.append((face, printing, path, art, stamp, replace))
+
+    names = sorted({face["name"] for face, printing, *_ in missing if not printing})
+    found = scryfall(names) if names else {}
+    fetched = 0
+    for face, printing, path, art, stamp, replace in missing:
+        if printing:
+            try:
+                c = get(f"https://api.scryfall.com/cards/{printing}")
+            finally:
+                time.sleep(0.1)
+        else:
+            c = found.get(face["name"], {})
+        _, uris = card_face(face["name"], c)
+        if "large" not in uris:
+            lost.append(face["img"])
+            continue
+        fetch_image(uris["large"], path, replace=replace)
+        fetch_image(uris["art_crop"], art)
+        if printing:
+            write_cache_file(stamp, printing.encode())
+        fetched += 1
+    print(f"{fetched} fixture card images fetched into {CACHE}" + (f"; not found: {', '.join(lost)}" if lost else ""))
     return 1 if lost else 0
 
 
