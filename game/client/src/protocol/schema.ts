@@ -103,12 +103,21 @@ export const CombatSchema = v.object({
   ordinal: v.nullish(count, null),
   /** defender: a player's name, a planeswalker's or battle's card id, or null. blocked: Forge's verdict (it stays true
    *  when the blockers leave, and turns false when an effect unblocks); null from an engine that does not say. */
-  attackers: v.array(v.object({ id: cardId, defender: v.nullish(cardOrPlayer, null), blocked: v.nullish(v.boolean(), null) })),
+  attackers: v.array(
+    v.object({
+      id: cardId,
+      defender: v.nullish(cardOrPlayer, null),
+      blocked: v.nullish(v.boolean(), null),
+      /** The player defending (a planeswalker's controller, a battle's protector: Forge's answer). */
+      defending: v.nullish(playerName, null),
+    }),
+  ),
   /** One entry per blocker and attacker it blocks. */
   blockers: v.array(v.object({ id: cardId, blocking: cardId })),
-  /** The combat damage dealt in this combat so far, after prevention, summed by source and target (a player's name or a
-   *  card id) over its damage steps. Empty before damage, and from an engine that does not say. */
-  damage: v.optional(v.array(v.object({ source: cardId, target: cardOrPlayer, amount: count })), () => []),
+  /** The combat damage dealt in this combat so far, after prevention, summed by source, target (a player's name or a
+   *  card id) and defender (what the source was attacking when it hit; null for a blocker) over its damage steps.
+   *  Empty before damage, and from an engine that does not say. */
+  damage: v.optional(v.array(v.object({ source: cardId, target: cardOrPlayer, defender: v.nullish(cardOrPlayer, null), amount: count })), () => []),
 });
 
 export const LogEntrySchema = v.object({

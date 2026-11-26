@@ -37,29 +37,39 @@ describe("the clash's words", () => {
     expect(plates[1]!.attacking).toBe(true);
   });
 
-  it("the plaque says what was dealt only from the engine's combat damage facts, to a player and to a planeswalker", () => {
-    const facts = (damage: { source: number; target: number | string; amount: number }[], log: { i: number; type: string; text: string; card: number | null }[] = []) =>
+  it("the plaque says what was dealt only from the engine's combat damage facts, by the defender recorded at the hit", () => {
+    type Hit = { source: number; target: number | string; defender: number | string | null; amount: number };
+    const facts = (damage: Hit[], o: { log?: { i: number; type: string; text: string; card: number | null }[]; jace?: "battlefield" | "graveyard"; brute?: number } = {}) =>
       tableOf({
         active: "Atraxa",
         phase: "COMBAT_DAMAGE",
         seats: {
-          You: { life: 33, battlefield: [creature(10, "Guard", "You", 1, 3), card(40, "Jace Beleren", "You", "Legendary Planeswalker - Jace", { loyalty: 1 }), land(19, "Plains", "You")] },
+          You: {
+            life: 33,
+            battlefield: [creature(10, "Guard", "You", 1, 3), ...(o.jace === "graveyard" ? [] : [card(40, "Jace Beleren", "You", "Legendary Planeswalker - Jace", { loyalty: 1 })]), land(19, "Plains", "You")],
+            graveyard: o.jace === "graveyard" ? [card(40, "Jace Beleren", "You", "Legendary Planeswalker - Jace")] : [],
+          },
           Atraxa: { battlefield: [creature(20, "Raider", "Atraxa", 3), creature(21, "Brute", "Atraxa", 4), land(29, "Plains", "Atraxa")] },
         },
-        combat: { ordinal: 1, attackers: [{ id: 20, defender: "You", blocked: false }, { id: 21, defender: 40, blocked: false }], damage },
-        log,
+        combat: { ordinal: 1, attackers: [{ id: 20, defender: "You", blocked: false, defending: "You" }, { id: 21, defender: o.brute ?? 40, blocked: false, defending: "You" }], damage },
+        log: o.log ?? [],
       });
     const words = (m: TableModel) => clashViewOf(m, planTable(tableInputOf(m, { viewport: VP })))!.plaques.map((p) => p.words).sort();
-    // the engine's facts, summed over the damage steps: what the plaque says
-    expect(words(facts([{ source: 20, target: "You", amount: 3 }, { source: 21, target: 40, amount: 4 }]))).toEqual([
-      "Atraxa attacks Jace Beleren · 4 dealt",
-      "Atraxa attacks You · 3 dealt",
-    ]);
+    const both: Hit[] = [
+      { source: 20, target: "You", defender: "You", amount: 3 },
+      { source: 21, target: 40, defender: 40, amount: 4 },
+    ];
+    expect(words(facts(both))).toEqual(["Atraxa attacks Jace Beleren · 4 dealt", "Atraxa attacks You · 3 dealt"]);
+    // the live game's shape: Jace died of the hit, and Forge reads the Brute's defender as gone (-1); the hit keeps it
+    expect(words(facts(both, { jace: "graveyard", brute: -1 }))).toEqual(["Atraxa attacks Jace Beleren · 4 dealt", "Atraxa attacks You · 3 dealt"]);
+    // an attacker removed after it hit (no longer in the combat): its blow still counts for its defender
+    const gone = facts(both);
+    expect(combatDamage({ ...gone, combat: { ...gone.combat!, attackers: gone.combat!.attackers.slice(1) } })).toEqual(new Map([["sYou", 3], ["c40", 4]]));
     // no fact, no claim: a damage line in Forge's log (or a life lost) is not read
-    const logged = facts([], [{ i: 9, type: "DAMAGE", text: "Raider (20) deals 3 combat damage to You.", card: 20 }]);
+    const logged = facts([], { log: [{ i: 9, type: "DAMAGE", text: "Raider (20) deals 3 combat damage to You.", card: 20 }] });
     expect(words(logged)).toEqual(["Atraxa attacks Jace Beleren · 4 unblocked", "Atraxa attacks You · 3 unblocked"]);
-    // damage by a source that does not attack that defender is not this wing's
-    expect(combatDamage(facts([{ source: 21, target: "You", amount: 2 }]))).toEqual(new Map());
+    // a blow to a blocker is not the defender's
+    expect(combatDamage(facts([{ source: 20, target: 10, defender: "You", amount: 3 }]))).toEqual(new Map());
   });
 
   it("my attack blocked: \"You attack Atraxa · 2 unblocked\", gold", () => {
@@ -95,6 +105,23 @@ describe("the clash's words", () => {
     expect(n).toBeGreaterThan(0);
     expect(v.more!.words).toBe(`${n} more · ${2 * n} power`);
     expect(plan.hits.groups.find((g) => g.id === "clash:more")!.members).toHaveLength(n);
+  });
+
+  it("two planeswalkers whose attackers all wait in \"more\" keep a tally each, in its own place", () => {
+    const ids = Array.from({ length: 18 }, (_, i) => 100 + i);
+    const m = tableOf({
+      active: "Dack",
+      phase: "COMBAT_DECLARE_BLOCKERS",
+      seats: {
+        You: { battlefield: [land(19, "Plains", "You")] },
+        Atraxa: { battlefield: [card(40, "Jace Beleren", "Atraxa", "Legendary Planeswalker - Jace", { loyalty: 3 }), card(41, "Chandra Nalaar", "Atraxa", "Legendary Planeswalker - Chandra", { loyalty: 6 }), land(29, "Plains", "Atraxa")] },
+        Dack: { battlefield: ids.map((c, i) => creature(c, `Fighter ${i}`, "Dack", 2, 2)) },
+      },
+      combat: { attackers: ids.map((c, i) => ({ id: c, defender: i < 14 ? "You" : i < 16 ? 40 : 41 })) },
+    });
+    const v = clashViewOf(m, planTable(tableInputOf(m, { viewport: VP })))!;
+    expect(v.tallies).toHaveLength(2);
+    expect(v.tallies[0]!.x).not.toBeCloseTo(v.tallies[1]!.x, 0);
   });
 
   it("a planeswalker whose attackers all wait in \"more\" keeps its plaque and its tally", () => {

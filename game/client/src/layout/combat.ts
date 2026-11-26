@@ -9,7 +9,8 @@ import type { CardId, SeatId, V3 } from "./types";
 
 /** Attacks and blocks as layout takes them: plain ids (play's combat draft has this shape; layout never imports play). */
 export interface CombatPairs {
-  readonly attacks: readonly { readonly attacker: CardId; readonly defender: { readonly seat: SeatId } | { readonly card: CardId } }[];
+  /** `defending`: the player defending, when the engine says (a battle's protector is not its controller). */
+  readonly attacks: readonly { readonly attacker: CardId; readonly defender: { readonly seat: SeatId } | { readonly card: CardId }; readonly defending?: SeatId }[];
   readonly blocks: readonly { readonly blocker: CardId; readonly attacker: CardId }[];
 }
 
@@ -18,7 +19,7 @@ export function engineCombat(model: TableModel): CombatPairs | null {
   const c = model.combat;
   if (!c) return null;
   return {
-    attacks: c.attackers.flatMap((a) => (a.defender ? [{ attacker: a.attacker, defender: a.defender }] : [])),
+    attacks: c.attackers.flatMap((a) => (a.defender ? [{ attacker: a.attacker, defender: a.defender, ...(a.defending ? { defending: a.defending } : {}) }] : [])),
     blocks: c.blockers.map((b) => ({ blocker: b.blocker, attacker: b.attacker })),
   };
 }

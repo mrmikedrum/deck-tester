@@ -27,13 +27,17 @@ function shortfalls(plan: TablePlan): string[] {
  * after a tap on the shade), every group the clash covered given its patch by the picker there.
  */
 function asideShortfalls(plan: TablePlan, again: () => TablePlan): string[] {
-  const covered = plan.hits.groups.filter((g) => underClash(plan, g)).map((g) => g.id);
+  const covered = plan.hits.groups.filter((g) => underClash(plan, g));
   if (!covered.length) return [];
   const aside = again(), r = reach(aside), out: string[] = [];
-  for (const g of aside.hits.groups) {
-    if (!covered.includes(g.id)) continue;
-    const side = r.get(g.id)!.side, need = g.kind === "plate" ? 1 : TAP_PX;
-    if (side < need) out.push(`${g.id} ${side}px (aside)`);
+  for (const c of covered) {
+    // the same group, or (the table refolded) the groups now holding its cards: each must be there, and reached
+    const now = aside.hits.groups.filter((g) => g.id === c.id || (c.members.length > 0 && g.members.some((m) => c.members.includes(m))));
+    if (!now.length) out.push(`${c.id} gone (aside)`);
+    for (const g of now) {
+      const side = r.get(g.id)!.side, need = g.kind === "plate" ? 1 : TAP_PX;
+      if (side < need) out.push(`${g.id} ${side}px (aside)`);
+    }
   }
   return out;
 }

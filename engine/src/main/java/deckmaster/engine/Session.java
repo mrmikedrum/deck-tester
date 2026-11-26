@@ -100,7 +100,7 @@ final class Session {
         }
     }
 
-    private record Snapshot(GameSnapshot copy, int pilotTurn, Random random) { }
+    private record Snapshot(GameSnapshot copy, int pilotTurn, Random random, CombatFacts.Saved facts) { }
 
     /**
      * A copy of the game at the pilot's latest priority stop, with the log's length and the random sequence then:
@@ -656,7 +656,7 @@ final class Session {
         requirePlayDecision();
         GameSnapshot copy = new GameSnapshot(game);
         copy.makeCopy();
-        snapshots.put(name, new Snapshot(copy, pilotTurn, random.copy()));
+        snapshots.put(name, new Snapshot(copy, pilotTurn, random.copy(), combatFacts.save()));
         recorder.write("snapshot", "name", name);
         return "snapshot " + name + " at " + turnLabel();
     }
@@ -674,6 +674,7 @@ final class Session {
         game.getAction().checkStaticAbilities();
         pilotTurn = snapshot.pilotTurn();
         random.rewind(snapshot.random()); // the same shuffles and draws as when the snapshot was taken
+        combatFacts.restore(snapshot.facts(), game); // the combat's facts as they were, not the abandoned line's
         // Forge's AI remembers cards between decisions (mana sources it holds for its next spell, and so on),
         // outside the game state; memories of the abandoned line would make the restored one play differently.
         for (Player player : game.getPlayers()) {
@@ -684,7 +685,7 @@ final class Session {
         // A restored copy may share objects with the game now, so keep a fresh copy for the next restore.
         GameSnapshot fresh = new GameSnapshot(game);
         fresh.makeCopy();
-        snapshots.put(name, new Snapshot(fresh, pilotTurn, snapshot.random()));
+        snapshots.put(name, new Snapshot(fresh, pilotTurn, snapshot.random(), snapshot.facts()));
         recorder.write("restore", "name", name);
         channel.resume(new Channel.Interrupt(true));
     }
@@ -1163,6 +1164,9 @@ final class Session {
                 Map<String, Object> a = new LinkedHashMap<>();
                 a.put("id", attacker.getId());
                 a.put("defender", defender instanceof Card walker ? (Object) walker.getId() : defender == null ? null : defender.getName());
+                // the player defending: a planeswalker's controller, a battle's protector (Forge's own answer)
+                Player defending = combat.getDefenderPlayerByAttacker(attacker);
+                a.put("defending", defending == null ? null : defending.getName());
                 // Forge's own verdict: blocked stays true when its blockers leave, and false when an effect unblocks it.
                 a.put("blocked", combat.isBlocked(attacker));
                 attackers.add(a);
@@ -1174,7 +1178,17 @@ final class Session {
                 }
             }
             // Which combat this is this turn (Forge's ordinal), and the combat damage dealt in it so far by source and target.
-            view.put("combat", Map.of("ordinal", CombatFacts.ordinal(game), "attackers", attackers, "blockers", blockers, "damage", combatFacts.damage(game)));
+            // Which combat this is this turn (Forge's ordinal) and the combat damage dealt in it so far, as the game thread
+            // last published them.
+            CombatFacts.Published facts = combatFacts.published();
+            Map<String, Object> c = new LinkedHashMap<>();
+            if (facts.ordinal() > 0) {
+                c.put("ordinal", facts.ordinal());
+            }
+            c.put("attackers", attackers);
+            c.put("blockers", blockers);
+            c.put("damage", facts.damage());
+            view.put("combat", c);
         }
         // Forge's own game log, as its desktop app shows it: what happened, including what this seat couldn't see happen.
         List<forge.game.GameLogEntry> entries = game.getGameLog().getAllEntries();

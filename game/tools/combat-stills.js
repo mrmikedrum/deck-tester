@@ -59,7 +59,7 @@ const dealt = (v, phase, combat = true) => {
   me.battlefield.splice(i, 1);
   e.view.combat = combat ? { ...e.view.combat, blockers: e.view.combat.blockers.filter((b) => b.id !== 1057) } : null;
   // the engine's combat damage facts (Steel Overseer stays blocked by Forge's verdict though its blocker died)
-  if (combat) e.view.combat.damage = [{ source: 1169, target: "You", amount: 3 }, { source: 1041, target: 1057, amount: 6 }];
+  if (combat) e.view.combat.damage = [{ source: 1169, target: "You", defender: "You", amount: 3 }, { source: 1041, target: 1057, defender: "You", amount: 6 }];
   e.v = v;
   return e;
 };

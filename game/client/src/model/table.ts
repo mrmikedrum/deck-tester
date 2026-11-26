@@ -70,10 +70,11 @@ export interface Combat {
   /** The combat damage dealt in this combat so far (Forge's facts, after prevention), by source and target. */
   readonly damage: readonly CombatDamage[];
 }
-/** Combat damage one source dealt one target in this combat. */
+/** Combat damage one source dealt one target in this combat, and what that source was attacking when it hit. */
 export interface CombatDamage {
   readonly source: CardId;
   readonly target: Target;
+  readonly defender: Target | null;
   readonly amount: number;
 }
 
@@ -221,11 +222,16 @@ export function modelOf(
     ? {
         ordinal: view.combat.ordinal,
         attackers: view.combat.attackers.map((a) => {
-          const defender = a.defender === null ? null : targetOf(a.defender);
-          return { attacker: a.id, defender, defending: defending(defender), blocked: a.blocked };
+          // A defender gone from the game (a planeswalker that died of the hit: Forge says -1) is the one its hits
+          // recorded when they landed.
+          const hit = view.combat!.damage.find((d) => d.source === a.id && d.defender !== null)?.defender ?? null;
+          const gone = typeof a.defender === "number" && !cards.has(a.defender);
+          const wire = gone && hit !== null ? hit : a.defender;
+          const defender = wire === null ? null : targetOf(wire);
+          return { attacker: a.id, defender, defending: a.defending !== null ? seatId(a.defending) : defending(defender), blocked: a.blocked };
         }),
         blockers: view.combat.blockers.map((b) => ({ blocker: b.id, attacker: b.blocking })),
-        damage: view.combat.damage.map((d) => ({ source: d.source, target: targetOf(d.target), amount: d.amount })),
+        damage: view.combat.damage.map((d) => ({ source: d.source, target: targetOf(d.target), defender: d.defender === null ? null : targetOf(d.defender), amount: d.amount })),
       }
     : null;
 

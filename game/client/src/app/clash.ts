@@ -32,17 +32,16 @@ const defenderKey = (d: Defender): string => ("seat" in d ? `s${d.seat}` : `c${d
 
 
 /**
- * The combat damage dealt in this combat to each defender by the attackers aimed at it, by defender key: Forge's facts
- * (the engine's `combat.damage`, after prevention, summed over the damage steps), never the client's sum.
+ * The combat damage dealt in this combat to each defender, by defender key: Forge's facts (the engine's
+ * `combat.damage`, after prevention, summed over the damage steps), each hit counted for the defender its source was
+ * attacking when it landed, to that defender itself (not to a blocker), whatever the attacks are now.
  */
 export function combatDamage(model: TableModel): Map<string, number> {
   const out = new Map<string, number>();
-  const combat = model.combat;
-  if (!combat) return out;
-  for (const d of combat.damage) {
-    const k = defenderKey(d.target);
-    const aimed = combat.attackers.some((a) => a.attacker === d.source && a.defender !== null && defenderKey(a.defender) === k);
-    if (aimed && d.amount > 0) out.set(k, (out.get(k) ?? 0) + d.amount);
+  for (const d of model.combat?.damage ?? []) {
+    if (d.defender === null || d.amount <= 0 || defenderKey(d.defender) !== defenderKey(d.target)) continue;
+    const k = defenderKey(d.defender);
+    out.set(k, (out.get(k) ?? 0) + d.amount);
   }
   return out;
 }

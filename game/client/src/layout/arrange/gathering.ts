@@ -124,7 +124,7 @@ const defKey = (d: Defender): string => ("seat" in d ? `s${d.seat}` : `c${d.card
  *  after its blockers left: `blocked`); the table form otherwise. */
 export function combatFormOf(combat: CombatPairs | null, perspective: SeatId, seatOf: (card: CardId) => SeatId | undefined, blocked: ReadonlySet<CardId> = new Set()): CombatForm {
   if (!combat || !combat.attacks.length) return "table";
-  const atMe = combat.attacks.some((a) => ("seat" in a.defender ? a.defender.seat : seatOf(a.defender.card)) === perspective);
+  const atMe = combat.attacks.some((a) => ("seat" in a.defender ? a.defender.seat : (a.defending ?? seatOf(a.defender.card))) === perspective);
   return atMe || combat.blocks.length > 0 || combat.attacks.some((a) => blocked.has(a.attacker)) ? "clash" : "table";
 }
 
@@ -163,7 +163,7 @@ export function gathering(input: GatherInput): Gathering {
     if (!f) continue;
     let fm = forms.find((x) => x.ks.includes(f.unit));
     if (!fm) {
-      const defSeat = "seat" in a.defender ? a.defender.seat : (seatOf(a.defender.card) ?? null);
+      const defSeat = "seat" in a.defender ? a.defender.seat : (a.defending ?? seatOf(a.defender.card) ?? null);
       const blocked = combat.blocks.some((b) => b.attacker === a.attacker) || !!input.blocked?.has(a.attacker);
       forms.push((fm = { ks: [f.unit], from: f.seat, bs: [], defender: a.defender, defSeat, blocked }));
     }
@@ -377,7 +377,9 @@ export function gathering(input: GatherInput): Gathering {
     x += CLASH.wingGap * u;
   }
   const moreAt = more.length ? quadAt(x + m.wide(feet.atk) / 2, feet.atk, m.wide(feet.atk), m.tall(feet.atk)) : null;
-  // A wing whose attackers all wait in "more" keeps its plaque (over that column) and its defender's tally.
+  // A wing whose attackers all wait in "more" keeps its plaque (over that column) and its defender's tally; each
+  // planeswalker's tally its own place along the column's top.
+  const hiddenWalkers = wingsOf(more).filter((w) => "card" in w.fs[0]!.defender && !wings.some((x) => defKey(x.defender) === defKey(w.fs[0]!.defender)));
   for (const w of wingsOf(more)) {
     if (wings.some((x) => x.attacker === w.fs[0]!.from && defKey(x.defender) === defKey(w.fs[0]!.defender))) continue;
     const mx = x + m.wide(feet.atk) / 2;
@@ -389,7 +391,9 @@ export function gathering(input: GatherInput): Gathering {
       w: m.wide(feet.atk),
       unblocked: totals.get(w.key) ?? 0,
       columns: [],
-      ...("card" in w.fs[0]!.defender ? { tallyAt: { x: mx, y: feet.atk - m.tall(feet.atk) } } : {}),
+      ...("card" in w.fs[0]!.defender
+        ? { tallyAt: { x: mx + (hiddenWalkers.findIndex((h) => h.key === w.key) - (hiddenWalkers.length - 1) / 2) * 0.5 * m.wide(feet.atk), y: feet.atk - m.tall(feet.atk) } }
+        : {}),
     });
   }
 

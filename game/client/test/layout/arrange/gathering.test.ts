@@ -10,7 +10,7 @@ import { modelOf } from "../../../src/model";
 import type { TableModel } from "../../../src/model";
 import type { CardId } from "../../../src/protocol";
 import { designModels } from "../../../src/scene/workbench/bench-inputs";
-import { catalog, corpusSnapshot, creature, land, tableOf, viewerOf } from "../../model/fixtures";
+import { card, catalog, corpusSnapshot, creature, land, tableOf, viewerOf } from "../../model/fixtures";
 import type { Name } from "../../model/fixtures";
 import { SUPPORTED } from "../boards";
 
@@ -150,6 +150,22 @@ describe("the clash", () => {
     expect(wing.walker!.x).toBeGreaterThan(Math.max(...wing.columns.map((c) => c.x)));
     // on my side: below the attackers
     expect(box(plan, 819).t).toBeGreaterThan(box(plan, 872).b);
+  });
+
+  it("a battle's defender is the player Forge says defends it (its protector), not its controller", () => {
+    const m = tableOf({
+      active: "Dack",
+      phase: "COMBAT_DECLARE_BLOCKERS",
+      seats: {
+        You: { battlefield: [land(19, "Plains", "You")] },
+        Atraxa: { battlefield: [card(60, "Invasion of Ergamon", "Atraxa", "Battle - Siege", { counters: { DEFENSE: 5 } }), land(29, "Plains", "Atraxa")] },
+        Dack: { battlefield: [creature(70, "Raider", "Dack", 3)] },
+      },
+      combat: { attackers: [{ id: 70, defender: 60, defending: "You" }] },
+    });
+    const plan = drawn(m), w = plan.gathering!.wings[0]!;
+    expect(String(w.defenderSeat)).toBe("You");
+    expect(plan.gathering!.form).toBe("clash"); // attacked through a battle I protect: I am in it
   });
 
   it("my attack blocked: my attackers below their blockers, my brands in the far row", () => {

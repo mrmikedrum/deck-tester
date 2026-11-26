@@ -122,7 +122,6 @@ class ManualGameTest(unittest.TestCase):
         self.assertEqual(targets[-1], ["Grizzly Bears 2/2"])
 
 
-@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 @unittest.skipUnless(engine.RES.is_dir() and engine.FORGE_BUILD.exists(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class CombatFactsTest(unittest.TestCase):
     """The combat's facts in the view, from a real game: Forge's combat ordinal, its blocked verdict per attacker, and the
@@ -152,8 +151,8 @@ class CombatFactsTest(unittest.TestCase):
             view = request("view")["view"]
             hellrider, swiftblade, bears = (card(view, n)["id"] for n in ("Hellrider", "Boros Swiftblade", "Grizzly Bears"))
             jace = card(view, "Jace Beleren")["id"]
-            seen, attacked = {}, False
-            for _ in range(200):
+            seen, attacked, restored = {}, False, None
+            for _ in range(300):
                 kind = decision["kind"]
                 if kind == "attack":
                     refs = decision["refs"]
@@ -172,34 +171,50 @@ class CombatFactsTest(unittest.TestCase):
                     answer = list(range(1, decision["min"] + 1))
                 decision = request("answer", answer=answer)["decision"]
                 view = request("view")["view"]
-                if attacked and view.get("combat") and view["phase"] in ("COMBAT_FIRST_STRIKE_DAMAGE", "COMBAT_DAMAGE"):
-                    seen[view["phase"]] = view
-                if attacked and not view.get("combat") and "COMBAT_DAMAGE" in seen:
+                phase = view["phase"] if view.get("combat") else None
+                if attacked and phase == "COMBAT_FIRST_STRIKE_DAMAGE" and decision["kind"] == "play" and "first" not in seen:
+                    seen["first"] = view
+                    request("snapshot", name="first strike")
+                elif attacked and phase == "COMBAT_DAMAGE" and "regular" not in seen:
+                    seen["regular"] = view
+                    # back to the first strike step: the facts are the snapshot's, not the abandoned line's
+                    decision = request("restore", name="first strike")["decision"]
+                    restored = request("view")["view"]
+                elif attacked and phase == "COMBAT_DAMAGE" and "again" not in seen:
+                    seen["again"] = view
+                if "again" in seen or decision is None:
                     break
-                if decision is None:
-                    break
-            self.assertIn("COMBAT_FIRST_STRIKE_DAMAGE", seen)
-            self.assertIn("COMBAT_DAMAGE", seen)
+            self.assertEqual(set(seen), {"first", "regular", "again"})
 
             def damage(view):
-                return {(d["source"], d["target"]): d["amount"] for d in view["combat"]["damage"]}
+                return {(d["source"], d["target"], d["defender"]): d["amount"] for d in view["combat"]["damage"]}
 
-            first, regular = seen["COMBAT_FIRST_STRIKE_DAMAGE"], seen["COMBAT_DAMAGE"]
             # the first strike step: the Swiftblade's first blow alone
-            self.assertEqual(damage(first), {(swiftblade, "Opp 1"): 1})
-            # the regular step: summed over both steps; the planeswalker's 2 kept though Jace has died of it
-            self.assertEqual(damage(regular), {(swiftblade, "Opp 1"): 2, (hellrider, "Opp 1"): 3, (bears, jace): 2})
-            self.assertNotIn(jace, [c["id"] for p in regular["players"] for c in p["battlefield"]])
+            self.assertEqual(damage(seen["first"]), {(swiftblade, "Opp 1", "Opp 1"): 1})
+            # the regular step: summed over both steps; the planeswalker's 2 kept, with the defender of the moment, though
+            # Jace has died of it
+            whole = {(swiftblade, "Opp 1", "Opp 1"): 2, (hellrider, "Opp 1", "Opp 1"): 3, (bears, jace, jace): 2}
+            self.assertEqual(damage(seen["regular"]), whole)
+            self.assertNotIn(jace, [c["id"] for p in seen["regular"]["players"] for c in p["battlefield"]])
+            # restored to the first strike step: its facts; played on again: the same totals, nothing counted twice
+            self.assertEqual(damage(restored), {(swiftblade, "Opp 1", "Opp 1"): 1})
+            self.assertEqual(damage(seen["again"]), whole)
             # Hellrider's pings (1 to the player per attacker at the player, 1 to Jace) are noncombat: not in the facts
-            opp = next(p for p in regular["players"] if p["name"] == "Opp 1")
+            opp = next(p for p in seen["regular"]["players"] if p["name"] == "Opp 1")
             self.assertEqual(opp["life"], 40 - 2 - 5)
+            regular = seen["regular"]
             self.assertEqual(regular["combat"]["ordinal"], 1)
             self.assertEqual({a["id"]: a["blocked"] for a in regular["combat"]["attackers"]},
                              {hellrider: False, swiftblade: False, bears: False})
+            self.assertEqual({a["id"]: a["defending"] for a in regular["combat"]["attackers"]},
+                             {hellrider: "Opp 1", swiftblade: "Opp 1", bears: "Opp 1"})
+            # an attacker whose planeswalker died: Forge reads its defender as gone (-1), its hit keeps the defender it had
+            self.assertEqual(next(a for a in regular["combat"]["attackers"] if a["id"] == bears)["defender"], -1)
         finally:
             request("end")
 
 
+@unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class AutomatedGameTest(unittest.TestCase):
     def test_ai_plays_a_whole_game_and_records_end_of_turn(self):
         deck = decklist.load(DECK)

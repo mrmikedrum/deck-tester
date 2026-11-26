@@ -103,9 +103,9 @@ export interface TableSpec {
   readonly stack?: readonly StackSpec[];
   readonly combat?: {
     readonly ordinal?: number;
-    readonly attackers: readonly { id: number; defender: number | string; blocked?: boolean }[];
+    readonly attackers: readonly { id: number; defender: number | string; blocked?: boolean; defending?: string }[];
     readonly blockers?: readonly { id: number; blocking: number }[];
-    readonly damage?: readonly { source: number; target: number | string; amount: number }[];
+    readonly damage?: readonly { source: number; target: number | string; defender?: number | string | null; amount: number }[];
   } | null;
   readonly log?: readonly { i: number; type: string; text: string; card?: number | null }[];
   readonly out?: readonly Name[];
