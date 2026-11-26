@@ -12,10 +12,11 @@ Code: `game/client/src/layout/arrange/` (paths below are under `game/client/src/
 and today's layout code it replaces in steps (`layout/seat.ts`, `layout/plan.ts`, `layout/seat/{fit,fold,geometry,mat}.ts`,
 `layout/focus.ts`, `layout/combat.ts`, `play/reach.ts`, `scene/stage/pick.ts`, `model/predicates.ts`).
 
-**Status:** the first slice's steps 1 to 6 are built (§6.1), and step 8 (§6.2): every opponent's leaf is drawn, tapped
-and audited through the engine on the no-middle template (two to four seats), the mats part for duels and the stack, and a fight is gathered
-as the clash or as duels (the combat part of step 11, brought forward). My side is still `mat`'s. What building changed
-from this design, and why, is in "Round 3" to "Round 6" below; where they differ, the code and those rounds win.
+**Status:** the first slice's steps 1 to 6 are built (§6.1), and steps 8 and 9 (§6.2): every opponent's leaf and my
+side are drawn, tapped and audited through the engine on the no-middle template (two to four seats), the mats part for
+duels and the stack, and a fight is gathered as the clash or as duels (the combat part of step 11, brought forward). The
+focuses are still the old layout's. What building changed from this design, and why, is in "Round 3" to "Round 7" below;
+where they differ, the code and those rounds win.
 
 ## Changes after review
 
@@ -132,6 +133,19 @@ The combat spec's section 4 (the parting, computed) and its duels are built with
 | **Picking, the decision, the rev** | A tap reaches the topmost face under it before any wider place; a stack's place reaches over the count strip in front of it (its die). An attachment the decision offers is reached through its host: the host's group carries the solver's `open` target (host and attachment), whose chooser holds both. The app hands the planner the decision in hand and keys the plan on it. The plan's rev covers unit frames and turns, fixtures, faces, the stack at rest and as the focus, the gathering (tallies and column powers included) and the parting. A card bound for a graveyard or exile off the table flies to its owner's plate. | Review: a tap on a turned card in a back row reached its neighbour; a target prompt on an unchanged board reused the old plan; the stack's focus could move without a new rev. |
 | **Lanes and aims** | Only an attack I am in draws a lane. A set-aside spell's aim at a card on an opponent's leaf runs level along the open middle to the target's own column, then up it. | A line across other seats' cards read as clutter and as a false link to them; between opponents the attackers' light, a duel's clasp and the defender's tally say who fights whom. |
 | **Not built** | The leaves' timing (open 300 ms before the duels walk out, close 400 ms after): the scene eases a parting as any reflow. | |
+
+### Round 7: my side (step 9, Nov 26)
+
+| What | Built | Why |
+|---|---|---|
+| **One row** | My side is one standing row on the template's field line (`TableTemplate.mine.field`, its feet at z 2.0): eleven places at 1210×834, 1180×820, 1024×768 and 1366×1024, faces 75 px (floor 72). What is presented stands in the middle; my works and mana lie in the same row's places, works filling from the left end and mana from the right (`TierSpec.from`: the end a tier's units take; ends are dealt first, so a full row keeps them). No lying band in front of it (§2.6's design). | At one card size a lying row is about 117 px deep near me; between the hand's top and a field over its floor there are 115, and the strip between the hand and the prompt holds one place once my nameplate stands there. The line sits lower than `mat`'s field, so the middle gains about 50 px: six duels now fit unparted (four did, parted). |
+| **The policy** (`mine`) | Tiers `field`, `muster`, `works`, `mana`, all standing; a unit that is not presented lies in its place. Engines (a card that binds the table, counters, legendary, a planeswalker or battle: `works`'s rule) stand with the creatures, so a creature-light side needs no second policy. Basics are one block per kind (the well says how many are spent); other lands, rocks, works and creatures by look, ready and spent apart. Ladder: stack tokens, works, mana; fan works, then mana; stack creatures; demote the lightest that stand to the muster, which fans; summary. | One policy serves both shapes, and the swap point stays `Policy`. |
+| **The muster** | A demote into a tier of its own band is judged with that tier fanned: it runs only until the fan would fit. | Demoting alone frees no place in the same row, so every demote ran and the muster took 21 of 22 creatures. |
+| **Re-sort** | The owner's rule (the start of a turn; a phase change when the ranking or a card's types changed), dealt by rank: §2.6's "order by arrival, no tidy" is superseded. Tapped cards turn in place. | The owner's decision binds both sides. |
+| **Fixtures** | My nameplate stays at the screen's foot right of the hand; my graveyard and exile lie at table size beside it, each in its own place; a commander waiting in the command zone stands over the nameplate. The page is the mat from my edge to the row. | My own yard matters to recursion decks and my plate shows no counts; the strip under my row is free now. (Theirs moved to the nameplate's focus in Round 6.) |
+| **Duels are fights between opponents** | A fight I am in, its clash set aside, stays home. | My cards in the middle at table size read 69 px, under my floor; it held before only because the middle was crowded. |
+| **Regions** | A grid place's count strip extends the place's own edges down (`draw.ts`). | A spent stack lying a quarter turn in my row fell out of a region whose sides ran from the strip's corners. |
+| **Not built** | Named lands overlapped showing name strips (they lie singly, then fan with the mana); the acting rank; offered cards stepping out of piles (a pile holding one is cued, as on the leaves). | Step 10. |
 
 ## 0. Shape of the thing
 
@@ -607,7 +621,8 @@ lying things in a fixed order. On a leaf the tiers map to rows; in a spread each
 
 ### 2.6 My own side (`mine`)
 
-The designer's shape: one row of standing creatures facing theirs, and one band of lying cards toward me.
+The designer's shape: one row of standing creatures facing theirs, and one band of lying cards toward me. (As built, one
+row holds everything: Round 7.)
 
 - **Order by arrival**; importance decides only who folds. No automatic tidy except my own untap (spent copies
   rejoin) and type changes.
@@ -870,7 +885,7 @@ interaction contract right before it multiplies.
 Each step keeps the old seat view for every consumer not yet moved, and passes the cutover checklist.
 
 8. The side leaves; the template without a reserved middle and its poses (§5.3). Built (Round 6).
-9. My side (`mine`), with the band measured.
+9. My side (`mine`), with the band measured. Built (Round 7): one row, no band.
 10. Moments and acting on rest containers (light, in-place, the acting rank).
 11. Focus containers one at a time: the gathering (`clash`, replacing `combatRow`; `combatLanes` reads formations),
     the spread (replacing `leanOf`), the pile and plate focuses (replacing `siftOf`, paging kept), the hand.
@@ -1067,6 +1082,9 @@ main and this step run back to back (load average about 20, so worst cases are n
 sequence 0.85 / 1.01 / 1.46, 1.64 / 2.53 / 5.24. Each of the sequence's snapshots changes every opponent's seat, so it
 now arranges three leaves a plan, not one (a real snapshot usually changes one); a cold leaf costs about 0.3 ms. The
 iPad's numbers are to be taken by hand (`?only=bench`, held in landscape).
+
+**With my side on the engine (step 9, Nov 26)**: measurements.md, "planTable with my side on the engine". The plan
+halved on the dense board, where `stackFocus`'s fallback search had been a third of it.
 
 ## Settled here, for the designer to know
 

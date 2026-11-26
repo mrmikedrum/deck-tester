@@ -490,7 +490,10 @@ cards, needs `planTable` work too.
 container at a time: a container's cards and space in, units, places, pick targets and attention out, with the rules
 (a `Policy`) swappable and no count of rows or places assumed. Every opponent's leaf is the engine's
 (`tableInputOf(model, { engine: { draw: true } })`, as the app plans; `TablePlan.leaves` holds each at rest), on the
-template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row on one line); my side is still `mat`'s.
+template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row on one line), and so is my side
+(`TablePlan.mine`, the `mine` policy): one row of eleven places on the template's field line (`TableTemplate.mine`),
+what stands in the middle, my works lying from its left end and my mana from its right, with my nameplate, graveyard,
+exile and a waiting commander at the screen's foot between the hand and the prompt.
 At rest no middle is held back. **The parting** makes room when something rests on the middle at table size: every
 engine leaf slides along its own `away` by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
 it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and

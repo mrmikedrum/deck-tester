@@ -12,10 +12,10 @@ multiplayer.
 
 The direction is settled: focus first and by relevance, a fully physical table with highlight mode for the stack
 and targets, nameplates at the top. The build follows the [arrangement engine](game-arrangement-engine.md#62-after-the-slice)'s
-steps. Every opponent's leaf is laid out by the engine on the no-middle template, and the mats part for duels and the
-stack; my side and the focuses (stack, hand, pile, nameplate) still run on the old layout.
+steps. Every opponent's leaf and my side are laid out by the engine on the no-middle template, and the mats part for
+duels and the stack; the focuses (stack, hand, pile, nameplate) still run on the old layout.
 
-1. My side (step 9), moments (10).
+1. Moments (step 10).
 2. The focuses on the engine (11), then the old layout deleted (12).
 3. The look loop resumes on the whole table.
 
