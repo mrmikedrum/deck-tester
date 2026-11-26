@@ -2,7 +2,7 @@
 // The seats as the chrome tells them (app/seats.ts): the top row of nameplates bends round the table's cards, and a
 // seat's summary counts what the data supports, once per model.
 import { describe, expect, it } from "vitest";
-import { feedWidthOf, placeTop, plateWidth, platesOf, seatFocusOf, summaryOf } from "../../src/app/seats";
+import { feedWidthOf, placeTop, plateWidth, platesOf, portraitsPx, seatFocusOf, summaryOf } from "../../src/app/seats";
 import type { Box } from "../../src/app/seats";
 import { NO_INSETS, planTable, tableInputOf } from "../../src/layout";
 import type { TablePlan } from "../../src/layout";
@@ -10,6 +10,7 @@ import { modelOf, seatId } from "../../src/model";
 import { card, catalog, corpusNames, corpusSnapshot, creature, land, snapshotOf, tableOf, viewerOf } from "../model/fixtures";
 import { SUPPORTED } from "../layout/boards";
 import { designModels } from "../../src/scene/workbench/bench-inputs";
+import { castable } from "../../src/app/views";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -18,7 +19,7 @@ const TABLE = { w: 1180, h: 820, safe: NO_INSETS };
 const intersects = (a: Box, b: Box): boolean => Math.min(a.r, b.r) > Math.max(a.l, b.l) && Math.min(a.b, b.b) > Math.max(a.t, b.t);
 
 function boxOf(p: ReturnType<typeof platesOf>[number]): Box {
-  const width = plateWidth(p.name, p.life, p.icons, undefined, p.out, p.commanders?.length ?? 0) * p.unit, height = Math.max(44, 44 * p.unit);
+  const width = plateWidth(p.name, p.life, p.icons, undefined, p.out) * p.unit + portraitsPx(p.commanders?.length ?? 0, p.unit), height = Math.max(44, 44 * p.unit);
   const l = p.mine ? p.x - width / 2 : p.x, t = p.mine ? p.y - height : p.y;
   return { l, t, r: l + width, b: t + height };
 }
@@ -235,3 +236,16 @@ describe("commander damage taken by a seat", () => {
     ]);
   });
 });
+
+describe("my waiting commanders' ember", () => {
+  // Partners in my command zone: only the one a play offered now casts wears it (review: both glowed).
+  const model = { viewer: { perspective: "You" }, zone: (_: unknown, z: string) => (z === "command" ? [77, 78] : []) } as unknown as Parameters<typeof castable>[0];
+  const play = (refs: readonly object[]) => ({ kind: "play", refs }) as unknown as Parameters<typeof castable>[1];
+  it("is each card's own, from the plays offered", () => {
+    expect([...castable(model, play([{}, { card: 77, spell: true }, { card: 12 }]))]).toEqual([77]);
+    expect([...castable(model, play([{}, { card: 77 }, { card: 78 }]))].sort()).toEqual([77, 78]);
+    expect([...castable(model, { kind: "targets", refs: [{ card: 77 }] } as unknown as Parameters<typeof castable>[1])]).toEqual([]);
+    expect([...castable(model, null)]).toEqual([]);
+  });
+});
+

@@ -147,6 +147,8 @@ export function paintBack(canvas: Canvas, env: Pick<FaceEnv, "surfaces">): void 
 const SPINE = 27;
 /** The right margin: the left's. */
 const EDGE = SPINE;
+/** The middle of what a face shows, between its margins: a whole face's symbols centre on it. */
+export const FACE_MID = (SPINE + FACE_W - EDGE) / 2;
 const INK = "rgba(26,16,6,.8)";
 const FOOT_H = 100;
 /** A commander's name: gold leaf, in the book's serif. */
@@ -367,14 +369,14 @@ function paintTags(x: Ctx, c: FaceSpec, env: FaceEnv, wy: number): void {
 
 /** A basic land: its mana symbol, two thirds of the face, on stock of its colour. */
 function basicFace(x: Ctx, c: FaceSpec): void {
-  pip(x, c.mana[0] ?? "C", (FACE_W + SPINE) / 2, FACE_H * 0.47, FACE_W * 0.31);
+  pip(x, c.mana[0] ?? "C", FACE_MID, FACE_H * 0.47, FACE_W * 0.31);
 }
 
 /** A dual or tri land, one symbol per colour; a land of any colour, the five in a ring. Its name small at the foot. */
 function landSymbols(x: Ctx, c: FaceSpec, env: FaceEnv): void {
   const FW = FACE_W,
     FH = FACE_H,
-    cx = (FW + SPINE) / 2,
+    cx = FACE_MID,
     cy = FH * 0.42;
   if (c.whole === "any") {
     const five = ["W", "U", "B", "R", "G"];
@@ -586,7 +588,7 @@ function drawSmall(x: Ctx, c: FaceSpec, env: FaceEnv): void {
   if (c.whole === "basic") return basicFace(x, c);
   if (c.whole === "dual" || c.whole === "any") {
     const ms = c.whole === "any" ? ["W", "U", "B", "R", "G"] : c.mana.slice(0, 3);
-    ms.forEach((m, i) => pip(x, m, (FW + SPINE) / 2 + (i - (ms.length - 1) / 2) * FW * (ms.length > 3 ? 0.13 : 0.27), FH * 0.5, FW * (ms.length > 3 ? 0.1 : 0.16)));
+    ms.forEach((m, i) => pip(x, m, FACE_MID + (i - (ms.length - 1) / 2) * FW * (ms.length > 3 ? 0.13 : 0.27), FH * 0.5, FW * (ms.length > 3 ? 0.1 : 0.16)));
     return;
   }
   const W = FW - SPINE - EDGE;

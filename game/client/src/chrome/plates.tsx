@@ -51,7 +51,7 @@ const DRAG_PX = 6;
  * mine may also be dragged onto the table to cast it, as a hand card is let go (play's rule: far enough up, over the
  * table).
  */
-function Portrait({ card, seat, mine, cast, send }: { card: PickedCard; seat: string; mine: boolean; cast: boolean; send: Send }): JSX.Element {
+function Portrait({ card, seat, mine, send }: { card: PickedCard & { readonly cast?: boolean }; seat: string; mine: boolean; send: Send }): JSX.Element {
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   const el = useRef<HTMLSpanElement>(null);
   const down = (e: PointerEvent): void => {
@@ -79,8 +79,9 @@ function Portrait({ card, seat, mine, cast, send }: { card: PickedCard; seat: st
     node.classList.remove("dragging");
     node.style.transform = "";
     // Over the table: the first thing under the finger, past the portrait itself, is the table's canvas.
-    const under = node.ownerDocument.elementsFromPoint(e.clientX, e.clientY).find((x) => !node.contains(x) && x !== node);
-    send({ a: "release", card: card.id as CardId, dy: e.clientY - d.y, pose: { rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, rotation: 0, scale: 1 }, overTable: under?.tagName === "CANVAS" });
+    const under = (node.ownerDocument.elementsFromPoint?.(e.clientX, e.clientY) ?? []).find((x) => !node.contains(x) && x !== node);
+    // (under the decision it was pressed on: a release under a newer one is dropped, as a hand card's is)
+    send({ a: "release", card: card.id as CardId, dy: e.clientY - d.y, pose: { rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, rotation: 0, scale: 1 }, overTable: under?.tagName === "CANVAS" }, { pressed: true });
   };
   const cancel = (): void => {
     drag.current = null;
@@ -90,7 +91,7 @@ function Portrait({ card, seat, mine, cast, send }: { card: PickedCard; seat: st
   return (
     <span
       ref={el}
-      class={["cmd", cast ? "option" : "", card.art ? "" : "bare"].filter(Boolean).join(" ")}
+      class={["cmd", card.cast ? "option" : "", card.art ? "" : "bare"].filter(Boolean).join(" ")}
       data-cmd={card.id ?? ""}
       title={`${card.name}, ${mine ? "your" : `${seat}'s`} commander in the command zone`}
       style={card.art ? `background-image:url("${card.art}")` : undefined}
@@ -140,7 +141,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             }}
           >
             {(p.commanders ?? []).map((c) => (
-              <Portrait key={c.id ?? c.name} card={c} seat={p.name} mine={p.mine} cast={!!p.cast} send={send} />
+              <Portrait key={c.id ?? c.name} card={c} seat={p.name} mine={p.mine} send={send} />
             ))}
             <span class="bronze">
               <i class="sigil" />

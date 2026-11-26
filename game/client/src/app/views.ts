@@ -193,9 +193,18 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
     recap: model ? narrative.recapView(n) : null,
     watch,
     restore: model ? restoreOf(s, model, watch !== null) : null,
-    // (my commander castable now: play marks my seat for it while I hold priority)
-    plates: model ? withTallies(platesOf(model, s.plan, board.marks.seats, s.viewport, measure, s.session.decision?.kind === "play" && board.marks.seats.get(model.viewer.perspective) === "option"), model, s.plan) : [],
+    plates: model ? withTallies(platesOf(model, s.plan, board.marks.seats, s.viewport, measure, castable(model, s.session.decision)), model, s.plan) : [],
     clash: model ? clashViewOf(model, s.plan) : null,
     seatFocus: model && seatOpen ? seatFocusOf(model, seatOpen) : null,
   };
 }
+
+/** My cards waiting in the command zone that a play offered now casts: each one's portrait wears the ember, and only its. */
+export function castable(model: TableModel, d: AppState["session"]["decision"]): ReadonlySet<number> {
+  if (d?.kind !== "play") return new Set();
+  const waiting = new Set<number>(model.zone(model.viewer.perspective, "command"));
+  const out = new Set<number>();
+  for (const r of d.refs as readonly { readonly card?: number | null }[]) if (r.card != null && waiting.has(r.card)) out.add(r.card);
+  return out;
+}
+

@@ -1493,12 +1493,15 @@
     position: relative;
     z-index: 0;
     flex: none;
-    width: calc(52 * var(--u));
-    margin-right: calc(-6 * var(--u));
+    /* (at least a finger's 44 px where it shows, past the bronze that tucks over the last one: app/seats.ts PORTRAIT) */
+    width: max(calc(44px + 6 * var(--u)), calc(52 * var(--u)));
     border-radius: 5px 0 0 5px;
     background: #1a110a center 32% / cover no-repeat;
     box-shadow: inset 0 0 0 calc(2 * var(--u)) #9a7440, inset 0 0 0 calc(3 * var(--u)) #1a0f05, var(--plaque-shadow);
     touch-action: none;
+  }
+  .l-plate .cmd:has(+ .bronze) {
+    margin-right: calc(-6 * var(--u));
   }
   .l-plate .bronze {
     position: relative;

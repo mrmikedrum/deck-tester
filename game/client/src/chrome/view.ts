@@ -87,10 +87,8 @@ export interface PlateView {
   readonly tally?: PlateTally | null;
   readonly attacking?: boolean;
   /** Its commanders waiting in the command zone: a portrait each, against the plate, every seat alike. A tap reads it
-   *  (mine: a tap or a drag onto the table casts it). */
-  readonly commanders?: readonly PickedCard[];
-  /** Mine: a waiting commander I may cast now (the ember on its portrait). */
-  readonly cast?: boolean;
+   *  (mine: a tap or a drag onto the table casts it); `cast`: mine, one I may cast now (the ember on its portrait). */
+  readonly commanders?: readonly (PickedCard & { readonly cast?: boolean })[];
 }
 
 /** A plate's tally: red at me, gold when my attack is at it, the attacker's ink between opponents. */

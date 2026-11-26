@@ -229,7 +229,13 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
   layer.addEventListener("click", onClickStart, true);
   layer.addEventListener("click", onClickEnd);
   /** A control's act or order: under what was pressed, for a pointer; under what is drawn now, for the keyboard. */
-  const send: Send = (what) => {
+  const send: Send = (what, how) => {
+    // A gesture's end (a drag let go): under what was drawn when its control was pressed, or nothing if the stop moved on.
+    if (how?.pressed) {
+      const p = control;
+      if (!p || p.stop !== drawn.stop) return;
+      return stamped(p.commit, p.stop, originOf(p.el))(what, now());
+    }
     const c = clicking;
     if (!c?.pointer) return stamped(drawn.commit, drawn.stop, originOf(doc.activeElement))(what, now());
     const p = control;

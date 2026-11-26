@@ -196,6 +196,34 @@ describe("the nameplates", () => {
     click($(".l-plate"));
     expect(orders()).toEqual([{ act: { a: "tap", on: { group: "plate:Atraxa", members: [] } } }]);
   });
+  describe("a waiting commander's portrait", () => {
+    const MINE = { ...PLATE, seat: "You", group: "plate:You", name: "You", mine: true, ring: null, commanders: [{ id: 77 as CardId, name: "Princess Yue", image: null, art: null, cast: true }, { id: 78 as CardId, name: "Tymna the Weaver", image: null, art: null }] };
+    const at = (el: Element, type: string, y: number) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 3, pointerType: "touch", clientX: 5, clientY: y, buttons: 1 }));
+    const drag = (el: Element, before: () => void = () => undefined) => {
+      at(el, "pointerdown", 700);
+      at(el, "pointermove", 650);
+      at(el, "pointermove", 400);
+      before();
+      at(el, "pointerup", 400);
+    };
+    it("wears the ember only when a play casts that card (partners: review)", () => {
+      show({ plates: [MINE] });
+      expect($$(".l-plate .cmd").map((e) => e.classList.contains("option"))).toEqual([true, false]);
+    });
+    it("a tap reads it; a drag onto the table casts it under the decision it was pressed on", () => {
+      show({ plates: [MINE] });
+      click($('[data-cmd="77"]'));
+      drag($('[data-cmd="77"]')!);
+      const acts = sent.filter((i) => i.t === "act");
+      expect(acts.map((i) => (i.t === "act" ? i.act.a : null))).toEqual(["tap", "release"]);
+      expect(acts[1]).toMatchObject({ stop: STOP, act: { a: "release", card: 77, dy: -300 } });
+    });
+    it("a drag let go once a newer decision is up sends nothing (review: it answered the newer one)", () => {
+      show({ plates: [MINE] });
+      drag($('[data-cmd="77"]')!, () => r.show(view({ plates: [MINE], controls: { ...view().controls, stop: "g7:d43:1" as typeof STOP } }), 1100));
+      expect(sent.filter((i) => i.t === "act")).toEqual([]);
+    });
+  });
   it("are inert under a modal layer of another kind: a plate never answers through the Game menu", () => {
     show({ plates: [PLATE], layers: [{ layer: "menu", restore: "menu" }], menu: MENU });
     expect(plates()?.inert).toBe(true);
