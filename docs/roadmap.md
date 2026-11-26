@@ -16,10 +16,9 @@ steps. Today only the seat across is laid out by the engine; the side seats, my 
 pile, nameplate) still run on the old layout.
 
 1. Combat that reads from one still: the gathering as a focus.
-2. Sharpness: full device resolution and text contrast on the iPad.
-3. The side seats without a reserved middle (step 8), my side (9), moments (10).
-4. The focuses on the engine (11), then the old layout deleted (12).
-5. The look loop resumes on the whole table.
+2. The side seats without a reserved middle (step 8), my side (9), moments (10).
+3. The focuses on the engine (11), then the old layout deleted (12).
+4. The look loop resumes on the whole table.
 
 Done when every board and focus runs on the engine, and stills of an early, a mid, a combat and a late game read
 cleanly at full sharpness on the iPad. The policy stage (grouping, ranking, order) stays swappable: a trained
