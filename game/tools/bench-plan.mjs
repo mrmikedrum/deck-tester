@@ -27,7 +27,7 @@ const stats = (xs) => {
 
 /** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
 const engineOf = (plan) => {
-  const ls = [...(plan.leaves?.values() ?? [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
+  const ls = [...(plan.leaves?.values() ?? []), ...(plan.mine ? [plan.mine] : [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
   const sum = (f) => fs.reduce((t, x) => t + f(x), 0);
   return { policy: [...new Set(ls.map((l) => l.policy))].join("+"), error: ls.some((l) => !!l.error), overflow: ls.some((l) => !!l.result?.overflow), units: sum((f) => f.units.length), candidates: sum((f) => f.report.candidates), audits: sum((f) => f.report.audits + f.report.poses.length), violations: sum((f) => f.report.violations.length), parted: sum((f) => f.report.poses.reduce((t, p) => t + p.violations.length, 0)), part: plan.part };
 };

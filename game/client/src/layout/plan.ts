@@ -399,7 +399,8 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   // The rev covers everything drawn or reached: every unit's place, frame and turn, the fixtures, every group's quad and
   // face, the stack at rest and as the focus, the gathering, and the parting.
-  const n = (x: number, d = 4) => x.toFixed(d);
+  // (rounded to 10^-d as an integer: as exact as `toFixed` for a key, and much cheaper)
+  const n = (x: number, d = 4) => String(Math.round(x * 10 ** d));
   const v3s = (a: V3) => `${n(a.x)},${n(a.y)},${n(a.z)}`;
   const quads = (qs: readonly Quad[]) => qs.map((q) => q.map((p) => `${n(p.x, 1)},${n(p.y, 1)}`).join(" ")).join(";");
   const placement = final
@@ -672,6 +673,18 @@ function stackFocus(input: TableInput, proj: Projector, plans: readonly SeatPlan
     for (const [x, y] of at) if (fits(boxAt(f, x, y))) return { ...f, x, y };
     return null;
   };
+  /** `first(f, anywhere(f))` in one pass: the nearest place to the middle where it fits (the earliest on a tie), its box
+   *  computed once and slid (a box at (x, y) is the box at the origin moved by x, y). */
+  const nearest = (f: Omit<FocusAt, "x" | "y">): FocusAt | null => {
+    const b = boxAt(f, 0, 0);
+    let best: [number, number] | null = null, bestD = Infinity;
+    for (let x = sl - b.l; x + b.r <= sr; x += 12)
+      for (let y = st - b.t; y + b.b <= sb; y += 12) {
+        const d = Math.hypot(x - xm, y - ym);
+        if (d < bestD && fits({ l: b.l + x, r: b.r + x, t: b.t + y, b: b.b + y })) [best, bestD] = [[x, y], d];
+      }
+    return best ? { ...f, x: best[0], y: best[1] } : null;
+  };
   const floor = STACK_FOCUS.floor, most = Math.max(floor, STACK_FOCUS.share * vh);
   // The narrowest strip a card under the top may show at the floor: a finger's patch, with room for the grid.
   const least = Math.min(STACK_FOCUS.shingle, (TAP_PX * 1.12) / u / (CW * floor));
@@ -690,13 +703,13 @@ function stackFocus(input: TableInput, proj: Projector, plans: readonly SeatPlan
       // The top at the floor; the rest overlapping further, nearest the middle, anywhere on the open screen.
       for (const share of narrower) {
         const f = { h: floor, row: false, share, shown: n };
-        const got = first(f, ways(f)) ?? first(f, anywhere(f));
+        const got = first(f, ways(f)) ?? nearest(f);
         if (got) return got;
       }
     // Still crowded: the deepest lie under the last one shown.
     for (let shown = n - 1; shown >= 1; shown--) {
       const f = { h: floor, row: false, share: least, shown };
-      const got = first(f, anywhere(f));
+      const got = nearest(f);
       if (got) return got;
     }
     return null;

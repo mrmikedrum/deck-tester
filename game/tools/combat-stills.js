@@ -84,11 +84,53 @@ function gone(v, names) {
   return e;
 }
 
+/** The turn-15 table with my side changed by `edit(me, all)`: my battlefield, and every card on the table to copy from. */
+function mySide(v, edit) {
+  const e = rest(v);
+  const me = e.view.players.find((p) => p.name === "You");
+  edit(me, e.view.players.flatMap((p) => p.battlefield));
+  return e;
+}
+let nextId = 5000;
+/** `n` copies of a card, mine, with fresh ids. */
+const copies = (c, n, o = {}) => Array.from({ length: n }, () => ({ ...c, id: nextId++, owner: "You", controller: "You", ...o }));
+
+/** My crowded side: twenty more Illusions (six spent), a dozen more Elementals, twelve more Islands, Thopters. */
+const crowdedSide = (v) =>
+  mySide(v, (me) => {
+    const find = (n) => me.battlefield.find((c) => c.name === n);
+    me.battlefield.push(...copies(find("Illusion"), 14), ...copies(find("Illusion"), 6, { tapped: true }), ...copies(find("Elemental (Waves)"), 12), ...copies(find("Island"), 12), ...copies(find("Thopter"), 6));
+  });
+
+/** A creature-light side: my lands, two Thopters, and the artifacts and enchantments that run the deck (borrowed from
+ *  the table: taxes, locks, an engine, a planeswalker). */
+const lightSide = (v) =>
+  mySide(v, (me, all) => {
+    const take = (n) => copies(all.find((c) => c.name === n), 1);
+    const lands = me.battlefield.filter((c) => /Land/.test(c.type));
+    const rocks = me.battlefield.filter((c) => ["Sol Ring", "Arcane Signet"].includes(c.name));
+    me.battlefield = [...lands, ...rocks, ...me.battlefield.filter((c) => c.name === "Thopter"), ...["Smothering Tithe", "Rule of Law", "Thorn of Amethyst", "Cursed Totem", "Paladin Class", "Tezzeret, Cruel Captain", "Throne of Geth", "Felidar Retreat"].flatMap(take)];
+  });
+
+/** My main phase: plays light up, among them lands and rocks inside my mana pile and a work inside my works pile. */
+const usable = (v) => {
+  const e = rest(v);
+  const me = e.view.players.find((p) => p.name === "You");
+  const id = (n) => [...me.battlefield, ...me.hand, ...me.command].find((c) => c.name === n).id;
+  const plays = [["Island (land)", "Island"], ["Snap", "Snap"], ["Otawara, Soaring City: channel", "Otawara, Soaring City"], ["Thespian's Stage: copy a land", "Thespian's Stage"], ["Springleaf Drum: tap a creature", "Springleaf Drum"], ["Insight Engine: put a charge counter", "Insight Engine"], ["Meloku the Clouded Mirror: make an Illusion", "Meloku the Clouded Mirror"]];
+  e.decision = { gen: 1, id: 9, turn: "T15 main1", repeat: false, mine: true, kind: "play", prompt: "", options: ["Pass", ...plays.map(([o]) => o)], refs: [{}, ...plays.map(([, n]) => ({ card: id(n) }))], min: 1, max: 1 };
+  return e;
+};
+
 const MARATH4 = [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]];
 const MOMENTS = {
   "turn-4": { what: "Turn 4 at rest: an early board", env: at(4, 19) },
   "turn-9": { what: "Turn 9 at rest: a mid board", env: at(9, 19) },
   "turn-15": { what: "Turn 15 at rest: the dense board", env: rest(19) },
+  "my-crowded": { what: "My side crowded: twenty more Illusions, a dozen more Elementals, twelve more Islands, six Thopters", env: crowdedSide(19) },
+  "creature-light": { what: "A creature-light side of mine: taxes, locks, an engine and a planeswalker; two Thopters", env: lightSide(19) },
+  "usable-in-pile": { what: "My main phase: lands and rocks I can use inside my mana pile, Insight Engine inside my works pile", env: usable(19) },
+  "hand-focus": { what: "A tap on a card in my hand: the hand's focus holds it up", env: rest(19), hand: [1004] },
   "stack-at-rest": { what: "Three spells on the stack, the focus set aside: the mats part and the stack rests in the middle", env: withStack(19), keys: ["Escape"] },
   "opponents-duel": {
     what: "Marath attacks Dack with four; Dack Fayden blocks Marath: one duel in the parted middle, the rest laned",
@@ -183,6 +225,10 @@ async function tapCard(page, card) {
       await page.waitForFunction(() => window.__deckmaster && window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
       await settle(page);
       for (const c of m.taps ?? []) await tapCard(page, c);
+      for (const c of m.hand ?? []) {
+        await page.click(`.g-hand [data-id="${c}"]`);
+        await settle(page, 4000);
+      }
       for (const k of m.keys ?? []) {
         await page.keyboard.press(k);
         await settle(page, 4000);
