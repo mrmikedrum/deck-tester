@@ -37,6 +37,7 @@ export const initial: State = {
   restore: null,
   restoring: false,
   fresh: [],
+  arrived: [],
 };
 
 /** A new game, a restart or teardown: everything goes, toasts too (the app cancels their deadlines); ids keep rising. */
@@ -254,6 +255,7 @@ export function narrate(s: State, set: ChangeSet, model: TableModel): State {
     restoring: restore !== null,
     // The cards that last came into my hand: kept until the next arrive, or the game or the position changes.
     fresh: reset ? [] : r?.hand.length ? r.hand.map((a) => a.card) : base.fresh,
+    arrived: reset ? [] : r?.table.length ? r.table : base.turn !== model.turn ? [] : base.arrived,
   };
   if (out.notices.length > NOTICES_KEPT)
     out = releaseIds(out, new Set(out.notices.slice(0, out.notices.length - NOTICES_KEPT).map((n) => n.id)));

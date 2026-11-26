@@ -198,3 +198,19 @@ describe("the cards that last came into my hand", () => {
     ]);
   });
 });
+
+describe("what another player puts onto the battlefield", () => {
+  const bears = creature(51, "Grizzly Bears", "Dack");
+  const angel = creature(52, "Serra Angel", "Dack");
+  const mine = creature(53, "Llanowar Elves", "You");
+  const at = (turn: number, dack: ReturnType<typeof creature>[], you: ReturnType<typeof creature>[] = []) =>
+    tableOf({ turn, active: "Dack", seats: { Dack: { battlefield: dack }, You: { battlefield: you } }, log: [] });
+
+  it("is news until the next arrive or the next turn; what I put down myself never is", () => {
+    expect(narrated([at(5, [])]).arrived).toEqual([]);
+    expect(narrated([at(5, []), at(5, [bears])]).arrived).toEqual([51]);
+    expect(narrated([at(5, []), at(5, [bears]), at(5, [bears], [mine])]).arrived).toEqual([51]);
+    expect(narrated([at(5, []), at(5, [bears]), at(5, [bears, angel])]).arrived).toEqual([52]);
+    expect(narrated([at(5, []), at(5, [bears]), at(6, [bears])]).arrived).toEqual([]);
+  });
+});

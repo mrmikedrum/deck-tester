@@ -107,6 +107,8 @@ export interface SceneFrame {
   readonly reducedMotion?: boolean;
   /** Cards to step out of the table's light (choosing targets), or none. */
   readonly highlight?: HighlightRequest | null;
+  /** What another player has just put onto the battlefield: news, cued where it lands (the narrative's `arrived`). */
+  readonly news?: readonly CardId[];
   /** The camera composed on a subject (a trial for now), or the table's. */
   readonly zoom?: ZoomRequest | null;
 }
@@ -254,8 +256,13 @@ export type Draw =
       readonly seed: number;
       /** Not yet awake on its controller's turn (summoning sick): mist at its foot instead of a clean pool. */
       readonly sick: boolean;
-      /** A pile holding something that matters says so with a rising mote: why (I can act on it, it can hurt me), or null. */
-      readonly cue: "act" | "threat" | null;
+      /**
+       * A pile holding something that matters says so with a rising mote: why (I can act on it, it can hurt me, it answers
+       * the moment, it is new on the table), or null. A lone card wears only news: what it is, it shows.
+       */
+      readonly cue: "act" | "threat" | "answer" | "news" | null;
+      /** The moment's light on it: a brighter pool where it answers the moment, its light out where it is left out. */
+      readonly light: "forward" | "down" | null;
     }
   | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }

@@ -47,6 +47,8 @@ export interface Reading {
   /** My permanents that left the battlefield (not for the stack), by card id. */
   readonly lost: readonly Moved[];
   readonly hand: readonly Arrival[];
+  /** What came onto the battlefield under another player's control: news on the table. */
+  readonly table: readonly CardId[];
   /** The draw report the hand's arrivals name ("Drew Island"), and the cards it drew. */
   readonly draw: { readonly entry: LogEntry; readonly cards: readonly CardId[] } | null;
   /** Every line reporting a draw, and the line for cards returned to my hand (null: none): shown once they arrive. */
@@ -329,6 +331,7 @@ export function readSet(set: ChangeSet, model: TableModel, fresh: readonly LogEn
     added,
     lost,
     hand,
+    table: set.changes.flatMap((c) => (c.t === "moved" && c.to === "battlefield" && c.from !== "battlefield" && (now(c.card)?.controller ?? c.after?.controller) !== me ? [c.card] : [])),
     draw,
     reports: draws.map((d) => d.entry),
     returned,

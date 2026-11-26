@@ -64,6 +64,12 @@ export interface Unit {
   /** The cards a tap on it reaches when that is more than its members: an attachment the decision offers rides on its
    *  host, and the host's place opens a chooser of both (the arrangement engine's `open` target). */
   readonly reach?: readonly CardId[];
+  /** The moment's light on it (the arrangement engine's emphasis, light only): it stands in a brighter pool, or its
+   *  light is out. Absent: as at rest. */
+  readonly light?: "forward" | "down";
+  /** Something it hides answers the moment: I may act on it (offered, aimed at), it is in danger or can hurt me, or it
+   *  answers my attack. Absent: nothing hidden matters now. */
+  readonly cue?: "act" | "threat" | "answer";
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */
