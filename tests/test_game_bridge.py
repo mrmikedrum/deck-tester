@@ -4,6 +4,7 @@ import http.client
 import json
 import os
 import pathlib
+import queue
 import re
 import tempfile
 import threading
@@ -158,6 +159,33 @@ class CardImageTest(unittest.TestCase):
             lookup.assert_called_once_with(["Forest"])
             self.assertEqual(download.call_args, mock.call(print_url, raw=True))
 
+    def test_cold_batch_downloads_cards_in_parallel(self):
+        names = ["Forest", "Island"]
+        found = {name: {"image_uris": {"art_crop": f"{name}/art", "large": f"{name}/print"}} for name in names}
+        started = {name: threading.Event() for name in names}
+        release = threading.Event()
+
+        def download(url, raw):
+            name, kind = url.split("/")
+            if kind == "art":
+                started[name].set()
+                if not release.wait(5):
+                    raise AssertionError("test never released the download")
+            return b"image"
+
+        with mock.patch.object(game, "scryfall", return_value=found), \
+                mock.patch.object(game, "get", side_effect=download), ThreadPoolExecutor(1) as client:
+            request = client.submit(game.cards, names)
+            try:
+                for event in started.values():
+                    self.assertTrue(event.wait(2))
+                self.assertFalse(request.done())
+            finally:
+                release.set()
+            cards = request.result(timeout=2)
+        for name in names:
+            self.assertEqual(cards[name]["faces"][0]["img"], f"cache/card-large/{name.lower()}.jpg")
+
     def test_pending_downloads_share_a_fixed_worker_count(self):
         names = [f"Card {i}" for i in range(100)]
         for name in names:
@@ -182,13 +210,23 @@ class CardImageTest(unittest.TestCase):
                 with lock:
                     active -= 1
 
-        with mock.patch.object(game, "get", side_effect=download) as get, ThreadPoolExecutor(3) as clients:
+        starts = []
+
+        class Worker(threading.Thread):
+            def start(self):
+                super().start()
+                starts.append(self)
+
+        threads = mock.Mock(wraps=threading, Thread=Worker)
+        with mock.patch.multiple(game, PRINT_QUEUE=queue.Queue(), PRINT_WORKERS_STARTED=0, threading=threads), \
+                mock.patch.object(game, "get", side_effect=download) as get, ThreadPoolExecutor(3) as clients:
             try:
                 requests = [clients.submit(game.cards, names[offset::3]) for offset in range(3)]
                 for request in requests:
                     request.result(timeout=2)
                 self.assertTrue(full.wait(2))
-                self.assertEqual(get.call_count, game.PRINT_WORKERS)
+                self.assertEqual(len(starts), 3)
+                self.assertEqual(get.call_count, 3)
             finally:
                 release.set()
                 game.PRINT_QUEUE.join()
@@ -199,14 +237,25 @@ class CardImageTest(unittest.TestCase):
     def test_worker_exception_releases_the_claim(self):
         game.CARDS["Forest"] = {"faces": [{"name": "Forest", "printPending": "https://example.test/forest"}]}
         upgrade_result = {"faces": [{"name": "Forest", "img": "cache/card-large/forest.jpg"}]}
-        with mock.patch.object(game, "upgrade_print", side_effect=[RuntimeError(), upgrade_result]) as attempt, \
+        retried = threading.Event()
+        retry_at = self.now + game.PRINT_COOLDOWN
+
+        def upgrade(name, card):
+            if self.now < retry_at:
+                raise SystemExit()
+            retried.set()
+            return upgrade_result
+
+        with mock.patch.multiple(game, PRINT_QUEUE=queue.Queue(), PRINT_WORKERS_STARTED=0, PRINT_WORKERS=1), \
+                mock.patch.object(game, "upgrade_print", side_effect=upgrade) as attempt, \
                 mock.patch.object(game.traceback, "print_exc") as log:
             game.cards(["Forest"])
             game.PRINT_QUEUE.join()
             log.assert_called_once()
-            self.assertEqual(game.PRINT_RETRY_AT["Forest"], self.now + game.PRINT_COOLDOWN)
-            self.now += game.PRINT_COOLDOWN
+            self.assertEqual(game.PRINT_RETRY_AT["Forest"], retry_at)
+            self.now = retry_at
             game.cards(["Forest"])
+            self.assertTrue(retried.wait(2))
             game.PRINT_QUEUE.join()
             self.assertEqual(game.CARDS["Forest"], upgrade_result)
             self.assertEqual(attempt.call_count, 2)

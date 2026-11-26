@@ -25,6 +25,7 @@ import time
 import traceback
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -449,7 +450,8 @@ def print_worker(jobs):
                     CARDS[name] = card
                     save_cards()
             retry = any(needs_print(f) for f in card["faces"])
-        except Exception:
+        except BaseException:
+            # A failed job must leave this fixed worker available for the next one.
             traceback.print_exc()
         finally:
             with CARD_LOCK:
@@ -494,7 +496,8 @@ def cards(names):
         with CARD_LOCK:
             missing = [n for n in missing if n not in CARDS]
         found = lookup_cards(missing)
-        made = [entry(n, found[n]) if n in found else None for n in missing]
+        with ThreadPoolExecutor(8) as pool:
+            made = list(pool.map(lambda n: entry(n, found[n]) if n in found else None, missing))
         with CARD_LOCK:
             for n, card in zip(missing, made):
                 CARDS[n] = card or {"name": n, "faces": [{"name": n, "art": None, "img": None, "keywords": []}], "produces": [], "identity": [], "layout": "normal"}
