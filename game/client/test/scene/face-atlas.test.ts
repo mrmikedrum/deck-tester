@@ -26,11 +26,11 @@ describe("the face atlas", () => {
   });
 
   it("faces on show always have a layer, past the budget; a page that shows nothing goes when it is over", () => {
-    const atlas = new FaceAtlas(1, PAGE_BYTES);
+    const atlas = new FaceAtlas(1, 0);
     const many = Array.from({ length: FACE_LAYERS + 5 }, (_, i) => atlas.acquire(lease(`face|${i}`)));
     expect(atlas.stats().pages).toBe(2);
     expect(new Set(many.map((s) => `${s.page}:${s.layer}`)).size).toBe(many.length);
-    // The second page's faces put away: it shows nothing, the atlas is over its budget, so it goes.
+    // The second page's faces put away: it shows nothing and is over the budget for such pages, so it goes.
     for (const s of many.filter((x) => x.page === 1)) atlas.release(s);
     atlas.trim();
     expect(atlas.stats()).toMatchObject({ pages: 1, bytes: PAGE_BYTES });
@@ -47,5 +47,14 @@ describe("the face atlas", () => {
     const b = atlas.acquire(lease("face|b"));
     expect(b.layer).not.toBe(a.layer);
     expect(atlas.acquire(lease("face|a"))).toBe(a);
+  });
+
+  it("pages that show nothing stay while they fit the budget, whatever the faces on show hold", () => {
+    const atlas = new FaceAtlas(1, PAGE_BYTES);
+    // Two pages on show, then the second put away: one idle page fits a one-page budget, so it keeps its faces.
+    const many = Array.from({ length: FACE_LAYERS + 5 }, (_, i) => atlas.acquire(lease(`face|${i}`)));
+    for (const s of many.filter((x) => x.page === 1)) atlas.release(s);
+    atlas.trim();
+    expect(atlas.stats()).toMatchObject({ pages: 2, bytes: 2 * PAGE_BYTES });
   });
 });

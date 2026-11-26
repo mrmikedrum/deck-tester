@@ -151,8 +151,8 @@ export class FaceAtlas {
   }
 
   /**
-   * Let go of the pages that show nothing while the atlas is over its budget, and of any page that holds no face at
-   * all (the first page stays, for `ensure`). Their faces, shown again, are copied again.
+   * Let go of pages that show nothing while they hold more than the budget, and of any page that holds no face at all
+   * (the first page stays, for `ensure`). Their faces, shown again, are copied again.
    */
   trim(): void {
     const showing = new Set<number>(),
@@ -161,9 +161,12 @@ export class FaceAtlas {
       holding.add(s.page);
       if (s.refs > 0) showing.add(s.page);
     }
+    let idle = 0;
+    for (let p = 0; p < this.pages.length; p++) if (this.pages[p] && !showing.has(p)) idle += PAGE_BYTES;
     for (let p = this.pages.length - 1; p > 0; p--) {
       const t = this.pages[p];
-      if (!t || showing.has(p) || (holding.has(p) && this.bytes <= this.budget)) continue;
+      if (!t || showing.has(p) || (holding.has(p) && idle <= this.budget)) continue;
+      idle -= PAGE_BYTES;
       for (const [k, s] of this.slots) if (s.page === p) this.slots.delete(k);
       this.pending = this.pending.filter((c) => c.slot.page !== p);
       t.dispose();
