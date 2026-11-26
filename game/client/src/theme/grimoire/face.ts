@@ -681,19 +681,25 @@ function paintTextArt(x: Ctx, text: string, X: number, Y: number, W: number, H: 
   x.font = `600 24px ${NUM}`;
   x.fillStyle = "#fff4dc";
   x.textBaseline = "top";
+  const step = 27,
+    room = W - 24,
+    fits = (at: number): boolean => at + 26 <= Y + H;
   let line = "",
     y = Y + 12;
   for (const w of words) {
     const t = line ? line + " " + w : w;
-    if (x.measureText(t).width > W - 24 && line) {
-      x.fillText(line, X + 12, y);
-      y += 27;
-      line = w;
-      if (y > Y + H - 30) {
-        line += " …";
-        break;
+    if (x.measureText(t).width > room && line) {
+      if (!fits(y + step)) {
+        // The window's last line: end it with an ellipsis that fits, so cut text never reads as complete.
+        let cut = line;
+        while (cut.includes(" ") && x.measureText(cut + " …").width > room) cut = cut.slice(0, cut.lastIndexOf(" "));
+        x.fillText(cut + " …", X + 12, y);
+        return;
       }
+      x.fillText(line, X + 12, y);
+      y += step;
+      line = w;
     } else line = t;
   }
-  if (line && y <= Y + H - 26) x.fillText(line, X + 12, y);
+  if (line && fits(y)) x.fillText(line, X + 12, y);
 }

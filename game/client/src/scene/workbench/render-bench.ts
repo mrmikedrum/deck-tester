@@ -262,7 +262,7 @@ export async function renderBench(root: HTMLElement): Promise<void> {
     const variants: [string, Partial<Quality>][] = [
       ["rest · composer 1.0x", { composerDpr: 1 }],
       ["rest · composer 1.5x", { composerDpr: 1.5 }],
-      ["rest · no MSAA", { composerDpr: 1.5, msaa: false }],
+      ["rest · 1.5x, no MSAA", { composerDpr: 1.5, msaa: false }],
       ["rest · 1.0x, no MSAA", { composerDpr: 1, msaa: false }],
       ["rest · native with MSAA", { msaa: true }],
     ];
