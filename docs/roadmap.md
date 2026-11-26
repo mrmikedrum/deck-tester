@@ -13,7 +13,7 @@ multiplayer.
 The direction is settled: focus first and by relevance, a fully physical table with highlight mode for the stack
 and targets, nameplates at the top. The build follows the [arrangement engine](game-arrangement-engine.md#62-after-the-slice)'s
 steps. Every opponent's leaf and my side are laid out by the engine on the no-middle template, the mats part for
-duels and the stack, and moments light the table in place; opening a pile of mine and "See X's board" still run on the
+duels and the stack set aside, and moments light the table in place; opening a pile of mine and "See X's board" still run on the
 old layout. The hand fan and the nameplate's zone grids are ordinary UI, not the engine's.
 
 1. A pile of mine and "See X's board" on the engine (11), then the old layout deleted (12).
@@ -22,7 +22,7 @@ old layout. The hand fan and the nameplate's zone grids are ordinary UI, not the
 Done when every board and focus runs on the engine, and stills of an early, a mid, a combat and a late game read
 cleanly at full sharpness on the iPad. The policy stage (grouping, ranking, order) stays swappable: a trained
 layout model, built in a separate repository, is expected to replace the heuristic policies behind the same
-contract.
+contract, and the row-break rules (`arrange/breaks.ts`) stay after it.
 
 ## Browser target handoff
 

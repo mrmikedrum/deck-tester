@@ -449,7 +449,7 @@ with the design unit, the target never does. `planTable` audits the composed tab
 cards acting standing where they are drawn, and the stack; the clash apart, over it): floors, the tappable patch
 inside the safe area and off visible chrome, nothing covering a card's name, foot or most of its face. It folds harder
 where seats collide or the stack covers them, down to a last resort that is always reachable: the whole seat as one
-summary that opens a sift. The stack stands in the open middle the pages leave, the mats parted all the way for it; an entry with no room there
+summary that opens a sift. The stack set aside stands in the open middle the pages leave, the mats parted all the way for it (held up as the focus it floats over the table and nothing parts: `TableInput.stackHeld`); an entry with no room there
 (`no-room`), off the safe area (`off-screen`) or without a patch of its own is not `reachable`: it has no hit group, a
 sheet offers it, and the plan reports the violation. As the focus, the top never stands under its floor: past what
 fits, the cards under it overlap further (each keeping a finger's strip), then the deepest lie under the last one shown.
@@ -488,13 +488,15 @@ cards, needs `planTable` work too.
 
 **The arrangement engine** ([its design](game-arrangement-engine.md), `layout/arrange/`) replaces `SeatLayout` one
 container at a time: a container's cards and space in, units, places, pick targets and attention out, with the rules
-(a `Policy`) swappable and no count of rows or places assumed. Every opponent's leaf is the engine's
+(a `Policy`) swappable and no count of rows or places assumed. Where rows break is a stage of its own after
+ordering (`arrange/breaks.ts`: non-creature lands on a row of their own where the space has one), kept when ordering is
+replaced. Every opponent's leaf is the engine's
 (`tableInputOf(model, { engine: { draw: true } })`, as the app plans; `TablePlan.leaves` holds each at rest), on the
 template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row on one line), and so is my side
 (`TablePlan.mine`, the `mine` policy): my field, eleven places on the template's field line (`TableTemplate.mine`), one
 centred block while it has room (works at its left, what stands in its middle), and in front of it my mana lying as
 wells by kind, in the space the hand and the prompt leave. My nameplate stands at the screen's foot right of the hand
-and counts my graveyard, exile and a waiting commander, which are not on the table. At rest no middle is held back. **The parting** makes room when something rests on the middle at
+and counts my graveyard and exile, which are not on the table. A commander waiting in the command zone is on no leaf: every seat's nameplate carries its portrait (a tap reads it; mine casts by a tap or a drag). At rest no middle is held back. **The parting** makes room when something rests on the middle at
 table size: every engine leaf slides along its own `away`, and my row toward me, by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
 it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and
 patches parted). `TablePlan.part` says how far. No leaf goes under the chrome along the top (`topChrome`); graveyard and
