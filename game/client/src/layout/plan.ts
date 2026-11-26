@@ -366,8 +366,9 @@ export function planTable(input: TableInput): TablePlan {
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
   // open middle the pages leave (so it moves when they do), and the fight: the clash over it all, or at home.
   const compose = () => {
-    const stack = stackAtRest(input, tpl, projector, plans, reserve.safe);
     const gathered = combat && fight.size ? gatherIn(plans, form, form === "table" ? duels : undefined) : null;
+    // (the duels' row is the fight's, in the middle too: the stack rests beside it, never over it)
+    const stack = stackAtRest(input, tpl, projector, plans, reserve.safe, gathered && !gathered.focus ? gathered.duels : null);
     const placed = gathered ? gathered.plans : plans;
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
     // (held up as the focus, the stack's place at rest is only where it eases back to: not on the table, so not audited)
@@ -530,13 +531,27 @@ interface StackCard {
 // is cut short, and what has no room left at the right lies under the last card that fitted, offered in a sheet (the
 // top always stands). The input is bottom first; what comes out is top first, so the top is drawn nearest. The stack
 // as the table's focus is `stackFocus`, below; the combat row stands clear of the stack at rest (combat.ts).
-function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], safe: Rect): StackCard[] {
+/**
+ * The stack at rest in the open middle, top first. `keep` (screen px): what else rests there (the duels' row), which it
+ * never covers: it takes the part of the middle beside or above it that gives its cards the most room, and a card that
+ * still meets it spills (no room: a sheet offers it).
+ */
+function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], safe: Rect, keep: { l: number; r: number; t: number; b: number } | null = null): StackCard[] {
   const items = [...input.stack].reverse();
   if (!items.length) return [];
   const u = designUnit(input.viewport);
-  const M = openMiddle(tpl, proj, plans, u);
   const step = items.some((s) => s.answers) ? 1.12 : 0.9;
-  const fitW = (M.r - M.l - 16) / (CW * (step * items.length + 0.1));
+  const fitOf = (m: { l: number; r: number }) => (m.r - m.l - 16) / (CW * (step * items.length + 0.1));
+  const M0 = openMiddle(tpl, proj, plans, u);
+  let M = M0;
+  if (keep) {
+    const k = { l: keep.l / u - 8, r: keep.r / u + 8, t: keep.t / u - 8 };
+    const parts = [{ ...M0, b: Math.min(M0.b, k.t) }, { ...M0, r: Math.min(M0.r, k.l) }, { ...M0, l: Math.max(M0.l, k.r) }].filter((m) => m.r > m.l && m.b > m.t);
+    const room = (m: typeof M0) => Math.min(240, m.b - m.t, fitOf(m));
+    M = parts.sort((a, b) => room(b) - room(a))[0] ?? M0;
+  }
+  const meetsKeep = (b: { l: number; r: number; t: number; b: number }): boolean => !!keep && Math.min(b.r, keep.r) - Math.max(b.l, keep.l) > 0.5 && Math.min(b.b, keep.b) - Math.max(b.t, keep.t) > 0.5;
+  const fitW = fitOf(M);
   const mid = Math.max((FLOOR.any * 1.1) / CW, Math.min(240, M.b - M.t, fitW));
   const hPx = Math.max((FLOOR.any * 1.1) / CW, mid * 0.75), cy = (M.t + M.b) / 2, x0 = M.l + 16 + (hPx * CW) / 2, raise = STACK_POSE.raise;
   const at0 = proj.onTable(x0 * u, cy * u, raise);
@@ -579,9 +594,9 @@ function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, pla
       rise = lo;
     }
     const quad = quadOf(centre(off, i, rise), sc), b = bounds(quad);
-    if (prev && (b.r > right || b.b > foot)) {
+    if ((prev && (b.r > right || b.b > foot)) || meetsKeep(b)) {
       spill = true;
-      return card(prev.quad, true);
+      return card(prev?.quad ?? quad, true);
     }
     prev = { off, sc, quad };
     return card(quad, false);

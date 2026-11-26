@@ -29,6 +29,7 @@ const drawn = (m: TableModel, o: { combat?: CombatPairs | null; viewport?: { w: 
   planTable(tableInputOf(m, { viewport: o.viewport ?? VP, ...(o.combat ? { combat: o.combat } : {}), engine: { draw: true } }));
 const box = (plan: TablePlan, card: number) => bounds(plan.hits.groups.find((g) => g.id === unitOf(plan, card).id)!.quad);
 const midX = (plan: TablePlan, card: number) => (box(plan, card).l + box(plan, card).r) / 2;
+const centre = (q: readonly { readonly x: number; readonly y: number }[]) => ({ x: q.reduce((t, p) => t + p.x, 0) / q.length, y: q.reduce((t, p) => t + p.y, 0) / q.length });
 
 const design = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
 /** The design pass's turn 15 in a fight: `attackers` [id, defender], `blockers` [blocker, attacker]. */
@@ -324,6 +325,37 @@ describe("duels in the parted middle (a fight between opponents)", () => {
     expect(col.clasp!.x).toBeLessThan(box(plan, 1024).l + 1);
     // every leaf holds its floors and patches parted; no fighter is covered
     expect(plan.violations).toEqual([]);
+  });
+
+  it("the stack set aside rests beside the duels, never over them: fighters and the stack stay reachable (review)", () => {
+    const m = (() => {
+      const e = structuredClone(design.stages.find((st) => st.turn === 15)!.envelope);
+      const spell = (sid: number, name: string, who: string, type: string) => ({ id: sid, source: { id: sid, name, owner: who, controller: who, type, zone: "stack" }, controller: who, spell: true, text: name, targets: [] });
+      e.view = {
+        ...e.view,
+        active: "Marath",
+        priority: "Marath",
+        phase: "COMBAT_DECLARE_BLOCKERS",
+        combat: { attackers: MARATH.map(([i, defender]) => ({ id: i, defender })), blockers: [{ id: 1024, blocking: 1015 }] },
+        stack: [spell(9003, "Arcane Denial", "You", "Instant"), spell(9002, "Chaos Warp", "Marath", "Instant"), spell(9001, "Swords to Plowshares", "Dack", "Instant")],
+      };
+      return designModels({ stages: [{ turn: 15, envelope: e }], catalog: design.catalog }).get(15)!;
+    })();
+    for (const viewport of [VP, { w: 1210, h: 834 }, { w: 1024, h: 768 }]) {
+      const plan = drawn(m, { viewport }), duels = plan.gathering!.duels!, label = `${viewport.w}`;
+      expect(duels, label).not.toBeNull();
+      const meet = (a: ReturnType<typeof bounds>, b: typeof duels) => Math.min(a.r, b.r) - Math.max(a.l, b.l) > 0.5 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > 0.5;
+      // no stack card at rest over the duels; one that cannot fit beside them is not reachable there (a sheet offers it)
+      for (const st of plan.stack) if (st.reachable) expect(meet(bounds(st.quad), duels), `${label} stack ${st.key}`).toBe(false);
+      expect(plan.stack.some((st) => st.reachable), label).toBe(true);
+      for (const st of plan.stack) if (st.reachable) expect(hitTest(plan, centre(st.quad))?.id, `${label} stack ${st.key}`).toBe(`stack:${st.key}`);
+      // both fighters reached where they stand
+      for (const c of [1015, 1024]) {
+        const g = plan.hits.groups.find((x) => x.id === unitOf(plan, c).id)!;
+        expect(plan.violations.filter((v) => v.group === g.id), `${label} ${c}`).toEqual([]);
+        expect(hitTest(plan, centre(g.face ?? g.quad))?.id, `${label} ${c}`).toBe(g.id);
+      }
+    }
   });
 
   it("a parting moves no unit: every leaf keeps its units, members and places", () => {
