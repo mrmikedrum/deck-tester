@@ -116,6 +116,10 @@ export interface ClashView {
     readonly down: boolean;
   }[];
   readonly clasps: readonly { readonly key: string; readonly x: number; readonly y: number }[];
+  /** An attacked planeswalker's tally, over its top edge. */
+  readonly tallies: readonly { readonly key: string; readonly x: number; readonly y: number; readonly figure: string; readonly tone: PlateTally["tone"] }[];
+  /** The column for the fighters past one tier ("8 more · 14 power"); a tap on it opens them. */
+  readonly more: { readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly words: string } | null;
 }
 
 /** A card picked up in a nameplate focus: its printed picture, or a back. */

@@ -57,6 +57,21 @@ describe("the clash's words", () => {
     expect(plaqueWords(m, plan.gathering!.wings[0]!)).toBe("Atraxa attacks Dack · 4 unblocked");
   });
 
+  it("past one tier, the rest wait in one column that says how many and how much: \"N more · P power\"", () => {
+    const ids = Array.from({ length: 20 }, (_, i) => 100 + i);
+    const m = tableOf({
+      active: "Atraxa",
+      phase: "COMBAT_DECLARE_BLOCKERS",
+      seats: { You: { battlefield: [land(19, "Plains", "You")] }, Atraxa: { battlefield: ids.map((c, i) => creature(c, `Fighter ${i}`, "Atraxa", 2, 2)) } },
+      combat: { attackers: ids.map((c) => ({ id: c, defender: "You" })) },
+    });
+    const plan = planTable(tableInputOf(m, { viewport: VP }));
+    const v = clashViewOf(m, plan)!, n = plan.gathering!.more.length;
+    expect(n).toBeGreaterThan(0);
+    expect(v.more!.words).toBe(`${n} more · ${2 * n} power`);
+    expect(plan.hits.groups.find((g) => g.id === "clash:more")!.members).toHaveLength(n);
+  });
+
   it("plaques that would meet are spread apart and kept on the screen", () => {
     const out = spreadPlaques([{ x: 500, w: 300 }, { x: 560, w: 300 }, { x: 1150, w: 200 }], 16, 1194, 8);
     for (let i = 1; i < out.length; i++) expect(out[i]!.x - out[i]!.w / 2).toBeGreaterThanOrEqual(out[i - 1]!.x + out[i - 1]!.w / 2 + 8 - 1e-6);

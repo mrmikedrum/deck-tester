@@ -77,11 +77,21 @@ export function clashViewOf(model: TableModel, plan: TablePlan | null): ClashVie
       if (!c.slot) continue;
       const xs = c.slot.map((p) => p.x), ys = c.slot.map((p) => p.y);
       const l = Math.min(...xs), r = Math.max(...xs), t = Math.min(...ys), b = Math.max(...ys);
-      brands.push({ key: c.unit, x: (l + r) / 2, y: (t + b) / 2, size: Math.min(r - l, b - t) * 0.62, figure: c.power > 0 ? String(c.power) : null, count: c.attackers.length > 1 ? c.attackers.length : null, tone, place, down: w.defenderSeat === me });
+      brands.push({ key: c.unit, x: (l + r) / 2, y: (t + b) / 2, size: Math.min(r - l, b - t) * 0.52, figure: c.power > 0 ? String(c.power) : null, count: c.attackers.length > 1 ? c.attackers.length : null, tone, place, down: w.defenderSeat === me });
     }
   }
+  // An attacked planeswalker's tally, by its loyalty (on its top edge); the "more" column's count and power.
+  const tallies = g.wings.flatMap((w) => (w.walker && w.unblocked > 0 ? [{ key: w.walker.unit, x: w.walker.x, y: w.walker.top, figure: `−${w.unblocked}`, tone: toneOf(w, me) }] : []));
+  let more: ClashView["more"] = null;
+  if (g.moreAt && g.more.length) {
+    const attackers = new Set(plan.combat?.attacks.map((a) => a.attacker) ?? []);
+    const shown = g.more.filter((id) => attackers.has(id));
+    const power = shown.reduce((t, id) => t + Math.max(0, model.cards.get(id)?.power ?? 0), 0);
+    const xs = g.moreAt.map((p) => p.x), ys = g.moreAt.map((p) => p.y);
+    more = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys), words: `${shown.length || g.more.length} more · ${power} power` };
+  }
   const safe = plan.reserve.safe;
-  return { unit: u, plaques: spreadPlaques(plaques, safe.left + 16 * u, safe.right - 16 * u, 8 * u), brands, clasps };
+  return { unit: u, plaques: spreadPlaques(plaques, safe.left + 16 * u, safe.right - 16 * u, 8 * u), brands, clasps, tallies, more };
 }
 
 /**

@@ -13,6 +13,16 @@ export function Clash({ view: v }: { view: ClashView }): JSX.Element {
           {p.words}
         </div>
       ))}
+      {v.tallies.map((t) => (
+        <span key={t.key} class={`l-clash-tally ${t.tone}`} style={`left:${t.x}px;top:${t.y}px`}>
+          {t.figure}
+        </span>
+      ))}
+      {v.more ? (
+        <div class="l-clash-more" style={`left:${v.more.x}px;top:${v.more.y}px;width:${v.more.w}px;height:${v.more.h}px`}>
+          {v.more.words}
+        </div>
+      ) : null}
       {v.clasps.map((c) => (
         <i key={c.key} class="l-clash-clasp" style={`left:${c.x}px;top:${c.y}px`} />
       ))}

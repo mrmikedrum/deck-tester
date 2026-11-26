@@ -62,7 +62,8 @@ suite("describe", () => {
     expect(d.scrim).toBe(materials.shade.clash);
     expect(d.ground).not.toBeNull();
     const fighters = [...d.pieces.values()].filter((p) => p.fight);
-    expect(fighters.map((p) => p.members[0]).sort()).toEqual([818, 834, 872].map(id).sort());
+    // (and my planeswalker 819, which 872 attacks: at the end of its wing)
+    expect(fighters.map((p) => p.members[0]).sort()).toEqual([818, 819, 834, 872].map(id).sort());
     for (const p of fighters) {
       expect(d.above.has(p.id)).toBe(true);
       expect(d.aloft?.has(p.id)).toBe(true);

@@ -136,6 +136,17 @@ describe("the clash", () => {
     expect(plan.violations.filter((v) => v.rule === "clash-covers")).toEqual([]);
   });
 
+  it("an attacked planeswalker stands at the end of its wing, on its controller's side (033: mine)", () => {
+    const m = modelOf(corpusSnapshot("033-block-attack-on-planeswalker-they-attack.json"), catalog, viewerOf())!;
+    const plan = drawn(m), g = plan.gathering!;
+    const wing = g.wings.find((w) => "card" in w.defender)!;
+    expect(wing.walker?.card).toBe(id(819));
+    expect(unitOf(plan, 819).fighting).toBe(true);
+    expect(wing.walker!.x).toBeGreaterThan(Math.max(...wing.columns.map((c) => c.x)));
+    // on my side: below the attackers
+    expect(box(plan, 819).t).toBeGreaterThan(box(plan, 872).b);
+  });
+
   it("my attack blocked: my attackers below their blockers, my brands in the far row", () => {
     const plan = drawn(turn15([[1089, "Marath"], [1057, "Marath"], [1027, "Marath"]], [[1064, 1089]], "You"));
     expect(plan.gathering!.form).toBe("clash");

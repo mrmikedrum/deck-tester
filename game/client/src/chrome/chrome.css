@@ -1543,6 +1543,36 @@
     rotate: 180deg;
     margin: 0 0 calc(var(--size) * 0.06);
   }
+  .l-clash-tally {
+    position: absolute;
+    transform: translate(-50%, -115%);
+    padding: calc(1 * var(--u)) calc(6 * var(--u));
+    border-radius: 4px;
+    background: #9c1f24;
+    color: #fff4dc;
+    box-shadow: 0 0 0 1.5px #2a0a08;
+    font: 700 calc(16 * var(--u)) var(--ui);
+  }
+  .l-clash-tally.gold {
+    background: #e0a62c;
+    color: #1a0f05;
+  }
+  .l-clash-tally.ink {
+    background: #4a4136;
+  }
+  .l-clash-more {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    padding: calc(8 * var(--u));
+    border-radius: 6px;
+    background: var(--sheet);
+    box-shadow: inset 0 0 0 1px rgba(60, 40, 15, 0.55), 0 3px 0 #8a7050, 0 8px 16px rgba(0, 0, 0, 0.35);
+    color: var(--ink);
+    font: 400 calc(17 * var(--u)) / 1.2 var(--serif);
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
   @keyframes l-clash-in {
     from {
       opacity: 0;

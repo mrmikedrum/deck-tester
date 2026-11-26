@@ -64,6 +64,24 @@ const MOMENTS = {
     what: "Atraxa attacks me with three and Dack with two; I block one, Dack blocks one (three rows)",
     env: fight({ active: "Atraxa", attackers: [[1019, "You"], [1041, "You"], [1169, "You"], [1117, "Dack"], [1221, "Dack"]], blockers: [[1089, 1041], [1129, 1117]], priority: "Atraxa" }),
   },
+  "one-attacker": { what: "Atraxa attacks me alone: the same picture, one column", env: fight({ active: "Atraxa", attackers: [[1019, "You"]], priority: "Atraxa" }) },
+  "double-block": {
+    what: "Atraxa attacks me with six; Master of Waves and Mulldrifter both block Atraxa, Meloku blocks Steel Overseer",
+    env: fight({ active: "Atraxa", attackers: atraxa6, blockers: [[1057, 1019], [1141, 1019], [1089, 1041]], priority: "Atraxa" }),
+  },
+  "planeswalker": {
+    what: "Dack attacks Tezzeret, Atraxa's planeswalker, with Wispweaver Angel and Dack Fayden, and Atraxa with Fiend Hunter; Atraxa blocks the Angel",
+    env: fight({ active: "Dack", attackers: [[1129, 1073], [1024, 1073], [1048, "Atraxa"]], blockers: [[1221, 1129]], priority: "Dack" }),
+  },
+  "eleven-and-seven": {
+    what: "Marath attacks me with eleven (four of them identical Beasts); seven of mine block",
+    env: fight({
+      active: "Marath",
+      priority: "Marath",
+      attackers: [1015, 1064, 1035, 1153, 1204, 1205, 1101, 1066, 1105, 1157, 1158].map((id) => [id, "You"]),
+      blockers: [[1089, 1015], [1057, 1064], [1027, 1035], [1141, 1153], [1090, 1204], [1142, 1205], [1010, 1101]],
+    }),
+  },
 };
 
 async function settle(page, ms = 20000) {

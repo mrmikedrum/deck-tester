@@ -73,6 +73,8 @@ export interface ClashWing {
   /** The summed power of its unblocked attackers. */
   readonly unblocked: number;
   readonly columns: readonly ClashColumn[];
+  /** An attacked planeswalker standing at the end of its wing: its unit, and its top middle on screen (its tally). */
+  readonly walker?: { readonly unit: UnitId; readonly card: CardId; readonly x: number; readonly top: number };
 }
 
 export interface Gathering {
@@ -127,15 +129,22 @@ export function gathering(input: GatherInput): Gathering {
   const units = fightUnits(plans, want);
   const seatOf = (card: CardId) => plans.find((p) => p.units.some((un) => un.members.includes(card) || un.dressing.includes(card)))?.seat;
   const clash = input.form === "clash";
-  // A fighter held in a unit of several (the engine's entry summary) stands in the clash as its own.
+  // A fighter (or an attacked planeswalker) held in a unit of several (a pile, the engine's entry summary) stands in the
+  // clash as its own.
+  const attacked = new Set(combat.attacks.flatMap((a) => ("card" in a.defender ? [a.defender.card] : [])));
+  const walkerUnits = new Map<CardId, { unit: Unit; seat: SeatId }>();
   const carved = new Map<UnitId, { readonly from: UnitId; readonly seat: SeatId }>();
   if (clash)
-    for (const id of want)
+    for (const id of [...want, ...attacked])
       for (const p of plans) {
-        const holder = units.has(id) ? undefined : p.units.find((un) => un.members.length > 1 && un.members.includes(id));
+        const walker = attacked.has(id) && !want.has(id);
+        const own = p.units.find((un) => un.members.length === 1 && un.members[0] === id);
+        if (walker && own) walkerUnits.set(id, { unit: own, seat: p.seat });
+        const holder = units.has(id) || own ? undefined : p.units.find((un) => un.members.length > 1 && un.members.includes(id));
         if (!holder) continue;
-        const unit: Unit = { id: `fight:${id}`, role: "creature", kind: "card", members: [id], dressing: [], top: id, title: null, mixed: false, acting: true, tapped: input.tapped(id), placement: holder.placement };
-        units.set(id, { unit, seat: p.seat });
+        const unit: Unit = { id: `fight:${id}`, role: walker ? "walker" : "creature", kind: "card", members: [id], dressing: [], top: id, title: null, mixed: false, acting: true, tapped: input.tapped(id), placement: holder.placement };
+        if (walker) walkerUnits.set(id, { unit, seat: p.seat });
+        else units.set(id, { unit, seat: p.seat });
         carved.set(unit.id, { from: holder.id, seat: p.seat });
       }
   const none: Gathering = { plans: [...plans], form: input.form, area: null, extent: null, step: 1, wings: [], more: [], moreAt: null, focus: false, left: [...want] };
@@ -185,6 +194,9 @@ export function gathering(input: GatherInput): Gathering {
       }
     }
   }
+  // An attacked planeswalker leaves its page for the end of its wing (when it is a unit of its own).
+  const walkers = new Map<string, { unit: Unit; seat: SeatId }>();
+  for (const [card, w] of walkerUnits) walkers.set(`c${card}`, w);
   const wingsOf = (fs: readonly Formation[]) => {
     const out: { key: string; fs: Formation[] }[] = [];
     for (const f of fs) {
@@ -261,9 +273,14 @@ export function gathering(input: GatherInput): Gathering {
     const own = slots[side(f)] || m.wide(feet[side(f)]);
     return Math.max(atkW, own, slots.near, slots.far);
   };
+  /** The width a wing's planeswalker adds at its end (on its controller's side). */
+  const walkerSpan = (l: Laid, d: Defender): number => {
+    const wk = walkers.get(defKey(d));
+    return wk ? CLASH.columnGap * u + l.m.wide(l.feet[wk.seat === perspective ? "near" : "far"]) : 0;
+  };
   const widthOf = (l: Laid, fs: readonly Formation[], extra = 0): number => {
     const ws = wingsOf(fs);
-    return ws.reduce((t, w) => t + w.fs.reduce((s, f) => s + span(l, f), 0) + CLASH.columnGap * u * (w.fs.length - 1), 0) + CLASH.wingGap * u * (ws.length - 1) + extra;
+    return ws.reduce((t, w) => t + w.fs.reduce((s, f) => s + span(l, f), 0) + CLASH.columnGap * u * (w.fs.length - 1) + walkerSpan(l, w.fs[0]!.defender), 0) + CLASH.wingGap * u * (ws.length - 1) + extra;
   };
   let laid: Laid | null = null, kept = forms, more: Formation[] = [];
   for (const step of CLASH_STEPS) {
@@ -314,6 +331,15 @@ export function gathering(input: GatherInput): Gathering {
       columns.push({ unit: f.ks[0]!.id, attackers: f.ks.flatMap((k) => k.members), blockers: f.bs.flatMap((b) => b.members), x: cx, w: sw, slot, clasp, power: f.ks.reduce((s, k) => s + powerOf(k), 0), blocked: f.blocked });
       x += sw;
     });
+    const wk = walkers.get(defKey(w.fs[0]!.defender));
+    let walker: ClashWing["walker"];
+    if (wk) {
+      const row = wk.seat === perspective ? "near" : "far", ww = m.wide(feet[row]);
+      x += CLASH.columnGap * u;
+      placed.set(wk.unit.id, at(x + ww / 2, feet[row]));
+      walker = { unit: wk.unit.id, card: wk.unit.top, x: x + ww / 2, top: feet[row] - m.tall(feet[row]) };
+      x += ww;
+    }
     const top = (farRow ? feet.far - m.tall(feet.far) : feet.atk - m.tall(feet.atk)) - 6 * u;
     wings.push({
       attacker: w.fs[0]!.from,
@@ -323,6 +349,7 @@ export function gathering(input: GatherInput): Gathering {
       w: x - x0,
       unblocked: columns.filter((c) => !c.blocked).reduce((t, c) => t + c.power, 0),
       columns,
+      ...(walker ? { walker } : {}),
     });
     x += CLASH.wingGap * u;
   }
@@ -339,7 +366,7 @@ export function gathering(input: GatherInput): Gathering {
     return { ...rest, tapped: false, fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const } };
   };
   const moved = plans.map((p) => {
-    const out = [...units.values()].filter((f) => f.seat === p.seat && carved.has(f.unit.id) && placed.has(f.unit.id)).map((f) => f.unit);
+    const out = [...units.values(), ...walkerUnits.values()].filter((f) => f.seat === p.seat && carved.has(f.unit.id) && placed.has(f.unit.id)).map((f) => f.unit);
     if (!out.length && !p.units.some((un) => placed.has(un.id))) return p;
     // the carved fighters leave the units that held them (an emptied one is gone)
     const gone = new Map<UnitId, Set<CardId>>();
@@ -363,9 +390,10 @@ export function gathering(input: GatherInput): Gathering {
   });
   const inside = new Set(kept.flatMap((f) => [...f.ks, ...f.bs]).flatMap((un) => un.members));
   const cols = wings.flatMap((w) => w.columns);
+  const walkerXs = wings.flatMap((w) => (w.walker ? [w.walker.x - m.wide(feet.near) / 2, w.walker.x + m.wide(feet.near) / 2] : []));
   const extent = {
-    l: Math.min(...cols.map((c) => c.x - c.w / 2), ...(moreAt ? [moreAt[0].x] : [])),
-    r: Math.max(...cols.map((c) => c.x + c.w / 2), ...(moreAt ? [moreAt[1].x] : [])),
+    l: Math.min(...cols.map((c) => c.x - c.w / 2), ...walkerXs, ...(moreAt ? [moreAt[0].x] : [])),
+    r: Math.max(...cols.map((c) => c.x + c.w / 2), ...walkerXs, ...(moreAt ? [moreAt[1].x] : [])),
     t: farRow ? feet.far - m.tall(feet.far) : feet.atk - m.tall(feet.atk),
     b: nearRow ? feet.near : feet.atk,
   };
