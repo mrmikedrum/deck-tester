@@ -1139,11 +1139,19 @@ public class ManualController extends PlayerControllerAi {
     @Override
     public Card chooseSingleCardForZoneChange(ZoneType destination, List<ZoneType> origin, SpellAbility sa, CardCollection fetchList,
                                               DelayedReveal delayedReveal, String selectPrompt, boolean isOptional, Player decider) {
-        boolean search = origin.contains(ZoneType.Library);
-        if (search) {
+        if (origin.contains(ZoneType.Library)) {
             session.recorder.look(fetchList, "searched" + source(sa));
         }
-        List<Card> chosen = choose("choose", clean(selectPrompt) + source(sa), fetchList, this::cardLabel, isOptional ? 0 : 1, 1, () -> {
+        // Copies are interchangeable only in a search of the library alone, as Forge counts a search (not a pick among
+        // defined or remembered cards, nor one made without looking, like Intuition's opponent's choice).
+        boolean search = sa != null && fetchList.allMatch(c -> c.isInZone(ZoneType.Library)) && !sa.hasParam("Defined")
+                && !sa.hasParam("ChooseFromDefined") && !sa.hasParam("NoLooking");
+        // Options from several zones (a library and a graveyard) say which, so a Forest in each is two choices.
+        boolean zones = fetchList.stream().map(c -> c.getZone() == null ? null : c.getZone().getZoneType()).distinct().count() > 1;
+        Function<Card, String> label = zones
+                ? c -> cardLabel(c) + (c.getZone() == null ? "" : " (" + c.getZone().getZoneType().name().toLowerCase(Locale.ROOT) + ")")
+                : this::cardLabel;
+        List<Card> chosen = choose("choose", clean(selectPrompt) + source(sa), fetchList, label, isOptional ? 0 : 1, 1, () -> {
             Card card = super.chooseSingleCardForZoneChange(destination, origin, sa, new CardCollection(fetchList), delayedReveal, selectPrompt, isOptional, decider);
             return card == null ? List.<Card>of() : List.of(card);
         }, null, search ? ManualController::searchRef : ManualController::ref);

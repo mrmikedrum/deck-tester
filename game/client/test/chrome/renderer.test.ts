@@ -271,7 +271,7 @@ describe("a card sheet (a library search, a graveyard)", () => {
   const search = (names: readonly string[], pick: { min: number; max: number }, picked: readonly number[] = [], o: { stop?: string; known?: readonly string[] } = {}) => {
     const items = names.map((name, i) => ({ option: i + 1, label: name, cost: null, detail: `${name} text`, card: null, name, picked: picked.includes(i + 1), badge: null }));
     const done = button("sheet-done", "Done", { tone: "primary", role: "done" });
-    const sheet = { kind: "chooser" as const, title: "Choose a land card (Farseek)", wide: true, items, stepper: null, buttons: [done], carried: null, pick: { ...pick, copies: true } };
+    const sheet = { kind: "chooser" as const, title: "Choose a land card (Farseek)", wide: true, items, stepper: null, buttons: [done], carried: null, pick: { ...pick, copies: true, cards: true } };
     const named = new Map((o.known ?? names).map((n) => [n, { name: n, image: `${n.toLowerCase()}.jpg` }]));
     return view({ controls: controls(MAIN, { sheet, ...(o.stop ? { stop: o.stop as StopId } : {}) }), named });
   };
@@ -358,6 +358,13 @@ describe("a card sheet (a library search, a graveyard)", () => {
     expect($$(".l-deal .l-card").length).toBeLessThanOrEqual(per);
     click($$(".l-deal .l-card")[0]!);
     expect(sent.at(-1)).toMatchObject({ act: { a: "pick", option: per + 1 } });
+  });
+  it("a search with no card data yet is still dealt as cards, with pages: its refs say its options are cards", () => {
+    show(search(distinct(40), { min: 1, max: 1 }, [], { known: [] }));
+    expect($$(".l-sheet button.l-opt")).toHaveLength(0);
+    expect($$(".l-deal .l-card").length).toBeLessThan(40);
+    expect($$(".l-deal .l-card .pic b")[0]?.textContent).toBe("Card 01");
+    expect($(".l-pager")).not.toBeNull();
   });
   it("a new decision starts at the first page; an update to the same decision keeps its page", async () => {
     const names = distinct(40);

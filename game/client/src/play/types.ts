@@ -211,8 +211,9 @@ export interface SheetView {
   /** Released hand card the sheet holds; the chrome keeps drawing it where it was let go. */
   readonly carried: Carried | null;
   /** A chooser's bounds, for how it is drawn: how many may be picked, and whether copies of one card are
-   * interchangeable (a library search's, as the engine says), so they may lie as one pile. */
-  readonly pick?: { readonly min: number; readonly max: number; readonly copies: boolean };
+   * interchangeable (a library search's, as the engine says), so they may lie as one pile; and whether its options are
+   * cards (refs naming cards, seen or hidden), dealt as cards before any picture has come. */
+  readonly pick?: { readonly min: number; readonly max: number; readonly copies: boolean; readonly cards: boolean };
 }
 
 export interface CardAction {

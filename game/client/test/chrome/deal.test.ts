@@ -18,7 +18,7 @@ const sheet = (items: SheetItem[], copies = false, max = 1): SheetView => ({
   stepper: null,
   buttons: [],
   carried: null,
-  pick: { min: 0, max, copies },
+  pick: { min: 0, max, copies, cards: true },
 });
 const looks = (i: SheetItem) => ({ name: i.name ?? i.label, image: `${i.name}.jpg` });
 
@@ -85,6 +85,9 @@ describe("a card sheet's tiles", () => {
     expect(tagOf("Arcane Signet (W)", "Arcane Signet")).toBe("{W}");
     expect(tagOf("Island", "Island")).toBeNull();
     expect(tagOf("Gemstone Caverns (exiled card)", "Gemstone Caverns")).toBe("exiled card");
+    // a search of several zones names each card's zone (the engine's label): a Forest in each is two choices
+    const zones = [item(1, "Forest", { label: "Forest (graveyard)" }), item(2, "Forest", { label: "Forest (library)" }), item(3, "Forest", { label: "Forest (library)" })];
+    expect(tilesOf(sheet(zones), looks).map((t) => [t.tag, t.items.length])).toEqual([["graveyard", 1], ["library", 1], ["library", 1]]);
     const two = [item(1, "Arcane Signet", { label: "Arcane Signet (U)" }), item(2, "Arcane Signet", { label: "Arcane Signet (W)" })];
     expect(tilesOf(sheet(two), looks).map((t) => t.tag)).toEqual(["{U}", "{W}"]);
   });

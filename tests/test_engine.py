@@ -260,6 +260,31 @@ class ManualGameTest(unittest.TestCase):
         finally:
             request("end")
 
+    @unittest.skipUnless(engine.FORGE_BUILD.exists(), "requires installed Forge")
+    def test_a_search_of_several_zones_names_each_card_s_zone_and_marks_none(self):
+        # A Forest in the graveyard and one in the library are different choices: no `search`, the zone in the label.
+        reply = engine.request({"cmd": "start", "commanders": ["Marath, Will of the Wild"],
+                                "main": [[99, "Forest"]], "seed": 11, "turns": 2})
+        session = reply["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        try:
+            request("answer", answer=[1])
+            for args in (["create", "Forest", "graveyard"], ["create", "Forest"], ["create", "Forest"], ["create", "Forest"],
+                         ["create", "Journey for the Elixir", "hand"]):
+                reply = request("override", args=args)
+            options = reply["decision"]["options"]
+            reply = request("answer", answer=[next(i for i, o in enumerate(options, 1) if o.startswith("Journey for the Elixir"))])
+            while not (reply["decision"]["kind"] == "choose" and "Forest (library)" in reply["decision"]["options"]):
+                reply = request("answer", answer=[1])   # its payment, in the order Forge asks
+            search = reply["decision"]
+            self.assertIn("Forest (graveyard)", search["options"])
+            self.assertFalse(any(ref.get("search") for ref in search["refs"]))
+        finally:
+            request("end")
+
     def test_a_copy_may_have_new_targets(self):
         deck = decklist.load(DECK)
         reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2})

@@ -479,12 +479,14 @@ describe("sheet decisions", () => {
       });
     const t = new Table();
     t.open(hidden(true, "select a card from your library (Farseek)"));
-    expect(t.p.controls.sheet?.pick).toEqual({ min: 0, max: 1, copies: true });
+    expect(t.p.controls.sheet?.pick).toEqual({ min: 0, max: 1, copies: true, cards: true });
     t.open(hidden(false, "scry 3: cards to put on the bottom"));
-    expect(t.p.controls.sheet?.pick).toEqual({ min: 0, max: 3, copies: false });
+    expect(t.p.controls.sheet?.pick).toEqual({ min: 0, max: 3, copies: false, cards: true });
     t.pick(3); // the Island under the Forest, alone
     t.press("Done (1)");
     expect(t.answers()).toEqual([[3]]);
+    t.open(words({ min: 1, max: 2 }));
+    expect(t.p.controls.sheet?.pick).toMatchObject({ cards: false }); // refs by name only: a list of words
   });
 
   it("repeat: an option can be picked again and its badge counts; a pick at max takes one back (016, a repeatable choice)", () => {

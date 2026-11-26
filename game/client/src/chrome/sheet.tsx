@@ -220,13 +220,15 @@ export const onScrim =
 export function Sheet(p: SheetProps): JSX.Element {
   const { sheet: s, send } = p;
   const area = p.area ?? IPAD;
-  // A chooser with any option the table or the catalogue can picture is dealt as cards, every option a tile (one with
-  // no picture yet a placeholder with its name), so all of them page together.
+  // A chooser of cards is dealt as cards, every option a tile (one with no picture yet a placeholder with its name), so
+  // all of them page together. Its options are cards when the decision's refs name cards (a search, a graveyard),
+  // whether or not the catalogue has answered yet; a chooser of words stays a list.
   const look = (item: SheetItem) => {
     const l = item.card !== null ? p.looks.get(item.card) : item.name !== null ? p.named.get(item.name) : undefined;
     return l ? { name: l.name, image: l.image } : null;
   };
-  const cards = s.kind === "chooser" && s.items.some((item) => look(item) !== null) ? tilesOf(s, look) : null;
+  const dealt = s.kind === "chooser" && (!!s.pick?.cards || s.items.some((item) => item.card !== null || look(item) !== null));
+  const cards = dealt ? tilesOf(s, look) : null;
   let body: JSX.Element | JSX.Element[];
   let width: string | undefined;
   if (cards) {
