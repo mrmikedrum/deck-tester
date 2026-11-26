@@ -79,6 +79,24 @@ test.describe("pay", () => {
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2]);
   });
+  test("sources of different cards in one pile: the source and its mana are chosen by keyboard too", async ({ table }) => {
+    test.skip(!NEW, "the sift's controls are the new entry's");
+    const s = snapshot("main"), ring = you(s, "Sol Ring").id, signet = you(s, "Arcane Signet").id;
+    await table.open(payment(s, ["Sol Ring (C)", "Arcane Signet (U)", "Arcane Signet (W)"], [{ card: ring }, { card: signet }, { card: signet }]));
+    await table.tapCard(signet);                                       // the pile opens
+    const card = table.page.locator(".l-sift .cards button").filter({ hasText: "Arcane Signet" });
+    await card.focus();
+    await expect(card).toBeVisible();                                  // shown while it has focus
+    await table.page.keyboard.press("Enter");
+    await table.step(100);
+    expect(await table.sheetTitle()).toBe("Arcane Signet: which mana?");
+    await table.sheet().locator("button.l-mana").nth(1).focus();
+    await table.page.keyboard.press("Enter");
+    await table.step(100);
+    await table.button("Pay").focus();
+    await table.page.keyboard.press("Enter");
+    expect((await table.answered(1))[0].answer).toEqual([3]);
+  });
 });
 
 test.describe("targets and choices on the table", () => {

@@ -191,6 +191,8 @@ export interface SiftView {
   readonly range: string | null;
   /** The top of the fanned cards, CSS px: the caption sits just above them. */
   readonly top: number;
+  /** The cards on this page, in the order fanned, each as a control for the keyboard: choosing one is a tap on it. */
+  readonly cards: readonly { readonly id: CardId; readonly label: string }[];
 }
 
 /** "Your hand" as a list (live.js `handSheet`): every card, what it costs, whether it has a play now. */

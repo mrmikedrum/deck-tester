@@ -15,8 +15,9 @@ import { ctxOf, promptOf, sheetOf } from "./prompt";
 import { cardActionsOf } from "./present";
 import { offTableNames } from "./needs";
 import { groupsOf, reached } from "./reach";
-import { completed, resolve } from "./resolve";
+import { completed, meaningful, resolve } from "./resolve";
 import { EMPTY_DRAFT, open, reset, seal } from "./state";
+import type { Reached } from "./reach";
 import type { Gesture, S } from "./state";
 import type { AnswerToken, Carried, Effect, Event, Step, StopId } from "./types";
 
@@ -95,6 +96,11 @@ function apply(s: S, r: Reaction, before: Effect[] = []): Out {
   if (r.inspect !== undefined) effects.push({ kind: "inspect", card: r.inspect });
   if (r.choose !== undefined) effects.push({ kind: "choose", group: r.choose });
   if (r.pending !== undefined) next = { ...next, pending: r.pending };
+  // A chooser open for a gesture holds auto-pass: nothing is passed while the player chooses.
+  if (r.pending && next.auto) {
+    effects.push(...cancelAuto(next));
+    next = { ...next, auto: null };
+  }
   if (r.answer) {
     const sent = send(next, r.answer, r.carried ?? null);
     next = sent.state;
@@ -184,8 +190,8 @@ function onAct(was: S, e: Extract<Event, { t: "act" }>): Out {
       // A drag let go over nothing has no destination: nothing happens (live.js `H.drag` returned without one).
       if (act.a === "drag" && "nothing" in act.onto) return { state: s, effects: [UNCLAIMED] };
       let g: Gesture = act.a === "tap" ? { a: "tap", at: act.on } : { a: "drag", from: act.from, onto: act.onto };
-      if (was.pending && act.a === "tap" && "card" in act.on)
-        g = completed(was.pending, act.on.card, s.groups.find((x) => x.id === was.pending!.group)?.members) ?? g;
+      const done = was.pending && act.a === "tap" && "card" in act.on ? completed(was.pending, act.on.card, s.groups.find((x) => x.id === was.pending!.group)?.members) : null;
+      if (done) g = done;
       let cur = s;
       const before: Effect[] = [];
       if (act.a === "tap") {
@@ -199,19 +205,21 @@ function onAct(was: S, e: Extract<Event, { t: "act" }>): Out {
       }
       const cc = ctxOf(cur);
       const reach = (t: Parameters<typeof reached>[0]) => reached(t, cur.groups, f);
-      const run = (x: Gesture): { r: ReturnType<ReturnType<typeof kindOf>["tap"]> } | null => {
-        if (x.a === "tap") {
-          const at = reach(x.at);
-          return at ? { r: live && cc ? kindOf(cc.d).tap(cc, at) : null } : null;
-        }
-        const from = reach(x.from), onto = reach(x.onto);
-        return from && onto ? { r: live && cc ? kindOf(cc.d).drag(cc, from, onto) : null } : null;
-      };
-      // The one rule for a gesture on a group (resolve.ts): it commits only what every member it could mean would.
-      const out = live && cc ? resolve(g, cc.d, f, cc.draft, reach, run) : run(g);
+      if (!live || !cc) {
+        const stale = g.a === "tap" ? !reach(g.at) : !reach(g.from) || !reach(g.onto);
+        return stale ? same(cur) : { state: cur, effects: [...before, UNCLAIMED] };
+      }
+      const k = kindOf(cc.d);
+      const kind = { tap: (at: Reached) => k.tap(cc, at), drag: (from: Reached, onto: Reached) => k.drag(cc, from, onto) };
+      // The one rule for a gesture on a group (resolve.ts): it commits only what cannot hang on which card was meant.
+      const out = resolve(g, cc.d, f, cc.draft, reach, kind);
       if (!out) return same(cur);
-      return out.r ? apply(cur, out.r, before) : { state: cur, effects: [...before, UNCLAIMED] };
+      const step = out.r ? apply(cur, out.r, before) : { state: cur, effects: [...before, UNCLAIMED] };
+      // A card the chooser offers that the gesture cannot use (refused, with a toast): the gesture waits for another.
+      return done && !meaningful(out.r, cur.draft) ? { ...step, state: { ...step.state, pending: was.pending } } : step;
     }
+    case "putBack":
+      return same(s);
     case "release": {
       const r = live && c ? kindOf(c.d).release(c, act.card, act.dy, act.pose, act.overTable) : null;
       return r ? apply(s, r) : same(s);
@@ -267,6 +275,7 @@ function onWorking(s: S, e: Extract<Event, { t: "working" }>): Out {
 
 function onDeadline(s: S, e: Extract<Event, { t: "deadline" }>): Out {
   if (!s.auto || s.auto.id !== e.id) return same(s);
+  if (s.pending) return same({ ...s, auto: null }); // a chooser open holds it
   if (!s.decision || !s.facts || !autoArms(s.decision, s.facts)) return same({ ...s, auto: null });
   return send({ ...s, auto: null }, { answer: [1] }, null);
 }

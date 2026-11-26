@@ -2,7 +2,7 @@
 // model's readings (threat, the sweep) computed once per snapshot. Kept in play's state, so the state stays
 // JSON-serialisable while the model (maps, functions) does not.
 import type { CardId, StackId } from "../protocol";
-import type { SeatId, TableModel, Target, Zone } from "../model";
+import type { Card, SeatId, TableModel, Target, Zone } from "../model";
 import { isCreatureSweep, sig, threatens, topOf } from "../model";
 
 export interface CardFact {
@@ -14,8 +14,9 @@ export interface CardFact {
   readonly owner: SeatId;
   readonly controller: SeatId;
   readonly tapped: boolean;
-  /** What it is to the eye and the rules beyond its name: tapped, face down, sick, counters (loyalty among them), power
-   *  and toughness, keywords, what is attached to it. Two cards with the same `state` are interchangeable. */
+  /** What it is to the eye and the rules beyond its name: tapped, face down (and the face its controller sees), sick,
+   *  counters (loyalty among them), power and toughness, keywords, owner and controller, a token or not, and what is
+   *  attached to it, each as itself. Two cards with the same `state` are interchangeable. */
   readonly state: string;
   readonly commander: boolean;
   /** Braced. */
@@ -69,6 +70,13 @@ export interface Facts {
   readonly floating: string;
 }
 
+/** What tells two same-named cards apart to the eye and the rules (`CardFact.state`): whose, a token or not, the face
+ *  its controller sees (a face-down card's), and what is attached, each as itself. */
+function stateOf(m: TableModel, c: Card): string {
+  const one = (x: Card): string => [sig(x), x.owner, x.controller, x.token, x.face.name, [...x.keywords].sort().join(",")].join("|");
+  return JSON.stringify([one(c), m.attachments(c.id).map((a) => m.cards.get(a)).filter((x): x is Card => !!x).map(one).sort()]);
+}
+
 export function factsOf(m: TableModel): Facts {
   const me = m.viewer.perspective;
   const cards: Record<number, CardFact> = {};
@@ -81,7 +89,7 @@ export function factsOf(m: TableModel): Facts {
       owner: c.owner,
       controller: c.controller,
       tapped: c.tapped,
-      state: [sig(c), [...c.keywords].sort().join(","), m.attachments(c.id).map((a) => m.cards.get(a)?.name ?? a).sort().join(",")].join("|"),
+      state: stateOf(m, c),
       commander: c.commander,
       cost: c.face.cost,
       text: c.face.text,

@@ -1,15 +1,18 @@
 // A gesture on a group commits only what the player could have meant: the property over every decision in the protocol
 // corpus (its battlefields piled in several ways, as layout may pile them) and crowded tables (mixed piles, same-named
-// cards in different states, planeswalkers among permanents, mixed mana, a choice made after the plan changed).
+// cards in different states or owners, planeswalkers among permanents, mixed mana, a picked twin, refs in another
+// order, a choice made after the plan changed).
 //
 // For every group of several cards and every gesture on it (a tap; a drag from it onto every plate and group; a drag
 // from a card onto it), what play does is one of:
 //  - nothing meant (no send, no pick changed);
-//  - a commit that is exactly what the same gesture on one of its members alone would do, where every member it could
-//    mean is the same card in the same state with the same options (judged here from the wire, apart from play's own
-//    reading), and the members it cannot mean share their name;
+//  - a commit, only when what it means does not hang on which card was meant: every member's gesture alone does the
+//    same; or the members it could mean are twins (the same card, state, owner and options, judged here from the wire,
+//    apart from play's own reading), the rest share their name, and the group does the same whichever twin it lists
+//    first;
 //  - a chooser that commits nothing, and that, for each member, completes the very gesture (both ends) with that card.
-// And every option on the table is reachable: a tap on its group commits it (or its twin), or opens a chooser.
+// And every option the decision's refs put on the table is reachable: driven through its group (and the chooser, the
+// mana sheet, the defender, the blocker) to the answer sent, it is there (or its twin's).
 import { describe, expect, it } from "vitest";
 import type { CardId, Decision } from "../../src/protocol";
 import type { Effect, Target } from "../../src/play";
@@ -19,72 +22,84 @@ type Raw = Record<string, unknown>;
 type Wire = { id: number; name: string; attachedTo?: number } & Raw;
 type Gesture = { a: "tap"; at: Target } | { a: "drag"; from: Target; onto: Target };
 type End = "at" | "from" | "onto";
+type Draft = { sel: number[]; holding: unknown; attackTo: unknown; value: number };
+type Group = { id: string; kind: string; seat: string | null; members: CardId[] };
 
 interface Outcome {
-  readonly sent: string | null;
-  readonly picks: string;
+  readonly answer: readonly number[] | null;
+  readonly draft: Draft | null;
   readonly choose: string | null;
   readonly opened: boolean;
 }
 
-const draftOf = (t: Table) => (t.state as unknown as { draft: { sel: number[]; holding: unknown; attackTo: unknown; value: number } }).draft;
-const picksOf = (t: Table) => {
-  const d = draftOf(t);
-  return JSON.stringify([d.sel, d.holding, d.attackTo, d.value]);
-};
+const draftOf = (t: Table) => (t.state as unknown as { draft: Draft }).draft;
+const groupsOf = (t: Table) => (t.state as unknown as { groups: Group[] }).groups;
+const picks = (d: Draft) => JSON.stringify([d.sel, d.holding, d.attackTo, d.value]);
 
 function run(base: Table, g: Gesture): { t: Table; o: Outcome } {
   const t = base.fork();
-  const before = picksOf(t), sheet = JSON.stringify(t.p.controls.sheet);
+  const before = picks(draftOf(t)), sheet = JSON.stringify(t.p.controls.sheet);
   const fx: Effect[] = g.a === "tap" ? t.tap(g.at) : t.drag(g.from, g.onto);
-  const send = fx.find((e) => e.kind === "send");
-  const picks = picksOf(t);
+  const send = fx.find((e): e is Extract<Effect, { kind: "send" }> => e.kind === "send");
+  const choose = fx.find((e): e is Extract<Effect, { kind: "choose" }> => e.kind === "choose");
   return {
     t,
     o: {
-      sent: send && send.kind === "send" ? JSON.stringify(send.body) : null,
-      picks: picks === before ? "" : picks,
-      choose: fx.find((e) => e.kind === "choose")?.kind === "choose" ? (fx.find((e) => e.kind === "choose") as { group: string }).group : null,
+      answer: send && "answer" in send.body ? send.body.answer : null,
+      draft: picks(draftOf(t)) === before ? null : draftOf(t),
+      choose: choose?.group ?? null,
       opened: fx.some((e) => e.kind === "inspect") || JSON.stringify(t.p.controls.sheet) !== sheet,
     },
   };
 }
 
-const commits = (o: Outcome) => o.sent !== null || o.picks !== "";
+const commits = (o: Outcome) => o.answer !== null || o.draft !== null;
 const meaningful = (o: Outcome) => commits(o) || o.choose !== null || o.opened;
-const sameCommit = (a: Outcome, b: Outcome) => a.sent === b.sent && a.picks === b.picks;
+const sameCommit = (a: Outcome, b: Outcome) => JSON.stringify([a.answer, a.draft]) === JSON.stringify([b.answer, b.draft]);
 
 const withEnd = (g: Gesture, end: End, t: Target): Gesture => (g.a === "tap" ? { a: "tap", at: t } : end === "from" ? { ...g, from: t } : { ...g, onto: t });
 const endOf = (g: Gesture, end: End): Target => (g.a === "tap" ? g.at : end === "from" ? g.from : g.onto);
 
 /** The wire's cards by id (every zone), and the decision: the judge reads the table as sent, not as play reads it. */
-function wire(env: Raw): { cards: Map<number, Wire>; d: Decision | null } {
+function wire(env: Raw): { cards: Map<number, Wire>; d: Decision | null; refs: Raw[] } {
   const v = env["view"] as { players: Record<string, unknown>[] };
   const cards = new Map<number, Wire>();
   for (const p of v.players) for (const z of ["battlefield", "hand", "graveyard", "exile", "command"]) for (const c of (p[z] as Wire[] | undefined) ?? []) cards.set(c.id, c);
-  return { cards, d: decoded(env).decision };
+  const d = decoded(env).decision;
+  return { cards, d, refs: d && "refs" in d && Array.isArray(d.refs) ? (d.refs as Raw[]) : [] };
 }
+type W = ReturnType<typeof wire>;
 
+/** A card as the wire has it, its id aside: everything sent about it, and what is attached to it (all of that too). */
+function look(w: W, id: number): string {
+  const c = w.cards.get(id);
+  if (!c) return String(id);
+  const bare = (x: Wire) => JSON.stringify(Object.entries(x).filter(([k]) => k !== "id" && k !== "attachedTo").sort(([a], [b]) => a.localeCompare(b)));
+  return JSON.stringify([bare(c), [...w.cards.values()].filter((x) => x.attachedTo === id).map(bare).sort()]);
+}
+/** An option as it would play: its ref with every card as it looks, and its label. */
+function canonOpt(w: W, o: number): string {
+  const r = w.refs[o - 1] ?? {};
+  const label = (w.d?.options[o - 1] ?? "").replace(/\b\d+\b/g, (n) => (w.cards.has(+n) ? look(w, +n) : n));
+  return JSON.stringify([Object.entries(r).map(([k, v]) => [k, typeof v === "number" && w.cards.has(v) ? look(w, v) : v]), label]);
+}
+const canonCard = (w: W, v: unknown) => (typeof v === "number" && w.cards.has(v) ? look(w, v) : v);
+/** What an outcome commits, with every card and option as it looks: twins' commits read the same. */
+const canon = (w: W, o: Outcome) =>
+  JSON.stringify([o.answer?.map((x) => canonOpt(w, x)) ?? null, o.draft ? [o.draft.sel.map((x) => canonOpt(w, x)), canonCard(w, o.draft.holding), canonCard(w, o.draft.attackTo), o.draft.value] : null]);
 /** The same card in the same state with the same options (its own id aside). */
-function twin(env: ReturnType<typeof wire>, a: number, b: number): boolean {
-  const look = (id: number) => {
-    const c = env.cards.get(id) ?? ({ id, name: String(id) } as Wire);
-    const rest = Object.entries(c).filter(([k]) => k !== "id").sort(([x], [y]) => x.localeCompare(y));
-    const dressed = [...env.cards.values()].filter((x) => x.attachedTo === id).map((x) => x.name).sort();
-    const d = env.d, refs = d && "refs" in d && Array.isArray(d.refs) ? (d.refs as Raw[]) : [];
-    const opts = refs.flatMap((r, i) => (r && Object.values(r).includes(id) ? [JSON.stringify([Object.entries(r).map(([k, v]) => [k, v === id ? "*" : v]), (d!.options[i] ?? "").split(String(id)).join("*")])] : [])).sort();
-    return JSON.stringify([rest, dressed, opts]);
-  };
-  return look(a) === look(b);
+function twin(w: W, a: number, b: number): boolean {
+  const opts = (id: number) => w.refs.flatMap((r, i) => (r && Object.values(r).includes(id) ? [canonOpt(w, i + 1)] : [])).sort().join();
+  return look(w, a) === look(w, b) && opts(a) === opts(b);
 }
 
-/** Every violation of the property for gestures on the groups of `t` (as opened from `env`). */
-function violations(t: Table, env: Raw, label: string): string[] {
+/** Every violation of the property for gestures on the groups of `t`, piled as `piles` (and opened from `env`). */
+function violations(t: Table, env: Raw, piles: readonly number[][], label: string): string[] {
   const out: string[] = [];
   const w = wire(env);
-  const groups = (t.state as unknown as { groups: { id: string; kind: string; seat: string | null; members: CardId[] }[] }).groups;
+  const groups = groupsOf(t);
   const cardGroups = groups.filter((g) => g.kind !== "plate" && g.kind !== "zone" && g.kind !== "stack");
-  const asTarget = (g: (typeof groups)[number]): Target => (g.kind === "plate" ? { seat: g.seat as never } : { group: g.id, members: g.members });
+  const asTarget = (g: Group): Target => (g.kind === "plate" ? { seat: g.seat as never } : { group: g.id, members: g.members });
   const multi = cardGroups.filter((g) => g.members.length > 1);
   const plates = groups.filter((g) => g.kind === "plate");
   const gestures: [Gesture, End[]][] = [];
@@ -93,6 +108,15 @@ function violations(t: Table, env: Raw, label: string): string[] {
     for (const o of [...plates, ...cardGroups.filter((x) => x !== g)]) gestures.push([{ a: "drag", from: asTarget(g), onto: asTarget(o) }, o.members.length > 1 ? ["from", "onto"] : ["from"]]);
     for (const s of cardGroups.filter((x) => x.members.length === 1)) gestures.push([{ a: "drag", from: asTarget(s), onto: asTarget(g) }, ["onto"]]);
   }
+  /** The gesture with the group at `end` listing its members in another order (re-piled). */
+  const reordered = (g: Gesture, end: End, members: readonly CardId[]): Outcome => {
+    const k = piles.findIndex((p) => p.length === members.length && p.every((m) => members.includes(m as CardId)));
+    const again = t.fork();
+    again.pile(piles.map((p, i) => (i === k ? [...members] : p)));
+    const other = (x: Target): Target => ("group" in x && x.members.every((m) => members.includes(m)) ? { group: `p${members[0]}`, members: [...members] } : x);
+    const g2: Gesture = g.a === "tap" ? { a: "tap", at: other(g.at) } : { a: "drag", from: other(g.from), onto: other(g.onto) };
+    return run(again, withEnd(g2, end, { group: `p${members[0]}`, members: [...members] })).o;
+  };
   for (const [g, ends] of gestures) {
     const name = `${label} ${JSON.stringify(g)}`;
     const { t: after, o } = run(t, g);
@@ -110,38 +134,105 @@ function violations(t: Table, env: Raw, label: string): string[] {
       }
       for (const { m } of end.each) {
         const done = run(after, { a: "tap", at: { card: m } }).o, direct = run(t, withEnd(g, end.end, { card: m })).o;
-        if (!sameCommit(done, direct) || done.choose !== direct.choose) out.push(`${name}: choosing ${m} did ${JSON.stringify(done)}, the gesture on it ${JSON.stringify(direct)}`);
+        if (!sameCommit(done, direct) || (done.choose !== null) !== (direct.choose !== null)) out.push(`${name}: choosing ${m} did ${JSON.stringify(done)}, the gesture on it ${JSON.stringify(direct)}`);
       }
       continue;
     }
     if (!commits(o)) continue;
-    // A commit: exactly what one member's gesture would do...
-    const combos = alone.length === 1 ? alone[0]!.each.map((x) => x.o) : alone.flatMap((a) => a.each.map((x) => x.o));
-    if (!combos.some((x) => sameCommit(x, o))) out.push(`${name}: committed ${JSON.stringify(o)}, which no member alone would`);
-    // ...and every member it could mean is that member's twin; those it cannot share their name.
     for (const a of alone) {
-      const meant = a.each.filter((x) => meaningful(x.o)).map((x) => x.m);
-      if (meant.length < 2 && a.members.every((m) => meant.includes(m) || w.cards.get(m)?.name === w.cards.get(meant[0] ?? m)?.name)) continue;
-      const first = meant[0];
+      const meant = a.each.filter((x) => meaningful(x.o));
+      // the end does not matter: each member's gesture commits the very same
+      if (meant.length && meant.every((x) => commits(x.o) && sameCommit(x.o, meant[0]!.o)) && sameCommit(o, meant[0]!.o)) continue;
+      const first = meant[0]?.m;
       if (first === undefined) continue;
-      if (!meant.every((m) => twin(w, first, m))) out.push(`${name}: committed while its ${a.end} could mean distinct cards ${JSON.stringify(meant)}`);
-      else if (!a.members.every((m) => meant.includes(m) || w.cards.get(m)?.name === w.cards.get(first)?.name)) out.push(`${name}: committed for ${first}, hidden among others ${JSON.stringify(a.members)}`);
+      if (!meant.every((x) => twin(w, first, x.m))) {
+        out.push(`${name}: committed while its ${a.end} could mean distinct cards ${JSON.stringify(meant.map((x) => x.m))}`);
+        continue;
+      }
+      if (!a.members.every((m) => meant.some((x) => x.m === m) || w.cards.get(m)?.name === w.cards.get(first)?.name)) {
+        out.push(`${name}: committed for ${first}, hidden among others ${JSON.stringify(a.members)}`);
+        continue;
+      }
+      // twins: the same whichever of them the group lists first
+      const mine = canon(w, o);
+      for (let k = 1; k < a.members.length; k++) {
+        const order = [...a.members.slice(k), ...a.members.slice(0, k)];
+        const other = reordered(g, a.end, order);
+        if (canon(w, other) !== mine) out.push(`${name}: committed ${mine}, but ${other.choose ? "a chooser" : canon(w, other)} with its ${a.end} listed ${JSON.stringify(order)}`);
+      }
     }
   }
-  // Every option on the table is reachable from its group.
-  const d = w.d, refs = d && "refs" in d && Array.isArray(d.refs) ? (d.refs as Raw[]) : [];
-  for (const id of new Set(refs.flatMap((r) => Object.values(r ?? {}).filter((v): v is number => typeof v === "number")))) {
-    const g = multi.find((x) => x.members.includes(id as CardId));
-    if (!g) continue;
-    const direct = run(t, { a: "tap", at: { card: id as CardId } }).o;
-    if (!meaningful(direct)) continue;
-    const { t: after, o } = run(t, { a: "tap", at: asTarget(g) });
-    if (o.choose !== null) {
-      const done = run(after, { a: "tap", at: { card: id as CardId } }).o;
-      if (!sameCommit(done, direct)) out.push(`${label}: ${id} chosen from ${g.id} did ${JSON.stringify(done)}, a tap on it ${JSON.stringify(direct)}`);
-    } else if (!meaningful(o)) out.push(`${label}: ${id} is unreachable in ${g.id}`);
+  // Every option the refs put on the table reaches the answer sent.
+  for (let o = 1; o <= w.refs.length; o++) {
+    const why = unreached(t, w, o);
+    if (why) out.push(`${label}: option ${o} ${JSON.stringify(w.refs[o - 1])} ${why}`);
   }
   return out;
+}
+
+/** Tap a card through what layout drew: its group, and the chooser that group opens. */
+function through(t: Table, card: number): Effect[] {
+  const g = groupsOf(t).find((x) => x.kind !== "plate" && x.kind !== "zone" && x.members.includes(card as CardId));
+  if (!g || g.members.length === 1) return t.tapCard(card);
+  const fx = t.tap({ group: g.id, members: g.members });
+  return fx.some((e) => e.kind === "choose") ? [...fx, ...t.tapCard(card)] : fx;
+}
+
+/** Why option `o` (by its wire ref) cannot be driven to the answer sent, or null when it can. */
+function unreached(base: Table, w: W, o: number): string | null {
+  const d = w.d, r = w.refs[o - 1] as Record<string, unknown> | undefined;
+  if (!d || !r || draftOf(base).sel.includes(o)) return null; // (picked already: reached)
+  const card = typeof r["card"] === "number" ? r["card"] : null;
+  const t = base.fork();
+  const fx: Effect[] = [];
+  const commit = () => {
+    const b = t.allButtons().find((x) => x.enabled && /^(Pay|Attack \(|Block \(|Done \()/.test(x.label));
+    if (b) fx.push(...t.act({ a: "press", button: b.id }));
+  };
+  switch (d.kind) {
+    case "pay":
+      if (card === null) return null;
+      fx.push(...through(t, card));
+      if (t.p.controls.sheet?.kind === "mana") fx.push(...t.pick(o));
+      commit();
+      break;
+    case "targets":
+    case "choose":
+      if (t.p.controls.sheet?.kind === "chooser") {
+        fx.push(...t.pick(o));
+        const b = t.p.controls.sheet?.buttons.find((x) => x.enabled && x.role === "done");
+        if (b && !fx.some((e) => e.kind === "send")) fx.push(...t.act({ a: "press", button: b.id }));
+      } else if (card !== null) fx.push(...through(t, card));
+      else if (typeof r["player"] === "string") fx.push(...t.tapSeat(r["player"]));
+      if (!fx.some((e) => e.kind === "send")) commit();
+      break;
+    case "attack": {
+      if (card === null) return null;
+      const to = r["to"];
+      if (typeof to === "number") fx.push(...through(t, to));
+      else if (typeof to === "string") fx.push(...t.tapSeat(to));
+      if (!draftOf(t).sel.includes(o)) fx.push(...through(t, card)); // (a pick re-aimed there already has it)
+      commit();
+      break;
+    }
+    case "block":
+      if (card === null) return null;
+      fx.push(...through(t, card));
+      if (draftOf(t).holding === card && typeof r["blocks"] === "number") fx.push(...through(t, r["blocks"]));
+      commit();
+      break;
+    case "play":
+      if (card === null) return null;
+      fx.push(...through(t, card));
+      if (fx.some((e) => e.kind === "inspect")) fx.push(...t.pick(o, card));
+      break;
+    default:
+      return null;
+  }
+  const send = fx.find((e): e is Extract<Effect, { kind: "send" }> => e.kind === "send");
+  const got = send && "answer" in send.body ? send.body.answer : draftOf(t).sel;
+  const want = canonOpt(w, o);
+  return got.some((x) => x === o || canonOpt(w, x) === want) ? null : `ends in ${JSON.stringify(got)}${send ? " sent" : " picked"}`;
 }
 
 /** The battlefields piled as layout may pile them: runs of three (mixed piles), and by name (copies, in any state). */
@@ -167,7 +258,7 @@ function check(env: Raw, label: string, piles?: number[][], prepare?: (t: Table)
   const out: string[] = [];
   for (const p of piles ? [piles] : pilings(t)) {
     t.pile(p);
-    out.push(...violations(t, env, `${label} piles ${JSON.stringify(p)}`));
+    out.push(...violations(t, env, p, `${label} piles ${JSON.stringify(p)}`));
   }
   return out;
 }
@@ -214,6 +305,62 @@ const CROWDED: { name: string; env: () => Raw; piles: number[][]; prepare?: (t: 
   },
 ];
 
+// 011 (my Islands 810 and 816, my Grizzly Bears 817 and 818), changed so the twins are not twins, or are.
+const PAY011 = "011-pay-my-planeswalker.json";
+const card011 = (mine: Wire[], id: number) => mine.find((c) => c.id === id)!;
+/** 011 with my second bear (818) made a twin of the first (817), then `f`. */
+const edit011 = (f: (mine: Wire[], v: Raw) => void) => (v: Raw) => {
+  const mine = player(v, "You").battlefield;
+  Object.assign(card011(mine, 818), { ...structuredClone(card011(mine, 817)), id: 818 });
+  f(mine, v);
+};
+/** Target one of my bears (817, 818). */
+const bears = (f: (mine: Wire[], v: Raw) => void) =>
+  withDecision(PAY011, { kind: "targets", prompt: "target creature", options: ["Grizzly Bears", "Grizzly Bears"], refs: [{ card: 817 }, { card: 818 }], min: 1, max: 1 }, edit011(f));
+/** My bears attack Atraxa or Dack, with `refs` as given. */
+const bearsAttack = (refs: { card: number; to: string | number }[]) =>
+  withDecision(PAY011, { kind: "attack", prompt: "attackers", options: refs.map((r) => `${r.card} -> ${r.to}`), refs, min: 0, max: refs.length }, edit011(() => {}));
+
+CROWDED.push(
+  {
+    name: "1. a well of Islands, one owned by another player",
+    env: () =>
+      withDecision(PAY011, { kind: "pay", prompt: "mana to pay {U}", options: ["Island (U)", "Island (U)"], refs: [{ card: 810 }, { card: 816 }], min: 0, max: 1 }, edit011((mine) => void (card011(mine, 816).owner = "Dack"))),
+    piles: [[810, 816]],
+  },
+  { name: "1. twin bears (the rule commits for twins)", env: () => bears(() => {}), piles: [[817, 818]] },
+  { name: "1. a token and a card of the same name", env: () => bears((mine) => void (card011(mine, 818).token = true)), piles: [[817, 818]] },
+  {
+    name: "1. two face-down cards whose names their controller sees",
+    env: () =>
+      bears((mine) => {
+        Object.assign(card011(mine, 817), { faceDown: true, name: "Willbender" });
+        Object.assign(card011(mine, 818), { faceDown: true, name: "Hystrodon" });
+      }),
+    piles: [[817, 818]],
+  },
+  {
+    name: "1. same-named Auras controlled by different players",
+    env: () =>
+      bears((mine, v) => {
+        mine.push({ id: 991, name: "Rancor", type: "Enchantment - Aura", owner: "You", controller: "You", attachedTo: 817 });
+        player(v, "Dack").battlefield.push({ id: 992, name: "Rancor", type: "Enchantment - Aura", owner: "Dack", controller: "Dack", attachedTo: 818 });
+      }),
+    piles: [[817, 818]],
+  },
+  {
+    name: "2. one of two twin attackers picked",
+    env: () => bearsAttack([817, 818].flatMap((card) => ["Atraxa", "Dack"].map((to) => ({ card, to })))),
+    piles: [[817, 818]],
+    prepare: (t) => void t.tapCard(817),
+  },
+  {
+    name: "2. twin attackers whose refs come in another order (their fallback defenders differ)",
+    env: () => bearsAttack([{ card: 819, to: "Princess" }, { card: 817, to: "Dack" }, { card: 817, to: "Atraxa" }, { card: 818, to: "Atraxa" }, { card: 818, to: "Dack" }]),
+    piles: [[817, 818]],
+  },
+);
+
 describe("a gesture on a group commits only what the player could have meant", () => {
   it.each(CROWDED)("$name", ({ name, env, piles, prepare }) => {
     expect(check(env(), name, piles, prepare)).toEqual([]);
@@ -221,6 +368,38 @@ describe("a gesture on a group commits only what the player could have meant", (
 
   it.each(corpusNames.filter((n) => decoded(raw(n)).decision !== null))("%s, piled three ways", (name) => {
     expect(check(raw(name), name)).toEqual([]);
+  });
+
+  it("3. a choice refused in the chooser keeps the gesture: the next card chosen completes it", () => {
+    // 871 may attack Atraxa or Princess; 829 only Atraxa
+    const refs = [{ card: 871, to: "Atraxa" }, { card: 871, to: "Princess" }, { card: 829, to: "Atraxa" }];
+    const t = new Table();
+    t.open(withDecision("037-attack-poison.json", { kind: "attack", prompt: "attackers", options: refs.map((r) => `${r.card} -> ${r.to}`), refs, min: 0, max: 3 }));
+    t.pile([[871, 829]]);
+    expect(t.drag({ group: "p871", members: [871, 829] as CardId[] }, { seat: "Princess" as never }).some((e) => e.kind === "choose")).toBe(true);
+    expect(t.tapCard(829).some((e) => e.kind === "toast")).toBe(true); // it can't attack Princess
+    t.tapCard(871);
+    t.press("Attack (1)");
+    expect(t.answers()).toEqual([[2]]); // 871 at Princess
+  });
+
+  it("5. a chooser open holds auto-pass: nothing is passed while the player chooses", () => {
+    // 040: an opponent's spell on the stack and only mana abilities to answer it: auto-pass counts
+    const t = new Table();
+    t.open("040-play-watching.json");
+    expect(t.due.size).toBe(1);
+    t.pile([[75, 30]]);
+    expect(t.drag({ group: "p75", members: [75, 30] as CardId[] }, { seat: "You" as never }).some((e) => e.kind === "choose")).toBe(true);
+    t.advance(10_000);
+    expect(t.sends()).toEqual([]);
+  });
+
+  it("7. an end the action ignores is not asked about: a rock dragged onto a mixed pile activates at once", () => {
+    const t = new Table();
+    t.open(withDecision("040-play-watching.json", { kind: "play", prompt: "", options: ["Pass", "Sol Ring: add {C}{C}"], refs: [{}, { card: 55, spell: false }], min: 1, max: 1 }, (v) => void (player(v, "You").battlefield.find((c) => c.id === 55)!.tapped = false)));
+    t.pile([[75, 30]]);
+    expect(t.drag({ card: 55 as CardId }, { group: "p75", members: [75, 30] as CardId[] }).some((e) => e.kind === "choose")).toBe(false);
+    expect(t.answers()).toEqual([[2]]);
   });
 
   it("a choice made after the plan changed: only the card chosen, and only while its group holds it", () => {

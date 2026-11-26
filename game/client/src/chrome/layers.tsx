@@ -262,6 +262,14 @@ export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Ele
         </span>
       ) : null}
       <Close label="Put back" send={send} />
+      {/* For the keyboard: each card fanned, as a tap on it (shown while one has focus). */}
+      <span class="cards" role="group" aria-label="Cards">
+        {view.cards.map((c) => (
+          <button type="button" key={c.id} data-fk={`sift:card:${c.id}`} onClick={() => send({ a: "tap", on: { card: c.id } })}>
+            {c.label}
+          </button>
+        ))}
+      </span>
     </div>
   );
 }

@@ -797,6 +797,29 @@
     font: italic 400 calc(14 * var(--u)) / 1.2 var(--serif);
     color: var(--ink-2);
   }
+  /* The sifted cards as controls, for the keyboard: out of sight until one has focus, then a row under the caption. */
+  .l-sift .cards {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(6 * var(--u));
+    max-width: 90vw;
+    clip-path: inset(50%);
+  }
+  .l-sift .cards:focus-within {
+    clip-path: none;
+  }
+  .l-sift .cards button {
+    min-height: 44px;
+    padding: 0 calc(12 * var(--u));
+    border-radius: 4px;
+    background: var(--sheet);
+    color: var(--ink);
+    box-shadow: var(--sheet-shadow);
+    font: 400 calc(16 * var(--u)) var(--serif);
+  }
   .l-sift .pager {
     display: flex;
     align-items: center;

@@ -14,7 +14,7 @@ import type { ChangeSet, TableModel } from "../model";
 import * as narrative from "../narrative";
 import * as play from "../play";
 import type { Ms } from "../platform";
-import type { CardId, ClientLogEntry, Continuity, Decision, Snapshot } from "../protocol";
+import type { CardId, ClientLogEntry, CommitId, Continuity, Decision, Snapshot } from "../protocol";
 import { mustNotMiss } from "../scene/stage/backlog";
 import { siftCards } from "../scene/stage/describe";
 import type { Recap, SceneReport } from "../scene/stage/types";
@@ -81,6 +81,25 @@ interface Tx {
 const done = (tx: Tx): Step => ({ state: tx.s, effects: tx.fx });
 
 export function update(s: AppState, m: Msg): Step {
+  return choosing(updated(s, m), timeOf(m));
+}
+
+/**
+ * A sift play opened for a gesture (`choosing`) lives exactly as long as the gesture waits on it (play's
+ * `controls.choosing`): one whose gesture is done, refused for good or gone with its decision closes; a gesture whose
+ * sift was put away (Escape, Put back, its group gone from the table) is let go, so no later tap completes it.
+ */
+function choosing(st: Step, at: Ms): Step {
+  const c = play.present(st.state.play).controls;
+  const sift = [...st.state.focus.layers, ...st.state.focus.aside].find((e) => e.layer === "sift" && e.choosing);
+  const tx: Tx = { s: st.state, fx: [...st.effects] };
+  if (sift && sift.group !== c.choosing) tx.s = { ...tx.s, focus: close(tx.s.focus, "sift") };
+  if (c.choosing !== null && sift?.group !== c.choosing)
+    toPlay(tx, { t: "act", stamp: { at, commit: 0 as CommitId }, stop: c.stop, act: { a: "putBack" } }, at);
+  return tx.s === st.state ? st : { state: tx.s, effects: tx.fx };
+}
+
+function updated(s: AppState, m: Msg): Step {
   const r = route(s, m);
   const origin = ("origin" in m && m.origin) || null;
   const state = focused(s, r.state.moments === s.moments ? r.state : pruneMoments(r.state), origin);
@@ -185,10 +204,6 @@ function toPlay(tx: Tx, e: play.Event, at: Ms): void {
   const r = play.step(tx.s.play, e);
   const stop = play.present(r.state).controls.stop;
   tx.s = { ...tx.s, play: r.state, session: tx.s.session.stop === stop ? tx.s.session : { ...tx.s.session, stop } };
-  // A card chosen in the sift play opened for the choice: the choice is made, the sift goes.
-  const t = top(tx.s.focus);
-  if (t?.layer === "sift" && t.choosing && e.t === "act" && e.act.a === "tap" && "card" in e.act.on && !r.effects.some((x) => x.kind === "unclaimed" || x.kind === "choose" || x.kind === "toast"))
-    tx.s = { ...tx.s, focus: close(tx.s.focus, "sift") };
   for (const fx of r.effects) playEffect(tx, fx, at, e);
 }
 

@@ -85,7 +85,10 @@ export type Act =
   | { readonly a: "pick"; readonly option: number; readonly card?: CardId }
   /** The number stepper. */
   | { readonly a: "step"; readonly by: number }
-  | { readonly a: "dismiss" };
+  | { readonly a: "dismiss" }
+  /** The chooser play opened for a gesture (`Controls.choosing`) was put away (Escape, Put back, its group gone): the
+   *  gesture waiting on it goes. */
+  | { readonly a: "putBack" };
 
 // ---- Out ---------------------------------------------------------------------------------------------------------
 
@@ -221,6 +224,8 @@ export interface Controls {
   readonly sheet: SheetView | null;
   /** The inspector's buttons for a card: pressing one is a `pick` of its option. */
   readonly cardActions: ReadonlyMap<CardId, readonly CardAction[]>;
+  /** A gesture waits for the player to choose one of this group's members (its sift, the app's to open and close). */
+  readonly choosing: HitGroupId | null;
 }
 
 export interface Presentation {

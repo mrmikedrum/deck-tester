@@ -174,5 +174,9 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
     pages,
     range: pages > 1 ? `${from + 1}–${to} of ${n}` : null,
     top: Math.min(...places.map((q) => q.rect.top)),
+    cards: all.ids.slice(from, to).flatMap((id) => {
+      const c = model.cards.get(id);
+      return c ? [{ id, label: c.tapped ? `${c.face.name}, tapped` : c.face.name }] : [];
+    }),
   };
 }
