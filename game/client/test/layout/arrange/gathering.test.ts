@@ -26,7 +26,7 @@ const unitOf = (plan: TablePlan, card: number): Unit => {
   throw new Error(`no unit for ${card}`);
 };
 const drawn = (m: TableModel, o: { combat?: CombatPairs | null; viewport?: { w: number; h: number } } = {}) =>
-  planTable(tableInputOf(m, { viewport: o.viewport ?? VP, ...(o.combat ? { combat: o.combat } : {}), shadow: { draw: true } }));
+  planTable(tableInputOf(m, { viewport: o.viewport ?? VP, ...(o.combat ? { combat: o.combat } : {}), engine: { draw: true } }));
 const box = (plan: TablePlan, card: number) => bounds(plan.hits.groups.find((g) => g.id === unitOf(plan, card).id)!.quad);
 const midX = (plan: TablePlan, card: number) => (box(plan, card).l + box(plan, card).r) / 2;
 
@@ -98,7 +98,7 @@ describe("the clash", () => {
   it("attackers keep the order they stood in; blockers come to them", () => {
     const m = turn15(ATRAXA6.map((a) => [a, "You"] as const));
     // where they stood on their page in this combat (the table form: each its own unit, at home)
-    const rest = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", shadow: { draw: true } }));
+    const rest = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", engine: { draw: true } }));
     const stood = [...ATRAXA6].sort((a, b) => midX(rest, a) - midX(rest, b));
     const plan = drawn(m);
     expect([...ATRAXA6].sort((a, b) => midX(plan, a) - midX(plan, b))).toEqual(stood);
@@ -260,21 +260,94 @@ describe("the table form", () => {
     const m = turn15([]);
     const rest = drawn(m);
     const draft: CombatPairs = { attacks: [1089, 1057].map((a) => ({ attacker: id(a), defender: { seat: m.seats[1]!.id } })), blocks: [] };
-    const plan = planTable(tableInputOf(m, { viewport: VP, combat: draft, memory: rest.memory, shadow: { draw: true } }));
+    const plan = planTable(tableInputOf(m, { viewport: VP, combat: draft, memory: rest.memory, engine: { draw: true } }));
     expect(plan.gathering!.form).toBe("table");
     expect(unitOf(plan, 1089).fighting).toBeFalsy();
     expect(unitOf(plan, 1089).placement).toEqual(unitOf(rest, 1089).placement);
     expect(plan.gathering!.wings[0]!.unblocked).toBe(4);
   });
 
-  it("between opponents before blocks: the table form; with a block, the clash", () => {
-    expect(drawn(turn15([[1015, "Dack"], [1064, "Dack"]], [], "Marath")).gathering!.form).toBe("table");
-    expect(drawn(turn15([[1015, "Dack"], [1064, "Dack"]], [[1024, 1015]], "Marath")).gathering!.form).toBe("clash");
+  it("between opponents before blocks: the table form, nothing moves, the mats stay", () => {
+    const plan = drawn(turn15([[1015, "Dack"], [1064, "Dack"]], [], "Marath"));
+    expect(plan.gathering!.form).toBe("table");
+    expect(plan.part).toBe(0);
+    expect(unitOf(plan, 1015).fighting).toBeFalsy();
+  });
+});
+
+describe("duels in the parted middle (a fight between opponents)", () => {
+  const MARATH = [[1015, "Dack"], [1064, "Dack"], [1153, "Dack"], [1204, "Dack"]] as const;
+  /** Everything on an opponent's leaf (fighters gone to the duels aside) within x l..r: its lowest point on screen. */
+  const lowest = (plan: TablePlan, l: number, r: number): number => {
+    let low = -Infinity;
+    for (const g of plan.hits.groups) {
+      if (g.seat === null || g.seat === "You" || g.kind === "plate" || unitFighting(plan, g.id)) continue;
+      const b = bounds(g.quad);
+      if (b.r > l && b.l < r) low = Math.max(low, b.b);
+    }
+    return low;
+  };
+  const unitFighting = (plan: TablePlan, gid: string) => [...plan.seats.values()].some((sp) => sp.units.some((u) => u.id === gid && u.fighting));
+
+  it("one block: the table form, a duel standing in the middle at table size, the attacker on the left", () => {
+    const plan = drawn(turn15(MARATH, [[1024, 1015]], "Marath"));
+    const g = plan.gathering!;
+    expect(g.form).toBe("table");
+    expect(g.focus).toBe(false);
+    expect(plan.crowded).toBe(false);
+    for (const c of [1015, 1024]) expect(unitOf(plan, c).fighting, String(c)).toBe(true);
+    for (const c of [1064, 1153, 1204]) expect(unitOf(plan, c).fighting, String(c)).toBeFalsy();
+    expect(box(plan, 1015).r).toBeLessThan(box(plan, 1024).l);
+    // its feet just over my field row's tops, its top clear under every opponent's feet: the mats parted for it
+    expect(g.duels!.b).toBeLessThanOrEqual(plan.fieldTop);
+    expect(lowest(plan, g.duels!.l, g.duels!.r)).toBeLessThanOrEqual(g.duels!.t);
+    expect(plan.part).toBeGreaterThan(0);
+    expect(plan.part).toBeLessThanOrEqual(0.35);
+    // the clasp between them
+    const col = g.wings[0]!.columns.find((c) => c.attackers.includes(id(1015)))!;
+    expect(col.clasp!.x).toBeGreaterThan(box(plan, 1015).r - 1);
+    expect(col.clasp!.x).toBeLessThan(box(plan, 1024).l + 1);
+    // every leaf holds its floors and patches parted; no fighter is covered
+    expect(plan.violations).toEqual([]);
+  });
+
+  it("a parting moves no unit: every leaf keeps its units, members and places", () => {
+    const rest = drawn(turn15(MARATH, [], "Marath")), parted = drawn(turn15(MARATH, [[1024, 1015]], "Marath"));
+    for (const seat of ["Atraxa"]) {
+      const a = rest.seats.get(seat as never)!.units, b = parted.seats.get(seat as never)!.units;
+      expect(b.map((u) => [u.id, u.members])).toEqual(a.map((u) => [u.id, u.members]));
+      // slid along its away: the same shift for every unit
+      const d = b.map((u, i) => u.placement.pos.z - a[i]!.placement.pos.z);
+      for (const x of d) expect(x).toBeCloseTo(d[0]!, 6);
+      expect(d[0]!).toBeLessThan(0);
+    }
+  });
+
+  it("after the fight the rest plan comes back, equal by rev", () => {
+    const rest = drawn(turn15(MARATH, [], "Marath"));
+    drawn(turn15(MARATH, [[1024, 1015]], "Marath"));
+    const m = turn15([], [], "Marath");
+    const before = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+    const after = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+    expect(after.rev).toBe(before.rev);
+    expect(after.part).toBe(0);
+    expect(rest.part).toBe(0);
+  });
+
+  it("all or nothing: duels that do not fit the middle raise the clash; set aside, everyone stays home", () => {
+    const many = turn15(MARATH, [[1024, 1015], [1129, 1064], [1048, 1153], [1080, 1204]], "Marath");
+    const plan = drawn(many);
+    expect(plan.crowded).toBe(true);
+    expect(plan.gathering!.form).toBe("clash");
+    const aside = planTable(tableInputOf(many, { viewport: VP, combatForm: "table", engine: { draw: true } }));
+    expect(aside.crowded).toBe(true);
+    expect(aside.gathering!.form).toBe("table");
+    for (const c of [1015, 1024]) expect(unitOf(aside, c).fighting, String(c)).toBeFalsy();
   });
 
   it("set aside (the app's combatForm), a fight at me stays home", () => {
     const m = turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4);
-    const plan = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", shadow: { draw: true } }));
+    const plan = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", engine: { draw: true } }));
     expect(plan.gathering!.form).toBe("table");
     for (const a of ATRAXA6) expect(unitOf(plan, a).fighting).toBeFalsy();
   });

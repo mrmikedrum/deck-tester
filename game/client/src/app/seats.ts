@@ -39,8 +39,8 @@ const overlap = (a: Box, b: Box): number => Math.max(0, Math.min(a.r, b.r) - Mat
 
 /**
  * Where the top row's plates go (each its left edge, CSS px): each as near its leaf (`pref`, its preferred left edge)
- * as it can be without covering a card the table shows (`under`: the boxes of the plan's hit groups) or another plate.
- * Keep the whole row on screen and favor the preferred position of the plate across the table.
+ * as it can be without covering a card the table shows (`under`: the boxes of the plan's hit groups) or another plate,
+ * in their leaves' order. Keep the whole row on screen and favor the preferred position of the plate across the table.
  */
 export function placeTop(
   plates: readonly { readonly seat: string; readonly place: string; readonly w: number; readonly pref: number }[],
@@ -49,6 +49,8 @@ export function placeTop(
   gap = 0,
 ): Map<string, number> {
   const visible = under.filter((box) => box.t < row.b && box.b > row.t);
+  const byPref = plates.map((p, j) => ({ p, j })).sort((a, b) => a.p.pref - b.p.pref || a.j - b.j);
+  const rank = plates.map((_, j) => byPref.findIndex((x) => x.j === j));
   const count = 1 << plates.length;
   const widths = Array.from({ length: count }, (_, mask) => plates.reduce((sum, p, j) => sum + (mask & (1 << j) ? p.w + gap : 0), 0));
   const slack = Math.max(0, row.r - row.l - widths[count - 1]! + gap);
@@ -68,7 +70,9 @@ export function placeTop(
   const shifts = [...stops].sort((a, b) => a - b);
   const best: { cost: number; plate: number }[][] = [shifts.map(() => ({ cost: 0, plate: -1 }))];
   for (let mask = 1; mask < count; mask++) {
-    const choices = plates.flatMap((p, j) => mask & (1 << j) ? [{ p, j, prev: mask ^ (1 << j) }] : []);
+    // Plates keep their leaves' order (opponents always sit in the same place relative to me): the rightmost of a set is
+    // the one whose leaf is furthest right.
+    const choices = plates.flatMap((p, j) => (mask & (1 << j) && !plates.some((_, k) => k !== j && mask & (1 << k) && rank[k]! > rank[j]!) ? [{ p, j, prev: mask ^ (1 << j) }] : []));
     const scores: typeof best[number] = [];
     best.push(scores);
     for (const [i, shift] of shifts.entries()) {

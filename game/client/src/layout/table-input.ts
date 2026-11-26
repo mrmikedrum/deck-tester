@@ -11,9 +11,9 @@ import { engineCombat, fighters, mergeCombat } from "./combat";
 import type { CombatPairs } from "./combat";
 import type { CombatForm } from "./arrange/gathering";
 import type { TableModel } from "../model";
-import { shadowInputOf } from "./arrange/shadow";
+import { leafInputOf } from "./arrange/leaves";
 import { arrangedMemory } from "./arrange/adapter";
-import type { ShadowOptions } from "./arrange/shadow";
+import type { EngineOptions } from "./arrange/leaves";
 
 export interface TableInputOptions {
   readonly viewport: Viewport;
@@ -33,8 +33,8 @@ export interface TableInputOptions {
   readonly blocked?: ReadonlySet<CardId>;
   /** The clash's attackers in the order it first stood them (the app keeps it for the combat). */
   readonly order?: readonly CardId[];
-  /** Plan the across leaf with the arrangement engine too (debug only; `TablePlan.shadow`). */
-  readonly shadow?: ShadowOptions;
+  /** Lay every opponent's leaf out with the arrangement engine (`TablePlan.leaves`); drawn when `draw` (the app). */
+  readonly engine?: EngineOptions;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -74,6 +74,16 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.
     ...(blocked.size ? { blocked } : {}),
     ...(o.order?.length ? { order: o.order } : {}),
-    ...(o.shadow && model.seats.length === 4 ? { shadow: shadowInputOf(model, model.seats[2]!.id, involved, o.settling ?? false, { ...o.shadow, memory: o.shadow.memory ?? arrangedMemory(o.memory?.get(model.seats[2]!.id)) }) } : {}),
+    ...(o.engine && model.seats.length === 4 ? { engine: engineInputOf(model, involved, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
   };
+}
+
+/** Every opponent's leaf (every seat but the perspective's), each with its own memory: given, or carried in the layout
+ *  memory. */
+function engineInputOf(model: TableModel, involved: ReadonlySet<CardId>, settling: boolean, o: EngineOptions, memory: ReadonlyMap<SeatId, LayoutMemory> | null) {
+  const leaves = model.seats.slice(1).map((st) => {
+    const m = o.memory?.has(st.id) ? (o.memory.get(st.id) ?? null) : arrangedMemory(memory?.get(st.id));
+    return leafInputOf(model, st.id, involved, settling, { ...o, memory: m });
+  });
+  return { leaves, draw: !!o.draw };
 }

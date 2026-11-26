@@ -1,20 +1,22 @@
-// The shadow plan (§6.1 step 5): `planTable` arranges the across leaf with the engine beside `mat` and records both.
-// Nothing the player sees reads it: it is for goldens, the bench and the debug bridge until the across leaf switches.
+// The opponents' leaves on the engine (§6.1 step 5, §6.2 step 8): `planTable` arranges every opponent's leaf with the
+// arrangement engine. Drawn (`draw`), each leaf is its seat's plan (adapter.ts); otherwise it is only recorded beside
+// `mat`'s plan of the same seat, for goldens and the bench.
 import type { TableModel } from "../../model";
 import { boardOf } from "../board";
 import type { Projector } from "../projector";
-import type { SeatSlot } from "../template";
+import type { LeafGeometry, Parting, SeatSlot } from "../template";
 import type { CardId, Rect, SeatId } from "../types";
 import { arrCard } from "./card";
-import type { ArrCard, ArrangeResult, Clock, ContainerMemory } from "./contract";
+import type { ArrCard, ArrangeInput, ArrangeResult, Clock, ContainerMemory } from "./contract";
 import { NO_RELATIONS } from "./contract";
-import { PARTED, leafContainer } from "./leaf";
+import { leafContainer, partedPose } from "./leaf";
 import { momentOf } from "./moment";
 import type { DecisionFacts, Moment } from "./moment";
 import { POLICIES, policyFor } from "./policies/select";
 import { arrange } from "./solver";
 
-export interface ShadowInput {
+/** One opponent's leaf, as the engine is given it. */
+export interface LeafInput {
   readonly seat: SeatId;
   readonly viewer: SeatId;
   readonly cards: readonly ArrCard[];
@@ -26,31 +28,39 @@ export interface ShadowInput {
   readonly memory: ContainerMemory | null;
   /** Force a policy (a debug switch); else the seat's choice from its battlefield. */
   readonly policy?: string;
-  /** Audit the leaf under the parted pose too (goldens, the bench's report): it only reports. */
+  /** Report the leaf's audit under the parting at its most too (goldens, the bench): it only reports. */
   readonly auditPoses?: boolean;
-  /** The engine's leaf is the seat's plan (drawn, tapped, audited); otherwise it is only recorded beside mat. */
-  readonly draw?: boolean;
 }
 
-export interface ShadowPlan {
+/** The opponents' leaves for `planTable`: every one arranged, and drawn as its seat's plan when `draw`. */
+export interface EngineInput {
+  readonly leaves: readonly LeafInput[];
+  readonly draw: boolean;
+}
+
+export interface LeafPlan {
   readonly seat: SeatId;
   readonly policy: string;
+  /** At rest (the parting, when the table parts, is drawn from it: `posed`). */
   readonly result: ArrangeResult | null;
-  /** The engine threw: recorded, never raised (the shadow must not break the plan the player sees). */
+  /** What `arrange` was given, so a pose can draw the same arrangement again. */
+  readonly input: ArrangeInput | null;
+  /** The engine threw: recorded, never raised (a leaf must not break the plan the player sees). */
   readonly error: string | null;
 }
 
-export interface ShadowOptions {
+export interface EngineOptions {
   readonly decision?: DecisionFacts;
-  readonly memory?: ContainerMemory | null;
+  /** Each leaf's memory (absent: what the layout memory carries for its seat). */
+  readonly memory?: ReadonlyMap<SeatId, ContainerMemory | null>;
   readonly policy?: string;
   readonly auditPoses?: boolean;
-  /** Draw the across leaf with the engine (the seat's plan), not only record it. */
+  /** Draw the leaves (each the seat's plan), not only record them. */
   readonly draw?: boolean;
 }
 
-/** The across seat's input from the model: its battlefield as `boardOf` draws it, read from current types. */
-export function shadowInputOf(model: TableModel, seat: SeatId, involved: ReadonlySet<CardId>, settling: boolean, o: ShadowOptions): ShadowInput {
+/** A seat's leaf input from the model: its battlefield as `boardOf` draws it, read from current types. */
+export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlySet<CardId>, settling: boolean, o: Omit<EngineOptions, "memory"> & { readonly memory?: ContainerMemory | null }): LeafInput {
   const cards = boardOf(model, seat).cards.map((c) => arrCard(model, c.id)).filter((c): c is ArrCard => c !== null);
   const decision = o.decision ?? { kind: null, options: [], draft: [] };
   return {
@@ -65,17 +75,17 @@ export function shadowInputOf(model: TableModel, seat: SeatId, involved: Readonl
     memory: o.memory ?? null,
     ...(o.policy !== undefined ? { policy: o.policy } : {}),
     ...(o.auditPoses ? { auditPoses: true } : {}),
-    ...(o.draw ? { draw: true } : {}),
   };
 }
 
-export function shadowPlan(s: ShadowInput, slot: SeatSlot, projector: Projector, safe: Rect): ShadowPlan {
+/** A leaf arranged at rest in its slot, its rows laid to hold under the template's parting at its most. */
+export function planLeaf(s: LeafInput, slot: SeatSlot, leaf: LeafGeometry, part: Parting, projector: Projector, safe: Rect): LeafPlan {
   const forced = s.policy !== undefined ? POLICIES.get(s.policy) : undefined;
   const chosen = forced ? { policy: forced, selection: undefined } : policyFor(s.cards, s.memory, s.clock);
   try {
-    const container = leafContainer({ id: `rest:${s.seat}`, seat: s.seat, viewer: s.viewer, slot, projector, safe, poses: [PARTED] });
+    const container = leafContainer({ id: `rest:${s.seat}`, seat: s.seat, viewer: s.viewer, slot, leaf, projector, safe, poses: [partedPose(part)] });
     const here = new Set(s.cards.map((c) => c.id));
-    const result = arrange({
+    const input: ArrangeInput = {
       container,
       cards: s.cards,
       relations: NO_RELATIONS,
@@ -86,9 +96,10 @@ export function shadowPlan(s: ShadowInput, slot: SeatSlot, projector: Projector,
       memory: s.memory,
       clock: s.clock,
       ...(s.auditPoses ? { auditPoses: true } : {}),
-    });
-    return { seat: s.seat, policy: result.fit.policy, result, error: null };
+    };
+    const result = arrange(input);
+    return { seat: s.seat, policy: result.fit.policy, result, input, error: null };
   } catch (e) {
-    return { seat: s.seat, policy: chosen.policy.id, result: null, error: e instanceof Error ? e.message : String(e) };
+    return { seat: s.seat, policy: chosen.policy.id, result: null, input: null, error: e instanceof Error ? e.message : String(e) };
   }
 }

@@ -1,5 +1,5 @@
-// How long `planTable` takes (docs/game-client-architecture.md "Budgets": 8 ms on the iPad) as the app plans (the across
-// leaf drawn by the arrangement engine, a fight gathered) and with mat alone, over the named inputs of docs/game-arrangement-engine.md §7.3
+// How long `planTable` takes (docs/game-client-architecture.md "Budgets": 8 ms on the iPad) as the app plans (every
+// opponent leaf drawn by the arrangement engine, a fight gathered) and with mat alone, over the named inputs of docs/game-arrangement-engine.md §7.3
 // (client/src/scene/workbench/bench-inputs.ts: the same tables the workbench's bench page times in Safari). A
 // measurement, not a test: it prints the median, p90 and worst per plan, and what the engine did.
 //
@@ -27,8 +27,10 @@ const stats = (xs) => {
 
 /** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
 const engineOf = (plan) => {
-  const s = plan.shadow, f = s?.result?.fit;
-  return { policy: s?.policy, error: !!s?.error, overflow: !!s?.result?.overflow, units: f?.units.length ?? 0, candidates: f?.report.candidates ?? 0, audits: f ? f.report.audits + f.report.poses.length : 0, violations: f?.report.violations.length ?? 0, parted: f ? f.report.poses.reduce((t, p) => t + p.violations.length, 0) : 0 };
+  const ls = [...(plan.leaves?.values() ?? [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
+  const sum = (f) => fs.reduce((t, x) => t + f(x), 0);
+  return { policy: [...new Set(ls.map((l) => l.policy))].join("+"), error: ls.some((l) => !!l.error), overflow: ls.some((l) => !!l.result?.overflow), units: sum((f) => f.units.length), candidates: sum((f) => f.report.candidates), audits: sum((f) => f.report.audits + f.report.poses.length), violations: sum((f) => f.report.violations.length), parted: sum((f) => f.report.poses.reduce((t, p) => t + p.violations.length, 0)), part: plan.part };
+};
 };
 
 /** `runs` plans of an input in the shared course (bench-inputs.ts `course`), after WARM to warm the JIT; per-plan times. */

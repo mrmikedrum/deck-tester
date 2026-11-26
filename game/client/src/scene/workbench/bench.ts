@@ -1,5 +1,5 @@
 // The bench page (`workbench.html?only=bench`): `planTable` timed in this browser on the same named inputs as the Node
-// bench (tools/bench-plan.mjs): as the app plans (the across leaf drawn by the arrangement engine, a fight gathered), with
+// bench (tools/bench-plan.mjs): as the app plans (every opponent leaf drawn by the arrangement engine, a fight gathered), with
 // that leaf arranged from scratch every plan, and with mat alone. It is how the 8 ms budget is
 // measured on the iPad (docs/game-arrangement-engine.md §7.3): open it there from the Home Screen or Safari, wait for
 // "Done", and press "Send to Mac": the results go back to the machine serving the page (POST api/bench, kept under
@@ -49,8 +49,9 @@ interface EngineDid {
 }
 /** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
 const did = (p: TablePlan): EngineDid => {
-  const f = p.shadow?.result?.fit;
-  return { units: f?.units.length ?? 0, candidates: f?.report.candidates ?? 0, audits: f ? f.report.audits + f.report.poses.length : 0, overflow: !!p.shadow?.result?.overflow, error: !!p.shadow?.error };
+  const ls = [...(p.leaves?.values() ?? [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
+  const sum = (f: (x: (typeof fs)[number]) => number) => fs.reduce((t, x) => t + f(x), 0);
+  return { units: sum((f) => f.units.length), candidates: sum((f) => f.report.candidates), audits: sum((f) => f.report.audits + f.report.poses.length), overflow: ls.some((l) => !!l.result?.overflow), error: ls.some((l) => !!l.error) };
 };
 
 /** Per-plan times over `PLANS` plans of `input` in the shared course (bench-inputs.ts `course`: what Node times), after

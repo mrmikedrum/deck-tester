@@ -1,12 +1,13 @@
 // The gathering (§2.8, `clash`): combat as one picture. In the clash (a focus: I am attacked, my attackers are blocked,
-// or a fight between opponents has blocks) every fighter leaves its place and stands upright on a plane carried toward
+// or a fight between opponents whose duels do not fit the middle) every fighter leaves its place and stands upright on a plane carried toward
 // the eye, over the shade, between the plaques and my field row (never on it). All attackers stand in one rank across,
 // in the order they stood, grouped into wings by what they attack; a blocker stands on its controller's side of its
 // attacker (mine below, an opponent's above), toe to toe with it, so a fight at me is attackers over blockers, my attack
 // is my attackers under theirs, and an attack on me and an opponent at once is three rows. An unblocked attacker's slot
 // (on its defender's side) is empty: the chrome brands it with the attacker's power. One tier: the largest step at which
-// every column fits; past that the rest wait in one "more" column. In the table form nothing moves: fighters fight from
-// their places, lit (the scene) and laned. Pure.
+// every column fits; past that the rest wait in one "more" column. In the table form, unblocked attackers fight from
+// their places, lit (the scene) and laned; each blocked fight stands as a duel in a row across the middle, at table
+// size (the attacker, then its blockers), in the room the parted mats open (`planTable`). Pure.
 import type { Reservations } from "../reservations";
 import { fightUnits, fighters } from "../combat";
 import type { CombatPairs } from "../combat";
@@ -43,6 +44,9 @@ export interface GatherInput {
   readonly order?: readonly CardId[];
   /** Whether a card is tapped (a fighter taken out of a summary). */
   readonly tapped: (id: CardId) => boolean;
+  /** In the table form, stand each blocked attacker and its blockers as a duel in a row across the middle: their feet
+   *  at screen height `foot` (px), the row centred on `mid`. The caller parts the mats so the row has room. */
+  readonly duels?: { readonly foot: number; readonly mid: number };
 }
 
 /** One attacker (or a stack of twins) and its slot. Screen px. */
@@ -101,10 +105,18 @@ export interface Gathering {
   readonly focus: boolean;
   /** Fighters that fight from their pages (the table form, or no room). */
   readonly left: readonly CardId[];
+  /** The duels' row on screen (px), when the table form stands blocked fights in the middle. */
+  readonly duels: { readonly l: number; readonly r: number; readonly t: number; readonly b: number } | null;
 }
 
 /** The steps a clash tries, largest first (one tier at each). */
 export const CLASH_STEPS = [1.8, 1.6, 1.5, 1.3, 1.2, 1.1] as const;
+/** Duels in the middle, design px: the space between an attacker and its blockers (the clasp sits on it), and between
+ *  two duels. */
+export const DUEL = { inside: 6, apart: 18 } as const;
+/** The duels' row, design px: its feet this far above my field row's tops (as the clash stops: `CLASH.foot`), and its
+ *  tops at least this far under every opponent's feet. */
+export const DUEL_ROW = { foot: 8, clear: 4 } as const;
 /** The clash's area, design px: its top (under the plaques), and how far above my field row it stops. */
 export const CLASH = { top: 88, plaqueTop: 58, plaqueH: 22, foot: 8, gap: 10, columnGap: 14, wingGap: 64, maxColumns: 13, wingMin: 320 } as const;
 
@@ -120,12 +132,14 @@ interface Formation {
 const add = (a: V3, b: V3, k: number): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k });
 const defKey = (d: Defender): string => ("seat" in d ? `s${d.seat}` : `c${d.card}`);
 
-/** Which form a combat takes by itself: the clash when I am attacked or anyone is blocked (now, or by Forge's verdict
- *  after its blockers left: `blocked`); the table form otherwise. */
+/** Which form a combat takes by itself: the clash when I am attacked or my attackers are blocked (now, or by Forge's
+ *  verdict after their blockers left: `blocked`); the table form otherwise, a fight between opponents included (its
+ *  blocked fights stand as duels in the parted middle; `planTable` raises the clash when they do not fit). */
 export function combatFormOf(combat: CombatPairs | null, perspective: SeatId, seatOf: (card: CardId) => SeatId | undefined, blocked: ReadonlySet<CardId> = new Set()): CombatForm {
   if (!combat || !combat.attacks.length) return "table";
   const atMe = combat.attacks.some((a) => ("seat" in a.defender ? a.defender.seat : (a.defending ?? seatOf(a.defender.card))) === perspective);
-  return atMe || combat.blocks.length > 0 || combat.attacks.some((a) => blocked.has(a.attacker)) ? "clash" : "table";
+  const mineBlocked = combat.attacks.some((a) => seatOf(a.attacker) === perspective && (blocked.has(a.attacker) || combat.blocks.some((b) => b.attacker === a.attacker)));
+  return atMe || mineBlocked ? "clash" : "table";
 }
 
 export function gathering(input: GatherInput): Gathering {
@@ -134,13 +148,14 @@ export function gathering(input: GatherInput): Gathering {
   const units = fightUnits(plans, want);
   const seatOf = (card: CardId) => plans.find((p) => p.units.some((un) => un.members.includes(card) || un.dressing.includes(card)))?.seat;
   const clash = input.form === "clash";
+  const duelling = !clash && !!input.duels;
   // A fighter (or an attacked planeswalker) held in a unit of several (a pile, the engine's entry summary) stands in the
   // clash as its own.
   const attacked = new Set(combat.attacks.flatMap((a) => ("card" in a.defender ? [a.defender.card] : [])));
   const walkerUnits = new Map<CardId, { unit: Unit; seat: SeatId }>();
   const carved = new Map<UnitId, { readonly from: UnitId; readonly seat: SeatId }>();
-  if (clash)
-    for (const id of [...want, ...attacked])
+  if (clash || duelling)
+    for (const id of [...want, ...(clash ? attacked : [])])
       for (const p of plans) {
         const walker = attacked.has(id) && !want.has(id);
         const own = p.units.find((un) => un.members.length === 1 && un.members[0] === id);
@@ -152,7 +167,7 @@ export function gathering(input: GatherInput): Gathering {
         else units.set(id, { unit, seat: p.seat });
         carved.set(unit.id, { from: holder.id, seat: p.seat });
       }
-  const none: Gathering = { plans: [...plans], form: input.form, area: null, extent: null, step: 1, wings: [], more: [], moreAt: null, focus: false, left: [...want] };
+  const none: Gathering = { plans: [...plans], form: input.form, area: null, extent: null, step: 1, wings: [], more: [], moreAt: null, focus: false, left: [...want], duels: null };
   if (!units.size) return none;
   const powerOf = (un: Unit) => un.members.reduce((t, id) => t + (want.has(id) ? Math.max(0, input.power(id) ?? 0) : 0), 0);
 
@@ -225,7 +240,72 @@ export function gathering(input: GatherInput): Gathering {
       unblocked: w.fs.filter((f) => !f.blocked).reduce((t, f) => t + f.ks.reduce((s, k) => s + powerOf(k), 0), 0),
       columns: w.fs.map((f) => ({ unit: f.ks[0]!.id, attackers: f.ks.flatMap((k) => k.members), blockers: f.bs.flatMap((b) => b.members), x: 0, w: 0, slot: null, clasp: null, power: f.ks.reduce((s, k) => s + powerOf(k), 0), blocked: f.blocked })),
     }));
-  if (!clash) return { ...none, wings: tableWings() };
+  if (!clash && !input.duels) return { ...none, wings: tableWings() };
+  /** A card's width and upright height on screen with its foot at (x, y), standing at height h. */
+  const sizeAt = (x: number, y: number, h: number) => {
+    const c = proj.onTable(x, y, h), up = { x: 0, y: Math.cos(proj.pitch), z: -Math.sin(proj.pitch) };
+    return {
+      w: Math.abs(proj.project(add(c, proj.right, (CW * S_TABLE) / 2)).x - proj.project(add(c, proj.right, (-CW * S_TABLE) / 2)).x),
+      h: Math.abs(proj.project(c).y - proj.project(add(c, up, CH * S_TABLE)).y),
+    };
+  };
+  /** Fighters moved to their places: they leave the units that held them, and stand there (`fighting`). */
+  const settle = (placed: ReadonlyMap<UnitId, V3>, upright: boolean): SeatPlan[] => {
+    const standing = (un: Unit): Unit => {
+      const { turn: _turn, ...rest } = un;
+      void _turn;
+      return { ...rest, ...(upright ? { tapped: false } : {}), fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const } };
+    };
+    return plans.map((p) => {
+      const out = [...units.values(), ...walkerUnits.values()].filter((f) => f.seat === p.seat && carved.has(f.unit.id) && placed.has(f.unit.id)).map((f) => f.unit);
+      if (!out.length && !p.units.some((un) => placed.has(un.id))) return p;
+      // the carved fighters leave the units that held them (an emptied one is gone)
+      const gone = new Map<UnitId, Set<CardId>>();
+      for (const un of out) {
+        const from = carved.get(un.id)!.from;
+        gone.set(from, new Set([...(gone.get(from) ?? []), un.top]));
+      }
+      const units2: Unit[] = [];
+      for (const un of p.units) {
+        const gn = gone.get(un.id);
+        if (!gn) units2.push(placed.has(un.id) ? standing(un) : un);
+        else {
+          const members = un.members.filter((id) => !gn.has(id));
+          if (members.length) units2.push({ ...un, members, top: gn.has(un.top) ? members[0]! : un.top, title: un.kind === "summary" ? `All ${members.length}` : un.title });
+        }
+      }
+      units2.push(...out.map(standing));
+      const home = new Map(p.home);
+      for (const un of out) home.set(un.top, un.id);
+      return { ...p, units: units2, home };
+    });
+  };
+  if (!clash) {
+    // The table form: blocked fights stand as duels in a row across the middle, at table size: the attacker, then its
+    // blockers, each duel apart from the next; unblocked attackers stay home (laned).
+    const d = input.duels!, wings0 = tableWings();
+    const duels = forms.filter((f) => f.bs.length > 0);
+    if (!duels.length) return { ...none, wings: wings0 };
+    // On the table posture stays fact: a tapped fighter stands turned a quarter, so its place is a card's height wide.
+    const one = sizeAt(d.mid, d.foot, 0), inside = DUEL.inside * u, apart = DUEL.apart * u;
+    const wide = (un: Unit): number => (un.tapped ? one.h : one.w);
+    const widths = duels.map((f) => [...f.ks, ...f.bs].reduce((t, un) => t + wide(un), 0) + (f.ks.length + f.bs.length - 1) * inside);
+    const total = widths.reduce((t, w) => t + w, 0) + apart * (duels.length - 1);
+    let x = d.mid - total / 2;
+    const placedD = new Map<UnitId, V3>(), cols = new Map<UnitId, { x: number; w: number; clasp: Point }>();
+    duels.forEach((f, i) => {
+      const x0 = x;
+      [...f.ks, ...f.bs].forEach((un, j) => {
+        placedD.set(un.id, proj.onTable(x + wide(un) / 2, d.foot, 0));
+        x += wide(un) + inside;
+        if (j === f.ks.length - 1) cols.set(f.ks[0]!.id, { x: x0 + widths[i]! / 2, w: widths[i]!, clasp: { x: x - inside / 2, y: d.foot - one.h / 2 } });
+      });
+      x = x0 + widths[i]! + apart;
+    });
+    const wings = wings0.map((w) => ({ ...w, columns: w.columns.map((c) => (cols.has(c.unit) ? { ...c, ...cols.get(c.unit)! } : c)) }));
+    const inside2 = new Set(duels.flatMap((f) => [...f.ks, ...f.bs]).flatMap((un) => un.members));
+    return { ...none, plans: settle(placedD, false), wings, left: [...want].filter((id) => !inside2.has(id)), duels: { l: d.mid - total / 2, r: d.mid + total / 2, t: d.foot - one.h, b: d.foot } };
+  }
 
   // The area: under the plaques, above my field row, inside the safe area.
   const safe = input.reserve.safe;
@@ -397,34 +477,7 @@ export function gathering(input: GatherInput): Gathering {
     });
   }
 
-  const standing = (un: Unit): Unit => {
-    const { turn: _turn, ...rest } = un;
-    void _turn;
-    return { ...rest, tapped: false, fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const } };
-  };
-  const moved = plans.map((p) => {
-    const out = [...units.values(), ...walkerUnits.values()].filter((f) => f.seat === p.seat && carved.has(f.unit.id) && placed.has(f.unit.id)).map((f) => f.unit);
-    if (!out.length && !p.units.some((un) => placed.has(un.id))) return p;
-    // the carved fighters leave the units that held them (an emptied one is gone)
-    const gone = new Map<UnitId, Set<CardId>>();
-    for (const un of out) {
-      const from = carved.get(un.id)!.from;
-      gone.set(from, new Set([...(gone.get(from) ?? []), un.top]));
-    }
-    const units2: Unit[] = [];
-    for (const un of p.units) {
-      const gn = gone.get(un.id);
-      if (!gn) units2.push(placed.has(un.id) ? standing(un) : un);
-      else {
-        const members = un.members.filter((id) => !gn.has(id));
-        if (members.length) units2.push({ ...un, members, top: gn.has(un.top) ? members[0]! : un.top, title: un.kind === "summary" ? `All ${members.length}` : un.title });
-      }
-    }
-    units2.push(...out.map(standing));
-    const home = new Map(p.home);
-    for (const un of out) home.set(un.top, un.id);
-    return { ...p, units: units2, home };
-  });
+  const moved = settle(placed, true);
   const inside = new Set(kept.flatMap((f) => [...f.ks, ...f.bs]).flatMap((un) => un.members));
   const cols = wings.flatMap((w) => w.columns);
   const walkerXs = wings.flatMap((w) => (w.walker ? [w.walker.x - m.wide(feet.near) / 2, w.walker.x + m.wide(feet.near) / 2] : []));
@@ -445,5 +498,6 @@ export function gathering(input: GatherInput): Gathering {
     moreAt,
     focus: true,
     left: [...want].filter((id) => !inside.has(id)),
+    duels: null,
   };
 }

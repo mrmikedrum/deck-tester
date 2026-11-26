@@ -87,7 +87,7 @@ describe("the design pass's tables on the across leaf", () => {
   });
 });
 
-describe("the protocol corpus: planTable's shadow of the across leaf", () => {
+describe("the protocol corpus: planTable's across leaf, recorded beside mat", () => {
   it("every snapshot with a table plans its across leaf, every card placed, beside mat", async () => {
     const lines: string[] = [];
     let memory = null as Arrangement["memory"] | null;
@@ -95,8 +95,9 @@ describe("the protocol corpus: planTable's shadow of the across leaf", () => {
       const snap = corpusSnapshot(n);
       const model = snap.view && modelOf(snap, catalog, viewerOf());
       if (!model || model.seats.length !== 4) continue;
-      const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", shadow: { memory } }));
-      const sh = plan.shadow!;
+      const across = model.seats[2]!.id;
+      const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", engine: { memory: new Map([[across, memory]]) } }));
+      const sh = plan.leaves!.get(across)!;
       expect(sh.error, n).toBeNull();
       const fit = sh.result!.fit;
       memory = fit.memory;

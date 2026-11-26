@@ -32,6 +32,20 @@ describe("the top row of nameplates", () => {
     expect(x).toBeGreaterThanOrEqual(commander.r);
     expect(x - commander.r).toBeLessThan(8);
   });
+  it("keeps the plates in their leaves' order, even where swapping two would clear a card", () => {
+    // A wide plate on the left and a card at the top of the left leaf: swapping would clear it, but seats never swap.
+    const at = placeTop(
+      [
+        { seat: "Marath", place: "left", w: 330, pref: 120 },
+        { seat: "Atraxa", place: "across", w: 260, pref: 460 },
+        { seat: "Dack", place: "right", w: 240, pref: 800 },
+      ],
+      [{ l: 130, t: 9, r: 190, b: 80 }],
+      row,
+    );
+    expect(at.get("Marath")!).toBeLessThan(at.get("Atraxa")!);
+    expect(at.get("Atraxa")!).toBeLessThan(at.get("Dack")!);
+  });
   it("never lays one plate over another, and stays clear of the Game button", () => {
     const at = placeTop(
       [

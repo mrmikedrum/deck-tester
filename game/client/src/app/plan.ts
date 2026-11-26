@@ -81,9 +81,9 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         ...(asideOf(s) ? { combatForm: "table" as const } : {}),
         ...(blockedOf(model).length ? { blocked: new Set(blockedOf(model)) } : {}),
         ...(s.focus.combat?.order.length ? { order: s.focus.combat.order } : {}),
-        // The across leaf is the arrangement engine's (docs/game-arrangement-engine.md, step 6): its memory rides in
-        // the layout memory like any seat's.
-        shadow: { draw: true },
+        // Every opponent's leaf is the arrangement engine's (docs/game-arrangement-engine.md, steps 6 and 8): its
+        // memory rides in the layout memory like any seat's.
+        engine: { draw: true },
       }),
     );
     return { state: ordered({ ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }), error: null };
