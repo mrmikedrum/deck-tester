@@ -9,7 +9,7 @@ import type { CardId } from "../../protocol";
 import type { TablePlan, V3 } from "../../layout";
 import type { SeatId } from "../../model";
 import type { Ms } from "../../play";
-import { faceKey, motion } from "../../theme";
+import { faceKey, materials, motion } from "../../theme";
 import type { FaceSpec } from "../../theme";
 import { Actor, sameSample } from "./animator";
 import type { PathSpec } from "./animator";
@@ -38,6 +38,8 @@ import type {
   BoltView,
   Description,
   FlightPlan,
+  HighlightLook,
+  HighlightTone,
   LaneView,
   MomentId,
   MomentView,
@@ -52,6 +54,8 @@ import type {
   StrikeView,
 } from "./types";
 
+/** How long a card takes to step out of the light, or back. */
+const HIGHLIGHT_MS = materials.highlight.ms;
 /** How long a bolt strikes (h.js: out after 500 ms). */
 const BOLT_MS = 500;
 /** How long a struck plate's burst lasts (h.js `buildBoard`'s `SeatFX.burst(..., { ms: 700 })`). */
@@ -100,8 +104,13 @@ interface DescribedFrom {
   readonly cues: SceneFrame["cues"];
   readonly focus: string;
   readonly hover: string | null;
+  readonly highlight: string;
   readonly desc: Description;
 }
+
+/** A highlight request as a key: what it holds and how it looks (a new request each commit, the same key). */
+const highlightKey = (h: SceneFrame["highlight"]): string =>
+  h ? `${[...h.cards].map(([c, t]) => `${c}:${t}`).join(",")}|${h.look ? JSON.stringify(h.look) : ""}` : "";
 
 /** How much of its history the stage keeps for `inspect` (recaps, sets taken): the newest this many. */
 const HISTORY = 64;
@@ -143,6 +152,9 @@ export class Stage {
   private readonly stackUps = new Map<string, boolean>();
   /** The stack's scrim easing toward the description's: where it set off from, when, and to what. */
   private scrimFade = { from: 0, to: 0, at: 0 as Ms };
+  /** Each piece stepping out of the light or back (its meaning kept while it steps back), and the look last asked for. */
+  private readonly hlFade = new Map<string, { from: number; to: number; at: Ms; tone: HighlightTone }>();
+  private hlLook: HighlightLook = { dim: 0, lift: 0, flat: 0, halo: 0 };
 
   constructor(private readonly opts: StageOptions = {}) {}
 
@@ -231,9 +243,18 @@ export class Stage {
   private describe(frame: SceneFrame): Description {
     const focus = tableFocusKey(frame.focus);
     const d = this.described;
-    if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover) return d.desc;
-    const desc = describe({ model: frame.model, plan: frame.plan, cues: frame.cues, focus: frame.focus, hover: frame.hover, ...(this.opts.measure ? { measure: this.opts.measure } : {}) });
-    this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, desc };
+    const highlight = highlightKey(frame.highlight);
+    if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover && d.highlight === highlight) return d.desc;
+    const desc = describe({
+      model: frame.model,
+      plan: frame.plan,
+      cues: frame.cues,
+      focus: frame.focus,
+      hover: frame.hover,
+      ...(frame.highlight ? { highlight: frame.highlight } : {}),
+      ...(this.opts.measure ? { measure: this.opts.measure } : {}),
+    });
+    this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, highlight, desc };
     return desc;
   }
 
@@ -245,6 +266,7 @@ export class Stage {
       this.strikes.length > 0 ||
       this.now < this.handoffUntil ||
       this.scrimAt(this.now) !== this.scrimFade.to ||
+      [...this.hlFade.values()].some((f) => this.hlAt(f, this.now) !== f.to) ||
       [...this.actors.values()].some((a) => a.actor.moving() || a.into !== null)
     );
   }
@@ -609,10 +631,17 @@ export class Stage {
     this.members.reconcile(this.actors.values(), this.flights.inbound(), this.flights.heldBy(), away);
     const actors: ActorView[] = [];
     const drawn = new Map<string, DrawnPiece>();
+    const desc = this.desc;
+    if (desc?.highlightLook) this.hlLook = desc.highlightLook;
+    const above = new Set<string>();
     for (const st of this.actors.values()) {
       const p = st.piece;
-      const sample = st.actor.step(t);
+      const hl = this.highlightAt(st.id, desc?.highlight.get(st.id) ?? null, t);
+      const stepped = st.actor.step(t);
       if (p.kind === "hidden") continue;
+      // Stepped out of the light, a card on the table rises toward me (the stack's cards already stand up).
+      const sample = hl && (p.kind === "unit" || p.kind === "zone") ? this.lifted(stepped, hl.k) : stepped;
+      if (hl) above.add(st.id);
       // A piece showing none of its cards (on their way to it, or still the chrome's) is not there to be tapped.
       const target = st.actor.target();
       // Where its hit group was measured: the plan's place for it (a lean-in draws it elsewhere), or, for the stack as the
@@ -652,8 +681,10 @@ export class Stage {
         shown: count,
         sample,
         visible: !p.needsMembers || st.shown.length > 0,
+        hl: hl ? { tone: hl.tone, k: hl.k, flat: hl.k * this.hlLook.flat, halo: hl.k * this.hlLook.halo } : null,
       });
     }
+    for (const id of [...this.hlFade.keys()]) if (!this.actors.has(id)) this.hlFade.delete(id);
     this.pruneFaces();
     const ghosts = this.flights.ghosts(t);
     // Each lane between where its pieces are now: low over the page, a hand's breadth up, so a standing card in its way
@@ -688,7 +719,7 @@ export class Stage {
       aims,
       tableTone: this.desc?.tableTone ?? 1,
       scrim: this.scrimTo(this.desc?.scrim ?? 0, t),
-      above: this.desc?.above ?? new Set(),
+      above,
       drawn,
       now: t,
       still: this.reduced,
@@ -708,6 +739,48 @@ export class Stage {
   private scrimTo(target: number, t: Ms): number {
     if (target !== this.scrimFade.to) this.scrimFade = { from: this.scrimAt(t), to: target, at: t };
     return this.scrimAt(t);
+  }
+
+  /** How far a piece has stepped out of the light at `t` (eased over the theme's `highlight.ms`; reduced motion cuts). */
+  private hlAt(f: { from: number; to: number; at: Ms }, t: Ms): number {
+    if (this.reduced || f.from === f.to || t - f.at >= HIGHLIGHT_MS) return f.to;
+    const k = Math.max(0, (t - f.at) / HIGHLIGHT_MS);
+    return f.from + (f.to - f.from) * (1 - Math.pow(1 - k, 3));
+  }
+
+  /** A piece's highlight at `t`: toward 1 while the description holds it (`tone`), back to 0 after; null when out. */
+  private highlightAt(id: string, tone: HighlightTone | null, t: Ms): { tone: HighlightTone; k: number } | null {
+    let f = this.hlFade.get(id);
+    const to = tone ? 1 : 0;
+    if (!f) {
+      if (!tone) return null;
+      f = { from: 0, to: 0, at: t, tone };
+      this.hlFade.set(id, f);
+    }
+    if (f.to !== to || (tone && f.tone !== tone)) {
+      const from = this.hlAt(f, t);
+      f = { from, to, at: t, tone: tone ?? f.tone };
+      this.hlFade.set(id, f);
+    }
+    const k = this.hlAt(f, t);
+    if (k <= 0 && to === 0) {
+      this.hlFade.delete(id);
+      return null;
+    }
+    return { tone: f.tone, k };
+  }
+
+  /** A sample risen by a highlight's lift, `k` of the way: up off the page and a little toward the eye. */
+  private lifted(s: Sample, k: number): Sample {
+    const lift = this.hlLook.lift * k;
+    if (lift <= 0 || !this.plan) return s;
+    const eye = this.plan.projector.eye,
+      dx = eye.x - s.pos.x,
+      dy = eye.y - s.pos.y,
+      dz = eye.z - s.pos.z,
+      n = Math.hypot(dx, dy, dz) || 1,
+      toward = lift * 0.6;
+    return { ...s, pos: { x: s.pos.x + (dx / n) * toward, y: s.pos.y + lift + (dy / n) * toward, z: s.pos.z + (dz / n) * toward } };
   }
 
   /** Fallback faces live only while a flight or a remnant still shows a card the model no longer has. */

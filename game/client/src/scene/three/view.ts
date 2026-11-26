@@ -2,8 +2,12 @@
 // new mods patch in place), every one posed from the stage's sample each frame; flying cards, lanes and the stack's
 // arcs likewise, and every effect ticked on the frame's clock. It decides nothing: where things are and how they look
 // is the stage's.
-import { Box3, Group, Raycaster, Vector2, Vector3 } from "three";
-import type { Camera, Material, Mesh, Object3D } from "three";
+import { AdditiveBlending, Box3, Color, Group, Mesh, MeshBasicMaterial, NormalBlending, Raycaster, Vector2, Vector3 } from "three";
+import type { Camera, Material, Object3D } from "three";
+import type { HighlightTone } from "../stage/types";
+import { materials } from "../../theme";
+import { batched } from "./batch";
+import type { Lease } from "./textures";
 import type { PieceKind, StageView } from "../stage/types";
 import { Arc, FxKit, Ribbon, strikeFx } from "./fx";
 import type { Effect } from "./fx";
@@ -45,6 +49,44 @@ export interface DrawnFace {
   readonly up: boolean;
 }
 
+/**
+ * A highlighted card's halo: a soft glow in its meaning's colour just behind the card it rings, so only its edge shows
+ * (light for ember and gold; blood is laid on, not added, so it reads on cream vellum).
+ */
+class Halo {
+  readonly mesh: Mesh;
+  private readonly mat: MeshBasicMaterial;
+  constructor(
+    private readonly lease: Lease,
+    geo: Mesh["geometry"],
+    readonly tone: HighlightTone,
+    readonly on: Object3D,
+  ) {
+    const threat = tone === "threat";
+    this.mat = new MeshBasicMaterial({
+      map: lease.texture,
+      color: new Color(materials.highlight.tones[tone]).multiplyScalar(threat ? 1 : 2.4),
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+      blending: threat ? NormalBlending : AdditiveBlending,
+      toneMapped: false,
+    });
+    this.mesh = batched(new Mesh(geo, this.mat));
+    this.mesh.position.z = -materials.card.thickness - 0.003;
+    this.mesh.renderOrder = 2;
+    on.add(this.mesh);
+  }
+  set(k: number): void {
+    this.mat.opacity = Math.max(0, Math.min(1, k));
+  }
+  dispose(): void {
+    this.mesh.removeFromParent();
+    this.mat.dispose();
+    this.lease.release();
+  }
+}
+
 /** A seed from an id: the same lane or arc draws the same particles. */
 const hash = (id: string): number => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 17);
 
@@ -76,6 +118,8 @@ export class StageRenderer {
   private readonly ghosts = new Map<string, GhostPiece>();
   private readonly lanes = new Map<string, Ribbon>();
   private readonly bolts = new Map<string, Arc>();
+  /** The halos of the pieces stepped out of the light, by piece. */
+  private readonly halos = new Map<string, Halo>();
   /** Plates' bursts, each riding its plate's object while it lasts. */
   private readonly strikes = new Map<string, Effect>();
   private readonly laneGroup = new Group();
@@ -135,6 +179,7 @@ export class StageRenderer {
       e.view.group.visible = v.visible;
       e.view.look(v, clock);
       this.fitLabels(e.view.group);
+      this.halo(v.id, e.view, v.hl);
       // Above the stack's scrim, or back on the table (its effects are made as it goes, so every frame while above).
       const above = view.scrim > 0 && view.above.has(v.id);
       if (above || e.above) setAbove(e.view.group, above);
@@ -227,6 +272,23 @@ export class StageRenderer {
     this.arrived.clear();
   }
 
+  /** A piece's halo while it is stepped out of the light, on the body of the card it shows on top. */
+  private halo(id: string, view: PieceView, hl: { readonly tone: HighlightTone; readonly halo: number } | null): void {
+    const on = view.front?.()?.parent ?? null;
+    let h = this.halos.get(id);
+    if (h && (!hl || hl.halo <= 0.001 || h.tone !== hl.tone || h.on !== on)) {
+      h.dispose();
+      this.halos.delete(id);
+      h = undefined;
+    }
+    if (!hl || hl.halo <= 0.001 || !on) return;
+    if (!h) {
+      h = new Halo(this.host.painter.drop(), this.host.kit.geo.halo, hl.tone, on);
+      this.halos.set(id, h);
+    }
+    h.set(hl.halo);
+  }
+
   private dropLane(id: string, r: Ribbon): void {
     this.laneGroup.remove(r.object);
     r.dispose();
@@ -246,6 +308,8 @@ export class StageRenderer {
   }
 
   private drop(id: string, e: Entry): void {
+    this.halos.get(id)?.dispose();
+    this.halos.delete(id);
     if (e.view) {
       this.root.remove(e.view.group);
       e.view.dispose();

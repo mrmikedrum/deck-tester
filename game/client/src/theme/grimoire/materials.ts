@@ -1,6 +1,6 @@
 // Material and light parameters of the table, named: the numbers old h.js and fx.js set inline. The scene's three.js
 // host reads these; nothing here imports three.
-import { fx } from "../tokens";
+import { fx, signal } from "../tokens";
 
 /**
  * A card in world units: it is 1 tall (88 mm), so 0.3 mm of card stock is 0.0034. (Layout's CW, CH and TH are the same
@@ -109,3 +109,18 @@ export const surface = {
 
 /** The FX palette stays with the tokens; re-exported so a renderer finds light and its colours together. */
 export const palette = fx;
+
+/**
+ * A highlight steps chosen cards out of the table's light: they rise a little toward me, are drawn flat (1 is the face as
+ * painted, unlit), and a thin halo in their meaning's colour rings them, while a scrim dims the rest of the table (its
+ * alpha). Each moment has its look; `ms` is how long a card takes to step out or back. The tones: ember for mine (what I
+ * may choose, what my spell aims at), blood for a threat (a spell aimed at what is mine), gold for a spell.
+ */
+export const highlight = {
+  ms: 200,
+  /** The stack as the focus: the spell held up, and what it aims at. */
+  stack: { dim: 0.3, lift: 0.14, flat: 0.85, halo: 1 },
+  /** Choosing targets: the cards I may choose. A lighter touch: the table stays readable round them. */
+  target: { dim: 0.22, lift: 0.12, flat: 0.8, halo: 1 },
+  tones: { mine: signal.option, threat: signal.dangerRim, spell: signal.giltRim },
+} as const;

@@ -104,6 +104,7 @@ function unit(id: string, art: string): ActorView {
     shown: 1,
     sample: SAMPLE,
     visible: true,
+    hl: null,
   } as ActorView;
 }
 const board: StageView = {

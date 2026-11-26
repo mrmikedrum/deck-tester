@@ -602,11 +602,12 @@ class UnitView implements PieceView {
     // A well's card lies square however spent it is: its shade (and its badge) say tapped, never a turn.
     const spent = !!d.well?.spent;
     // A copy standing for tapped members is turned (a pile's) or shaded (a well's) on its own; the rest follow the pile.
+    const flat = v.hl?.flat ?? 0;
     for (const c of this.cards) {
       const own = c.obj.group.userData["tapped"] === true;
-      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own);
+      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own, flat);
     }
-    for (const c of this.dress) c.look(0, s.fade, null, 0);
+    for (const c of this.dress) c.look(0, s.fade, null, 0, false, flat);
     this.sign?.tone(1 - 0.8 * s.fade);
     this.ground.follow(s.rx);
     for (const sign of this.wellSign ? [this.wellSign, ...this.wellAlts] : []) {
@@ -743,7 +744,7 @@ class ZoneView implements PieceView {
   }
 
   look(v: ActorView): void {
-    this.top?.look(0, v.sample.fade, v.mark, v.sample.glow);
+    this.top?.look(0, v.sample.fade, v.mark, v.sample.glow, false, v.hl?.flat ?? 0);
     this.sign?.tone(1 - 0.8 * v.sample.fade);
   }
 
@@ -908,7 +909,7 @@ class StackView implements PieceView {
     }
   }
   look(v: ActorView, clock: Clock): void {
-    this.card.look(0, v.sample.fade, v.mark, v.sample.glow);
+    this.card.look(0, v.sample.fade, v.mark, v.sample.glow, false, v.hl?.flat ?? 0);
     // It ignites the first frame it is drawn (h.js `buildStack`: a burst as it is cast).
     if (this.born === null) {
       this.born = clock.t;

@@ -516,7 +516,8 @@ class Batch {
     this.mesh.receiveShadow = true;
     this.mesh.renderOrder = order;
     this.mesh.matrixAutoUpdate = false;
-    if (above) this.mesh.layers.set(ABOVE);
+    // Above the scrim it is drawn again over it, and on the table too: there it throws its shadow onto the dimmed table.
+    if (above) this.mesh.layers.enable(ABOVE);
   }
   dispose(): void {
     this.mesh.geometry.dispose();

@@ -65,6 +65,25 @@ export function tableFocusKey(f: FocusTop): string {
   return t ? `${t.layer}|${t.seat}|${t.group}|${t.page ?? 0}` : "";
 }
 
+/** What a highlighted card means, which its halo's colour says: mine (ember), a threat (blood), a spell (gold). */
+export type HighlightTone = "mine" | "threat" | "spell";
+
+/** How a highlight looks (theme `materials.highlight`): the scrim's alpha over the rest, the lift (world units), how
+ * flat (1 unlit), the halo's strength. */
+export interface HighlightLook {
+  readonly dim: number;
+  readonly lift: number;
+  readonly flat: number;
+  readonly halo: number;
+}
+
+/** A highlight the app asks for: the cards stepped out of the light, each with its meaning, and the look (by default the
+ * theme's look for choosing targets). The stack as the focus brings its own (the spell and what it aims at). */
+export interface HighlightRequest {
+  readonly cards: ReadonlyMap<CardId, HighlightTone>;
+  readonly look?: Partial<HighlightLook>;
+}
+
 export interface SceneFrame {
   readonly model: TableModel;
   readonly plan: TablePlan;
@@ -80,6 +99,8 @@ export interface SceneFrame {
   readonly commit: CommitId;
   /** Reduced motion (a setting): shorter moves, no stagger; never changes decision timing. */
   readonly reducedMotion?: boolean;
+  /** Cards to step out of the table's light (choosing targets), or none. */
+  readonly highlight?: HighlightRequest | null;
 }
 
 /**
@@ -323,6 +344,9 @@ export interface Description {
   readonly scrim: number;
   /** The pieces drawn above the scrim, in their own places: the stack's cards and what they aim at. */
   readonly above: ReadonlySet<string>;
+  /** The pieces stepped out of the light (the stack's and what they aim at, or what the app asked for), and the look. */
+  readonly highlight: ReadonlyMap<string, HighlightTone>;
+  readonly highlightLook: HighlightLook | null;
   readonly perspective: SeatId;
 }
 
@@ -387,6 +411,8 @@ export interface ActorView {
   readonly shown: number;
   readonly sample: Sample;
   readonly visible: boolean;
+  /** Stepped out of the light, as far as it has come (`k`, 0..1): its meaning, how flat it is drawn, its halo's strength. */
+  readonly hl: { readonly tone: HighlightTone; readonly k: number; readonly flat: number; readonly halo: number } | null;
 }
 
 export interface GhostView {
