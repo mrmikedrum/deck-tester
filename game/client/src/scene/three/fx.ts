@@ -41,7 +41,7 @@ const FX = {
   mist: { w: 1.5, d: 0.66, at: 0.1, opacity: 0.7 },
   emberPool: { w: 1.6, d: 0.68, at: 0.1, opacity: 0.85 },
   /** The lamp's light pooled brighter under what a moment brings forward. */
-  litPool: { w: 1.8, d: 0.8, at: 0.1, opacity: 0.85 },
+  litPool: { w: 1.9, d: 0.85, at: 0.1, opacity: 0.7 },
   /** "Something in here for you": a few motes rising slowly from a pile, and a low glow under it. */
   mote: { n: 5, size: 7, rise: 0.55, spread: 0.05, speed: 0.12, turb: 0.03, glow: 0.38 },
   burst: { ms: 600, n: 140, size: 14, spread: 0.9 },
@@ -863,7 +863,7 @@ export function standFx(kit: FxKit, tone: StandTone): Effect {
   const c = FX[tone === "ember" ? "emberPool" : tone === "lit" ? "litPool" : tone];
   // Pale and mist are laid on so they read over cream vellum. The ember and the lit pool are additive light.
   const m = flatPlane(kit.map("pool"), c.w, c.d, {
-    color: tone === "ember" ? new Color(signal.option).multiplyScalar(1.4) : new Color(tone === "mist" ? palette.mist : palette.pale),
+    color: tone === "ember" ? new Color(signal.option).multiplyScalar(1.4) : tone === "lit" ? new Color(signal.lit) : new Color(tone === "mist" ? palette.mist : palette.pale),
     opacity: c.opacity,
     blending: tone === "ember" || tone === "lit" ? AdditiveBlending : NormalBlending,
   });

@@ -45,8 +45,10 @@ export const rim = {
   idle: 0.028,
   /** What you can act on: a soft ember ring that breathes. */
   option: 0.024,
-  /** What a moment brings forward: the lamp's light round its edge, soft and still. */
-  lit: 0.03,
+  /** What a moment brings forward: the lamp's light round its edge, soft and still (just under the hard band). */
+  lit: 0.036,
+  /** How bright that edge burns: enough to find at a glance across the table, still under the ember's flame. */
+  litGain: 1.3,
   /** Chosen: a gilt band three embers wide, crisp and unlit, a line of ink round it. */
   selected: 0.072,
   /** Danger: a narrower band of blood, darkening and deepening with a heartbeat but never lit. */

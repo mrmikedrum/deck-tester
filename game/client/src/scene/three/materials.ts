@@ -15,7 +15,7 @@ export class Rim {
     option: new Color(signal.option),
     selected: new Color(signal.giltRim),
     danger: new Color(signal.dangerRim),
-    lit: new Color(signal.lit),
+    lit: new Color(signal.lit).multiplyScalar(rimParams.litGain),
   };
 
   /**
