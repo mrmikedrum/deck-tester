@@ -58,6 +58,10 @@ export function regionOf(proj: Projector, f: SurfaceFrame, lo: number, hi: numbe
     if ((sl.y + sr.y) / 2 < (tl.y + tr.y) / 2) [tl, tr] = [sl, sr];
   }
   let bl = P(lo, v, 0), br = P(hi, v, 0);
+  // A grid row's places abut: each region runs up its slot's own edges (feet to the standing top), so neighbours meet
+  // along a shared line and never overlap, however perspective skews the row (a side leaf's). What lies turned in the
+  // place stays inside those edges but for a sliver at a far corner, where the edge already is the neighbour's.
+  if (standing) return [{ x: bl.x - 0.5, y: bl.y + 0.5 }, { x: br.x + 0.5, y: br.y + 0.5 }, { x: tr.x + 0.5, y: tr.y - 0.5 }, { x: tl.x - 0.5, y: tl.y - 0.5 }];
   // Widen each side to hold every corner (perspective spreads a raised corner past the feet's line).
   const sideX = (a: { x: number; y: number }, b: { x: number; y: number }, y: number) => (b.y === a.y ? a.x : a.x + ((b.x - a.x) * (y - a.y)) / (b.y - a.y));
   const left = Math.max(0, ...pts.map((q) => sideX(bl, tl, q.y) - q.x)), right = Math.max(0, ...pts.map((q) => q.x - sideX(br, tr, q.y)));

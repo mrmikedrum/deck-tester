@@ -6,10 +6,10 @@ import { works } from "../../../src/layout/arrange/policies/works";
 import { collect, emphasisOf, factsOf, mattersOf, promoteRule, seatOf, tidyRule, topOf } from "../../../src/layout/arrange/policies/common";
 import { S_TABLE } from "../../../src/layout/arrange/scale";
 import { clearArrangeCaches } from "../../../src/layout/arrange/memo";
-import { BATCHING } from "../../../src/layout/arrange/solver";
+import { BATCHING, arrange, posed } from "../../../src/layout/arrange/solver";
 import type { CardId } from "../../../src/layout/types";
 import { prng } from "../boards";
-import { SUPPORTED, THEM, ac, board, many, resetIds, run } from "./cards";
+import { SUPPORTED, THEM, ac, board, inputOf, many, resetIds, run } from "./cards";
 import type { Run } from "./cards";
 
 // The guarantees (§1.4) as properties over seeded boards (§7.1), every registered policy and seeded legal chaos policies.
@@ -270,12 +270,30 @@ describe("current types (§1.2, designer §5)", () => {
 });
 
 describe("poses (§5.3)", () => {
-  it("a pose changes nothing in the arrangement; its audit is reported", () => {
+  it("a rest arrangement holds under its pose: its rows are laid so, and its audit there is clean", () => {
+    for (const seed of SEEDS)
+      for (const n of SIZES) {
+        const b = run({ cards: board(seed, n), poses: [PARTED] });
+        expect(b.fit.report.poses.map((p) => p.id)).toEqual(["parted"]);
+        expect(b.fit.report.poses[0]!.violations, `seed ${seed} n ${n}`).toEqual([]);
+      }
+  });
+
+  it("drawn under a pose, nothing changes but where: every card slides by the pose's shift along away", () => {
     for (const seed of SEEDS) {
-      const cards = board(seed, 40);
-      const a = run({ cards }), b = run({ cards, poses: [PARTED] });
-      expect(shape(b.fit)).toEqual(shape(a.fit));
-      expect(b.fit.report.poses.map((p) => p.id)).toEqual(["parted"]);
+      const input = inputOf({ cards: board(seed, 40), poses: [PARTED] }), rest = arrange(input), moved = posed(input, rest, PARTED.shift);
+      const units = (a: Arrangement) => a.units.map((u) => ({ id: u.id, kind: u.kind, tier: u.tier, slot: u.slot, members: u.members, cards: u.cards.map((c) => [c.card, c.posture, c.turn, c.layer]) }));
+      expect(units(moved.fit)).toEqual(units(rest.fit));
+      expect(moved.fit.memory).toBe(rest.fit.memory);
+      const away = rest.fit.frame.away;
+      rest.fit.units.forEach((u, i) =>
+        u.cards.forEach((p, j) => {
+          const q = moved.fit.units[i]!.cards[j]!;
+          for (const k of ["x", "y", "z"] as const) expect(q.foot[k] - p.foot[k]).toBeCloseTo(away[k] * PARTED.shift, 9);
+        }),
+      );
+      expect(moved.fit.targets.map((t) => t.id)).toEqual(rest.fit.targets.map((t) => t.id));
+      expect(posed(input, rest, PARTED.shift)).toBe(moved);
     }
   });
 });

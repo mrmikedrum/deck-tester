@@ -46,7 +46,8 @@ const n = (x: number): string => x.toFixed(6);
 
 /**
  * Everything a container's rows read: its frame, how the camera sees it (two points of the frame on screen and the
- * viewport), its keepouts, floors and safe area, the card scale and design unit, and the policy's bands.
+ * viewport), its poses (a row holds under each), its keepouts, floors and safe area, the card scale and design unit,
+ * and the policy's bands.
  */
 export function containerKey(c: Container, s: number, du: number, bands: readonly Band[]): string {
   const f = c.frame, p = c.projector;
@@ -54,6 +55,7 @@ export function containerKey(c: Container, s: number, du: number, bands: readonl
   return [
     [f.anchor.x, f.anchor.y, f.anchor.z, f.across.x, f.across.y, f.across.z, f.away.x, f.away.y, f.away.z, f.normal.x, f.normal.y, f.normal.z, f.w, f.d].map(n).join(","),
     [p.viewport.w, p.viewport.h, p.pitch, p.eye.x, p.eye.y, p.eye.z, a.x, a.y, b.x, b.y].map(n).join(","),
+    c.poses.map((x) => n(x.shift)).join(","),
     JSON.stringify(c.keepouts),
     JSON.stringify(c.floors),
     JSON.stringify(c.safe),

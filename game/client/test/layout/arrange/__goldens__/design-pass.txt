@@ -36,7 +36,6 @@ policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch
   works  0.0.1 u-0.1 fan     Felidar Retreat                lie fan 3 · 0 power
   lands  0.0.2 u1.8 stack   Forest                         lie well 9 lands 7 open · die 11
   seat {"creatures":13,"power":34,"flyingPower":0,"keywords":[],"lands":9,"open":7,"works":3}
-  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2; floor 53.2
 
 == Atraxa, turn 9 (26 permanents)
 policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
@@ -52,7 +51,6 @@ policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch
   works  0.0.1 u-0.1 fan     Incubator                      lie fan 3 · 0 power
   lands  0.0.2 u1.8 stack   Island                         lie well 9 lands 8 open · die 12
   seat {"creatures":9,"power":21,"flyingPower":0,"keywords":[],"lands":9,"open":8,"works":3}
-  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2
 
 == Dack, turn 9 (27 permanents)
 policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
@@ -69,7 +67,6 @@ policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch
   rest   0.0.2 u0.6 card    Spirit                         lie notch 
   lands  0.0.3 u2.6 stack   Plains                         lie well 9 lands 11 open · die 16
   seat {"creatures":8,"power":16,"flyingPower":0,"keywords":[],"lands":9,"open":11,"works":3}
-  parted: tap-patch 0; tap-patch 4; tap-patch 0; tap-patch 0; floor 53.2; floor 53.2
 
 == Marath, turn 15 (54 permanents)
 policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
@@ -86,7 +83,6 @@ policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch
   lands  0.0.2 u1.8 stack   Forest                         lie well 14 lands 10 open · die 16
   attention threat: Beast
   seat {"creatures":33,"power":92,"flyingPower":0,"keywords":[],"lands":14,"open":10,"works":5}
-  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2
 
 == Atraxa, turn 15 (48 permanents)
 policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
@@ -103,7 +99,6 @@ policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch
   lands  0.0.2 u1.8 stack   Swamp                          lie well 14 lands 13 open · die 19
   attention threat: Wrenn and Realmbreaker
   seat {"creatures":21,"power":42,"flyingPower":0,"keywords":[],"lands":14,"open":13,"works":6}
-  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2
 
 == Dack, turn 15 (49 permanents)
 policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
@@ -120,4 +115,3 @@ policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch
   lands  0.0.2 u1.8 stack   Plains                         lie well 14 lands 19 open · die 28
   attention binds-me: Deafening Silence, Defense Grid
   seat {"creatures":13,"power":21,"flyingPower":0,"keywords":[],"lands":14,"open":19,"works":8}
-  parted: tap-patch 4; tap-patch 4; tap-patch 4

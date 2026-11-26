@@ -3,9 +3,11 @@
 // rows as its units need and the space allows, keeping room for every later band that holds something. A row exists
 // only where its cards meet their floor and its far edge is on the screen; its intervals are found by sweeping its
 // worst-case envelope against every keepout. Rows depend on the cards only through how many each band needs, so the
-// geometry of a row is computed once per plan and reused (`RowPlanner` memoizes by what lies in front).
+// geometry of a row is computed once per plan and reused (`RowPlanner` memoizes by what lies in front). A row holds under
+// every pose of its container too (§5.3, guarantee 12): its floors, its far edge on the screen and its keepouts are
+// checked with the frame slid as each pose slides it, so a pose never refolds a board.
 import { inQuad } from "../shape";
-import type { Container, TierSpec } from "./contract";
+import type { Container, SurfaceFrame, TierSpec } from "./contract";
 import { CARD, LEAN, clearBehind, faceWidth, liePose, onFrame, standPose, standQuad, surfaceQuad } from "./frame";
 import { SLOT } from "./scale";
 
@@ -76,7 +78,9 @@ export class RowPlanner {
     private readonly c: Container,
     private readonly s: number,
     private readonly designUnit: number,
-  ) {}
+  ) {
+    this.frames = [c.frame, ...c.poses.filter((p) => p.shift !== 0).map((p) => ({ ...c.frame, anchor: onFrame(c.frame, 0, p.shift) }))];
+  }
 
   /** The row after `prev` (or the first) for `band`, or null where the space has none: past the frame's depth, its
    *  floor or the screen's top. */
@@ -90,6 +94,8 @@ export class RowPlanner {
   }
 
   private readonly keys = new Map<RowGeo, string>();
+  /** The frame at rest and as each pose slides it. */
+  private readonly frames: readonly SurfaceFrame[];
   private keyOf(r: RowGeo): string {
     return this.keys.get(r)!;
   }
@@ -113,14 +119,17 @@ export class RowPlanner {
     const depth = (quarter ? CARD.h : LIE_DEPTH) * s;
     const far = v + Math.max(depth, stand ? CARD.h * s * Math.sin(LEAN) : 0) + proud;
     if (far > c.frame.d + EPS) return null;
-    // Where its cards would break their floor, or its far edge leave the screen, the space has no row.
-    const face = stand ? standPose(c.frame, 0, v, LEAN) : liePose(c.frame, 0, v + (CARD.h * s) / 2, s);
-    if (faceWidth(c.projector, face, s) / this.designUnit < (stand ? c.floors.creature : c.floors.any) - EPS) return null;
-    const top = stand ? c.projector.project(onFrame(c.frame, 0, v + CARD.h * s * Math.sin(LEAN), CARD.h * s * Math.cos(LEAN))).y : c.projector.project(onFrame(c.frame, 0, far)).y;
-    if (top < c.safe.top) return null;
-    const base = (quarter ? SLOT.stand : SLOT.lie) * s;
+    // Where its cards would break their floor, or its far edge leave the screen, at rest or in any pose, the space has no
+    // row.
     const floor = stand ? c.floors.creature : c.floors.any;
-    const intervals = sweep(c, v, stand, depth + proud, s, base, (u) => faceWidth(c.projector, stand ? standPose(c.frame, u, v, LEAN) : liePose(c.frame, u, v + (CARD.h * s) / 2, s), s) / this.designUnit >= floor - EPS);
+    const floored = (f: SurfaceFrame, u: number): boolean => faceWidth(c.projector, stand ? standPose(f, u, v, LEAN) : liePose(f, u, v + (CARD.h * s) / 2, s), s) / this.designUnit >= floor - EPS;
+    for (const f of this.frames) {
+      if (!floored(f, 0)) return null;
+      const top = stand ? c.projector.project(onFrame(f, 0, v + CARD.h * s * Math.sin(LEAN), CARD.h * s * Math.cos(LEAN))).y : c.projector.project(onFrame(f, 0, far)).y;
+      if (top < c.safe.top) return null;
+    }
+    const base = (quarter ? SLOT.stand : SLOT.lie) * s;
+    const intervals = sweep(c, this.frames, v, stand, depth + proud, s, base, (u) => this.frames.every((f) => floored(f, u)));
     if (!intervals.length) return null;
     const places = stand ? intervals.map((iv) => gridPlaces(iv, base)) : [];
     return { index: prev ? prev.index + 1 : 0, band, posture: band.posture, grid: stand, quarter, base, v, depth, proud, strip, intervals, places };
@@ -142,7 +151,7 @@ export const roomOf = (r: RowGeo): number => r.intervals.reduce((t, iv) => t + i
  * count strip) is swept across the row, and a sample is free when a card there meets its floor and the column is clear of
  * every keepout, on the screen and on the frame. Runs of free samples at least one place wide are the intervals.
  */
-function sweep(c: Container, v: number, stand: boolean, depth: number, s: number, base: number, floored: (u: number) => boolean): { lo: number; hi: number }[] {
+function sweep(c: Container, frames: readonly SurfaceFrame[], v: number, stand: boolean, depth: number, s: number, base: number, floored: (u: number) => boolean): { lo: number; hi: number }[] {
   const lo = -c.frame.w / 2 + SLOT.margin, hi = c.frame.w / 2 - SLOT.margin;
   const screen = c.keepouts.filter((k) => k.on === "screen");
   const frame = c.keepouts.filter((k) => k.on === "frame");
@@ -151,7 +160,7 @@ function sweep(c: Container, v: number, stand: boolean, depth: number, s: number
     if (!floored((u0 + u1) / 2)) return false;
     for (const k of frame) if (k.u0 < u1 && k.u1 > u0 && k.v0 < v + depth && k.v1 > v - strip) return false;
     if (!screen.length) return true;
-    const qs = [surfaceQuad(c.projector, c.frame, u0, u1, v - strip, v + depth), ...(stand ? [standQuad(c.projector, c.frame, u0, u1, v, s)] : [])];
+    const qs = frames.flatMap((f) => [surfaceQuad(c.projector, f, u0, u1, v - strip, v + depth), ...(stand ? [standQuad(c.projector, f, u0, u1, v, s)] : [])]);
     for (const k of screen) {
       const r = k.rect;
       for (const q of qs) {

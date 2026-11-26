@@ -26,6 +26,31 @@ export interface TableTemplate {
   readonly slots: readonly SeatSlot[];
   /** On their turn a page comes forward this much in place, from its fixed edge (slots never overlap even so). */
   readonly growOnTurn: number;
+  /** Every opponent's leaf when the arrangement engine lays it out (docs/game-arrangement-engine.md §5.3). */
+  readonly leaf: LeafGeometry;
+  /** How far the leaves may part for what rests on the middle at table size (duels, the stack). */
+  readonly part: Parting;
+}
+
+/**
+ * The no-middle template's leaf: every opponent's front row stands on one front line, its feet at `front` (world z, at
+ * the leaf's middle), so at rest the table holds back no middle; the leaf reaches `d` from its anchor edge and ends in a
+ * far strip `far` deep (library, graveyard, exile, the waiting commander). How many rows fit between is the engine's.
+ */
+export interface LeafGeometry {
+  readonly front: number;
+  readonly d: number;
+  readonly far: number;
+}
+
+/**
+ * The mats part by sliding every opponent's leaf along its own `away`, by the least multiple of `step` card heights that
+ * opens the room asked for, never past `most`: the leaves' rows are laid to hold their floors and patches at `most`
+ * (guarantee 12), so a parting never refolds a board.
+ */
+export interface Parting {
+  readonly most: number;
+  readonly step: number;
 }
 
 export class NotTunedError extends Error {
@@ -50,10 +75,15 @@ const LANDSCAPE_4: readonly SeatSlot[] = [
   { position: "right", x: 8.68, z: -7.42, w: 7.8, d: 11.4, yaw: -0.16 },
 ];
 
+// Every leaf's front row reaches toward my creatures on one line; across, it stands at z ≈ −3.9 (its slice's measure),
+// and the side leaves, turned the same as their slots, meet it there.
+const LEAF_4: LeafGeometry = { front: -3.9, d: 13, far: 2.2 };
+const PART_4: Parting = { most: 0.35, step: 0.05 };
+
 /** The template for `seats` seats in `form`, or a `NotTunedError`: other counts and portrait are not tuned yet. */
 export function tableTemplate(seats: number, form: Form = "landscape"): TableTemplate {
   if (seats === 4 && form === "landscape") {
-    return { form, seats, camera: CAMERA, slots: LANDSCAPE_4, growOnTurn: 1.1 };
+    return { form, seats, camera: CAMERA, slots: LANDSCAPE_4, growOnTurn: 1.1, leaf: LEAF_4, part: PART_4 };
   }
   throw new NotTunedError(seats, form);
 }
