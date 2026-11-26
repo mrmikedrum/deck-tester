@@ -678,6 +678,7 @@ screens. It also times the earlier 1.5× composer settings and other variants th
 Painted textures are leased by content key (`TextureCache`): reference-counted by the pieces showing them, and, once
 unreferenced, kept in an LRU bounded by an estimated byte budget (`ByteCache`, pure, in `scene/resources/`: 160 MB of
 textures, 64 MB of decoded art, `BUDGETS` in `host.ts`); evicting disposes the texture and releases the canvas pixels.
+The lifted stack's printed face keeps its decoded image dimensions in that texture cache.
 Live leases are never evicted, so a board larger than the budget overshoots rather than flickers. Decoded art is an
 `ImageBitmap` cache (`ArtCache`) bounded the same way, with an injected loader. A bitmap is needed only to paint: a
 face or plate already painted with its art keeps that texture (`paintedFace`) even after the bitmap is evicted, so art

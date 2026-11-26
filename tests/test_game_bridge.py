@@ -4,11 +4,13 @@ import http.client
 import json
 import os
 import pathlib
+import queue
 import re
 import tempfile
 import threading
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from http.server import ThreadingHTTPServer
 from unittest import mock
 
@@ -76,6 +78,220 @@ def settle(t, state, timeout=3):
             return status
         time.sleep(0.01)
     raise AssertionError(f"answer status never became {state}: {t.snapshot.get('answer')}")
+
+
+class CardImageTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.cache = pathlib.Path(tmp.name)
+        self.now = 100
+        patches = mock.patch.multiple(game, CACHE=self.cache, CARDS={}, CARDS_FILE=self.cache / "cards.json", PRINT_RETRY_AT={})
+        patches.start()
+        self.addCleanup(patches.stop)
+        clock = mock.patch.object(game, "time", mock.Mock(wraps=time, monotonic=lambda: self.now))
+        clock.start()
+        self.addCleanup(clock.stop)
+
+    def test_cached_clients_share_background_upgrade_and_retry_after_cooldown(self):
+        normal = "cache/card/forest.jpg"
+        large = "cache/card-large/forest.jpg"
+        forest = {"faces": [{"name": "Forest", "img": normal, "art": "cache/art/forest.jpg"}]}
+        island = {"faces": [{"name": "Island", "img": "cache/card-large/island.jpg"}]}
+        game.CARDS.update(Forest=forest, Island=island)
+        started, release = threading.Event(), threading.Event()
+        found = {"Forest": {"image_uris": {"large": "https://example.test/forest.jpg"}}}
+
+        def outage(names):
+            started.set()
+            if not release.wait(5):
+                raise AssertionError("test never released the upstream request")
+            raise TimeoutError("offline")
+
+        with mock.patch.object(game, "scryfall", side_effect=outage) as lookup, \
+                mock.patch.object(game, "get", return_value=b"large") as download, \
+                mock.patch.object(game.traceback, "print_exc"), \
+                Server(self.cache / "dist", None) as server, ThreadPoolExecutor(2) as clients:
+            try:
+                first = clients.submit(server.get, "/api/cards?n=Forest")
+                self.assertTrue(started.wait(2))
+                second = clients.submit(server.get, "/api/cards?n=Forest&n=Island")
+                for client, expected in [(first, {"Forest": forest}), (second, {"Forest": forest, "Island": island})]:
+                    status, _, data = client.result(timeout=2)
+                    self.assertEqual((status, json.loads(data)), (200, expected))
+                self.assertEqual(lookup.call_count, 1)
+            finally:
+                release.set()
+                game.PRINT_QUEUE.join()
+
+            self.now += game.PRINT_COOLDOWN - 1
+            self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0]["img"], normal)
+            self.assertEqual(lookup.call_count, 1)
+            self.now += 1
+            lookup.side_effect = None
+            lookup.return_value = found
+            game.cards(["Forest"])
+            game.PRINT_QUEUE.join()
+            face = game.cards(["Forest"])["Forest"]["faces"][0]
+            self.assertEqual((face["img"], face["art"]), (large, "cache/art/forest.jpg"))
+            self.assertEqual(lookup.call_count, 2)
+            download.assert_called_once_with(found["Forest"]["image_uris"]["large"], raw=True)
+
+    def test_failed_first_print_recovers_from_the_catalog_after_restart(self):
+        art_url, print_url = "https://example.test/art.jpg", "https://example.test/print.jpg"
+        found = {"Forest": {"type_line": "Basic Land", "image_uris": {"art_crop": art_url, "large": print_url}}}
+        with mock.patch.object(game, "scryfall", return_value=found) as lookup, \
+                mock.patch.object(game, "get", side_effect=[b"art", TimeoutError(), b"large"]) as download:
+            first = game.cards(["Forest"])["Forest"]["faces"][0]
+            self.assertEqual((first["type"], first["art"], first["img"]), ("Basic Land", "cache/art/forest.jpg", None))
+            self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0], first)
+            self.assertEqual(download.call_count, 2)
+
+            game.CARDS.clear()
+            game.PRINT_RETRY_AT.clear()
+            game.load_cards()
+            self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0], first)
+            game.PRINT_QUEUE.join()
+            face = game.cards(["Forest"])["Forest"]["faces"][0]
+            self.assertEqual((face["type"], face["art"], face["img"]),
+                             ("Basic Land", "cache/art/forest.jpg", "cache/card-large/forest.jpg"))
+            self.assertNotIn("printPending", face)
+            lookup.assert_called_once_with(["Forest"])
+            self.assertEqual(download.call_args, mock.call(print_url, raw=True))
+
+    def test_cold_batch_downloads_cards_in_parallel(self):
+        names = ["Forest", "Island"]
+        found = {name: {"image_uris": {"art_crop": f"{name}/art", "large": f"{name}/print"}} for name in names}
+        started = {name: threading.Event() for name in names}
+        release = threading.Event()
+
+        def download(url, raw):
+            name, kind = url.split("/")
+            if kind == "art":
+                started[name].set()
+                if not release.wait(5):
+                    raise AssertionError("test never released the download")
+            return b"image"
+
+        with mock.patch.object(game, "scryfall", return_value=found), \
+                mock.patch.object(game, "get", side_effect=download), ThreadPoolExecutor(1) as client:
+            request = client.submit(game.cards, names)
+            try:
+                for event in started.values():
+                    self.assertTrue(event.wait(2))
+                self.assertFalse(request.done())
+            finally:
+                release.set()
+            cards = request.result(timeout=2)
+        for name in names:
+            self.assertEqual(cards[name]["faces"][0]["img"], f"cache/card-large/{name.lower()}.jpg")
+
+    def test_pending_downloads_share_a_fixed_worker_count(self):
+        names = [f"Card {i}" for i in range(100)]
+        for name in names:
+            game.CARDS[name] = {"faces": [{"name": name, "printPending": "https://example.test/" + name}]}
+
+        full, release = threading.Event(), threading.Event()
+        lock = threading.Lock()
+        active = peak = 0
+
+        def download(url, raw):
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                if active == game.PRINT_WORKERS:
+                    full.set()
+            try:
+                if not release.wait(5):
+                    raise AssertionError("test never released the download")
+                return b"print"
+            finally:
+                with lock:
+                    active -= 1
+
+        starts = []
+
+        class Worker(threading.Thread):
+            def start(self):
+                super().start()
+                starts.append(self)
+
+        threads = mock.Mock(wraps=threading, Thread=Worker)
+        with mock.patch.multiple(game, PRINT_QUEUE=queue.Queue(), PRINT_WORKERS_STARTED=0, threading=threads), \
+                mock.patch.object(game, "get", side_effect=download) as get, ThreadPoolExecutor(3) as clients:
+            try:
+                requests = [clients.submit(game.cards, names[offset::3]) for offset in range(3)]
+                for request in requests:
+                    request.result(timeout=2)
+                self.assertTrue(full.wait(2))
+                self.assertEqual(len(starts), 3)
+                self.assertEqual(get.call_count, 3)
+            finally:
+                release.set()
+                game.PRINT_QUEUE.join()
+            self.assertEqual(peak, game.PRINT_WORKERS)
+            self.assertEqual(get.call_count, len(names))
+            self.assertTrue(all(game.CARDS[n]["faces"][0]["img"] for n in names))
+
+    def test_worker_exception_releases_the_claim(self):
+        game.CARDS["Forest"] = {"faces": [{"name": "Forest", "printPending": "https://example.test/forest"}]}
+        upgrade_result = {"faces": [{"name": "Forest", "img": "cache/card-large/forest.jpg"}]}
+        retried = threading.Event()
+        retry_at = self.now + game.PRINT_COOLDOWN
+
+        def upgrade(name, card):
+            if self.now < retry_at:
+                raise SystemExit()
+            retried.set()
+            return upgrade_result
+
+        with mock.patch.multiple(game, PRINT_QUEUE=queue.Queue(), PRINT_WORKERS_STARTED=0, PRINT_WORKERS=1), \
+                mock.patch.object(game, "upgrade_print", side_effect=upgrade) as attempt, \
+                mock.patch.object(game.traceback, "print_exc") as log:
+            game.cards(["Forest"])
+            game.PRINT_QUEUE.join()
+            log.assert_called_once()
+            self.assertEqual(game.PRINT_RETRY_AT["Forest"], retry_at)
+            self.now = retry_at
+            game.cards(["Forest"])
+            self.assertTrue(retried.wait(2))
+            game.PRINT_QUEUE.join()
+            self.assertEqual(game.CARDS["Forest"], upgrade_result)
+            self.assertEqual(attempt.call_count, 2)
+            self.assertNotIn("Forest", game.PRINT_RETRY_AT)
+
+    def test_fill_cache_uses_distinct_printing_ids_for_elemental_tokens(self):
+        faces = [f for f in game.fixture_faces() if f["name"] == "Elemental"]
+        tokens = {
+            "elemental-marath": "c5ad13b4-bbf5-4c98-868f-4d105eaf8833",
+            "elemental-waves": "f0e68ed9-d863-4822-b281-e184f3d62faa",
+        }
+        replies = {}
+        for token, printing in tokens.items():
+            path = self.cache / "card-large" / (token + ".jpg")
+            path.parent.mkdir(exist_ok=True)
+            path.write_bytes(b"previous ambiguous print")
+            path.with_suffix(".id").write_text(printing)
+            art = self.cache / "art" / (token + ".jpg")
+            art.parent.mkdir(exist_ok=True)
+            art.write_bytes(b"previous ambiguous crop")
+            uri = "https://example.test/" + token
+            replies["https://api.scryfall.com/cards/" + printing] = {"image_uris": {"large": uri, "art_crop": uri + "-art"}}
+            replies[uri] = token.encode()
+            replies[uri + "-art"] = (token + "-art").encode()
+
+        with mock.patch.object(game, "fixture_faces", return_value=faces), \
+                mock.patch.object(game, "scryfall") as by_name, \
+                mock.patch.object(game, "get", side_effect=lambda url, **_: replies[url]) as by_id:
+            self.assertEqual(game.fill_cache(), 0)
+            self.assertEqual(by_id.call_count, 6)
+            self.assertEqual(game.fill_cache(), 0)
+            self.assertEqual(by_id.call_count, 6)
+            by_name.assert_not_called()
+        for token in tokens:
+            self.assertEqual((self.cache / "card-large" / (token + ".jpg")).read_bytes(), token.encode())
+            self.assertEqual((self.cache / "art" / (token + ".jpg")).read_bytes(), (token + "-art").encode())
 
 
 class AnswerStatusTest(unittest.TestCase):

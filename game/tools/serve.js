@@ -100,7 +100,8 @@ function serve(port = 0, { dist = false, lan = false, benchDir = BENCH } = {}) {
       return res.end();
     }
     const cached = rel.startsWith("/cache/"), root = cached ? CACHE : ROOT;
-    const file = cached ? path.join(CACHE, rel.slice("/cache/".length)) : path.join(ROOT, rel.endsWith("/") ? rel + INDEX : rel);
+    const large = rel.startsWith("/cache/card/") && path.join(CACHE, "card-large", rel.slice("/cache/card/".length));
+    const file = large && fs.existsSync(large) ? large : cached ? path.join(CACHE, rel.slice("/cache/".length)) : path.join(ROOT, rel.endsWith("/") ? rel + INDEX : rel);
     if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
     fs.readFile(file, (err, buf) => {
       if (err) { res.writeHead(404); return res.end(); }

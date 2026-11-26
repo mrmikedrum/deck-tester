@@ -425,9 +425,11 @@ The same table at rest with one post-processing setting changed (a second run, s
 the composer at 1.0x, 10.6 ms; at 1.5x (the policy's), 12.3; bloom off, 11.6 (55 calls); MSAA off, 11.5; all three,
 9.2. On the M4 none of them dominates: the lit table itself is most of the frame. The iPad's run decides.
 
-The iPad baseline (an 834 × 1210 screen at 2×, drawing the bench's fixed 1180 × 820 viewport) measured 13/14 ms at rest, 16/18 ms in a highlight and 13/17 ms in
-flight (median/worst). With bloom disabled, rest fell to 10/12 ms. The client now paints glow into its sprites
-and rims and keeps the composer resolution and MSAA.
+On iPad Safari after PR #14 and the sprite glow change, the bench's fixed 1180 × 820 viewport at DPR 2 measured
+10/12 ms at rest, 11/12 in a highlight and 11/12 in flight (median/p90), with 55, 60 and 64 draw calls respectively.
+The earlier baseline recorded 13/14, 16/18 and 13/17 ms (median/worst). Rest variants (median/p90) were 9/10 at 1.0×,
+10/12 at 1.5×, 9/11 at 1.5× without MSAA, 8/10 at 1.0× without MSAA, and 12/13 at native DPR with MSAA.
+The highlight at 1.5× with MSAA measured 13/15 ms.
 
 On the Mac, paired WebKit runs used the same turn-15 fixture at 1180 × 820 and 2×, with 240 timed frames per moment.
 

@@ -59,12 +59,12 @@ const paint = (spec: FaceSpec): string[] => {
   return r.log;
 };
 
-it("paints a lifted card at its decoded image size", () => {
+it.each([[350, 488], [672, 936]])("paints a lifted card at its decoded size of %i × %i", (width, height) => {
   const { ctx, log } = recorder();
   const canvas = { getContext: () => ctx } as unknown as HTMLCanvasElement;
-  const image = { width: 350, height: 488 } as HTMLImageElement;
+  const image = { width, height } as HTMLImageElement;
   paintPrinted(canvas, image);
-  expect([canvas.width, canvas.height]).toEqual([350, 488]);
+  expect([canvas.width, canvas.height]).toEqual([width, height]);
   expect(log.find((call) => call.startsWith("drawImage("))).toMatch(/,0\.00,0\.00\)$/);
 });
 
