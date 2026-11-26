@@ -521,8 +521,12 @@ CLIENT_LOG = ClientLog(CLIENTLOG)
 
 class BenchResults:
     """POST /api/bench: a workbench timing run (an iPad on the LAN has no clipboard over plain http), each kept as a
-    JSON file under .deckmaster/bench/, the newest 20."""
+    compact JSON file under .deckmaster/bench/, the newest 20. The server listens on every interface, so the endpoint
+    keeps only the bench page's fields, within the request cap, under a name of its own, and answers every request."""
     KEEP = 20
+    CAP = 256 * 1024
+    ROWS = 64
+    FIELDS = ("userAgent", "screen", "viewport", "clockResolutionMs", "plansPerInput", "budgetMs", "rows")
 
     def __init__(self, folder, clock=time.time):
         self.folder, self.clock = Path(folder), clock
@@ -530,18 +534,45 @@ class BenchResults:
 
     def add(self, body):
         """(HTTP status, reply) for a request body: {rows: [...], ...}."""
-        if not isinstance(body, dict) or not isinstance(body.get("rows"), list):
-            return 400, {"ok": False, "error": "expected the bench page's results: {rows: [...], ...}"}
-        with self.lock:
-            self.folder.mkdir(parents=True, exist_ok=True)
-            stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
-            name, n = f"bench-{stamp}.json", 2
-            while (self.folder / name).exists():
-                name, n = f"bench-{stamp}-{n}.json", n + 1
-            (self.folder / name).write_text(json.dumps(body, indent=1) + "\n")
-            for old in sorted(self.folder.glob("bench-*.json"), key=lambda p: p.stat().st_mtime)[:-self.KEEP]:
-                old.unlink()
+        rows = body.get("rows") if isinstance(body, dict) else None
+        if not isinstance(rows, list) or len(rows) > self.ROWS or not all(isinstance(r, dict) for r in rows):
+            return 400, {"ok": False, "error": f"expected the bench page's results: {{rows: [...] (at most {self.ROWS}), ...}}"}
+        try:
+            text = json.dumps({k: body[k] for k in self.FIELDS if k in body}, separators=(",", ":")) + "\n"
+        except (ValueError, RecursionError):
+            return 400, {"ok": False, "error": "not a bench run"}
+        data = text.encode()
+        if len(data) > self.CAP:
+            return 413, {"ok": False, "error": "too large"}
+        try:
+            with self.lock:
+                self.folder.mkdir(parents=True, exist_ok=True)
+                stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(self.clock()))
+                name, n = f"bench-{stamp}.json", 2
+                while True:
+                    try:
+                        with open(self.folder / name, "xb") as f:   # never over another run
+                            f.write(data)
+                        break
+                    except FileExistsError:
+                        name, n = f"bench-{stamp}-{n}.json", n + 1
+                self.prune()
+        except OSError as error:
+            return 500, {"ok": False, "error": f"not kept: {error.strerror or error}"}
         return 200, {"ok": True, "file": f".deckmaster/bench/{name}"}
+
+    def prune(self):
+        """The runs past the newest KEEP go; one that went meanwhile, or will not go, does not fail the run kept."""
+        def age(p):
+            try:
+                return p.stat().st_mtime
+            except OSError:
+                return -1
+        for old in sorted(self.folder.glob("bench-*.json"), key=age)[:-self.KEEP]:
+            try:
+                old.unlink()
+            except OSError:
+                pass
 
 
 BENCH_RESULTS = BenchResults(BENCH)
@@ -592,8 +623,12 @@ class Handler(BaseHTTPRequestHandler):
         return int(raw)
 
     def body(self, n):
-        """Exactly `n` bytes of JSON ({} when empty); ValueError when they are not JSON."""
-        return json.loads(self.rfile.read(n) or b"{}") if n else {}
+        """Exactly `n` bytes of JSON ({} when empty); ValueError when they are not JSON (or nest past what parses)."""
+        data = self.rfile.read(n) if n else b""
+        try:
+            return json.loads(data or b"{}")
+        except RecursionError:
+            raise ValueError("nested too deep") from None
 
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
