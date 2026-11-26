@@ -659,7 +659,10 @@ targets at most 1.5), the camera from layout's `CameraSpec` through `cameraParam
 the projector; a test holds them equal), the base world (the tome, one warm spot lamp whose shadow map falls on the tome,
 the pages and the cards, a hemisphere fill and a faint room reflection), the shared geometry, and the `Painter` facade.
 The table is physical: cards are lit card stock at their true thickness (0.3 mm; a pile's height is its count), with a
-faint paper grain, contact shades where they meet the page; the tome's texture paints no lamplight of its own.
+faint paper grain, contact shades where they meet the page; the tome's texture paints no lamplight of its own. A card
+lifted off the table (the combat gathering, a lean-in) takes the lamp as it would on the table there, and its mirror of
+the lamp fades as it rises (`liftExposure`), so nothing lifted toward the lamp blows out; a behaviour spec holds a
+gathered card's face within a fifth of its brightness at rest.
 
 **Drawn together.** A card in the scene graph is a proxy (pose group, the body the tap turns, an invisible outline the
 audit measures and raycasts); each frame the host's `CardDeck` gathers the shown proxies into instanced meshes, one per

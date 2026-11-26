@@ -39,8 +39,33 @@ import type { CardGeometry } from "./geometry";
 import type { Rim, Signal } from "./materials";
 import type { Lease } from "./textures";
 
-const { card, slab, rim: rimParams, faceTone } = materials;
+const { card, slab, rim: rimParams, faceTone, lights } = materials;
 const T = card.thickness;
+
+// ---- exposure -----------------------------------------------------------------------------------------------------
+
+/** The lamp's light reaching a point (three's spot attenuation: its cone's smooth edge over its distance falloff). */
+function lampAt(x: number, y: number, z: number): number {
+  const l = lights.lamp;
+  const dx = x - l.at.x, dy = y - l.at.y, dz = z - l.at.z, d = Math.hypot(dx, dy, dz);
+  const ax = l.aim.x - l.at.x, ay = l.aim.y - l.at.y, az = l.aim.z - l.at.z, a = Math.hypot(ax, ay, az);
+  const cos = (dx * ax + dy * ay + dz * az) / (d * a);
+  const outer = Math.cos(l.angle), inner = Math.cos(l.angle * (1 - l.penumbra));
+  const t = Math.min(1, Math.max(0, (cos - outer) / (inner - outer)));
+  return (t * t * (3 - 2 * t)) / Math.max(Math.pow(d, l.decay), 0.01);
+}
+
+/**
+ * How much of the lamp a card lifted off the table takes (1 on the table): the lamp's light where a card of scale `s`
+ * stands on the table there, over its light where the card is drawn, never more than 1. A card lifted toward the lamp
+ * (the gathering, a lean-in) is exposed as it would be on the table, never blown out in the lamp's hot spot.
+ */
+export function liftExposure(x: number, y: number, z: number, s: number): number {
+  const rest = Math.min(y, 0.5 * card.h * s);
+  if (rest >= y) return 1;
+  const there = lampAt(x, y, z);
+  return there > 0 ? Math.min(2, Math.max(0.5, lampAt(x, rest, z) / there)) : 1;
+}
 
 /** Faces per page of the atlas (one array texture): 32 faces at 336 x 468 with mipmaps is about 27 MB. */
 export const FACE_LAYERS = 32;
@@ -387,6 +412,16 @@ if (front_ > 0.5) {
 }
 `;
 
+/**
+ * The lamp's light on a lifted card is its exposure on the table (`liftExposure`, vMore.y); the room's fill is as is. Its
+ * mirror of the lamp, which no card on the table shows from my seat, fades as it rises (a gathered card turned up toward
+ * me would otherwise catch the lamp's highlight full in the face and go milky).
+ */
+const FRAGMENT_LIGHTS = /* glsl */ `#include <lights_fragment_end>
+float lift_ = min(vMore.y, 1.0);
+reflectedLight.directDiffuse *= vMore.y;
+reflectedLight.directSpecular *= lift_ * lift_ * lift_ * lift_;`;
+
 /** A highlight steps the card out of the light: `flat` 1 is its surface as painted, unlit (vLook.z). */
 const FRAGMENT_OUT = /* glsl */ `
 outgoingLight = mix(outgoingLight, diffuseColor.rgb, vLook.z);
@@ -404,6 +439,7 @@ function cardMaterial(page: Texture, back: Texture, grain: Texture, time: { valu
     sh.fragmentShader = sh.fragmentShader
       .replace("#include <common>", `#include <common>\n${FRAGMENT_PARS}`)
       .replace("#include <map_fragment>", FRAGMENT_MAP)
+      .replace("#include <lights_fragment_end>", FRAGMENT_LIGHTS)
       .replace("#include <opaque_fragment>", FRAGMENT_OUT);
   };
   m.customProgramCacheKey = () => "deck-card";
@@ -665,7 +701,8 @@ export class CardDeck {
         b.look.setXYZW(i, s.tap > 0.5 ? 1 : 0, s.dim, s.flat, s.strata);
         const c = s.signal ? this.rim.colours[s.signal] : ZERO;
         b.rim.setXYZW(i, c.r, c.g, c.b, s.signal ? WIDTH[s.signal] : rimParams.idle);
-        b.more.setXY(i, s.stock, 0);
+        const e = f.o.matrixWorld.elements;
+        b.more.setXY(i, s.stock, liftExposure(e[12]!, e[13]!, e[14]!, Math.hypot(e[0]!, e[1]!, e[2]!)));
         if (shadow === "true") for (const e of f.o.matrixWorld.elements) casters.push(e);
       });
       b.n = list.length;
