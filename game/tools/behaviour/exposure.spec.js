@@ -1,7 +1,8 @@
-// The physical table's exposure (the new entry only): a card the combat gathering lifts toward the lamp is lit as it is
-// on the table. Atraxa's six attackers on the design pass's turn-15 table, tapped, at rest on their leaf and then
-// gathered in a fight: each one's face, as drawn, keeps its mean luminance within a fifth of the same card at rest
-// (before the gathering's exposure was matched, the cards nearest the lamp came out up to 1.75 times as bright, milky).
+// The physical table's exposure (the new entry only): a card the clash lifts toward the lamp is lit as it is on the
+// table. Atraxa's six attackers on the design pass's turn-15 table, untapped (as with vigilance: the lift alone is
+// measured, not the tapped look), at rest on their leaf and then gathered in a fight at me: each one's face, as drawn,
+// keeps its mean luminance within a fifth of the same card at rest (before the gathering's exposure was matched, the
+// cards nearest the lamp came out up to 1.75 times as bright, milky).
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 const { test, expect, NEW } = require("./harness.js");
@@ -9,10 +10,10 @@ const { test, expect, NEW } = require("./harness.js");
 const design = JSON.parse(readFileSync(resolve(__dirname, "../../../tests/fixtures/boards/design-pass.json"), "utf8"));
 const ATTACKERS = [1019, 1041, 1117, 1169, 1221, 1072];
 
-/** Turn 15 with Atraxa's attackers tapped; `fight`: they attack me (the gathering). */
+/** Turn 15 with Atraxa's attackers untapped; `fight`: they attack me (the clash). */
 function table(fight) {
   const e = JSON.parse(JSON.stringify(design.stages.find((s) => s.turn === 15).envelope));
-  for (const c of e.view.players.find((p) => p.name === "Atraxa").battlefield) if (ATTACKERS.includes(c.id)) c.tapped = true;
+  for (const c of e.view.players.find((p) => p.name === "Atraxa").battlefield) if (ATTACKERS.includes(c.id)) c.tapped = false;
   if (fight) {
     e.v = 16;
     e.view = { ...e.view, active: "Atraxa", phase: "COMBAT_DECLARE_BLOCKERS", priority: "You", combat: { attackers: ATTACKERS.map((id) => ({ id, defender: "You" })), blockers: [] } };

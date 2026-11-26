@@ -193,7 +193,10 @@ export class StageRenderer {
       if (aloft !== e.aloft) {
         e.view.group.traverse((o) => {
           const st = o.userData[CARD] as CardState | undefined;
-          if (st) st.shadow = !aloft;
+          if (st) {
+            st.shadow = !aloft;
+            st.aloft = aloft;
+          }
         });
         e.aloft = aloft;
       }
