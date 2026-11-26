@@ -275,6 +275,21 @@ describe("the table form", () => {
   });
 });
 
+describe("the plan's rev and combat's figures", () => {
+  it("raising an unblocked attacker's power changes the rev (review: turn 15, 1015 from 3 to 8)", () => {
+    const at = (power: number): TableModel => {
+      const e = structuredClone(design.stages.find((s) => s.turn === 15)!.envelope) as { view: { players: { battlefield: { id: number; power?: number }[] }[] } & Record<string, unknown> };
+      for (const p of e.view.players) for (const c of p.battlefield) if (c.id === 1015) c.power = power;
+      e.view = { ...e.view, active: "Marath", priority: "Marath", phase: "COMBAT_DECLARE_BLOCKERS", combat: { attackers: [{ id: 1015, defender: "Dack" }, { id: 1064, defender: "Dack" }], blockers: [] } };
+      return designModels({ stages: [{ turn: 15, envelope: e }], catalog: design.catalog }).get(15)!;
+    };
+    const a = drawn(at(3)), b = drawn(at(8)), again = drawn(at(3));
+    expect(b.gathering!.wings[0]!.unblocked).not.toBe(a.gathering!.wings[0]!.unblocked);
+    expect(b.rev).not.toBe(a.rev);
+    expect(again.rev).toBe(a.rev);
+  });
+});
+
 describe("duels in the parted middle (a fight between opponents)", () => {
   const MARATH = [[1015, "Dack"], [1064, "Dack"], [1153, "Dack"], [1204, "Dack"]] as const;
   /** Everything on an opponent's leaf (fighters gone to the duels aside) within x l..r: its lowest point on screen. */

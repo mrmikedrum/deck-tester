@@ -127,7 +127,10 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   // A graveyard or exile is there while it has cards, on the table or not (an opponent's lives in the nameplate's focus).
   const has = (id: string): boolean => (groups?.some((g) => g.id === id) ?? false) || (!!s.model && !!s.plan && (siftCards(s.model, s.plan, id)?.zone ?? null) !== null && (siftCards(s.model, s.plan, id)?.ids.length ?? 0) > 0);
   const pages = (id: string): number => siftPages(s.model && s.plan ? (siftCards(s.model, s.plan, id)?.ids.length ?? 0) : 0);
-  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat, s.plan), groups: has, pages }, origin);
+  const synced = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat, s.plan), groups: has, pages }, origin);
+  // A lean-in on a seat that has left the table (out of the game) goes with it.
+  const leaning = synced.layers.find((e) => e.layer === "lean");
+  const focus = leaning?.seat && s.plan && !s.plan.seats.has(leaning.seat) ? close(synced, "lean") : synced;
   return focus === s.focus ? s : { ...s, focus };
 }
 
@@ -663,7 +666,8 @@ function input(s: AppState, m: InputMsg): Step {
     case "board": {
       // The nameplate's "See … board": the nameplate closes and the table leans in on that seat (not my own).
       const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;
-      if (!seat || seat === s.model?.viewer.perspective) return done(tx);
+      // (a seat out of the game has no board on the table to lean in on)
+      if (!seat || seat === s.model?.viewer.perspective || !s.plan?.seats.has(seat)) return done(tx);
       tx.s = { ...s, focus: open(close(s.focus, "seat"), entry("lean", { seat, restore: tx.origin ?? null })) };
       return done(tx);
     }

@@ -157,7 +157,7 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
   const all = siftCards(model, plan, group);
   if (!all || !all.ids.length) return null;
   const n = all.ids.length;
-  const seat = plan.hits.groups.find((g) => g.id === group)?.seat ?? null;
+  const seat = all.seat;
   const whose = seat === model.viewer.perspective ? "Your" : `${seatName(model, seat)}'s`;
   const cards = all.ids.map((id) => model.cards.get(id)).filter((c): c is Card => c !== undefined);
   const names = new Set(cards.map((c) => c.face.name));

@@ -403,7 +403,7 @@ export function planTable(input: TableInput): TablePlan {
     )
     .join("\n");
   const screen = `${quads(hits.groups.map((g) => g.quad))}\n${quads(hits.groups.flatMap((g) => (g.face ? [g.face] : [])))}\n${quads(stack.map((x) => x.quad))}\n${quads(stackUp.map((x) => x.quad))}`;
-  const gathered = c.gathered ? JSON.stringify([c.gathered.form, c.gathered.step, c.gathered.extent, c.gathered.duels, c.gathered.moreAt, c.gathered.wings.map((w) => [w.plaque, w.columns.map((col) => [col.x, col.clasp, col.slot])])]) : "";
+  const gathered = c.gathered ? JSON.stringify([c.gathered.form, c.gathered.step, c.gathered.extent, c.gathered.duels, c.gathered.moreAt, c.gathered.wings.map((w) => [w.attacker, w.defender, w.plaque, w.w, w.unblocked, w.walker, w.tallyAt, w.columns.map((col) => [col.unit, col.attackers, col.blockers, col.x, col.w, col.clasp, col.slot, col.power, col.blocked])]), c.gathered.more]) : "";
   return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${gathered}\n${part}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(input.engine ? { leaves } : {}), part, crowded };
 }
 
@@ -753,7 +753,7 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   for (const p of plans)
     for (const un of p.units) {
       const sh = shape(un.id);
-      groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: hitQuad(sh), ...(sh.hit ? { face: sh.face } : {}), order: sh.order });
+      groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.reach ?? un.members, quad: hitQuad(sh), ...(sh.hit ? { face: sh.face } : {}), order: sh.order });
     }
   for (const p of plans) for (const z of p.fixtures.zones) {
     const id = `zone:${z.zone}:${p.seat}`;

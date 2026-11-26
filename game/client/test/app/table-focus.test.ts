@@ -506,6 +506,7 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
     expect(layers(r)).toEqual([["sift", `zone:graveyard:${atraxa}`]]);
     expect(r.state.focus.layers[0]?.restore).toBe(`plate:${atraxa}`);
     const sift = r.commits.at(-1)!.view.sift!;
+    expect(sift.title).toBe("Atraxa's graveyard ×30");
     expect(sift.cards.length).toBe(SIFT_PAGE);
     // the sixth card (past the nameplate's five) is there to read and choose
     expect(sift.cards.some((c) => c.id === 405)).toBe(true);
@@ -535,9 +536,27 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
     r.frame((r.now += 10));
     expect(layers(r)).toEqual([["seat", atraxa]]);
     expect(r.commits.at(-1)!.view.seatFocus?.also).toMatch(/Out of the game/);
+    // no board to see: the nameplate offers none, and the order is refused
+    expect(r.commits.at(-1)!.view.seatFocus?.board).toBe(false);
+    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    expect(layers(r).some(([l]) => l === "lean")).toBe(false);
     r.inputs.push({ t: "seat", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
     r.frame((r.now += 10));
     expect(layers(r)).toEqual([]);
+  });
+
+  it("a lean-in on a seat goes when that seat leaves the game", () => {
+    const r = started(yard(1));
+    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([["lean", atraxa]]);
+    const e = yard(2) as { view: { players: Json[] } };
+    e.view.players = e.view.players.filter((p) => p["name"] !== "Atraxa");
+    r.transport.push(e);
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(layers(r).some(([l]) => l === "lean")).toBe(false);
   });
 
   it("the nameplate's focus shows a seat's command zone", () => {
@@ -567,5 +586,34 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
     const shown = play.present(r.state.play).controls;
     const labels = [...(shown.prompt?.buttons ?? []), ...(shown.sheet && "options" in shown.sheet ? (shown.sheet.options as readonly { label: string }[]) : [])].map((b) => b.label).join(" | ");
     expect(labels).toMatch(/All plays \(1\)/); // its one play: the card cast from exile
+  });
+});
+
+describe("an attachment the decision offers, on its host on an opponent's leaf", () => {
+  it("is selected through its host: the host's place opens a chooser holding it, and the answer is sent", () => {
+    const e = board({ v: 1 }) as { view: { players: Json[] }; decision: Json };
+    const them = e.view.players.find((p) => p["name"] === "Atraxa")!;
+    them["battlefield"] = [
+      { id: 1011, name: "Forest", owner: "Atraxa", controller: "Atraxa", type: "Basic Land - Forest" },
+      { id: 1012, name: "Forest", owner: "Atraxa", controller: "Atraxa", type: "Basic Land - Forest" },
+      { id: 9900, name: "Utopia Sprawl", owner: "Atraxa", controller: "Atraxa", type: "Enchantment - Aura", attachedTo: 1011 },
+      { id: 1020, name: "Grizzly Bears", owner: "Atraxa", controller: "Atraxa", type: "Creature - Bear", power: 2, toughness: 2 },
+    ];
+    e.decision = { id: 1, kind: "targets", turn: "T1 main1", prompt: "Destroy target enchantment", repeat: false, options: ["Utopia Sprawl"], refs: [{ card: 9900 }], min: 1, max: 1 };
+    const r = started(e);
+    // its host's group reaches it (the engine's `open` target), and the choice is on the table
+    const host = groups(r).find((g) => g.members.includes(9900 as CardId))!;
+    expect(host).toBeDefined();
+    expect(host.members).toContain(1011);
+    tap(r, host);
+    // the only card the tap could mean is the Aura: chosen at once, or from the chooser the host opens
+    const sifted = layers(r).find(([l]) => l === "sift");
+    if (sifted) {
+      expect(r.commits.at(-1)!.view.sift!.cards.map((c) => c.id)).toContain(9900);
+      r.send({ a: "tap", on: { card: 9900 as CardId, chooser: play.present(r.state.play).controls.choosing!.rev } });
+      r.frame((r.now += 10));
+    }
+    r.frame((r.now += 1300));
+    expect(r.transport.answers.map((a) => (a.body as { answer: unknown }).answer)).toEqual([[1]]);
   });
 });

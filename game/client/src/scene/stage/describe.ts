@@ -371,6 +371,8 @@ export interface SiftCards {
   readonly tapped: readonly boolean[];
   /** A graveyard or exile, which keeps its order; else a pile on the battlefield. */
   readonly zone: "graveyard" | "exile" | null;
+  /** Whose: the group's seat, or the seat a zone group names (its pile off the table). */
+  readonly seat: SeatId | null;
 }
 
 /**
@@ -395,7 +397,7 @@ export function siftCards(model: TableModel, plan: TablePlan, group: string): Si
     const tapped = (id: CardId) => model.cards.get(id)?.tapped ?? false;
     ids = [...by.values()].sort((a, b) => b.length - a.length).flatMap((cs) => [...cs.filter((id) => !tapped(id)), ...cs.filter(tapped)]);
   }
-  return { ids, tapped: ids.map((id) => (!zone && model.cards.get(id)?.tapped) || false), zone };
+  return { ids, tapped: ids.map((id) => (!zone && model.cards.get(id)?.tapped) || false), zone, seat: seat ?? null };
 }
 
 /** The seat a zone group names ("zone:<zone>:<seat>"), when the model has it. */

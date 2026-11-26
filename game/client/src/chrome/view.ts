@@ -142,6 +142,8 @@ export interface SeatFocusView {
   readonly exile: readonly PickedCard[];
   /** The command zone: a commander waiting there (on the leaf too where it fits wholly clear of the chrome). */
   readonly command: readonly PickedCard[];
+  /** It has a board on the table to see (a seat out of the game has none). */
+  readonly board: boolean;
   /** An opponent's hand: backs (and any card shown face up); mine: the cards. */
   readonly hand: readonly PickedCard[];
   readonly handCount: number;

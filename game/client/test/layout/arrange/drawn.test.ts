@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { boards, hitTest, planTable, tableInputOf, topChrome } from "../../../src/layout";
 import { S_TABLE } from "../../../src/layout/arrange/scale";
+import { pickDrawn } from "../../../src/scene/stage/pick";
 import type { TablePlan } from "../../../src/layout";
 import { bounds, inQuad } from "../../../src/layout/shape";
 import { ARRANGED } from "../../../src/layout/arrange/adapter";
@@ -61,8 +62,7 @@ describe("every opponent's leaf, drawn by the engine", () => {
         // each leaf's own audit, at rest and parted at the most
         for (const [seat, l] of plan.leaves!) {
           expect(l.result!.fit.report.violations, `${vp.w} turn ${turn} ${seat}`).toEqual([]);
-          // (parted at the most, the design viewport and the iPad's; at 1024x768 the across well's patch reads 40 on turn 9)
-          if (vp.w === 1180 || vp.w === 1210) expect(l.result!.fit.report.poses.flatMap((p) => p.violations), `${vp.w} turn ${turn} ${seat} parted`).toEqual([]);
+          expect(l.result!.fit.report.poses.flatMap((p) => p.violations), `${vp.w} turn ${turn} ${seat} parted`).toEqual([]);
         }
       }
   });
@@ -172,6 +172,13 @@ describe("every opponent's leaf, drawn by the engine", () => {
     const next = planTable(tableInputOf(at(true), { viewport: VP, memory, engine: { draw: true } }));
     for (const seat of ["Marath", "Atraxa"]) expect(next.leaves!.get(seat as never)!.result, seat).toBe(plan!.leaves!.get(seat as never)!.result);
     expect(next.leaves!.get("Dack" as never)!.result).not.toBe(plan!.leaves!.get("Dack" as never)!.result);
+  });
+
+  it("a tap on a stack's count die reaches its stack (review: turn 15, Dack's Spirits), in hitTest and the scene's pick", () => {
+    const plan = planTable(tableInputOf(design.get(15)!, { viewport: VP, engine: { draw: true } }));
+    const spirits = plan.hits.groups.find((g) => g.seat === ("Dack" as never) && g.id.includes("Spirit"))!;
+    expect(hitTest(plan, { x: 889, y: 332 })?.id).toBe(spirits.id);
+    expect(pickDrawn(plan, new Map(), { x: 889, y: 332 })?.id).toBe(spirits.id);
   });
 
   it("a tap on a face reaches that face, never the neighbour whose wider place it is under (review: turn 9)", () => {

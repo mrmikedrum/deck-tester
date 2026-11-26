@@ -43,6 +43,9 @@ export function onTable(d: TargetsDecision | ChooseDecision, f: Facts, groups: r
   const opt = new Set(d.refs.map((r) => r.card).filter((c): c is CardId => c !== null));
   const hidden = (id: CardId, g: Group) => {
     const name = f.cards[id]?.name;
+    // (an attachment offered on its host is reached through the host's group, whose chooser holds both)
+    const host = f.cards[id]?.attachedTo;
+    if (host != null && g.members.includes(host)) return false;
     return (
       g.members.length > 1 &&
       !g.members.every((x) => {

@@ -13,7 +13,7 @@ import type { Reservations } from "../reservations";
 import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
 import { CW, PLATE_S } from "../seat/geometry";
 import type { CardId, SeatId, V3 } from "../types";
-import type { ArrCard, ArrUnit, ArrangeResult, CardPlace, ContainerMemory } from "./contract";
+import type { ArrCard, ArrUnit, ArrangeResult, CardPlace, ContainerMemory, PickTarget } from "./contract";
 import { CARD, LEAN, clearBehind, onFrame } from "./frame";
 import { LIE_DEPTH } from "./rows";
 import { kindOf } from "./policies/kinds";
@@ -69,9 +69,9 @@ const STRIP_V = new WeakMap<object, Map<string, number>>();
 export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const { result, board } = a, f = result.fit.frame, yaw = Math.atan2(-f.across.z, f.across.x);
   const fit = result.fit, byId = new Map(a.cards.map((c) => [c.id, c]));
-  const regionOf = new Map(fit.targets.map((t) => [t.piece, t.region]));
+  const targetOf = new Map(fit.targets.map((t) => [t.piece, t]));
   const units: Unit[] = [];
-  for (const u of fit.units) units.push(unitOf(u, board.seat as SeatId, byId, regionOf.get(u.id)));
+  for (const u of fit.units) units.push(unitOf(u, board.seat as SeatId, byId, targetOf.get(u.id)));
   // Cards no place could hold (actors past every place) are reached through the entry: one pile by the plate.
   const placed = new Set(units.flatMap((u) => [...u.members, ...u.dressing]));
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
@@ -140,7 +140,10 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
  */
 export const tableUnitId = (id: string, seat: SeatId): string => (/^u:c\d+$/.test(id) ? id : `${id}@${seat}`);
 
-function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, region: Unit["hit"]): Unit {
+function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, target: PickTarget | undefined): Unit {
+  const region = target?.region;
+  // The solver's target opens a chooser where an attachment on this unit is offered: the tap reaches the attachment too.
+  const reach = target && "open" in target.action && u.dressing.length && target.members.length > u.members.length ? target.members : undefined;
   const topId = u.top ?? u.members[0]!;
   const topPlace = u.cards.find((p) => p.card === topId) ?? u.cards.at(-1)!;
   const pose = unturned(topPlace);
@@ -162,5 +165,6 @@ function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, re
     placement: { pos: pose.foot, scale: S_TABLE, posture: topPlace.posture === "stand" ? "stand" : "flat", frame: { right: pose.right, up: pose.up } },
     turn: pose.turn,
     ...(region ? { hit: region } : {}),
+    ...(reach ? { reach } : {}),
   };
 }

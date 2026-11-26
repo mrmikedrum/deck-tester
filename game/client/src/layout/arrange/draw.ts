@@ -47,9 +47,11 @@ const uvOf = (f: SurfaceFrame, p: V3): { u: number; v: number } => ({ u: dot(sub
  * feet to the far edge of what lies in it, up to a block's height) and, where a card may stand, the standing card's
  * top, as one quad: the feet, the higher of the two tops, its sides widened to hold every corner.
  */
-export function regionOf(proj: Projector, f: SurfaceFrame, lo: number, hi: number, v: number, lieDepth: number, s: number, standing: boolean, height = 0): Quad {
+export function regionOf(proj: Projector, f: SurfaceFrame, lo: number, hi: number, v: number, lieDepth: number, s: number, standing: boolean, height = 0, front = 0): Quad {
   const P = (u: number, vv: number, h: number) => proj.project(onFrame(f, u, vv, h));
-  const pts = [P(lo, v, 0), P(hi, v, 0), P(lo, v, height), P(hi, v, height), P(lo, v + lieDepth, 0), P(hi, v + lieDepth, 0), P(lo, v + lieDepth, height), P(hi, v + lieDepth, height)];
+  // (`front`: the count strip in front of the feet, where a stack's die stands: a tap on the die is a tap on its stack)
+  const v0 = v - front;
+  const pts = [P(lo, v0, 0), P(hi, v0, 0), P(lo, v, height), P(hi, v, height), P(lo, v + lieDepth, 0), P(hi, v + lieDepth, 0), P(lo, v + lieDepth, height), P(hi, v + lieDepth, height)];
   let tl = P(lo, v + lieDepth, height), tr = P(hi, v + lieDepth, height);
   if (standing) {
     const p = standPose(f, (lo + hi) / 2, v, LEAN), top = madd(p.foot, p.up, CARD.h * s), hw = (hi - lo) / 2;
@@ -57,7 +59,7 @@ export function regionOf(proj: Projector, f: SurfaceFrame, lo: number, hi: numbe
     pts.push(sl, sr);
     if ((sl.y + sr.y) / 2 < (tl.y + tr.y) / 2) [tl, tr] = [sl, sr];
   }
-  let bl = P(lo, v, 0), br = P(hi, v, 0);
+  let bl = P(lo, v0, 0), br = P(hi, v0, 0);
   // A grid row's places abut: each region runs up its slot's own edges (feet to the standing top), so neighbours meet
   // along a shared line and never overlap, however perspective skews the row (a side leaf's). What lies turned in the
   // place stays inside those edges but for a sliver at a far corner, where the edge already is the neighbour's.
@@ -156,7 +158,7 @@ export function drawUnit(c: Container, f: SurfaceFrame, row: RowGeo, d: DrawSpec
       ? { count: d.members.length, at: onFrame(f, hi - row.strip / 2, v - row.strip / 2), room: surfaceQuad(proj, f, lo, hi, v - row.strip, v) }
       : null;
   const lieDepth = row.depth + (d.kind === "fan" || d.kind === "summary" ? row.proud : 0);
-  const region = regionOf(proj, f, lo, hi, v, lieDepth, s, row.grid || posture === "stand", posture === "stand" ? 0 : topLayer * lift);
+  const region = regionOf(proj, f, lo, hi, v, lieDepth, s, row.grid || posture === "stand", posture === "stand" ? 0 : topLayer * lift, marker ? row.strip : 0);
   const eye = proj.eye, foot = onFrame(f, d.u, v);
   return { cards, face, marker, region, depth: Math.hypot(foot.x - eye.x, foot.y - eye.y, foot.z - eye.z) };
 }

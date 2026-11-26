@@ -393,6 +393,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
     graveyard,
     exile,
     command,
+    board: !s.out,
     hand,
     handCount: s.hand,
     library: s.library,

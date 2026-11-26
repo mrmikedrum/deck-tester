@@ -20,6 +20,8 @@ export interface CardFact {
   /** What sets it apart from others of its name, in words (model `asides`): "tapped", "owned by Atraxa", "with Rancor". */
   readonly asides: readonly string[];
   readonly commander: boolean;
+  /** The permanent it is attached to (an Aura, an Equipment), or null. */
+  readonly attachedTo: CardId | null;
   /** Braced. */
   readonly cost: string;
   readonly text: string;
@@ -104,6 +106,7 @@ export function factsOf(m: TableModel): Facts {
       state: stateOf(m, c),
       asides: asides(m, c),
       commander: c.commander,
+      attachedTo: c.attachedTo ?? null,
       cost: c.face.cost,
       text: c.face.text,
       catalogued: c.face.catalogued,

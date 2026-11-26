@@ -222,7 +222,7 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
           </div>
         </div>
         <div class="l-row">
-          {!v.mine ? (
+          {!v.mine && v.board ? (
             <button type="button" data-fk={`board:${v.seat}`} onClick={() => send({ t: "board", seat: v.seat })}>
               See {v.name}'s board
             </button>

@@ -30,7 +30,7 @@ type Moved = Extract<Change, { t: "moved" }>;
 type Draft = Omit<FlightPlan, "phase" | "cohort" | "rank" | "distance">;
 
 /** Where a card goes, from where the latest description has it (a later set may have moved it again: it goes there). */
-function destOf(ctx: PlanContext, card: CardId, was: Card | null): Dest {
+function destOf(ctx: PlanContext, card: CardId, was: Card | null, now: Card | null = null): Dest {
   const me = ctx.desc.perspective;
   const home = ctx.desc.home.get(card);
   const piece = home ? ctx.desc.pieces.get(home) : undefined;
@@ -42,7 +42,7 @@ function destOf(ctx: PlanContext, card: CardId, was: Card | null): Dest {
   // Out of sight: a token ceases to exist where it stood; a copy of a spell is done; anything else goes to its owner.
   if (was?.token) return { to: "nowhere", how: was.zone === "stack" ? "fizzle" : "burn", seat: was.owner };
   if (was?.copy && was.zone === "stack") return { to: "nowhere", how: "fizzle", seat: was.owner };
-  return { to: "nowhere", how: "plate", seat: was?.owner ?? null };
+  return { to: "nowhere", how: "plate", seat: was?.owner ?? now?.owner ?? null };
 }
 
 const plate = (seat: SeatId): Origin => ({ from: "plate", seat });
@@ -62,7 +62,7 @@ export function planFlights(set: ChangeSet, ctx: PlanContext): FlightPlan[] {
     const was = m.before,
       now = m.after;
     const look = was ?? now;
-    const dest = destOf(ctx, card, was);
+    const dest = destOf(ctx, card, was, now);
     if (m.from !== null && DRAWN.has(m.from)) {
       const at = ctx.homeOf(card) ?? (m.from === "command" ? `plate:${was?.owner ?? ""}` : null);
       const origin: Origin = at ? { from: "piece", piece: at } : plate(was?.controller ?? was?.owner ?? ctx.desc.perspective);
@@ -82,7 +82,10 @@ export function planFlights(set: ChangeSet, ctx: PlanContext): FlightPlan[] {
     // From the hand or out of sight: an arrival, if it lands somewhere the scene draws. A card a moment carries comes
     // from where the chrome let it go, even when it was out of sight in between (Forge takes a spell out of the hand
     // while its targets are chosen, and puts it on the stack after).
-    if (dest.to !== "pile" && dest.to !== "piece") continue;
+    // A card bound for a graveyard or exile off the table (an opponent's: the nameplate's focus holds them), a discard or
+    // a mill, is shown on its way to its owner's plate.
+    const offTable = dest.to === "nowhere" && dest.how === "plate" && (now?.zone === "graveyard" || now?.zone === "exile");
+    if (dest.to !== "pile" && dest.to !== "piece" && !offTable) continue;
     const moment = ctx.moments.find((x) => x.card === card) ?? null;
     const mine = m.from === "hand" || moment !== null;
     const seat = now?.controller ?? now?.owner ?? ctx.desc.perspective;
