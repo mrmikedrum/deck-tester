@@ -20,6 +20,8 @@ export interface Reached {
   readonly seat: SeatId | null;
   /** On the table (not a hand card): a touch that holds auto-pass. */
   readonly table: boolean;
+  /** The group it was (a pile's id), for a choice among its members; null for a card, a seat or nothing. */
+  readonly group?: string;
 }
 
 /** Null when the target is a group whose members changed since it was drawn (or is gone): the act is dropped. */
@@ -31,7 +33,19 @@ export function reached(t: Target, groups: readonly Group[], f: Facts): Reached 
   if (!g || g.members.length !== t.members.length || g.members.some((m, i) => m !== t.members[i])) return null;
   if (g.kind === "plate") return { ids: [], seat: g.seat, table: true };
   if (g.kind === "zone") return { ids: [], seat: null, table: true };
-  return { ids: g.members, seat: null, table: true };
+  return { ids: g.members, seat: null, table: true, group: g.id };
+}
+
+/**
+ * The one candidate a gesture on these cards means: of `ids`, those `is` accepts; copies of one card (the same name,
+ * the same tapped state) are one candidate, any of them will do. "several" when distinct candidates share the group:
+ * which one is the player's to say, before anything is committed.
+ */
+export function oneOf(ids: readonly CardId[], is: (id: CardId) => boolean, f: Facts): CardId | "several" | undefined {
+  const hit = ids.filter(is);
+  if (hit.length < 2) return hit[0];
+  const key = (id: CardId) => `${f.cards[id]?.name ?? id}|${f.cards[id]?.tapped ?? false}`;
+  return hit.every((id) => key(id) === key(hit[0]!)) ? hit[0] : "several";
 }
 
 /** live.js `boardChoice`: whether a targets or choose decision is answered by tapping the table. */

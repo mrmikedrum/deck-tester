@@ -29,6 +29,8 @@ export interface Reaction {
   readonly inspect?: CardId;
   /** Stop the auto-pass countdown (Hold). */
   readonly hold?: boolean;
+  /** Open this group's members to choose one from (its sift): a tap on a member then acts on that card alone. */
+  readonly choose?: string;
 }
 
 export interface Btn extends Button {

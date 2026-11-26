@@ -92,6 +92,7 @@ function apply(s: S, r: Reaction, before: Effect[] = []): Out {
   }
   if (r.toast) effects.push({ kind: "toast", text: r.toast });
   if (r.inspect !== undefined) effects.push({ kind: "inspect", card: r.inspect });
+  if (r.choose !== undefined) effects.push({ kind: "choose", group: r.choose });
   if (r.answer) {
     const sent = send(next, r.answer, r.carried ?? null);
     next = sent.state;

@@ -107,7 +107,9 @@ export type Effect =
   /** Open the inspector on this card; its actions are `Controls.cardActions`. */
   | { readonly kind: "inspect"; readonly card: CardId }
   /** Play did not use this act: the app applies its default (inspect, sift, lean, dismiss the stack layer). */
-  | { readonly kind: "unclaimed" };
+  | { readonly kind: "unclaimed" }
+  /** Open this group's members (its sift) for the player to choose one: a gesture meant one of several. */
+  | { readonly kind: "choose"; readonly group: string };
 
 export interface Step {
   readonly state: State;

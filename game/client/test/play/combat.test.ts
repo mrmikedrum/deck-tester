@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 import type { CardId } from "../../src/protocol";
 import { Table, edited, ofKind, withDecision } from "./rig";
 
+/** The drawn group holding this card, as a drag's target (the rig's piles). */
+const groupOf = (t: Table, id: number) => t.groupTarget(id);
+
 const ATTACK = "037-attack-poison.json";
 const DEFENDERS = ["Atraxa", 872, "Dack", 873, "Princess", 874] as const; // Gideon, Chandra, Ajani are planeswalkers
 /** 037 with my face-down creature (829) attacking too: options creature-major, 871 is 1-6, 829 is 7-12. */
@@ -123,6 +126,20 @@ describe("attack", () => {
     expect(t.answers()).toEqual([[3]]);
   });
 
+  it("a pile of distinct attackers or planeswalkers is a choice first: its members open, nothing is picked (037 extended)", () => {
+    const t = new Table();
+    t.open(twoAttackers());
+    t.pile([[871, 829], [872, 873]]);
+    expect(ofKind(t.tapGroupOf(829), "choose")).toEqual([{ kind: "choose", group: expect.any(String) }]);
+    expect(t.p.board.combat).toBeNull();
+    expect(ofKind(t.drag({ card: 829 as CardId }, groupOf(t, 873)), "choose")).toHaveLength(1);
+    expect(t.p.board.combat).toBeNull();
+    t.tapCard(873); // the sifted cards themselves: Chandra, then my face-down creature at her
+    t.tapCard(829);
+    t.press("Attack (1)");
+    expect(t.answers()).toEqual([[10]]);
+  });
+
   it("a tap on a group whose members changed since it was drawn is dropped", () => {
     const t = new Table();
     t.open(ATTACK);
@@ -220,6 +237,29 @@ describe("block", () => {
     t.drag({ card: 818 as CardId }, { card: 834 as CardId });
     t.press("Block (1)");
     expect(t.answers()).toEqual([[2]]);
+  });
+
+  it("a pile of distinct attackers is a choice first: the held blocker blocks the one tapped next (033 extended)", () => {
+    const t = new Table();
+    t.open(choices());
+    t.pile([[834, 237]]);
+    t.tapCard(821);
+    expect(ofKind(t.tapGroupOf(834), "choose")).toHaveLength(1);
+    expect(t.p.board.combat?.blocks ?? []).toEqual([]);
+    t.tapCard(237);
+    t.press("Block (1)");
+    expect(t.answers()).toEqual([[4]]);
+  });
+
+  it("a blocker dropped on a pile of distinct attackers is held and the pile opens; nothing is blocked yet (033 extended)", () => {
+    const t = new Table();
+    t.open(choices());
+    t.pile([[834, 237]]);
+    expect(ofKind(t.drag({ card: 821 as CardId }, groupOf(t, 237)), "choose")).toHaveLength(1);
+    expect(t.p.board.combat?.blocks ?? []).toEqual([]);
+    t.tapCard(237);
+    t.press("Block (1)");
+    expect(t.answers()).toEqual([[4]]);
   });
 
   it("an attacker tapped with no blocker held is the app's (it inspects)", () => {

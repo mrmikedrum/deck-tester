@@ -215,9 +215,13 @@ export class Table {
   }
   /** A tap on the group holding this card, as layout drew it. */
   tapGroupOf(id: number): Effect[] {
+    return this.tap(this.groupTarget(id));
+  }
+  /** The group holding this card, as layout drew it, as a target. */
+  groupTarget(id: number): Target {
     const g = hitsFor(this.model, this.pilesNow()).groups.find((x) => x.members.includes(id as CardId));
     if (!g) throw new Error(`no group holds ${id}`);
-    return this.tap({ group: g.id, members: g.members });
+    return { group: g.id, members: g.members };
   }
   private piles: readonly (readonly number[])[] = [];
   private pilesNow() {

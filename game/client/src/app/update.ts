@@ -185,6 +185,10 @@ function toPlay(tx: Tx, e: play.Event, at: Ms): void {
   const r = play.step(tx.s.play, e);
   const stop = play.present(r.state).controls.stop;
   tx.s = { ...tx.s, play: r.state, session: tx.s.session.stop === stop ? tx.s.session : { ...tx.s.session, stop } };
+  // A card chosen in the sift play opened for the choice: the choice is made, the sift goes.
+  const t = top(tx.s.focus);
+  if (t?.layer === "sift" && t.choosing && e.t === "act" && e.act.a === "tap" && "card" in e.act.on && !r.effects.some((x) => x.kind === "unclaimed" || x.kind === "choose" || x.kind === "toast"))
+    tx.s = { ...tx.s, focus: close(tx.s.focus, "sift") };
   for (const fx of r.effects) playEffect(tx, fx, at, e);
 }
 
@@ -235,6 +239,9 @@ function playEffect(tx: Tx, fx: play.Effect, at: Ms, cause: play.Event): void {
     case "inspect":
       inspect(tx, fx.card);
       return;
+    case "choose":
+      chooseFrom(tx, fx.group);
+      return;
     case "unclaimed":
       // The app's default for a tap play did not use (a drag has none yet; a dismiss went by the focus rule first).
       if (cause.t === "act" && cause.act.a === "tap") tapDefault(tx, cause.act.on);
@@ -269,6 +276,15 @@ function sifts(s: AppState, g: HitGroup): boolean {
   if (g.kind === "pile" || g.kind === "well" || g.kind === "summary") return g.members.length > 1;
   const z = g.kind === "zone" && g.seat !== null ? PILE_ZONE.exec(g.id)?.[1] : undefined;
   return z !== undefined && (s.model?.zone(g.seat!, z as "graveyard" | "exile").length ?? 0) > 0;
+}
+
+/** Play asks the player to choose one of a group's members (a gesture meant one of several): its sift opens, the stack
+ * set aside first; a tap on a sifted card then acts on that card alone. */
+function chooseFrom(tx: Tx, group: string): void {
+  const f = tx.s.focus, g = tx.s.plan ? groupById(tx.s.plan.hits, group) : undefined;
+  if (!g || top(f)?.layer === "sift") return;
+  const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
+  tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null, choosing: true })) };
 }
 
 /**
