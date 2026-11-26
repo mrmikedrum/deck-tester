@@ -243,6 +243,7 @@ export const controls = (p: PromptView | null, more: Partial<Controls> = {}): Co
   prompt: p,
   sheet: null,
   cardActions: new Map(),
+  choosing: null,
   ...more,
 });
 

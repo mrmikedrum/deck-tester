@@ -14,7 +14,7 @@ import type { ChangeSet, TableModel } from "../model";
 import * as narrative from "../narrative";
 import * as play from "../play";
 import type { Ms } from "../platform";
-import type { CardId, ClientLogEntry, Continuity, Decision, Snapshot } from "../protocol";
+import type { CardId, ClientLogEntry, CommitId, Continuity, Decision, Snapshot } from "../protocol";
 import { mustNotMiss } from "../scene/stage/backlog";
 import { siftCards } from "../scene/stage/describe";
 import type { Recap, SceneReport } from "../scene/stage/types";
@@ -81,6 +81,26 @@ interface Tx {
 const done = (tx: Tx): Step => ({ state: tx.s, effects: tx.fx });
 
 export function update(s: AppState, m: Msg): Step {
+  return choosing(updated(s, m), timeOf(m));
+}
+
+/**
+ * A sift play opened for a gesture (`choosing`) lives exactly as long as the gesture waits on it (play's
+ * `controls.choosing`): one whose gesture is done, refused for good or gone with its decision closes; a gesture whose
+ * sift was put away (Escape, Put back, its group gone from the table) is let go, so no later tap completes it.
+ */
+function choosing(st: Step, at: Ms): Step {
+  const c = play.present(st.state.play).controls;
+  const sift = [...st.state.focus.layers, ...st.state.focus.aside].find((e) => e.layer === "sift" && e.choosing !== undefined);
+  const tx: Tx = { s: st.state, fx: [...st.effects] };
+  const same = !!sift && !!c.choosing && sift.group === c.choosing.group && sift.choosing === c.choosing.rev;
+  if (sift && !same) tx.s = { ...tx.s, focus: close(tx.s.focus, "sift") };
+  if (c.choosing !== null && !same)
+    toPlay(tx, { t: "act", stamp: { at, commit: 0 as CommitId }, stop: c.stop, act: { a: "putBack" } }, at);
+  return tx.s === st.state ? st : { state: tx.s, effects: tx.fx };
+}
+
+function updated(s: AppState, m: Msg): Step {
   const r = route(s, m);
   const origin = ("origin" in m && m.origin) || null;
   const state = focused(s, r.state.moments === s.moments ? r.state : pruneMoments(r.state), origin);
@@ -235,6 +255,9 @@ function playEffect(tx: Tx, fx: play.Effect, at: Ms, cause: play.Event): void {
     case "inspect":
       inspect(tx, fx.card);
       return;
+    case "choose":
+      chooseFrom(tx, fx.group, fx.rev);
+      return;
     case "unclaimed":
       // The app's default for a tap play did not use (a drag has none yet; a dismiss went by the focus rule first).
       if (cause.t === "act" && cause.act.a === "tap") tapDefault(tx, cause.act.on);
@@ -269,6 +292,17 @@ function sifts(s: AppState, g: HitGroup): boolean {
   if (g.kind === "pile" || g.kind === "well" || g.kind === "summary") return g.members.length > 1;
   const z = g.kind === "zone" && g.seat !== null ? PILE_ZONE.exec(g.id)?.[1] : undefined;
   return z !== undefined && (s.model?.zone(g.seat!, z as "graveyard" | "exile").length ?? 0) > 0;
+}
+
+/** Play asks the player to choose one of a group's members (a gesture meant one of several): its sift opens, the stack
+ * set aside first; a tap on a sifted card then acts on that card alone. */
+function chooseFrom(tx: Tx, group: string, rev: number): void {
+  const g = tx.s.plan ? groupById(tx.s.plan.hits, group) : undefined;
+  if (!g || (top(tx.s.focus)?.layer === "sift" && top(tx.s.focus)?.group === g.id)) return;
+  // (A drag's other end, after its first was chosen: that sift gives way to this one.)
+  const f = isOpen(tx.s.focus, "sift") ? close(tx.s.focus, "sift") : tx.s.focus;
+  const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
+  tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null, choosing: rev })) };
 }
 
 /**

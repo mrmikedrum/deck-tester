@@ -4,7 +4,7 @@
 // `repeat` counts them, `number` steps between min and max). Piles are given to the hit groups as layout would make them.
 import { describe, expect, it } from "vitest";
 import type { CardId } from "../../src/protocol";
-import { Table, askedAgain, raw, withDecision } from "./rig";
+import { Table, askedAgain, ofKind, raw, withDecision } from "./rig";
 
 const PAY = "011-pay-my-planeswalker.json"; // {3}{B}: Plains 805 (1), Swamp 806 (2), Mountains 807 (3) and 808 (4), ...
 
@@ -12,12 +12,12 @@ describe("pay", () => {
   it("tap sources, then Pay sends them in the order tapped (corpus 011)", () => {
     const t = new Table();
     t.open(PAY);
-    expect(t.buttons()).toEqual(["Auto-pay", "Auto"]);
+    expect(t.buttons()).toEqual(["List", "Auto-pay", "Auto"]);
     // What to pay and for what; the lit sources say where (no list of what has been picked).
     expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose");
     t.tapCard(806);
     t.tapCard(805);
-    expect(t.buttons()).toEqual(["Undo", "Pay", "Auto"]);
+    expect(t.buttons()).toEqual(["List", "Undo", "Pay", "Auto"]);
     expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose");
     expect(t.p.board.marks.cards.get(806 as CardId)).toBe("selected");
     expect(t.p.board.marks.cards.get(809 as CardId)).toBe("option");
@@ -57,23 +57,67 @@ describe("pay", () => {
     expect(t.answers()).toEqual([[3]]);
   });
 
-  it("sources of different cards in one pile ask \"Which source?\"; the sheet's pick toggles that source", () => {
+  // 011 with Workhorse (995, four +1/+1 counters): its ability removes a counter and does not tap it (the engine's
+  // `repeats`), so paying {2} with it twice is [1, 1]; an Island beside it taps.
+  const workhorse = () =>
+    withDecision(
+      PAY,
+      { kind: "pay", prompt: "mana to pay {2}", options: ["Workhorse (C)", "Island (C)"], refs: [{ card: 995, repeats: true }, { card: 810 }], min: 0, max: 2, repeat: true },
+      (v) => void (v["players"] as { battlefield: Record<string, unknown>[] }[])[0]!.battlefield.push({ id: 995, name: "Workhorse", owner: "You", controller: "You", type: "Artifact Creature - Horse", power: 4, toughness: 4, counters: { "+1/+1": 4 } }),
+    );
+
+  it("a source whose ability does not tap it is picked again on the board; the Island tapped again is taken back", () => {
+    const t = new Table();
+    t.open(workhorse());
+    t.tapCard(995);
+    t.tapCard(995);
+    t.tapCard(810);
+    t.tapCard(810); // taken back
+    t.press("Pay");
+    expect(t.answers()).toEqual([[1, 1]]);
+  });
+
+  it("a source whose ability does not tap it is picked again in List (badged twice); Undo takes one back", () => {
+    const t = new Table();
+    t.open(workhorse());
+    t.press("List");
+    t.pick(1);
+    t.pick(1);
+    expect(t.p.controls.sheet?.items[0]?.badge).toBe(2);
+    t.pick(2);
+    t.pick(2); // the Island: taken back
+    t.act({ a: "press", button: t.p.controls.sheet!.buttons.find((b) => b.label === "Pay")!.id });
+    expect(t.answers()).toEqual([[1, 1]]);
+  });
+
+  it("List: every source's every option, each with what sets its card apart; picks stay up until Pay (011, an Island another's)", () => {
+    const t = new Table();
+    t.open(withDecision(PAY, { kind: "pay", prompt: "mana to pay {U}{U}", options: ["Island (U)", "Island (U)"], refs: [{ card: 810 }, { card: 816 }], min: 0, max: 2 }, (v) => {
+      const mine = (v["players"] as { battlefield: { id: number; owner: string }[] }[])[0]!.battlefield;
+      mine.find((c) => c.id === 816)!.owner = "Dack";
+    }));
+    t.press("List");
+    const sheet = t.p.controls.sheet!;
+    expect(sheet.items.map((i) => [i.option, i.label, i.detail])).toEqual([
+      [1, "Island (U)", null],
+      [2, "Island (U)", "owned by Dack"],
+    ]);
+    t.pick(2);
+    expect(t.p.controls.sheet?.items.map((i) => i.picked)).toEqual([false, true]);
+    t.pick(1);
+    t.act({ a: "press", button: t.p.controls.sheet!.buttons.find((b) => b.label === "Pay")!.id });
+    expect(t.answers()).toEqual([[2, 1]]);
+  });
+
+  it("sources of different cards in one pile open it to choose one; a tap there toggles that source", () => {
     const t = new Table();
     t.open(PAY);
     t.pile([[805, 806]]);
-    t.tapGroupOf(805);
-    const sheet = t.p.controls.sheet!;
-    expect(sheet.kind).toBe("source");
-    expect(sheet.title).toBe("Which source?");
-    expect(sheet.items.map((i) => [i.option, i.label, i.picked])).toEqual([
-      [1, "Plains (W)", false],
-      [2, "Swamp (B)", false],
-    ]);
-    t.pick(2);
+    expect(ofKind(t.tapGroupOf(805), "choose")).toHaveLength(1);
     expect(t.p.controls.sheet).toBeNull();
+    t.tapCard(806); // the Swamp, chosen
     t.tapGroupOf(805);
-    expect(t.p.controls.sheet!.items.map((i) => i.picked)).toEqual([false, true]);
-    t.pick(2); // picked already: taken back
+    t.tapCard(806); // picked already: taken back
     t.press("Auto-pay");
     expect(t.answers()).toEqual([[]]);
   });
@@ -194,7 +238,7 @@ describe("pay", () => {
     expect(t.p.controls.sheet?.kind).toBe("mana");
     t.dismiss();
     expect(t.p.controls.sheet).toBeNull();
-    expect(t.buttons()[0]).toBe("Auto-pay");
+    expect(t.buttons()).toContain("Auto-pay");
   });
 });
 

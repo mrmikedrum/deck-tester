@@ -5,6 +5,8 @@
 // Facts the wire does not carry are absent, as they were in the live client (live.js `conv` never set them):
 // `becameLand`, `landName`, `transformed`, `goaded`. The offline fixtures had them; the live game never did.
 import type { Card } from "./card";
+import type { CardId } from "../protocol";
+import type { TableModel } from "./table";
 
 /** common.js `typeLine`. */
 export const typeLine = (c: Card): string => c.face.type;
@@ -96,6 +98,30 @@ export const sig = (c: Card): string =>
     "|",
   );
 
+/**
+ * What sets a card apart from others of its name, in words, for a name a list or a screen reader gives it: tapped, a
+ * token, a commander, whose it is when another player controls it, its counters, power and toughness changed, and what
+ * is attached (each by the same words, a cycle cut where it closes).
+ */
+export function asides(m: TableModel, c: Card, seen: ReadonlySet<CardId> = new Set()): string[] {
+  const out: string[] = [];
+  if (c.tapped) out.push("tapped");
+  if (c.token) out.push("token");
+  if (c.commander) out.push("commander");
+  if (c.owner !== c.controller) out.push(`owned by ${c.owner}`);
+  for (const [k, n] of Object.entries(c.counters)) out.push(`${k} ×${n}`);
+  if (c.loyalty !== null) out.push(`loyalty ${c.loyalty}`);
+  if (c.power !== null && c.toughness !== null && (c.power !== c.face.basePower || c.toughness !== c.face.baseToughness)) out.push(`${c.power}/${c.toughness}`);
+  const inner = new Set([...seen, c.id]);
+  for (const a of m.attachments(c.id)) {
+    const x = m.cards.get(a);
+    if (!x || inner.has(a)) continue;
+    const more = asides(m, x, inner);
+    out.push(`with ${x.face.name}${more.length ? ` (${more.join(", ")})` : ""}`);
+  }
+  return out;
+}
+
 /** A card's role on its seat's page, as h.js named its pieces: what sweeps read their reach by. */
 export type Role = "creature" | "walker" | "mana" | "support";
 export const roleOf = (c: Card): Role =>
@@ -110,8 +136,13 @@ export const hasAbilities = (c: Card): boolean =>
 
 /** live.js `manaValue`: the braced cost's mana value, X counting 0 and every other symbol 1. */
 export function manaValue(c: Card): number {
+  return costValue(c.face.cost);
+}
+
+/** A braced cost's mana value ("{2}{G}{G}" is 4), X counting 0. */
+export function costValue(cost: string): number {
   let n = 0;
-  for (const t of c.face.cost.match(/\{([^}]+)\}/g) ?? []) {
+  for (const t of cost.match(/\{([^}]+)\}/g) ?? []) {
     const x = t.slice(1, -1);
     n += /^\d+$/.test(x) ? +x : x === "X" ? 0 : 1;
   }
@@ -122,4 +153,19 @@ export function manaValue(c: Card): number {
 export function handOrder(a: Card, b: Card): number {
   const land = (c: Card) => Number(/Land/.test(c.face.type) && !/Creature/.test(c.face.type));
   return land(b) - land(a) || manaValue(a) - manaValue(b) || a.name.localeCompare(b.name, "en");
+}
+
+/**
+ * Whether a permanent's text reaches other players ("table": Rule of Law, Thorn of Amethyst, Smothering Tithe) or only
+ * its controller's own game ("self"). A presentation heuristic over its rules text, reminder text left out: it ranks and
+ * sorts a card, never decides what is legal. (From the by-relevance exploration.)
+ */
+export function tableReach(c: Card): "table" | "self" {
+  return textReach(c.face.text);
+}
+
+/** `tableReach` of a rules text. */
+export function textReach(rules: string): "table" | "self" {
+  const text = rules.replace(/\([^)]*\)/g, "");
+  return /\beach player\b|\beach spell\b|\bopponents?\b|\bspells?\s[^.]*\bcosts?\s+\{|\bcosts? \{[^}]+\} more\b|\bcan't\b/i.test(text) ? "table" : "self";
 }

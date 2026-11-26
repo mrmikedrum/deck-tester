@@ -7,6 +7,9 @@
 // {hand: id}  a card in the hand fan (DOM)
 // {pile: pid} the biggest pile on a player's side (the most cards; new entry only)
 // {open: true} open table nearest the middle of the screen: nothing there to pick, clear of the stack (new entry only)
+// {sifted: id} a card laid out in an open sift (new entry only): a tap there acts on that card alone
+// {place: id} a card's place off its drawn face (the arrangement engine's target: a tapped card lying turned in a slot
+//             a standing card's height wide is reached there too); the current client has no places: its card
 // Returns a screen point (CSS px) where a tap hits that thing, verified against the client's own picking (pickAt).
 async function locate(page, what, isNew) {
   const pt = await page.evaluate(isNew ? locateNew : locateOld, what);
@@ -18,6 +21,37 @@ async function locate(page, what, isNew) {
 // what the page has on top at the point (the canvas, not the hand or a panel).
 function locateNew(w) {
   const dm = window.__deckmaster, W = innerWidth, H = innerHeight;
+  if (w.place != null) {
+    const g = dm.hits().find(x => x.members.includes(w.place)), face = g && dm.scene.faces()[g.id];
+    if (!g || !face) return null;
+    const inside = (q, x, y) => {
+      let pos = false, neg = false;
+      for (let i = 0; i < 4; i++) {
+        const [ax, ay] = Array.isArray(q[i]) ? q[i] : [q[i].x, q[i].y], [bx, by] = Array.isArray(q[(i + 1) % 4]) ? q[(i + 1) % 4] : [q[(i + 1) % 4].x, q[(i + 1) % 4].y];
+        const c = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+        if (c > 0) pos = true; else if (c < 0) neg = true;
+      }
+      return !(pos && neg);
+    };
+    const xs = g.quad.map(p => p.x), ys = g.quad.map(p => p.y), canvas = document.getElementById("stage");
+    for (let i = 0; i <= 24; i++) for (let j = 0; j <= 24; j++) {
+      const x = Math.min(...xs) + (Math.max(...xs) - Math.min(...xs)) * (0.04 + 0.92 * i / 24), y = Math.min(...ys) + (Math.max(...ys) - Math.min(...ys)) * (0.04 + 0.92 * j / 24);
+      if (!inside(g.quad, x, y) || inside(face.quad, x, y) || document.elementFromPoint(x, y) !== canvas) continue;
+      if (dm.scene.pick(x, y)?.id === g.id) return { x, y };
+    }
+    return null;
+  }
+  if (w.sifted != null) {                                  // the sift's piece for the card, where its own picking finds it
+    const id = `sift:${w.sifted}`, b = (dm.scene.boxes() || []).find(o => o.id === id && o.visible !== false), canvas = document.getElementById("stage");
+    if (!b) return null;
+    const [l, t, r, btm] = b.box;
+    for (let i = 0; i <= 12; i++) for (let j = 0; j <= 12; j++) {
+      const x = l + (r - l) * (0.5 + (i % 2 ? 1 : -1) * 0.45 * Math.ceil(i / 2) / 6), y = t + (btm - t) * (0.5 + (j % 2 ? 1 : -1) * 0.45 * Math.ceil(j / 2) / 6);
+      if (x < 2 || y < 2 || x > W - 2 || y > H - 2 || document.elementFromPoint(x, y) !== canvas) continue;
+      if (dm.scene.pick(x, y)?.id === id) return { x, y };
+    }
+    return null;
+  }
   if (w.hand != null) {
     const c = document.querySelector(`.g-hand .hcard[data-id="${w.hand}"]`);
     if (!c) return null;
@@ -84,6 +118,7 @@ function locateNew(w) {
 // The current client: its pieces' boxes on screen, checked against its own picking (pickAt).
 function locateOld(w) {
   const h = window.__h;
+  if (w.place != null) w = { card: w.place };
   if (w.hand != null) {
     const c = document.querySelector(`.g-hand .hcard[data-id="${w.hand}"]`);
     if (!c) return null;

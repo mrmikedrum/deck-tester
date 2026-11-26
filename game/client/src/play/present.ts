@@ -68,6 +68,7 @@ function build(s: S): Presentation {
       prompt: promptView(promptOf(s)),
       sheet: sheetView(sheetOf(s)),
       cardActions: cardActionsOf(s),
+      choosing: s.pending ? { group: s.pending.group, rev: s.pending.rev } : null,
     },
   };
 }

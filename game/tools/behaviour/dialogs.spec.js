@@ -38,7 +38,7 @@ test.describe("mulligan and confirm", () => {
   test("confirm: Yes sends [1], No sends [2]", async ({ table }) => {
     const s = snapshot("main");
     await table.open(confirm(s));
-    expect(await table.buttons()).toEqual(["Yes", "No", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual(["Yes", "No", label("Let Forge decide")]);
     await table.press("Yes");
     expect((await table.answered(1))[0].answer).toEqual([1]);
     table.forget();

@@ -15,8 +15,10 @@ import { ctxOf, promptOf, sheetOf } from "./prompt";
 import { cardActionsOf } from "./present";
 import { offTableNames } from "./needs";
 import { groupsOf, reached } from "./reach";
+import { completed, meaningful, resolve, still } from "./resolve";
 import { EMPTY_DRAFT, open, reset, seal } from "./state";
-import type { S } from "./state";
+import type { Reached } from "./reach";
+import type { Gesture, S } from "./state";
 import type { AnswerToken, Carried, Effect, Event, Step, StopId } from "./types";
 
 type Out = { state: S; effects: Effect[] };
@@ -92,6 +94,17 @@ function apply(s: S, r: Reaction, before: Effect[] = []): Out {
   }
   if (r.toast) effects.push({ kind: "toast", text: r.toast });
   if (r.inspect !== undefined) effects.push({ kind: "inspect", card: r.inspect });
+  if (r.pending === null) next = { ...next, pending: null };
+  if (r.pending) {
+    const rev = next.choosers + 1;
+    next = { ...next, choosers: rev, pending: { ...r.pending, rev } };
+  }
+  if (r.choose !== undefined) effects.push({ kind: "choose", group: r.choose, rev: next.pending?.rev ?? 0 });
+  // A chooser open for a gesture holds auto-pass: nothing is passed while the player chooses.
+  if (r.pending && next.auto) {
+    effects.push(...cancelAuto(next));
+    next = { ...next, auto: null };
+  }
   if (r.answer) {
     const sent = send(next, r.answer, r.carried ?? null);
     next = sent.state;
@@ -121,6 +134,11 @@ function onSnapshot(s: S, e: Extract<Event, { t: "snapshot" }>): Out {
   if (!fresh) {
     // The answer out stays out: only the host's ledger says when it is finished (`settled`).
     let next: S = { ...cur, facts, decision: d, held };
+    // A gesture waiting for a choice whose cards moved (left play, changed hands) goes: it would act on what is gone.
+    if (next.pending && !still(next.pending, facts)) {
+      next = { ...next, pending: null };
+      effects.push({ kind: "toast", text: "The table changed: choose again" });
+    }
     // Auto-pass holds only while the decision still qualifies: the same decision with the table changed under it (a
     // target now aimed at me, a real play on offer) stops it.
     if (next.auto && (!d || !autoArms(d, facts))) {
@@ -142,6 +160,7 @@ function onSnapshot(s: S, e: Extract<Event, { t: "snapshot" }>): Out {
     draft: d ? kindOf(d).start(d, facts) : EMPTY_DRAFT,
     sheet: null,
     chooserClosed: false,
+    pending: null,
     inflight: null,
     auto: null,
   };
@@ -159,8 +178,11 @@ function onSnapshot(s: S, e: Extract<Event, { t: "snapshot" }>): Out {
   return { state: next, effects };
 }
 
-function onAct(s: S, e: Extract<Event, { t: "act" }>): Out {
-  if (e.stop !== s.stop) return same(s); // drawn for another stop: the player acts again on what is shown now
+function onAct(was: S, e: Extract<Event, { t: "act" }>): Out {
+  if (e.stop !== was.stop) return same(was); // drawn for another stop: the player acts again on what is shown now
+  // A gesture waiting for a choice is completed by a tap on a card of its group, as the group is drawn now; any other act
+  // lets it go.
+  const s: S = was.pending ? { ...was, pending: null } : was;
   const f = s.facts, act = e.act;
   const defaultable = act.a === "tap" || act.a === "drag" || act.a === "dismiss";
   if (!f) return defaultable ? { state: s, effects: [UNCLAIMED] } : same(s);
@@ -172,28 +194,47 @@ function onAct(s: S, e: Extract<Event, { t: "act" }>): Out {
       const b = all.find((x) => x.id === act.button);
       return b && b.enabled ? apply(s, b.run()) : same(s);
     }
-    case "tap": {
-      const at = reached(act.on, s.groups, f);
-      if (!at) return same(s);
-      let cur = s;
-      const before: Effect[] = [];
-      if (cur.auto && at.table) {
-        // touching the table while auto-pass counts holds it
-        before.push(...cancelAuto(cur));
-        cur = { ...cur, auto: null };
-      }
-      const cc = ctxOf(cur);
-      const r = live && cc ? kindOf(cc.d).tap(cc, at) : null;
-      return r ? apply(cur, r, before) : { state: cur, effects: [...before, UNCLAIMED] };
-    }
+    case "tap":
     case "drag": {
       // A drag let go over nothing has no destination: nothing happens (live.js `H.drag` returned without one).
-      if ("nothing" in act.onto) return { state: s, effects: [UNCLAIMED] };
-      const from = reached(act.from, s.groups, f), onto = reached(act.onto, s.groups, f);
-      if (!from || !onto) return same(s);
-      const r = live && c ? kindOf(c.d).drag(c, from, onto) : null;
-      return r ? apply(s, r) : { state: s, effects: [UNCLAIMED] };
+      if (act.a === "drag" && "nothing" in act.onto) return { state: s, effects: [UNCLAIMED] };
+      // A card chosen in a chooser that is gone (done, put away, dropped with the table it was for): refused, whatever
+      // waits now is left as it is.
+      if (act.a === "tap" && "card" in act.on && act.on.chooser !== undefined && act.on.chooser !== was.pending?.rev)
+        return { state: was, effects: [{ kind: "toast", text: "That choice has gone: choose again" }] };
+      let g: Gesture = act.a === "tap" ? { a: "tap", at: act.on } : { a: "drag", from: act.from, onto: act.onto };
+      const c0 = was.pending && act.a === "tap" && "card" in act.on ? completed(was.pending, act.on.card, s.groups.find((x) => x.id === was.pending!.group)?.members) : "other";
+      if (c0 === "stale") return { state: s, effects: [{ kind: "toast", text: "That card has moved: choose again" }] };
+      const done = c0 === "other" ? null : c0.done;
+      if (done) g = done;
+      let cur = s;
+      const before: Effect[] = [];
+      if (act.a === "tap") {
+        const at = reached(act.on, s.groups, f);
+        if (!at) return same(s);
+        if (cur.auto && at.table) {
+          // touching the table while auto-pass counts holds it
+          before.push(...cancelAuto(cur));
+          cur = { ...cur, auto: null };
+        }
+      }
+      const cc = ctxOf(cur);
+      const reach = (t: Parameters<typeof reached>[0]) => reached(t, cur.groups, f);
+      if (!live || !cc) {
+        const stale = g.a === "tap" ? !reach(g.at) : !reach(g.from) || !reach(g.onto);
+        return stale ? same(cur) : { state: cur, effects: [...before, UNCLAIMED] };
+      }
+      const k = kindOf(cc.d);
+      const kind = { tap: (at: Reached) => k.tap(cc, at), drag: (from: Reached, onto: Reached) => k.drag(cc, from, onto) };
+      // The one rule for a gesture on a group (resolve.ts): it commits only what cannot hang on which card was meant.
+      const out = resolve(g, cc.d, f, cc.draft, reach, kind);
+      if (!out) return same(cur);
+      const step = out.r ? apply(cur, out.r, before) : { state: cur, effects: [...before, UNCLAIMED] };
+      // A card the chooser offers that the gesture cannot use (refused, with a toast): the gesture waits for another.
+      return done && !meaningful(out.r, cur.draft) ? { ...step, state: { ...step.state, pending: was.pending } } : step;
     }
+    case "putBack":
+      return same(s);
     case "release": {
       const r = live && c ? kindOf(c.d).release(c, act.card, act.dy, act.pose, act.overTable) : null;
       return r ? apply(s, r) : same(s);
@@ -249,6 +290,7 @@ function onWorking(s: S, e: Extract<Event, { t: "working" }>): Out {
 
 function onDeadline(s: S, e: Extract<Event, { t: "deadline" }>): Out {
   if (!s.auto || s.auto.id !== e.id) return same(s);
+  if (s.pending) return same({ ...s, auto: null }); // a chooser open holds it
   if (!s.decision || !s.facts || !autoArms(s.decision, s.facts)) return same({ ...s, auto: null });
   return send({ ...s, auto: null }, { answer: [1] }, null);
 }

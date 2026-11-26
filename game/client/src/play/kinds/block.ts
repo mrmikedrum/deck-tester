@@ -2,7 +2,7 @@
 // blocker onto the attacker; an illegal pair toasts and picks nothing. Tapping a picked blocker takes it back; Clear;
 // "Block (n)" or "No blocks" sends.
 import type { BlockDecision } from "../../protocol";
-import { cardOf } from "../facts";
+import { cardOf, inPlay } from "../facts";
 import { shortCard } from "../text";
 import { block as pairBlock, tapBlocker } from "../interactions/pair";
 import { base, btn } from "./kind";
@@ -37,9 +37,9 @@ export const block: Kind<BlockDecision> = {
     if (draft.holding !== null) m.card(draft.holding, "selected");
   },
   tap(c, at) {
-    const { d, draft } = c;
-    const mine = at.ids.find((x) => d.refs.some((r) => r.card === x));
-    const theirs = at.ids.find((x) => d.refs.some((r) => r.blocks === x));
+    const { d, f, draft } = c;
+    const mine = at.ids.find((x) => inPlay(f, x) && d.refs.some((r) => r.card === x));
+    const theirs = at.ids.find((x) => inPlay(f, x) && d.refs.some((r) => r.blocks === x));
     if (mine !== undefined) {
       const next = tapBlocker(draft.sel, d.refs, mine);
       return { draft: { ...draft, sel: next.sel, holding: next.holding } };
@@ -51,9 +51,9 @@ export const block: Kind<BlockDecision> = {
     return null;
   },
   drag(c, from, onto) {
-    const { d, draft } = c;
-    const mine = from.ids.find((x) => d.refs.some((r) => r.card === x));
-    const theirs = onto.ids.find((x) => d.refs.some((r) => r.blocks === x));
+    const { d, f, draft } = c;
+    const mine = from.ids.find((x) => inPlay(f, x) && d.refs.some((r) => r.card === x));
+    const theirs = onto.ids.find((x) => inPlay(f, x) && d.refs.some((r) => r.blocks === x));
     const sel = mine === undefined || theirs === undefined ? null : pairBlock(draft.sel, d.refs, mine, theirs);
     if (sel === null) return mine !== undefined ? { toast: "It can't block that" } : {};
     return { draft: { ...draft, sel, holding: null } };

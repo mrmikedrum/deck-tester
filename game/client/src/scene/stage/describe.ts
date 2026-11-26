@@ -86,11 +86,12 @@ export function describe(input: DescribeInput): Description {
   // In a fight, what doesn't fight steps back: dimmer, the creatures less than the rest (h.js `targets`), while the
   // fighters stand in the open middle. (Never the plaques or the pages.)
   const fighting = [...plan.seats.values()].some((sp) => sp.units.some((u) => u.fighting));
-  const lookOf = (fade: number, mark: Mark | null, hovered: boolean, tapped: boolean): Look => ({
+  // `tapped`: turned for tapped (a quarter), or by how much (an arranged unit's turn: a quarter, a notch).
+  const lookOf = (fade: number, mark: Mark | null, hovered: boolean, tapped: boolean | number): Look => ({
     ...LOOK,
     fade,
     lift: (mark === "selected" ? DIM.selectedLift : 0) + (hovered ? HOVER_LIFT : 0),
-    tap: tapped ? 1 : 0,
+    tap: typeof tapped === "number" ? tapped : tapped ? 1 : 0,
     glow: mark ? 1 : 0,
   });
 
@@ -436,7 +437,7 @@ function unitPiece(
   u: Unit,
   mine: boolean,
   fade: number,
-  lookOf: (fade: number, mark: Mark | null, hovered: boolean, tapped: boolean) => Look,
+  lookOf: (fade: number, mark: Mark | null, hovered: boolean, tapped: boolean | number) => Look,
   markOf: (id: CardId) => Mark | undefined,
   row: { alt: boolean; small: boolean } = { alt: false, small: false },
 ): Piece {
@@ -486,7 +487,7 @@ function unitPiece(
     members,
     face: u.top,
     pose,
-    look: lookOf(fade, mark, input.hover === u.id, u.tapped),
+    look: lookOf(fade, mark, input.hover === u.id, u.turn !== undefined && !u.fighting ? u.turn : u.tapped),
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
     mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.sick, draw.cue ?? ""].join("#"),

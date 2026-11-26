@@ -6,7 +6,7 @@ import type { Answer, CardId, Decision } from "../../protocol";
 import type { SeatId } from "../../model";
 import type { Facts } from "../facts";
 import type { Reached } from "../reach";
-import type { Draft, S, Sheet } from "../state";
+import type { Draft, Pending, S, Sheet } from "../state";
 import type { Button, Carried, CombatDraft, Mark, ScreenPose, SheetView } from "../types";
 
 export interface Ctx<D extends Decision = Decision> {
@@ -29,6 +29,10 @@ export interface Reaction {
   readonly inspect?: CardId;
   /** Stop the auto-pass countdown (Hold). */
   readonly hold?: boolean;
+  /** Open this group's members to choose one from (its sift): a tap on a member then acts on that card alone. */
+  readonly choose?: string;
+  /** The gesture the choice completes (step.ts's resolution of a group; never a kind's). */
+  readonly pending?: Omit<Pending, "rev"> | null;
 }
 
 export interface Btn extends Button {

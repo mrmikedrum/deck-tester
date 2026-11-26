@@ -66,6 +66,9 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         settling,
         involved: new Set(involved),
         combat: cues.combat,
+        // The across leaf is the arrangement engine's (docs/game-arrangement-engine.md, step 6): its memory rides in
+        // the layout memory like any seat's.
+        shadow: { draw: true },
       }),
     );
     return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };

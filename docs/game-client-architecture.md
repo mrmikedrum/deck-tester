@@ -467,6 +467,11 @@ false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
 today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
 cards, needs `planTable` work too.
 
+**The arrangement engine** ([its design](game-arrangement-engine.md), `layout/arrange/`) replaces `SeatLayout` one
+container at a time: a container's cards and space in, units, places, pick targets and attention out, with the rules
+(a `Policy`) swappable and no count of rows or places assumed. Its first slice plans the across leaf in the shadow of
+`mat`: `tableInputOf(model, { shadow: {} })` asks for it and `TablePlan.shadow` records it; nothing drawn reads it yet.
+
 ## play: the decision controller
 
 A pure reducer. It owns the current decision and its `StopId`, the player's draft, what lights up, the prompt and its
@@ -800,6 +805,7 @@ four), and enforced at cutover:
 | A decision kind needing a new interaction or board affordance | `play` plus the cues it adds to the scene and chrome |
 | A theme | a sibling of `theme/grimoire/` |
 | An opponent-board arrangement within a seat | a `SeatLayout` adapter |
+| A rule set for grouping, ordering and folding cards | a `Policy` in `layout/arrange/policies/` ([the engine](game-arrangement-engine.md) §2) |
 | A table-wide arrangement | `planTable` and adapters |
 | 2, 3, 5 or 6 seats, or portrait | the plan's prerequisite in [migration](game-client-migration.md) phase 3, then `TableTemplate` and `reservations`, then tuning |
 | Spectators | `Viewer` from the bridge |

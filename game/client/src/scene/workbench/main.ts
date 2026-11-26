@@ -1,6 +1,6 @@
 // The workbench entry (workbench.html): a gallery of every painted piece, and a static table drawn by the host from
 // layout's plan on hand-built boards, and the corpus played through the stage. Query: `?only=table`, `?only=gallery`,
-// `?only=motion` (see motion.ts).
+// `?only=motion` (see motion.ts), `?only=bench` (planTable timed in this browser: bench.ts).
 import "@fontsource/barlow/400.css";
 import "@fontsource/barlow/500.css";
 import "@fontsource/barlow/600.css";
@@ -20,6 +20,7 @@ import { artUrl, faceOf, fixture, SEAT_PLACES } from "./fixtures";
 import type { SeatKey } from "./fixtures";
 import { gallery } from "./gallery";
 import { motion } from "./motion";
+import { bench } from "./bench";
 
 const VIEWPORT = { w: 1180, h: 820 };
 
@@ -27,6 +28,12 @@ async function main(): Promise<void> {
   await fontsReady();
   installCss(document);
   const only = new URLSearchParams(location.search).get("only");
+  if (only === "bench") {
+    const root = document.getElementById("root");
+    if (!root) throw new Error("workbench.html lacks #root");
+    await bench(root);
+    return;
+  }
   if (only === "motion") {
     const root = document.getElementById("root");
     if (!root) throw new Error("workbench.html lacks #root");

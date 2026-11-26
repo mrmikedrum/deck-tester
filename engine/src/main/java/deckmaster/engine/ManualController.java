@@ -208,6 +208,14 @@ public class ManualController extends PlayerControllerAi {
     }
 
     /** What an option points at, for a client that shows the game: a card by id, a player or a card name. */
+    /** A mana ability's ref: its source, and `repeats` when its cost does not tap it, so it may be picked again
+     *  (Workhorse's counters): the pay answer takes the same option more than once, one activation each. */
+    static Map<String, Object> payRef(SpellAbility ability) {
+        Map<String, Object> ref = ref(ability.getHostCard());
+        if (ability.getPayCosts() == null || !ability.getPayCosts().hasTapCost()) ref.put("repeats", true);
+        return ref;
+    }
+
     static Map<String, Object> ref(Object item) {
         Map<String, Object> ref = new LinkedHashMap<>();
         if (item instanceof Card card) {
@@ -591,7 +599,7 @@ public class ManualController extends PlayerControllerAi {
         if (options.size() > 1) {
             pay = new Decision("pay", session.turnLabel(), "mana to pay " + sa.getPayCosts().getTotalMana() + " for "
                     + source.getName() + ", in order; none = automatic", options, null, 0, options.size(), true, session.myTurn())
-                    .withRefs(manaAbilities.stream().map(ability -> ref(ability.getHostCard())).toList());
+                    .withRefs(manaAbilities.stream().map(ManualController::payRef).toList());
             List<Integer> chosen = null;
             Session.Entry scripted = session.scripted(pay);
             if (scripted != null) {

@@ -66,7 +66,8 @@ export type Event =
 
 /** What a gesture landed on. A group carries its members as drawn: if they changed since, the act is dropped. */
 export type Target =
-  | { readonly card: CardId }
+  /** `chooser`: the card was chosen in the chooser of that revision (`Controls.choosing.rev`): refused once it is gone. */
+  | { readonly card: CardId; readonly chooser?: number }
   | { readonly group: HitGroupId; readonly members: readonly CardId[] }
   | { readonly seat: SeatId }
   | { readonly nothing: true };
@@ -85,7 +86,10 @@ export type Act =
   | { readonly a: "pick"; readonly option: number; readonly card?: CardId }
   /** The number stepper. */
   | { readonly a: "step"; readonly by: number }
-  | { readonly a: "dismiss" };
+  | { readonly a: "dismiss" }
+  /** The chooser play opened for a gesture (`Controls.choosing`) was put away (Escape, Put back, its group gone): the
+   *  gesture waiting on it goes. */
+  | { readonly a: "putBack" };
 
 // ---- Out ---------------------------------------------------------------------------------------------------------
 
@@ -107,7 +111,9 @@ export type Effect =
   /** Open the inspector on this card; its actions are `Controls.cardActions`. */
   | { readonly kind: "inspect"; readonly card: CardId }
   /** Play did not use this act: the app applies its default (inspect, sift, lean, dismiss the stack layer). */
-  | { readonly kind: "unclaimed" };
+  | { readonly kind: "unclaimed" }
+  /** Open this group's members (its sift) for the player to choose one: a gesture meant one of several. */
+  | { readonly kind: "choose"; readonly group: string; readonly rev: number };
 
 export interface Step {
   readonly state: State;
@@ -194,9 +200,9 @@ export interface SheetItem {
 }
 
 export interface SheetView {
-  /** plays: one card's or every play; chooser: a choice made in a sheet; source/mana: which source, which colour;
+  /** plays: one card's or every play; chooser: a choice made in a sheet; mana: which colour;
    * number: the stepper; stack: the stack's rules (the chrome draws it from the model). */
-  readonly kind: "plays" | "chooser" | "source" | "mana" | "number" | "stack";
+  readonly kind: "plays" | "chooser" | "mana" | "number" | "stack";
   readonly title: string;
   readonly wide: boolean;
   readonly items: readonly SheetItem[];
@@ -219,6 +225,9 @@ export interface Controls {
   readonly sheet: SheetView | null;
   /** The inspector's buttons for a card: pressing one is a `pick` of its option. */
   readonly cardActions: ReadonlyMap<CardId, readonly CardAction[]>;
+  /** A gesture waits for the player to choose one of this group's members (its sift, the app's to open and close);
+   *  `rev` names this chooser: a card chosen in it says so, and is refused once the chooser is gone. */
+  readonly choosing: { readonly group: HitGroupId; readonly rev: number } | null;
 }
 
 export interface Presentation {

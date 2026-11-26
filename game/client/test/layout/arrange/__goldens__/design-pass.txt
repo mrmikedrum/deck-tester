@@ -1,0 +1,123 @@
+== Marath, turn 4 (8 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places
+  ready  0.0.0 u-0.9 card    Evolution Sage                 stand 
+  ready  0.0.1 u0.9 card    Incubation Druid               stand 
+  works  0.0.0 u-0.9 card    Felidar Retreat                lie 
+  lands  0.0.1 u0.9 stack   Forest                         lie well 4 lands 5 open · die 5
+  seat {"creatures":2,"power":3,"flyingPower":0,"keywords":[],"lands":4,"open":5,"works":1}
+
+== Atraxa, turn 4 (8 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places
+  ready  0.0.0 u-0.9 card    Glissa, Herald of Predation    stand 
+  ready  0.0.1 u0.9 card    Steel Overseer                 stand 
+  works  0.0.0 u-0.9 card    Throne of Geth                 lie 
+  lands  0.0.1 u0.9 stack   Swamp                          lie well 4 lands 5 open · die 5
+  seat {"creatures":2,"power":6,"flyingPower":0,"keywords":[],"lands":4,"open":5,"works":1}
+
+== Dack, turn 4 (9 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places
+  ready  0.0.2 u-2.8 card    Fiend Hunter                   stand 
+  ready  0.0.0 u-0.9 card    Restoration Angel              stand 
+  ready  0.0.1 u0.9 card    Rule of Law                    stand 
+  lands  0.0.0 u0 stack   Plains                         lie well 4 lands 6 open · die 6
+  seat {"creatures":2,"power":4,"flyingPower":0,"keywords":[],"lands":4,"open":6,"works":1}
+
+== Marath, turn 9 (27 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 card    Herd Baloth                    stand 
+  ready  0.0.0 u-0.9 card    Marath, Will of the Wild       stand 
+  ready  0.0.1 u0.9 stack   Beast                          stand ×2 · die 2
+  ready  0.0.3 u1.9 card    Evolution Sage                 lie quarter 
+  ready  1.0.2 u-2.6 card    Kami of Whispered Hopes        stand 
+  ready  1.0.0 u-0.9 card    Elemental                      stand 
+  ready  1.0.1 u0.9 card    Cat Beast                      stand 
+  ready  1.0.3 u2.6 card    Pollenbright Druid             stand 
+  rest   0.0.0 u-1.9 fan     Beast                          lie notch fan 4 · 9 power
+  works  0.0.1 u-0.1 fan     Felidar Retreat                lie fan 3 · 0 power
+  lands  0.0.2 u1.8 stack   Forest                         lie well 9 lands 7 open · die 11
+  seat {"creatures":13,"power":34,"flyingPower":0,"keywords":[],"lands":9,"open":7,"works":3}
+  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2; floor 53.2
+
+== Atraxa, turn 9 (26 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 card    Steel Overseer                 stand 
+  ready  0.0.0 u-0.9 card    Atraxa, Praetors' Voice        stand 
+  ready  0.0.1 u0 card    Glissa, Herald of Predation    lie quarter 
+  ready  0.0.3 u2.8 card    Tezzeret, Cruel Captain        stand 
+  ready  1.0.2 u-2.6 card    Filigree Vector                stand 
+  ready  1.0.0 u-0.9 card    Wrenn and Realmbreaker         stand 
+  ready  1.0.1 u0.9 card    Chrome Host Seedshark          stand 
+  ready  1.0.3 u2.6 card    Thopter                        stand 
+  rest   0.0.0 u-1.8 fan     Thopter                        lie notch fan 3 · 1 power
+  works  0.0.1 u-0.1 fan     Incubator                      lie fan 3 · 0 power
+  lands  0.0.2 u1.8 stack   Island                         lie well 9 lands 8 open · die 12
+  seat {"creatures":9,"power":21,"flyingPower":0,"keywords":[],"lands":9,"open":8,"works":3}
+  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2
+
+== Dack, turn 9 (27 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-3.7 card    Restoration Angel              lie quarter 
+  ready  0.0.0 u-0.9 card    Dack Fayden, Helping Hand      stand 
+  ready  0.0.1 u0.9 card    Wispweaver Angel               stand 
+  ready  0.0.3 u2.8 card    Rule of Law                    stand 
+  ready  1.0.2 u-2.6 card    Haywire Mite                   stand 
+  ready  1.0.0 u-0.9 card    Smothering Tithe               stand 
+  ready  1.0.1 u0.9 card    Thorn of Amethyst              stand 
+  ready  1.0.3 u2.6 card    Spirit                         stand 
+  rest   0.0.0 u-2.6 card    Fiend Hunter                   lie 
+  rest   0.0.1 u-0.9 card    Felidar Guardian               lie 
+  rest   0.0.2 u0.6 card    Spirit                         lie notch 
+  lands  0.0.3 u2.6 stack   Plains                         lie well 9 lands 11 open · die 16
+  seat {"creatures":8,"power":16,"flyingPower":0,"keywords":[],"lands":9,"open":11,"works":3}
+  parted: tap-patch 0; tap-patch 4; tap-patch 0; tap-patch 0; floor 53.2; floor 53.2
+
+== Marath, turn 15 (54 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 stack   Elemental                      stand ×6 · die 6
+  ready  0.0.0 u-0.9 card    Marath, Will of the Wild       stand 
+  ready  0.0.1 u0.9 stack   Beast                          stand ×7 · die 7
+  ready  0.0.3 u2.8 stack   Cat Beast                      stand ×4 · die 4
+  ready  1.0.2 u-2.6 card    Rishkar, Peema Renegade        stand 
+  ready  1.0.0 u-0.9 card    Herd Baloth                    stand 
+  ready  1.0.1 u0.6 card    Evolution Sage                 lie notch 
+  ready  1.0.3 u2.6 card    Evolution Witness              stand 
+  rest   0.0.0 u-1.9 fan     Beast                          lie notch fan 11 · 22 power · proud Beast (threat)
+  works  0.0.1 u-0.1 fan     Felidar Retreat                lie fan 5 · 0 power
+  lands  0.0.2 u1.8 stack   Forest                         lie well 14 lands 10 open · die 16
+  attention threat: Beast
+  seat {"creatures":33,"power":92,"flyingPower":0,"keywords":[],"lands":14,"open":10,"works":5}
+  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2; floor 53.2
+
+== Atraxa, turn 15 (48 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 card    Steel Overseer                 stand 
+  ready  0.0.0 u-0.9 card    Atraxa, Praetors' Voice        stand 
+  ready  0.0.1 u0 card    Glissa, Herald of Predation    lie quarter 
+  ready  0.0.3 u2.8 stack   Thopter                        stand ×6 · die 6
+  ready  1.0.2 u-2.6 card    Smothering Tithe               stand 
+  ready  1.0.0 u-0.9 card    Tekuthal, Inquiry Dominus      stand 
+  ready  1.0.1 u0.9 card    Paladin Class                  stand 
+  ready  1.0.3 u2.6 card    Brimaz, Blight of Oreskos      stand 
+  rest   0.0.0 u-1.9 fan     Cankerbloom                    lie fan 10 · 8 power
+  works  0.0.1 u-0.2 fan     Tezzeret, Cruel Captain        lie fan 6 · 0 power · proud Wrenn and Realmbreaker (threat)
+  lands  0.0.2 u1.8 stack   Swamp                          lie well 14 lands 13 open · die 19
+  attention threat: Wrenn and Realmbreaker
+  seat {"creatures":21,"power":42,"flyingPower":0,"keywords":[],"lands":14,"open":13,"works":6}
+  parted: tap-patch 4; tap-patch 4; tap-patch 4; floor 53.2; floor 53.2
+
+== Dack, turn 15 (49 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 stack   Spirit                         stand ×4 · die 4
+  ready  0.0.0 u-0.9 card    Dack Fayden, Helping Hand      stand 
+  ready  0.0.1 u0.9 card    Wispweaver Angel               stand 
+  ready  0.0.3 u2.8 card    Rule of Law                    stand 
+  ready  1.0.2 u-2.6 card    Trinisphere                    stand 
+  ready  1.0.0 u-0.9 card    Smothering Tithe               stand 
+  ready  1.0.1 u0.9 card    Thorn of Amethyst              stand 
+  ready  1.0.3 u2.6 card    Suppression Field              stand 
+  rest   0.0.0 u-1.9 fan     Restoration Angel              lie notch fan 7 · 9 power
+  works  0.0.1 u-0.1 fan     Cursed Totem                   lie fan 3 · 0 power · proud Deafening Silence (threat), Defense Grid (threat)
+  lands  0.0.2 u1.8 stack   Plains                         lie well 14 lands 19 open · die 28
+  attention binds-me: Deafening Silence, Defense Grid
+  seat {"creatures":13,"power":21,"flyingPower":0,"keywords":[],"lands":14,"open":19,"works":8}
+  parted: tap-patch 4; tap-patch 4; tap-patch 4

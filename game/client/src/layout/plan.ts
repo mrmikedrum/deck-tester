@@ -10,12 +10,20 @@ import { mat } from "./seat/mat";
 import { combatRow, fighters, rowUnits } from "./combat";
 import type { CombatPairs } from "./combat";
 import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry";
-import { audit, bounds, depthOrder, inQuad, seatShapes, stackShape } from "./shape";
+import { audit, bounds, depthOrder, hitQuad, inQuad, seatShapes, stackShape } from "./shape";
 import type { Quad, Shape, TapArea, Violation } from "./shape";
 import { tableTemplate } from "./template";
 import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
+import { shadowPlan } from "./arrange/shadow";
+import { arrangedSeat } from "./arrange/adapter";
+import { leafFrame } from "./arrange/leaf";
+import { gathering } from "./arrange/gathering";
+
+/** A focus's cards are reached over the whole table (under the plates). */
+const FOCUS_ORDER = 5e5;
+import type { ShadowInput, ShadowPlan } from "./arrange/shadow";
 
 // Planning a seat with the hard-limit audit and a fold-harder retry, and planning the table: four seats, plates, the
 // stack at rest, and what a tap can reach.
@@ -156,6 +164,8 @@ export interface TableInput {
   readonly layout?: SeatLayout;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
+  /** Arrange this seat's leaf with the arrangement engine beside `mat`, recorded in `TablePlan.shadow` (debug only). */
+  readonly shadow?: ShadowInput;
 }
 
 export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack";
@@ -212,6 +222,8 @@ export interface TablePlan {
   readonly violations: readonly Violation[];
   /** The combat it stood in the open middle (`Unit.fighting`), or null. */
   readonly combat: CombatPairs | null;
+  /** The arrangement engine's plan of one leaf beside `mat`'s, when asked (`TableInput.shadow`): never drawn. */
+  readonly shadow?: ShadowPlan;
 }
 
 function fnv(s: string): number {
@@ -233,10 +245,19 @@ export function planTable(input: TableInput): TablePlan {
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);
-  const plans: SeatPlan[] = inputs.map((i) => planSeat(layout, i, { fighting: fight }));
+  // The arrangement engine's leaf (TableInput.shadow): recorded beside mat, or, when it is drawn, the seat's plan.
+  const at = input.shadow ? input.seats.findIndex((x) => x.seat === input.shadow!.seat) : -1;
+  const shadow = input.shadow && at >= 0 ? shadowPlan(input.shadow, tpl.slots[at]!, projector, reserve.safe) : undefined;
+  const drawn = input.shadow?.draw && shadow?.result ? at : -1;
+  const plans: SeatPlan[] = inputs.map((i, k) =>
+    k === drawn
+      ? arrangedSeat({ result: shadow!.result!, frame: leafFrame(tpl.slots[k]!), yaw: tpl.slots[k]!.yaw, board: i.board, cards: input.shadow!.cards, projector, reserve })
+      : planSeat(layout, i, { fighting: fight }),
+  );
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
   const geo = makeGeo(projector, reserve, FLOOR.mine);
+  const tapped = new Set(inputs.flatMap((i) => i.board.cards.filter((c) => c.tapped).map((c) => c.id)));
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
   // open middle the pages leave (so it moves when they do), and the fight in the open middle's foot, clear of both. A
   // stack card off the safe area is drawn but not audited.
@@ -244,18 +265,35 @@ export function planTable(input: TableInput): TablePlan {
     const stack = stackAtRest(input, tpl, projector, plans, reserve.safe);
     const row = rowUnits(plans, fight);
     const staying = [...plans.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine).filter((x) => !row.has(x.group))), ...stack.map((s) => s.shape)];
-    const options = combat && row.size
-      ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u), obstacles: staying })
-      : [plans];
+    // With the engine's table, the fight is a gathering (one placement); otherwise mat's combat row (candidates).
+    const gathered =
+      combat && fight.size && drawn >= 0
+        ? gathering({ combat, plans, perspective: input.seats[0]!.seat, projector, reserve, middle: openMiddle(tpl, projector, plans, geo.u), u: geo.u, tapped: (id) => tapped.has(id) })
+        : null;
+    const options = gathered
+      ? [gathered.plans]
+      : combat && row.size
+        ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u), obstacles: staying })
+        : [plans];
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
-    let best: { shapes: Shape[]; v: Violation[]; placed: SeatPlan[] } | null = null;
+    let best: { shapes: Shape[]; v: Violation[]; placed: SeatPlan[]; row: Set<string> } | null = null;
     for (const placed of options) {
-      const shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
-      const v = audit(shapes, vp, { area, only });
-      if (!best || v.length < best.v.length) best = { shapes, v, placed };
+      let shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
+      let v: Violation[];
+      // The units in the fight's container: what the gathering placed (a fighter it had no room for stays on its page,
+      // audited and reached there), or mat's combat row.
+      const inRow = gathered ? new Set(placed.flatMap((p) => p.units.filter((un) => un.fighting).map((un) => un.id))) : row;
+      if (gathered?.focus) {
+        // A focus is audited apart: the table under it with it set aside, and its own cards among themselves. It is drawn
+        // and reached over the whole table.
+        const fighting = (x: Shape) => inRow.has(x.group);
+        v = [...audit(shapes.filter((x) => !fighting(x)), vp, { area, only }), ...audit(shapes.filter(fighting), vp, { area })];
+        shapes = shapes.map((x) => (fighting(x) ? { ...x, order: x.order + FOCUS_ORDER } : x));
+      } else v = audit(shapes, vp, { area, only });
+      if (!best || v.length < best.v.length) best = { shapes, v, placed, row: inRow };
       if (!v.length) break;
     }
-    return { stack, row, ...best! };
+    return { stack, ...best! };
   };
   // Where seats collide, or the stack covers a seat's cards, fold the offending seats harder; down to the last resort,
   // which cannot collide with a neighbour more than a single card does.
@@ -265,7 +303,8 @@ export function planTable(input: TableInput): TablePlan {
     const bad = new Set(c.v.filter((x) => !c.row.has(x.group)).map((x) => x.seat));
     let moved = false;
     plans.forEach((p, i) => {
-      if (!bad.has(p.seat) || p.report.lastResort) return;
+      // (The engine's leaf folds by its own ladder: the table does not refold it.)
+      if (!bad.has(p.seat) || p.report.lastResort || i === drawn) return;
       floor[i] = Math.max(floor[i]!, p.report.pressure) + 1;
       // A seat already at the last notch (it passed its own audit there) has nothing harder to fold to but its last resort.
       plans[i] = floor[i]! > MAX_PRESSURE ? lastResort(inputs[i]!, p, fight) : planSeat(layout, inputs[i]!, { minPressure: floor[i]!, fighting: fight });
@@ -291,7 +330,7 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, ...(shadow ? { shadow } : {}) };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle
@@ -571,7 +610,7 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
   for (const p of plans)
-    for (const un of p.units) groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: shape(un.id).face, order: shape(un.id).order });
+    for (const un of p.units) groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: hitQuad(shape(un.id)), order: shape(un.id).order });
   for (const p of plans) for (const z of p.fixtures.zones) {
     const id = `zone:${z.zone}:${p.seat}`;
     groups.push({ id, kind: "zone", seat: p.seat, members: [], quad: shape(id).face, order: shape(id).order });
