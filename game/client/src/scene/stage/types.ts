@@ -153,6 +153,9 @@ export interface SceneReport {
    * app's loop wakes now and then though nothing is moving (`active`).
    */
   readonly ambient?: boolean;
+  /** The camera drawn was not the table's: zoomed, or on its way in or back (the app keeps the table's input from play
+   * until the table's camera is drawn again). */
+  readonly composed?: boolean;
 }
 
 /** Classified gestures over the canvas (not yet: the gesture recognizer lands with input/). */

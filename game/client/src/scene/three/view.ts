@@ -602,14 +602,21 @@ export class StageRenderer {
   /**
    * What a ray from the eye through (x, y) CSS px meets first as drawn: a card, edge or label of a piece (its id and the
    * point), where what stands above the scrim is drawn over everything else (the focus pass); else the table's plane (no
-   * piece). Pieces in `skip` are looked through. Picking under a composed camera reads it (stage `pickHit`).
+   * piece). Pieces in `skip` are looked through, and with `only`, every piece it refuses (an open sift: only its cards).
+   * Picking under a composed camera reads it (stage `pickHit`).
    */
-  pickAt(camera: Camera, x: number, y: number, w: number, h: number, skip: ReadonlySet<string> = new Set()): { id: string | null; point: Vector3 } | null {
+  pickAt(
+    camera: Camera,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    skip: ReadonlySet<string> = new Set(),
+    only?: (id: string) => boolean,
+  ): { id: string | null; point: Vector3 } | null {
     const owner = new Map<Object3D, string>();
     for (const [id, e] of this.pieces) if (e.view) owner.set(e.view.group, id);
-    const ray = new Raycaster();
-    ray.layers.enableAll();
-    ray.setFromCamera(new Vector2((x / w) * 2 - 1, -(y / h) * 2 + 1), camera);
+    const ray = this.rayAt(camera, x, y, w, h);
     this.root.updateWorldMatrix(true, true);
     let near: { id: string; point: Vector3 } | null = null;
     for (const hit of ray.intersectObject(this.root, true)) {
@@ -620,7 +627,7 @@ export class StageRenderer {
         if (!o.visible) shown = false;
         id ??= owner.get(o);
       }
-      if (!shown || id === undefined || skip.has(id)) continue;
+      if (!shown || id === undefined || skip.has(id) || (only && !only(id))) continue;
       // Above the scrim it is drawn over whatever is nearer: the first such hit wins outright.
       if (this.pieces.get(id)?.above) return { id, point: hit.point };
       near ??= { id, point: hit.point };
@@ -630,6 +637,23 @@ export class StageRenderer {
     if (Math.abs(d.y) < 1e-6) return null;
     const t = -o.y / d.y;
     return t > 0 ? { id: null, point: o.clone().addScaledVector(d, t) } : null;
+  }
+
+  /** Where a ray from the eye through (x, y) CSS px meets the level `y` (null: parallel to it, or behind the eye). */
+  onLevel(camera: Camera, x: number, y: number, w: number, h: number): (level: number) => Vector3 | null {
+    const r = this.rayAt(camera, x, y, w, h).ray;
+    return (level) => {
+      if (Math.abs(r.direction.y) < 1e-9) return null;
+      const t = (level - r.origin.y) / r.direction.y;
+      return t > 0 ? r.origin.clone().addScaledVector(r.direction, t) : null;
+    };
+  }
+
+  private rayAt(camera: Camera, x: number, y: number, w: number, h: number): Raycaster {
+    const ray = new Raycaster();
+    ray.layers.enableAll();
+    ray.setFromCamera(new Vector2((x / w) * 2 - 1, -(y / h) * 2 + 1), camera);
+    return ray;
   }
 
   /** How many objects it holds (the workbench and tests read it). */

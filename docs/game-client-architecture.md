@@ -611,10 +611,11 @@ token (`materials.highlight`).
 
 **Zoom** is a composed camera move, never navigation: `zoom` names a subject and the camera eases onto it (lower and
 from the right, so cards show their thickness and shadows) and back to the table's when it is gone. Picking stays right
-under it: a tap is mapped through the zoomed camera to the point it lands on, then to where the table's camera sees that
-point, and the piece the ray meets keeps its identity (what stands above the scrim first). For now it is a trial
-(`?zoom`: a long press on a card, a pile or a seat's page zooms; then any input, a tap, a button or Escape, only comes
-back, and nothing reaches play).
+under it: a tap reaches the piece a ray through the zoomed camera meets, by its identity (what stands above the scrim
+first; with a sift open, only its cards), and a ray that meets none reaches nothing. A seat's page is found and framed
+where it is drawn (a lean-in raises it). For now it is a trial (`?zoom`: a long press on a card, a pile or a seat's page
+zooms; then any input, a tap, a button or Escape, only comes back, and nothing reaches play until the scene has drawn
+the table's camera again).
 
 Inside, the **stage** turns frames into motion:
 

@@ -5,6 +5,7 @@
 import type { TablePlan, V3, Viewport } from "../../layout";
 import { CH } from "../../layout/seat/geometry";
 import { materials } from "../../theme";
+import { drawnPage } from "../stage/pick";
 import type { DrawnPiece } from "../stage/pick";
 import type { ZoomRequest } from "../stage/types";
 import type { CameraParams } from "./camera";
@@ -39,9 +40,9 @@ export function composeZoom(req: ZoomRequest, plan: TablePlan, drawn: ReadonlyMa
     const s = d.now;
     return frame({ x: s.pos.x, y: s.pos.y + s.lift, z: s.pos.z }, CH * Math.max(0.3, s.s), Z.fill, viewport, Math.min(clip.near, 0.1), clip.far);
   }
-  const sp = plan.seats.get(req.seat);
-  if (!sp) return null;
-  const page = sp.fixtures.page;
+  // The page as drawn (a lean-in raises it and turns it toward me).
+  const page = drawnPage(plan, drawn, req.seat);
+  if (!page) return null;
   // The page seen from the zoom's angle: its depth foreshortened, its width by the screen's shape.
   const tall = Math.max(page.d * Math.sin(Z.elevation), (page.w * viewport.h) / viewport.w);
   return frame(page.pos, tall, Z.seatFill, viewport, Math.min(clip.near, 0.1), clip.far);

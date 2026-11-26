@@ -5,7 +5,8 @@ import { CameraMove, between, composeZoom } from "../../src/scene/three/zoom";
 import { cameraParams } from "../../src/scene/three/camera";
 import { materials } from "../../src/theme";
 import { tableTemplate } from "../../src/layout";
-import { NO_FOCUS, Stage, seatOnTable } from "../../src/scene/stage";
+import { NO_FOCUS, Stage, seatUnder } from "../../src/scene/stage";
+import type { DrawnPiece } from "../../src/scene/stage";
 import { corpusSteps, frameOf } from "./corpus";
 
 const board = corpusSteps().flat().find((s) => s.name.startsWith("023"))!;
@@ -68,13 +69,36 @@ describe("the camera's move", () => {
   });
 });
 
+/** The board with one seat's page raised and carried toward me, as a lean-in (the nameplate's Board) draws it. */
+function raised() {
+  const d = drawn();
+  const seat = [...board.plan.seats.keys()].at(-1)!;
+  const page = d.get(`page:${seat}`)!;
+  const now = { ...page.now, pos: { x: page.now.pos.x + 1.5, y: 0.6, z: page.now.pos.z + 2 }, ry: 0, s: 1.2 };
+  const lifted: DrawnPiece = { ...page, now };
+  return { seat, drawn: new Map([...d, [`page:${seat}`, lifted]]), now };
+}
+
 describe("a long press on a seat's page", () => {
+  const onTable = (p: { x: number; y: number }) => (y: number) => board.plan.projector.onTable(p.x, p.y, y);
+
   it("finds the seat whose page lies under it, and none off every page", () => {
+    const d = drawn();
     for (const [seat, sp] of board.plan.seats) {
-      const pg = sp.fixtures.page;
-      const at = board.plan.projector.project(pg.pos);
-      expect(seatOnTable(board.plan, board.plan.projector.onTable(at.x, at.y, 0))).toBe(seat);
+      const at = board.plan.projector.project(sp.fixtures.page.pos);
+      expect(seatUnder(board.plan, d, onTable(at))).toBe(seat);
     }
-    expect(seatOnTable(board.plan, { x: 1000, y: 0, z: 1000 })).toBeNull();
+    expect(seatUnder(board.plan, d, () => ({ x: 1000, y: 0, z: 1000 }))).toBeNull();
+  });
+
+  it("finds a raised page where it is drawn, not where it rests", () => {
+    const { seat, drawn: d, now } = raised();
+    expect(seatUnder(board.plan, d, onTable(board.plan.projector.project(now.pos)))).toBe(seat);
+  });
+
+  it("frames a raised page where it is drawn", () => {
+    const { seat, drawn: d, now } = raised();
+    const cam = composeZoom({ seat }, board.plan, d, VP, materials.camera)!;
+    expect(cam.target).toEqual(now.pos);
   });
 });

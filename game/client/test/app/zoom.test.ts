@@ -7,6 +7,7 @@ import { update } from "../../src/app/update";
 import type { AppState } from "../../src/app/state";
 import type { Msg } from "../../src/app/msg";
 import type { CommitId, Stamp } from "../../src/protocol";
+import type { Ms } from "../../src/platform";
 import { seatId } from "../../src/model";
 import type { ZoomRequest } from "../../src/scene/stage";
 
@@ -45,6 +46,29 @@ describe("the zoom's trial", () => {
       expect(step.state.focus).toBe(s.focus);
       expect(step.effects).toEqual([]);
     });
+
+  // The camera eases back over the theme's time: what is under a press then is what it shows on its way, not the table.
+  const drew = (composed: boolean): Msg => ({
+    t: "scene",
+    at: 20 as Ms,
+    report: { active: composed, fault: null, scene: { active: composed, consumed: null, consumedSeq: null, landed: [], stackLanding: null, fault: null, recaps: [], flying: false, ...(composed ? { composed } : {}) } },
+  });
+  const menu: Msg = { t: "open", stamp, layer: "menu", card: null };
+  for (const [what, m] of [...acts, ["opening the Game menu", menu] as [string, Msg]])
+    it(`on the camera's way back, ${what} still reaches nothing`, () => {
+      // Zoomed and drawn so, then Escape: the subject is gone but the camera has not reached the table yet.
+      const s = run(zoomed(), drew(true), { t: "dismiss", stamp }, drew(true));
+      expect(s.zoom.on).toBeNull();
+      const step = update(s, m);
+      expect(step.state.play).toBe(s.play);
+      expect(step.state.focus).toBe(s.focus);
+      expect(step.effects).toEqual([]);
+    });
+
+  it("once the table's camera is drawn again, input acts again", () => {
+    const home = run(zoomed(), drew(true), { t: "dismiss", stamp }, drew(true), drew(false));
+    expect(update(home, menu).state.focus).not.toBe(home.focus);
+  });
 
   it("a hover is still a hover while zoomed", () => {
     const s = update(zoomed(), { t: "hover", stamp, group: "card:3" }).state;

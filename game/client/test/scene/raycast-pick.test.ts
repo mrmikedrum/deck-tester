@@ -100,6 +100,12 @@ describe("a ray through a tap", () => {
     const off = v.pickAt(camera, 5, H - 5, W, H);
     expect(off?.id ?? null).toBeNull();
   });
+  it("with an open sift, looks only for its cards: the nearer card on the table is passed by", () => {
+    const v = view();
+    v.draw(frame());
+    expect(v.pickAt(camera, W / 2, H / 2, W, H, new Set(), (id) => id === "far")?.id).toBe("far");
+    expect(v.pickAt(camera, W / 2, H / 2, W, H, new Set(), (id) => id === "none")?.id ?? null).toBeNull();
+  });
 });
 
 describe("tapped", () => {

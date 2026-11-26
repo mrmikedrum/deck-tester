@@ -6,7 +6,7 @@ import type { CameraSpec, HitGroup, Point, SeatId, TablePlan, Viewport } from ".
 import { Queue, fontsReady } from "../../platform";
 import type { Ms } from "../../platform";
 import type { ArtLoader } from "../resources";
-import { pickDrawn, pickHit, seatOnTable } from "../stage/pick";
+import { pickDrawn, pickHit, seatUnder, sifting } from "../stage/pick";
 import { Stage } from "../stage/stage";
 import { estimate } from "../stage/labels";
 import { SIGN_FONT, font } from "../../theme";
@@ -154,7 +154,8 @@ export function createScene(opts: SceneOptions): SceneHandle {
         renderer.draw(view);
         host.render(now, still);
         shown = { plan: frame.plan, drawn: view.drawn };
-        return move.moving(now, still) ? { ...report, active: true } : report;
+        const composed = move.active ? { composed: true } : {};
+        return { ...report, ...(move.moving(now, still) ? { active: true } : {}), ...composed };
       } catch (e) {
         renderer.clear();
         stage.reset();
@@ -164,20 +165,19 @@ export function createScene(opts: SceneOptions): SceneHandle {
     inspect: () => stage.inspect(),
     pick: (p, skip) => {
       if (!shown) return null;
-      // Under a composed camera, a tap reaches the piece drawn where it lands (or what the table's camera saw there).
+      // Under a composed camera, a tap reaches the piece the ray through it meets (while a sift is open, only its cards).
       if (move.active && host && renderer) {
-        const hit = renderer.pickAt(host.camera, p.x, p.y, host.size.w, host.size.h, skip);
-        return pickHit(shown.plan, shown.drawn, hit && { id: hit.id, point: { x: hit.point.x, y: hit.point.y, z: hit.point.z } }, skip);
+        const drawn = shown.drawn;
+        const only = sifting(drawn) ? (id: string) => !!drawn.get(id)?.sift : undefined;
+        return pickHit(shown.plan, drawn, renderer.pickAt(host.camera, p.x, p.y, host.size.w, host.size.h, skip, only), skip);
       }
       return pickDrawn(shown.plan, shown.drawn, p, skip);
     },
     seatAt: (p) => {
       if (!shown) return null;
-      if (move.active && host && renderer) {
-        const hit = renderer.pickAt(host.camera, p.x, p.y, host.size.w, host.size.h);
-        return hit ? seatOnTable(shown.plan, { x: hit.point.x, y: hit.point.y, z: hit.point.z }) : null;
-      }
-      return seatOnTable(shown.plan, shown.plan.projector.onTable(p.x, p.y, 0));
+      const plan = shown.plan;
+      const onLevel = move.active && host && renderer ? renderer.onLevel(host.camera, p.x, p.y, host.size.w, host.size.h) : (y: number) => plan.projector.onTable(p.x, p.y, y);
+      return seatUnder(plan, shown.drawn, onLevel);
     },
     dispose() {
       disposed = true;

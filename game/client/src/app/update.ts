@@ -544,8 +544,10 @@ function input(s: AppState, m: InputMsg): Step {
   const tx: Tx = { s, fx: [], origin: m.origin ?? null };
   const at = "stamp" in m ? m.stamp.at : 0;
   // Zoomed in (the zoom's trial), any input but a hover or another zoom only brings the table back: a tap on the table,
-  // a prompt's button, a hand card, Escape. Nothing of it reaches play or opens anything.
-  if (s.zoom.on !== null && m.t !== "hover" && m.t !== "zoom") return { state: { ...s, zoom: { ...s.zoom, on: null } }, effects: [] };
+  // a prompt's button, a hand card, Escape. Nothing of it reaches play or opens anything, and nothing does until the
+  // scene has drawn the table's camera again (what was answered would be what the camera showed on its way back).
+  if ((s.zoom.on !== null || s.zoom.drawn) && m.t !== "hover" && m.t !== "zoom")
+    return { state: s.zoom.on === null ? s : { ...s, zoom: { ...s.zoom, on: null } }, effects: [] };
   switch (m.t) {
     case "act":
       toPlay(tx, { t: "act", stamp: m.stamp, stop: m.stop, act: m.act }, at);
@@ -649,6 +651,8 @@ function scene(s: AppState, r: RenderReport, at: Ms): Step {
   keepRecaps(tx, rep.recaps, "scene.recap");
   const flying = rep.flying ?? false;
   if (flying !== tx.s.settling) tx.s = { ...tx.s, settling: flying };
+  const composed = rep.composed ?? false;
+  if (composed !== tx.s.zoom.drawn) tx.s = { ...tx.s, zoom: { ...tx.s.zoom, drawn: composed } };
   // The cards in flight have landed (or new ones set off): pages re-fit (or hold).
   if (settlingOf(tx.s) !== settlingOf(s)) plan(tx, at);
   return done(tx);
@@ -737,7 +741,7 @@ export function committed(s: AppState, r: RenderReport, at: Ms): AppState {
 }
 
 /** Whether a commit's report has news for update (sets consumed, moments landed, recaps, cards set off or landed, a held
- * card re-anchored): the loop then folds it. */
+ * card re-anchored, the camera leaving or reaching the table's): the loop then folds it. */
 export function sceneNews(s: AppState, r: RenderReport): boolean {
   if (r.carried?.length && movedHeld(s.moments, r.carried)) return true;
   const rep = r.scene;
@@ -746,6 +750,7 @@ export function sceneNews(s: AppState, r: RenderReport): boolean {
   const played = playedSeq(rep);
   return (
     (rep.flying ?? false) !== s.settling ||
+    (rep.composed ?? false) !== s.zoom.drawn ||
     rep.landed.length > 0 ||
     rep.recaps.length > 0 ||
     (upTo !== null && s.changes.sets.some((c) => c.seq <= upTo)) ||
