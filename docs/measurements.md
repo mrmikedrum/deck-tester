@@ -457,3 +457,18 @@ it). The sequence's generator changes every seat in nearly every snapshot (in 29
 seats change 29 times, the right 28), so it rebuilds three leaves a plan, where main rebuilt one; a leaf rebuilt from
 scratch costs about 0.3 ms. No timing gate runs in CI (shared runners and a loaded Mac make wall-clock gates flaky). The
 iPad's run (`workbench.html?only=bench`, held in landscape, "Send to Mac") decides the 8 ms budget.
+
+The iPad (Chrome on iPadOS, held in landscape, build 6acb81f), median / p90 / worst ms per `planTable`:
+
+| Input | As the app plans | Every engine leaf changed each plan | `mat` alone |
+|---|---|---|---|
+| The design pass's turn 15 | 6 / 8 / 9 | 10 / 13 / 13 | 6 / 8 / 9 |
+| Dense | 8 / 11 / 11 | 13 / 15 / 16 | 7 / 8 / 9 |
+| 40 distinct names | 6 / 8 / 8 | 9 / 11 / 12 | 6 / 7 / 8 |
+| A combat of twelve | 6 / 8 / 9 | 10 / 12 / 13 | 6 / 8 / 9 |
+| 30 snapshots in sequence | 11 / 13 / 14 | 11 / 13 / 14 | 7 / 9 / 11 |
+
+Against the last gate run (Nov 25: dense 7 / 9, the combat of twelve 92 / 98), the combat is 15 times faster and the
+dense board about 2 ms slower at worst; both still miss the 8 ms worst case by 1 to 3 ms, as `mat` alone does (9).
+Most of a plan is still `mat` (my side and the rest), which steps 9 and 12 replace. Planning runs on a snapshot, not
+on every frame, so a miss costs one late frame on that snapshot.
