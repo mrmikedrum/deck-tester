@@ -138,7 +138,7 @@ export interface ArrCard {
   readonly reach: "table" | "self";
   readonly manaValue: number;
   readonly produces: readonly string[];
-  /** Only the snapshot's facts so far: its card data has not arrived, so what it is may still change. Nothing remembers
+  /** Only the snapshot's facts so far (not a token): its card data has not arrived, so what it is may still change. Nothing remembers
    *  where it was put (a card whose data lands is placed by what it is, not held where its guess put it). */
   readonly provisional?: boolean;
 }
@@ -430,6 +430,8 @@ export type Selector =
       /** Every member tapped, beside a sibling of the same card with one untapped. */
       readonly spent?: boolean;
       readonly creatures?: boolean;
+      /** A fan step also takes these tiers' units, fanned or not, into its own fan (my mana's kinds into one well). */
+      readonly gather?: readonly TierId[];
     }
   | { readonly all: true };
 

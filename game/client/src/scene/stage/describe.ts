@@ -648,12 +648,15 @@ function wellLook(model: TableModel, u: Unit, mine: boolean): Omit<WellLook, "al
   const colours = wellColours(cards),
     spent = n > 0 && tapped === n,
     shown = Math.min(n, 4);
-  if (!mine && !u.title) {
+  // Theirs, and the one well of all my mana (my row still full): its lands, what else it holds, and (mine) how many are
+  // tapped.
+  if (!u.title && (!mine || u.mixed)) {
     const lands = cards.filter(isLand).length,
       tr = cards.filter(isTreasure).length,
       rocks = n - lands - tr;
     const more = [rocks ? `${rocks}${tr ? "" : " mana"} rock${rocks > 1 ? "s" : ""}` : "", tr ? `${tr} Treasure${tr > 1 ? "s" : ""}` : ""].filter(Boolean);
-    return { sign: `Lands ${lands}`, sub: more.length ? `+ ${more.join(" · ")}` : null, colours, spent, shown, theirs: true };
+    const sub = [more.length ? `+ ${more.join(" · ")}` : "", mine && tapped ? `${tapped} tapped` : ""].filter(Boolean).join(" · ");
+    return { sign: `Lands ${lands}`, sub: sub || null, colours, spent, shown, theirs: !mine };
   }
   const rep = model.cards.get(u.top);
   const sign = u.title ?? `${shortName(rep?.face.name ?? "")}${n > 1 ? ` ×${n}` : ""}`;

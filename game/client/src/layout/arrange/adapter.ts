@@ -18,7 +18,8 @@ import { CARD, LEAN, clearBehind, onFrame } from "./frame";
 import { LIE_DEPTH } from "./rows";
 import { kindOf } from "./policies/kinds";
 import { S_TABLE, SLOT } from "./scale";
-import { myCommander, myPlate, myZones } from "./mine";
+import { myPlate } from "./mine";
+import { MANA_TIERS } from "./policies/mine";
 
 /** The seat plan's memory for an arranged leaf: the engine's container memory, carried as layout memory is. */
 export const ARRANGED = "arranged";
@@ -147,23 +148,21 @@ export interface MineSeatInput {
 
 /**
  * My seat plan from my side's arrangement (arrange/mine.ts): its units as an opponent's are drawn; my nameplate at the
- * screen's foot right of the hand, my graveyard and exile beside it, my commander waiting over it.
+ * screen's foot right of the hand. Graveyard, exile and the waiting commander are the nameplate's (a card bound there
+ * flies to it), not the table's.
  */
 export function mineSeat(a: MineSeatInput): SeatPlan {
   const { result, board } = a, fit = result.fit, f = fit.frame, seat = board.seat as SeatId;
   const byId = new Map(a.cards.map((c) => [c.id, c]));
   const targetOf = new Map(fit.targets.map((t) => [t.piece, t]));
-  const units: Unit[] = fit.units.map((u) => unitOf(u, seat, byId, targetOf.get(u.id)));
+  const units: Unit[] = fit.units.map((u) => unitOf(u, seat, byId, targetOf.get(u.id), true));
   const placed = new Set(units.flatMap((u) => [...u.members, ...u.dressing]));
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
-  const plate = myPlate(a.projector, a.reserve);
-  const commander = board.fixtures.commander !== undefined ? myCommander(a.projector, plate, board.fixtures.commander) : undefined;
-  // Cards no place could hold are reached through the entry: one pile by the plate.
+  // Cards no place could hold are reached through the entry: one pile on the row's anchor.
   if (left.length) units.push({ id: `u:entry:${seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(f, 0, 0.2), scale: S_TABLE, posture: "flat" } });
-  // My page is the mat from my edge of the table (the near slot's) to the far edge of my row.
-  const v0 = Math.min(0, -a.edge);
-  const zones = myZones(a.projector, plate, (["graveyard", "exile"] as const).filter((z) => board.fixtures[z] > 0));
-  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw: 0 }, plate, zones, ...(commander ? { commander } : {}) };
+  // My page is the mat from my edge of the table (the near slot's) to just behind what lies in my row.
+  const v0 = Math.min(0, -a.edge), v1 = (fit.rows[0]?.v ?? 0) + CARD.h * S_TABLE + 0.1;
+  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + v1) / 2), w: f.w, d: v1 - v0, yaw: 0 }, plate: myPlate(a.projector, a.reserve), zones: [] };
   const folded = fit.units.reduce((t, u) => t + Math.max(0, u.members.length - 1), 0);
   return new Ledger(board.cards.map((c) => c.id)).seal({
     seat,
@@ -175,12 +174,19 @@ export function mineSeat(a: MineSeatInput): SeatPlan {
 }
 
 /**
- * A unit's id on the table: the engine's ids are its container's (every leaf has its `u:frest`), so all but a single
- * card's own (`u:c<card>`, unique already) carry their seat.
+ * A unit's id on the table: the engine's ids are its container's (every leaf has its `u:frest`), so all but a card's own
+ * (`u:c<card>` on a unit that holds that card, unique already) carry their seat.
  */
-export const tableUnitId = (id: string, seat: SeatId): string => (/^u:c\d+$/.test(id) ? id : `${id}@${seat}`);
+export const tableUnitId = (id: string, seat: SeatId, members: readonly CardId[] = []): string => {
+  // (a pile that inherited a card's id by lineage, that card gone, perhaps to another seat, carries its seat too)
+  const m = /^u:c(\d+)$/.exec(id);
+  return m && members.includes(Number(m[1]) as CardId) ? id : `${id}@${seat}`;
+};
 
-function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, target: PickTarget | undefined): Unit {
+/** My mana's tiers (policies/mine.ts): each pile there is a well. */
+const MY_MANA: ReadonlySet<string> = new Set(MANA_TIERS);
+
+function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, target: PickTarget | undefined, mine = false): Unit {
   const region = target?.region;
   // The solver's target opens a chooser where an attachment on this unit is offered: the tap reaches the attachment too.
   const reach = target && "open" in target.action && u.dressing.length && target.members.length > u.members.length ? target.members : undefined;
@@ -188,11 +194,20 @@ function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, ta
   const topPlace = u.cards.find((p) => p.card === topId) ?? u.cards.at(-1)!;
   const pose = unturned(topPlace);
   const top = byId.get(topId);
-  const kind: UnitKind = u.kind === "card" ? "card" : u.kind === "summary" ? "summary" : u.kind === "stack" && (u.tier === "lands" || u.tier === "mana") ? "well" : "pile";
+  // A block of their lands is a well; so is any pile of my mana (by kind: basics, rocks, utility lands; or all of it),
+  // which the scene signs with its kind, count and how many are tapped.
+  const well = u.kind !== "card" && u.kind !== "summary" && (mine ? MY_MANA.has(u.tier) : u.kind === "stack" && u.tier === "lands");
+  const kind: UnitKind = u.kind === "card" ? "card" : u.kind === "summary" ? "summary" : well ? "well" : "pile";
   // (A lying place is a notched card wide: its pile says only how many; what they are is its top and its facts.)
-  const title = u.kind === "fan" ? `${u.members.length}` : u.kind === "summary" ? `All ${u.members.length}` : u.kind === "stack" && u.tier !== "lands" && u.tier !== "mana" ? `${top?.name ?? ""} ${u.members.length}` : null;
+  // (a well of one kind of mine says which: "Rocks 5", "Lands 6"; a block of basics and the well of all my mana say
+  // their own)
+  const title = well
+    ? mine && u.kind === "fan" && (u.tier === "rocks" || u.tier === "lands")
+      ? `${u.tier === "rocks" ? "Rocks" : "Lands"} ${u.members.length}`
+      : null
+    : u.kind === "fan" ? `${u.members.length}` : u.kind === "summary" ? `All ${u.members.length}` : u.kind === "stack" ? `${top?.name ?? ""} ${u.members.length}` : null;
   return {
-    id: tableUnitId(u.id, seat),
+    id: tableUnitId(u.id, seat, u.members),
     role: roleOf(top),
     kind,
     members: u.members,

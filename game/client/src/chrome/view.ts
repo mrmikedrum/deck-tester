@@ -53,7 +53,7 @@ export interface CardLook {
 export type ChromeLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses" | "seat";
 
 /** A plate's icons, in a fixed order: total power on the table, open mana, cards in hand (and fliers in a focus). */
-export type IconKind = "power" | "creatures" | "wing" | "shield" | "mana" | "hand";
+export type IconKind = "power" | "creatures" | "wing" | "shield" | "mana" | "hand" | "graveyard" | "exile" | "command";
 
 export interface IconView {
   readonly kind: IconKind;

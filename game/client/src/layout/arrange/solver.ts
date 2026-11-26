@@ -39,7 +39,7 @@ import type { Drawn } from "./draw";
 import { onFrame } from "./frame";
 import { kindOf } from "./policies/kinds";
 import { readyTapped } from "./policies/ready-tapped";
-import { RowPlanner, bandsOf, placesOf } from "./rows";
+import { RowPlanner, bandsOf, centreOut, placesOf } from "./rows";
 import type { Band, RowGeo } from "./rows";
 import { S_TABLE, SLOT, fanExtent } from "./scale";
 import { validateGroups, validateIntent } from "./validate";
@@ -192,7 +192,14 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   const changed =
     groups.some((g) => g.retyped) ||
     ranking.some((ch) => !incumbentKeys.has(ch.key) && front.has(ch.key) && ranking.some((inc) => incumbentKeys.has(inc.key) && !front.has(inc.key) && policy.promote(inc.imp, ch.imp)));
-  const tidy = policy.tidy(input.clock, pm?.seen ?? null, changed);
+  // Many cards' data has just arrived (a table loading, its data coming in batches: the first plans had only the
+  // snapshot's facts, and kept no place for those cards): deal afresh, as at a re-sort. A card or two landing in play (a
+  // land fetched from the library) takes a free place instead.
+  // (while cards are in flight the deal waits, and nothing that landed is remembered meanwhile: the next plan deals it)
+  const landedIds = pm ? cards.filter((x) => !x.provisional && prevSeq[x.id] !== undefined && pm.held[x.id] === undefined).map((x) => x.id) : [];
+  const loaded = landedIds.length >= Math.max(3, cards.length / 4);
+  const tidy = policy.tidy(input.clock, pm?.seen ?? null, changed) || (loaded && !input.clock.settling);
+  const forget: ReadonlySet<CardId> = new Set(loaded && input.clock.settling ? landedIds : []);
   // A re-sort is when a card whose types changed walks to its new row.
   if (tidy && groups.some((g) => g.retyped)) groups = planGroups(policy, intent, byId, ctx, input, pm, standingTiers.map((t) => t.id), seq, false, roots);
   const gByKey = new Map(groups.map((g) => [g.key, g]));
@@ -247,7 +254,7 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
           ? input.memory.selection
           : { policy: policy.id, since: input.clock.turn },
     arrivals: { next, seq },
-    policies: { ...(input.memory?.policies ?? {}), [policy.id]: cand.memory(ranking.map((g) => g.key), tidy) },
+    policies: { ...(input.memory?.policies ?? {}), [policy.id]: cand.memory(ranking.map((g) => g.key), tidy, forget) },
   };
 
   // Cards no place could hold are reached through the entry, and said: actors past every place (a focus shows them), or
@@ -521,7 +528,10 @@ function walk(
     } else if (step.op === "fan") {
       const tier = "tier" in step.where ? step.where.tier : undefined;
       if (tier === undefined) continue;
-      groupsHit = groups.filter((g) => !g.pinned && !exempt.has(g.key) && st.tier.get(g.key) === tier && !st.summary.has(g.key) && !st.fan.has(g.key)).map((g) => g.key);
+      const gather = "gather" in step.where ? (step.where.gather ?? []) : [];
+      groupsHit = groups
+        .filter((g) => !g.pinned && !exempt.has(g.key) && !st.summary.has(g.key) && (st.tier.get(g.key) === tier ? !st.fan.has(g.key) : gather.includes(st.tier.get(g.key)!)))
+        .map((g) => g.key);
       if (groupsHit.reduce((t, k) => t + gByKey.get(k)!.members.length, 0) < 2) continue;
       target = bandOf.get(tier) ?? null;
       if (!target) continue;
@@ -567,7 +577,8 @@ function walk(
       }
       else if (step.op === "demote") st.tier.set(k, typeof step.to === "string" ? step.to : gByKey.get(k)!.creature ? step.to.creature : step.to.other);
       else if (step.op === "stack") st.stacked.add(k);
-      else if (step.op === "fan") st.fan.set(k, st.tier.get(k)!);
+      // (a gathering fan takes the others into its own tier's fan)
+      else if (step.op === "fan") st.fan.set(k, ("tier" in step.where ? step.where.tier : undefined) ?? st.tier.get(k)!);
       else st.summary.add(k);
     }
   }
@@ -803,7 +814,8 @@ interface Candidate {
   readonly used: Arrangement["used"];
   /** What is drawn, per unit id, for a pose's audit. */
   readonly placed: readonly { readonly unit: ArrUnit; readonly row: RowGeo; readonly u: number; readonly w: number; readonly stands: boolean; readonly show: number }[];
-  memory(ranking: readonly string[], tidy: boolean): PolicyMemory;
+  /** `forget`: cards no place is kept for (their data has just landed while cards are in flight). */
+  memory(ranking: readonly string[], tidy: boolean, forget: ReadonlySet<CardId>): PolicyMemory;
 }
 
 function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: readonly Band[], planner: RowPlanner, tight: ReadonlyMap<number, number>, walked: Walked, pm: PolicyMemory | null, tidy: boolean, s: number, du: number, geometry: string): Candidate {
@@ -973,10 +985,10 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     edits: walked.records,
     used: { frame: frameRect, screen: screenRect },
     placed: placedList,
-    memory(ranking, didTidy) {
+    memory(ranking, didTidy, forget) {
       const slotsOut: Record<UnitKey, SlotRef> = {}, lin: Record<UnitKey, string> = {}, tops: Record<string, CardId> = {}, tiers: Record<UnitKey, TierId> = {}, heldOut: Record<string, UnitKey> = {}, bases: Record<string, TierId> = {};
       // (a card whose data has not arrived is not remembered: placed again once it has, by what it is)
-      const guess = (id: CardId) => !!ctx.cards.get(id)?.provisional;
+      const guess = (id: CardId) => !!ctx.cards.get(id)?.provisional || forget.has(id);
       for (const un of units) {
         lin[un.key] = un.id;
         if (un.top !== null) tops[un.key] = un.top;
@@ -1012,7 +1024,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
 
 /**
  * Places in a standing band, its nearest row first, each row's intervals nearest the middle first, each interval's
- * places centre-out (or from the end its tier fills from). A re-sort deals the band by rank (the commander first); otherwise a unit keeps its place while it
+ * places centre-out (a row whose tiers keep to a side holds one centred block). A re-sort deals the band by rank (the commander first); otherwise a unit keeps its place while it
  * lasts, a retyped card takes its old place where free, and a newcomer the first free place.
  */
 function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemory | null, tidy: boolean, tierOf: ReadonlyMap<TierId, Policy["tiers"][number]>): { at: Map<string, { row: RowGeo; ref: SlotRef; u: number; w: number }>; left: U[] } {
@@ -1040,16 +1052,45 @@ function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemor
     if (p) give(x, p);
     else fresh.push(x);
   }
-  // A tier that fills from an end takes the free place nearest it (my mana at the right, my works at the left) before
-  // the tiers that deal from the middle take theirs, nearest the middle first, so a full row keeps its ends.
-  const fromOf = (x: U) => tierOf.get(x.tier)?.from ?? "centre";
-  const ends = { left: [...free].sort((a, b) => a.k - b.k || a.u - b.u), right: [...free].sort((a, b) => a.k - b.k || b.u - a.u), centre: free };
-  const byFrom = (a: U, b: U) => Number(fromOf(a) === "centre") - Number(fromOf(b) === "centre");
-  const newcomers = (tidy ? [...units].sort(rank) : fresh.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.arrival - b.arrival || cmp(a.key, b.key))).sort(byFrom);
   // when the band is short, the heaviest keep places (the walk folded the rest; pinned cards come first)
+  const fromOf = (x: U) => tierOf.get(x.tier)?.from ?? "centre";
+  const newcomers = tidy ? [...units].sort(rank) : fresh.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.arrival - b.arrival || cmp(a.key, b.key));
   const keep = new Set([...newcomers].sort(rank).slice(0, free.length - taken.size).map((x) => x.key));
+  // A row whose tiers keep to a side (my row: works at the left, mana at the right) holds its units as one block, centred
+  // while it has room: a re-sort deals the block afresh, what stands in its middle by rank; a newcomer joins the block's
+  // side its tier keeps to, or its middle.
+  if (rows.length === 1 && units.some((x) => fromOf(x) !== "centre")) {
+    const line = [...free].sort((a, b) => a.u - b.u);
+    const ix = new Map([...tierOf.keys()].map((t, i) => [t, i] as const));
+    if (tidy) {
+      const kept = newcomers.filter((x) => keep.has(x.key));
+      const side = (f: string) => kept.filter((x) => fromOf(x) === f);
+      // lightest outermost: works lightest at the left; mana by kind in tier order, the heaviest of a kind nearest the middle
+      const L = side("left").sort((a, b) => -rank(a, b));
+      const C = side("centre"), mid: U[] = [];
+      C.forEach((x, j) => (mid[Math.round((C.length - 1) / 2 + centreOut(j, C.length))] = x));
+      const R = side("right").sort((a, b) => ix.get(a.tier)! - ix.get(b.tier)! || rank(a, b));
+      const seq = [...L, ...mid, ...R], c0 = Math.floor((line.length - seq.length) / 2);
+      seq.forEach((x, i) => give(x, line[c0 + i]!));
+    } else {
+      const us = line.filter((f) => taken.has(key(f))).map((f) => f.u);
+      const lo = us.length ? Math.min(...us) : 0, hi = us.length ? Math.max(...us) : 0, c = (lo + hi) / 2;
+      for (const x of newcomers) {
+        if (!keep.has(x.key)) continue;
+        const f = fromOf(x), open = line.filter((p) => !taken.has(key(p)));
+        const near = (u: number) => (a: (typeof line)[number], b: (typeof line)[number]) => Math.abs(a.u - u) - Math.abs(b.u - u);
+        const p =
+          f === "left" ? (open.filter((q) => q.u < lo).sort(near(lo))[0] ?? open.sort(near(lo))[0])
+          : f === "right" ? (open.filter((q) => q.u > hi).sort(near(hi))[0] ?? open.sort(near(hi))[0])
+          : open.sort(near(c))[0];
+        if (p) give(x, p);
+      }
+    }
+    for (const x of newcomers) if (!at.has(x.key)) left.push(x);
+    return { at, left };
+  }
   for (const x of newcomers) {
-    const p = keep.has(x.key) ? ends[fromOf(x)].find((f) => !taken.has(key(f))) : undefined;
+    const p = keep.has(x.key) ? free.find((f) => !taken.has(key(f))) : undefined;
     if (p) give(x, p);
     else left.push(x);
   }

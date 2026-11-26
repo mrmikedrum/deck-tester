@@ -128,13 +128,13 @@ test.describe("tapping what glows", () => {
 
 test.describe("mana abilities", () => {
   const mana = s => withDecision(s, { kind: "play", prompt: "", options: ["Pass", "Mystic Sanctuary: {T}: Add {U}."], refs: [{}, { card: find(s, "You", "Mystic Sanctuary").id, spell: false, mana: true }], min: 1, max: 1 });
-  // (In the new entry Mystic Sanctuary lies in my mana pile, which holds still while I have priority: a tap opens the
-  // pile, a second the land.)
+  // (In the new entry Mystic Sanctuary may lie in a pile of my lands, which holds still while I have priority: then a
+  // tap opens the pile, a second the land.)
   const tapSanctuary = async (table, s) => {
     const id = find(s, "You", "Mystic Sanctuary").id;
     if (!NEW) return table.click(await locate(table.page, { card: id }));
     await table.tapCard(id);
-    expect(await table.page.locator(".l-actions button").count()).toBe(0);
+    if (await table.page.locator(".l-actions button").count()) return;
     await table.step(1500); // the pile opens
     await table.tap(await table.locate({ sifted: id }));
   };

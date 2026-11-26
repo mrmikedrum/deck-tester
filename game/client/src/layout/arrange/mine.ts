@@ -1,20 +1,20 @@
 // My own side as a container (§1.1, §2.6, step 9): one row on the template's field line (`TableTemplate.mine.field`),
-// square to me and as wide as my slot, facing the leaves across the open middle. At one card size a lying row needs
-// more depth than the screen has between the hand's top and a field whose faces meet their floor, so everything of mine
-// shares the row (the policy lays what does not stand in its places). Under it, at the screen's foot between the hand
-// and the prompt, are the builder's fixtures: my nameplate, my graveyard and exile beside it (my own yard stays on the
-// table, where a recursion deck reads it), and my commander while it waits in the command zone.
-// My side holds still when the mats part (it has no poses).
+// square to me and as wide as my slot, facing the leaves with no middle held back. At one card size a lying row needs more
+// depth than the screen has between the hand's top and a field whose faces meet their floor, so everything of mine shares
+// the row (the policy lays what does not stand in its places). The parting slides the row toward me as it slides the
+// leaves away (its one pose). My nameplate stands at the screen's foot right of the hand; my graveyard, exile and a
+// commander waiting in the command zone are not on the table: the nameplate counts them and its focus holds them, as an
+// opponent's does.
 import type { Projector } from "../projector";
 import type { Reservations } from "../reservations";
-import { bounds, plateShape } from "../shape";
-import type { Fixtures, Placement } from "../seat";
+import type { Placement } from "../seat";
 import type { SeatSlot, TableTemplate } from "../template";
-import type { CardId, SeatId } from "../types";
+import type { SeatId } from "../types";
 import { designUnit } from "../types";
 import type { ArrangeInput, Container, SurfaceFrame } from "./contract";
 import { NO_RELATIONS } from "./contract";
 import { CARD, LEAN, onFrame, slotFrame } from "./frame";
+import { partShift } from "./leaf";
 import type { LeafInput, LeafPlan } from "./leaves";
 import { mine } from "./policies/mine";
 import { S_TABLE, SLOT } from "./scale";
@@ -47,35 +47,10 @@ export function myPlate(proj: Projector, reserve: Reservations): Placement {
   return { pos: proj.onTable(left + w / 2, y), scale: MY_PLATE.scale, posture: "stand" };
 }
 
-/** A card at table size seen at screen point (x, y) on the table: its width across, px. */
-const cardPx = (proj: Projector, x: number, y: number): number => {
-  const p = proj.onTable(x, y);
-  return Math.abs(proj.project({ ...p, x: p.x + (CARD.w * S_TABLE) / 2 }).x - proj.project({ ...p, x: p.x - (CARD.w * S_TABLE) / 2 }).x);
-};
-
-/** My commander waiting in the command zone: standing at table size over my plate, its foot on the plate's top. */
-export function myCommander(proj: Projector, plate: Placement, card: CardId): NonNullable<Fixtures["commander"]> {
-  const b = bounds(plateShape(proj, "", plate).face), u = designUnit(proj.viewport);
-  return { card, placement: { pos: proj.onTable((b.l + b.r) / 2, b.t - MY_PLATE.gap * u), scale: S_TABLE, posture: "stand" } };
-}
-
-/** My graveyard and exile, each in its own place whatever is in the other: lying at table size right of my plate, their
- *  feet on its foot line. */
-export function myZones(proj: Projector, plate: Placement, present: readonly ("graveyard" | "exile")[]): Fixtures["zones"] {
-  const b = bounds(plateShape(proj, "", plate).face), u = designUnit(proj.viewport), gap = MY_PLATE.gap * u;
-  return present.map((zone) => {
-    const i = zone === "exile" ? 1 : 0;
-    const w = cardPx(proj, b.r, b.b), l = b.r + gap + i * (w + gap);
-    // the card's middle: its foot on the plate's foot line, a card's depth back
-    const foot = proj.onTable(l + w / 2, b.b);
-    return { zone, placement: { pos: { ...foot, z: foot.z - (CARD.h * S_TABLE) / 2 }, scale: S_TABLE, posture: "flat" } };
-  });
-}
-
 export interface MineOptions {
   readonly seat: SeatId;
   readonly slot: SeatSlot;
-  readonly tpl: Pick<TableTemplate, "mine">;
+  readonly tpl: Pick<TableTemplate, "mine" | "part">;
   readonly projector: Projector;
   readonly reserve: Reservations;
 }
@@ -88,7 +63,8 @@ export function mineContainer(o: MineOptions): Container {
     viewer: o.seat,
     frame: mineFrame(o.slot, o.tpl),
     projector: o.projector,
-    poses: [],
+    // the parting at its most slides my row toward me (along `away`'s opposite): it holds there too
+    poses: [{ id: "parted", shift: -partShift(o.tpl.part.most) }],
     layer: { kind: "table" },
     stand: { lean: LEAN },
     floors: { creature: 72, any: 44, tapPx: 44 },

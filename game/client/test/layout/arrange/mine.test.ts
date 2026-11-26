@@ -30,7 +30,8 @@ const VIEWPORTS: readonly Viewport[] = [
   { w: 1366, h: 1024 },
 ];
 const IPAD = VIEWPORTS[0]!;
-const design = designModels(JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")));
+const rawDesign = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
+const design = designModels(rawDesign as never);
 
 const side = (vp: Viewport = IPAD) => {
   const tpl = tableTemplate(4), projector = pinhole(tpl.camera, vp);
@@ -96,8 +97,10 @@ describe("my side's policy (`mine`)", () => {
     expect(r.fit.units.length).toBeLessThanOrEqual(r.fit.rows[0]!.places);
     // nothing shrinks: every card at the table's one size
     expect(r.fit.scale).toBeCloseTo(1.85, 6);
+    // my mana keeps its kinds (rocks, utility lands, basics apart) while folding what stands
     const fans = r.fit.units.filter((u) => u.kind === "fan").map((u) => u.tier).sort();
-    expect(fans).toEqual(["mana", "muster", "works"]);
+    expect(fans).toEqual(["lands", "muster", "rocks", "works"]);
+    expect(unitOf(r, cards.find((c) => c.name === "Plains")!.id).kind).toBe("stack");
   });
 
   it("a pile holding a card I can use says so: the card is named on the pile's unit", () => {
@@ -111,6 +114,36 @@ describe("my side's policy (`mine`)", () => {
     expect(pile.kind).toBe("fan");
     expect(r.fit.attention).toContainEqual({ unit: pile.id, cards: [lands[9]!.id], why: "offered" });
     expect(pile.notable).toContainEqual({ card: lands[9]!.id, cue: "act" });
+  });
+
+  it("while the row has room its units are one centred block: works at its left, what stands in the middle, mana at its right", () => {
+    resetIds(100);
+    const cards = [me({ id: 1, name: "Bear", power: 2 }), me({ id: 2, name: "Wurm", power: 6 }), me({ id: 3, kind: "artifact", name: "Coat of Arms" }), me({ id: 4, kind: "rock", name: "Sol Ring" }), ...many(3, { kind: "land", name: "Island", basic: true, controller: ME })];
+    const r = mineRun({ cards });
+    const xs = r.fit.units.map((u) => u.cards.at(-1)!.foot.x).sort((a, b) => a - b), pitch = 1.85;
+    // contiguous, and centred on the row within a place
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeLessThan(pitch * 1.6);
+    expect(Math.abs((xs[0]! + xs.at(-1)!) / 2)).toBeLessThan(pitch);
+    expect(across(r, 3)).toBeLessThan(Math.min(across(r, 1), across(r, 2)));
+    expect(Math.min(across(r, 4), across(r, cards[4]!.id))).toBeGreaterThan(Math.max(across(r, 1), across(r, 2)));
+    // the heaviest in the middle of what stands
+    expect(Math.abs(across(r, 2) - (across(r, 1) + across(r, 2)) / 2)).toBeLessThan(pitch);
+  });
+
+  it("my mana keeps its kinds while the row has room: basics by kind, rocks and utility lands apart, each named", () => {
+    resetIds();
+    const cards = [
+      ...Array.from({ length: 4 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i })),
+      ...many(5, { kind: "land", name: "Island", basic: true, controller: ME }),
+      ...many(3, { kind: "land", name: "Swamp", basic: true, controller: ME }),
+      ...Array.from({ length: 4 }, (_, i) => me({ kind: "rock", name: `Rock ${i}` })),
+      ...Array.from({ length: 5 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` })),
+    ];
+    const r = mineRun({ cards });
+    expect(r.fit.report.violations).toEqual([]);
+    const mana = r.fit.units.filter((u) => ["rocks", "lands", "basics", "mana"].includes(u.tier));
+    expect(mana.map((u) => u.tier).sort()).toEqual(["basics", "basics", "lands", "rocks"]);
+    expect(mana.every((u) => u.facts.kind === "well" || u.facts.kind === "card")).toBe(true);
   });
 
   it("what a decision offers steps out of my piles where the row holds it, else its pile opens with it lit", () => {
@@ -150,11 +183,24 @@ describe("my side's policy (`mine`)", () => {
     const a = mineRun({ cards: [...others, guessed] });
     expect(unitOf(a, 9).tier).toBe("works");
     const b = mineRun({ cards: [...others, me({ id: 9, kind: "rock", name: "Mind Stone" })], memory: a.fit.memory });
-    expect(unitOf(b, 9).tier).toBe("mana");
+    expect(unitOf(b, 9).tier).toBe("rocks");
     expect(unitOf(b, 9).retyped).toBe(false);
     expect(across(b, 9)).toBeGreaterThan(Math.max(across(b, 1), across(b, 2)));
     // what was known stays where it was
     for (const id of [1, 2, 3]) expect(unitOf(b, id).slot, String(id)).toEqual(unitOf(a, id).slot);
+  });
+
+  it("a table loading (many cards' data arriving at once) deals my row afresh: works left, what stands, mana right", () => {
+    resetIds(200);
+    const known = [me({ name: "Illusion", power: 1, token: true }), me({ name: "Illusion", power: 1, token: true })];
+    const real = [me({ name: "Wurm", power: 6 }), me({ name: "Bear", power: 2 }), me({ kind: "artifact", name: "Coat of Arms" }), me({ kind: "rock", name: "Sol Ring" }), me({ kind: "land", name: "Temple" })];
+    // first plan: only the snapshot's facts (the rock and the land read as works until their data lands)
+    const guessed = real.map((c) => ({ ...c, provisional: true, ...(c.name === "Sol Ring" || c.name === "Temple" ? { manaSource: false, types: { ...c.types, land: false } } : {}) }));
+    const a = mineRun({ cards: [...known, ...guessed], clock: { turn: 5, phase: "MAIN1" } });
+    const b = mineRun({ cards: [...known, ...real], memory: a.fit.memory, clock: { turn: 5, phase: "MAIN1" } });
+    const x = (n: string) => across(b, real.find((c) => c.name === n)!.id);
+    expect(x("Coat of Arms")).toBeLessThan(Math.min(x("Wurm"), x("Bear")));
+    expect(Math.min(x("Sol Ring"), x("Temple"))).toBeGreaterThan(Math.max(x("Wurm"), x("Bear")));
   });
 
   it("a card that taps turns in place: only its turn changes", () => {
@@ -205,6 +251,9 @@ describe("my side drawn on the table", () => {
         const m = design.get(turn)!, plan = planned(turn, vp), label = `${vp.w} turn ${turn}`;
         const seat = m.viewer.perspective, sp = plan.seats.get(seat)!;
         expect(sp.memory.paradigm, label).toBe(ARRANGED);
+        // my graveyard, exile and waiting commander are the nameplate's, not the table's
+        expect(sp.fixtures.zones, label).toEqual([]);
+        expect(sp.fixtures.commander, label).toBeUndefined();
         expect(plan.mine!.result!.fit.report.violations, label).toEqual([]);
         expect(plan.violations, label).toEqual([]);
         const mineIds = boards(m).find((b) => b.seat === seat)!.board.cards.map((c) => c.id);
@@ -223,11 +272,19 @@ describe("my side drawn on the table", () => {
       }
   });
 
-  it("my field's tops leave the middle more room than mat's: duels and the stack rest there", () => {
+  it("no middle held back at rest: my field stands no lower than mat's did; the parting slides it toward me", () => {
     for (const turn of [9, 15]) {
       const m = design.get(turn)!, u = designUnit(IPAD);
       const engine = planned(turn, IPAD), mat = planTable(tableInputOf(m, { viewport: IPAD, engine: { draw: true, mine: false } }));
-      expect(engine.fieldTop, `turn ${turn}`).toBeGreaterThan(mat.fieldTop + 20 * u);
+      expect(engine.fieldTop, `turn ${turn}`).toBeLessThanOrEqual(mat.fieldTop + 2 * u);
+      expect(engine.part).toBe(0);
+      // the stack set aside parts the mats: my row slides toward me as the leaves slide away
+      const raw = structuredClone(rawDesign.stages.find((x) => x.turn === turn)!);
+      raw.envelope.view = { ...raw.envelope.view, stack: [{ id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [] }] };
+      const parted = planTable(tableInputOf(designModels({ stages: [raw], catalog: rawDesign.catalog }).get(turn)!, { viewport: IPAD, engine: { draw: true } }));
+      expect(parted.part).toBeGreaterThan(0);
+      expect(parted.fieldTop, `turn ${turn} parted`).toBeGreaterThan(engine.fieldTop + 4 * u);
+      expect(parted.violations, `turn ${turn} parted`).toEqual([]);
       // nothing of mine reaches under the hand or the prompt
       const reserve = engine.reserve.items.map((i) => i.rect);
       for (const g of engine.hits.groups.filter((x) => x.seat === m.viewer.perspective && x.kind !== "plate" && x.kind !== "zone")) {

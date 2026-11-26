@@ -81,9 +81,9 @@ const LANDSCAPE_4: readonly SeatSlot[] = [
 // and the side leaves, turned the same as their slots, meet it there.
 const LEAF_4: LeafGeometry = { front: -3.9, d: 13, far: 0 };
 const PART_4: Parting = { most: 0.15, step: 0.05 };
-// My field faces theirs across the open middle: as near the middle as keeps my standing faces over their floor (72
-// design px) and leaves my lying band its rows between the hand's top and the screen's foot.
-const MINE_4 = { field: 2.0 } as const;
+// My field faces theirs with no middle held back at rest, where `mat`'s stood: as near them as keeps my standing faces
+// over their floor (72 design px). The parting opens the middle by sliding it toward me as it slides the leaves away.
+const MINE_4 = { field: 0.8 } as const;
 
 /**
  * Fewer opponents share the same width (a seat that leaves gives its room back): the span from the left leaf's outer

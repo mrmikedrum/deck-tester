@@ -44,6 +44,12 @@ const tap = (r: Rig, g: { id: string; members: readonly CardId[] }): void => {
   r.now += 10;
 };
 const layers = (r: Rig) => r.state.focus.layers.map((e) => [e.layer, e.group ?? e.seat ?? null]);
+/** My graveyard (or exile) opened as the nameplate's focus opens it: it is not on the table. */
+const myZone = (r: Rig, zone: "graveyard" | "exile" = "graveyard"): { id: string; members: readonly CardId[] } => {
+  r.inputs.push({ t: "zone", stamp: { at: r.now, commit: r.state.commit }, seat: String(seatId("You")), zone });
+  r.frame((r.now += 10));
+  return { id: `zone:${zone}:${seatId("You")}`, members: [] };
+};
 const islands = (r: Rig) => groups(r).find((g) => g.members.length > 1 && ["pile", "well", "summary"].includes(g.kind))!;
 
 describe("a tap opens the table's layers", () => {
@@ -62,8 +68,7 @@ describe("a tap opens the table's layers", () => {
   it("a graveyard of 100 cards is sifted a page of 27 at a time, every card at least 44 px wide; its caption pages it", () => {
     const yard = Array.from({ length: 100 }, (_, i) => ({ id: 200 + i, name: `Card ${i}`, owner: "You", controller: "You", type: "Instant" }));
     const r = started(board({ v: 1, graveyard: yard }));
-    const g = groups(r).find((x) => x.id === `zone:graveyard:${seatId("You")}`)!;
-    tap(r, g);
+    const g = myZone(r);
     const sifted = () => {
       const f = r.commits.at(-1)!.frame!;
       const d = describeTable({ model: f.model, plan: f.plan, cues: f.cues, focus: f.focus, hover: null });
@@ -99,14 +104,14 @@ describe("a tap opens the table's layers", () => {
     expect(layers(r)).toEqual([]);
   });
 
-  it("a graveyard with cards in it opens its sift; an empty one does not", () => {
+  it("my graveyard is not on the table: with cards in it, it opens its sift from the nameplate; an empty one does not", () => {
     const r = started(board({ v: 1 }));
     const me = seatId("You");
-    const yard = groups(r).find((g) => g.id === `zone:graveyard:${me}`)!;
-    tap(r, yard);
+    expect(groups(r).some((g) => g.id === `zone:graveyard:${me}`)).toBe(false);
+    const yard = myZone(r);
     expect(layers(r)).toEqual([["sift", yard.id]]);
     const empty = started(board({ v: 1, graveyard: [] }));
-    tap(empty, groups(empty).find((g) => g.id === `zone:graveyard:${me}`) ?? { id: `zone:graveyard:${me}`, members: [] });
+    myZone(empty);
     expect(layers(empty)).toEqual([]);
   });
 
@@ -172,7 +177,7 @@ describe("a tap opens the table's layers", () => {
   });
 
   const yardOf = (n: number, from = 200): Json[] => Array.from({ length: n }, (_, i) => ({ id: from + i, name: `Card ${i}`, owner: "You", controller: "You", type: "Instant" }));
-  const yardGroup = (r: Rig) => groups(r).find((x) => x.id === `zone:graveyard:${seatId("You")}`)!;
+  const yardGroup = (r: Rig) => myZone(r);
   const pageBy = (r: Rig, group: string, delta: number): void => {
     r.inputs.push({ t: "siftPage", stamp: { at: r.now, commit: r.state.commit }, group, delta });
     r.frame((r.now += 10));
@@ -181,7 +186,6 @@ describe("a tap opens the table's layers", () => {
   it("a spell that takes the table over a sift takes its caption with it: its pager and Put back are not there to press", () => {
     const r = started(board({ v: 1, graveyard: yardOf(100) }));
     const g = yardGroup(r);
-    tap(r, g);
     expect(r.commits.at(-1)!.view.sift).toMatchObject({ title: "Your graveyard ×100", page: 0 });
     r.transport.push(board({ v: 2, graveyard: yardOf(100), stack: [spell(1)] }));
     r.frame((r.now += 10));
@@ -200,7 +204,6 @@ describe("a tap opens the table's layers", () => {
   it("a sift whose pile shrinks between two presses pages back from the page it shows", () => {
     const r = started(board({ v: 1, graveyard: yardOf(100) }));
     const g = yardGroup(r);
-    tap(r, g);
     pageBy(r, g.id, 3);
     expect(r.commits.at(-1)!.view.sift).toMatchObject({ page: 3, range: "82–100 of 100" });
     // The graveyard shrinks to 60 cards: three pages, the last shown.
