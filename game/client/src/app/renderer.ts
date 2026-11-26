@@ -13,7 +13,7 @@ import { canvasMeasure, chromeRenderer } from "../chrome";
 import type { ChromeRenderer } from "../chrome";
 import { bindPointer } from "../input";
 import type { Gesture, PointerBinding } from "../input";
-import type { HitGroup, Point } from "../layout";
+import type { HitGroup, Point, SeatId } from "../layout";
 import type { Act, Target } from "../play";
 import type { Ms } from "../platform";
 import { now } from "../platform";
@@ -93,6 +93,12 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
     const p: Point = { x: x - r.left, y: y - r.top };
     return scene.pick(p);
   };
+  /** The seat whose page is under (x, y), CSS px in the page. */
+  const seatAt = (x: number, y: number): SeatId | null => {
+    if (!scene) return null;
+    const r = ports.canvas.getBoundingClientRect();
+    return scene.seatAt({ x: x - r.left, y: y - r.top });
+  };
   /** The plate whose nameplate is on top at (x, y), CSS px in the page. */
   const plateAt = (x: number, y: number): HitGroup | null => {
     const el = ports.canvas.ownerDocument.elementFromPoint(x, y)?.closest<HTMLElement>("[data-plate]");
@@ -122,8 +128,17 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
         // stop and commit are the press's.
         if (g.on?.group) act({ a: "drag", from: targetOf(g.on.group), onto: targetOf(plateAt(g.x, g.y) ?? pick(g.x, g.y)) }, g.at, g.on);
         return;
+      case "hold": {
+        // A long press on a card or pile, or on a seat's page: the zoom's trial composes the camera on it (the app
+        // ignores it otherwise).
+        if (!g.on) return;
+        const seat = g.on.group ? null : seatAt(g.x, g.y);
+        const to = g.on.group ? { group: g.on.group.id } : seat !== null ? { seat } : null;
+        if (to) ports.emit({ t: "zoom", stamp: { at: g.at, commit: g.on.commit }, to });
+        return;
+      }
       default:
-        return; // hold (peek) and the wheel: not in the slice; hover is read off the canvas's own moves (onMove)
+        return; // the wheel: not in the slice; hover is read off the canvas's own moves (onMove)
     }
   };
 

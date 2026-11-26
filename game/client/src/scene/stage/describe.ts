@@ -11,15 +11,17 @@ import type { CardId } from "../../protocol";
 import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
 import type { Lean, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
-import { canonical, faceKey, shortName } from "../../theme";
+import { canonical, faceKey, materials, shortName } from "../../theme";
 import type { FaceSpec } from "../../theme";
-import { DIM, SCRIM } from "./motion";
+import { DIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
 import type { LabelAsk, Measure } from "./labels";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
 import { pagePose, platePose, poseQuad, screenPose, stackPose, unitPose, zonePose } from "./poses";
 import { LOOK, tableFocus } from "./types";
-import type { Aim, Description, Draw, FocusTop, Lane, Look, Piece, Pose, WellLook } from "./types";
+import type { Aim, Description, Draw, FocusTop, HighlightLook, HighlightRequest, HighlightTone, Lane, Look, Piece, Pose, WellLook } from "./types";
+
+const HIGHLIGHT = materials.highlight;
 
 export interface DescribeInput {
   readonly model: TableModel;
@@ -30,6 +32,8 @@ export interface DescribeInput {
   readonly hover: string | null;
   /** The labels' text widths (the sign's font measured); an estimate without one. */
   readonly measure?: Measure;
+  /** Cards the app steps out of the light (choosing targets). */
+  readonly highlight?: HighlightRequest | null;
 }
 
 /** The hover lift: a card under the pointer comes up off its page (a guess; the old client peeked in HTML instead). */
@@ -297,23 +301,53 @@ export function describe(input: DescribeInput): Description {
     pieces.set(a.id, { ...p, draw: { ...d, label: l }, mods: `${p.mods}#${l ? `${l.name}|${l.px}|${l.slide}` : "chip"}` });
   }
 
-  // The stack as the focus lays one scrim over the table; the stack's cards, what they aim at and the arcs stand above it,
-  // each in its own place (one dim, never a second one per piece).
-  const above = new Set<string>();
-  if (stackUp) {
-    for (const id of pieces.keys()) if (id.startsWith("stack:")) above.add(id);
-    for (const a of aims) above.add(a.to);
-  }
+  // A highlight lays one scrim over the table and steps what it holds out of the light, each in its own place (one dim,
+  // never a second one per piece): the stack as the focus, its cards and what they aim at; else what the app asked for.
+  const { highlight, look } = highlightOf(input, pieces, home, aims, stackUp, me);
   return {
     pieces,
     home,
     lanes: lean ? [] : lanesOf(model, plan, cues, pieces),
     aims,
     tableTone: sifting ? DIM.table : 1,
-    scrim: stackUp ? SCRIM.alpha : 0,
-    above,
+    scrim: look ? look.dim : 0,
+    above: new Set(highlight.keys()),
+    highlight,
+    highlightLook: look,
     perspective: me,
   };
+}
+
+/**
+ * What steps out of the light, and how. The stack as the focus: its spells in gold, and what they aim at in its
+ * meaning (blood where another's spell aims at what is mine, ember where mine aims, gold between others). Otherwise the
+ * cards the app asked for, at the piece that draws each; nothing while a sift or a lean-in has the table.
+ */
+function highlightOf(
+  input: DescribeInput,
+  pieces: ReadonlyMap<string, Piece>,
+  home: ReadonlyMap<CardId, string>,
+  aims: readonly Aim[],
+  stackUp: boolean,
+  me: SeatId,
+): { highlight: Map<string, HighlightTone>; look: HighlightLook | null } {
+  const highlight = new Map<string, HighlightTone>();
+  if (stackUp) {
+    for (const id of pieces.keys()) if (id.startsWith("stack:")) highlight.set(id, "spell");
+    for (const a of aims) {
+      const by = pieces.get(a.from)?.seat ?? null,
+        at = pieces.get(a.to)?.seat ?? null;
+      highlight.set(a.to, a.onto === "spell" ? "spell" : by !== me && at === me ? "threat" : by === me ? "mine" : "spell");
+    }
+    return { highlight, look: { ...HIGHLIGHT.stack } };
+  }
+  const ask = input.highlight;
+  if (!ask || !ask.cards.size || tableFocus(input.focus)) return { highlight, look: null };
+  for (const [card, tone] of ask.cards) {
+    const id = home.get(card);
+    if (id && pieces.get(id)?.kind !== "hidden") highlight.set(id, tone);
+  }
+  return highlight.size ? { highlight, look: { ...HIGHLIGHT.target, ...ask.look } } : { highlight, look: null };
 }
 
 const quadHeight = (q: readonly { readonly y: number }[]): number => Math.max(...q.map((p) => p.y)) - Math.min(...q.map((p) => p.y));

@@ -7,6 +7,7 @@ import type { Act } from "../play";
 import type { CardId, Stamp, StopId } from "../protocol";
 import type { NewGameRequest, TransportEvent } from "../transport";
 import type { LayerId } from "./focus";
+import type { ZoomRequest } from "../scene/stage/types";
 
 /** The layers the player opens by a control of their own. */
 export type OpenLayer = "inspector" | "menu" | "hand" | "log" | "losses";
@@ -33,6 +34,9 @@ export type InputMsg = (
   | { readonly t: "listDecks"; readonly stamp: Stamp }
   /** A mouse pointer moved onto another hit group on the canvas (null: onto none, off the canvas, or it pressed). */
   | { readonly t: "hover"; readonly stamp: Stamp; readonly group: string | null }
+  /** A long press on the table: the camera composed on that hit group or seat's page (the zoom's trial only; null
+   * brings it back). */
+  | { readonly t: "zoom"; readonly stamp: Stamp; readonly to: ZoomRequest | null }
 ) & { readonly origin?: string | null };
 
 export type Msg =
@@ -61,6 +65,7 @@ export function rankOf(m: Msg): number {
     case "zone":
     case "siftPage":
     case "hover":
+    case "zoom":
       return 0;
     case "viewport":
     case "motion":

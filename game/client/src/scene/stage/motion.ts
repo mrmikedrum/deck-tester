@@ -1,7 +1,7 @@
 // The animator's math and every tuned number of the table's motion, ported from the old client (h.js `buildBoard`,
 // `layout`, `buildStack`; live.js `MOVE`). Pure: no three.js, no clock; time is always an argument.
 import type { V3 } from "../../layout";
-import { motion as themeMotion } from "../../theme";
+import { materials, motion as themeMotion } from "../../theme";
 
 // ---- tuned numbers ---------------------------------------------------------------------------------------------------
 
@@ -127,7 +127,7 @@ export const DIM = {
  * The stack as the focus: one warm near-black scrim over the whole table (the sift's mechanism), in over 250 ms and out
  * over 180. Its alpha is the look's (as a scrim over the finished picture); the host applies it before tone mapping.
  */
-export const SCRIM = { alpha: 0.55, inMs: 250, outMs: 180 } as const;
+export const SCRIM = { alpha: materials.highlight.stack.dim, inMs: 250, outMs: 180 } as const;
 
 /** The bounded backlog (docs: "The backlog is bounded"); ages from the theme's motion timings. */
 export const BACKLOG = {

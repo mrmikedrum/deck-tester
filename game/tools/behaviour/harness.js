@@ -183,9 +183,10 @@ class Table {
     }
     return this.vnow;
   }
-  async boot(snap) {
+  // `query`: the page's own switches (the new entry's `?zoom` trial).
+  async boot(snap, query = "") {
     this.queue.push(engineShape(Object.assign({}, clone(snap), { v: ++this.v, error: null })));
-    await this.page.goto("/" + (process.env.BEHAVIOUR_ENTRY || (NEW ? "index.html" : "live.html")));
+    await this.page.goto("/" + (process.env.BEHAVIOUR_ENTRY || (NEW ? "index.html" : "live.html")) + query);
     const T0 = Date.now(); const lap = m => process.env.BEHAVIOUR_TIMING && console.log(m, Date.now() - T0);
     if (NEW) {                                               // the scene can draw and the first snapshot is taken
       await this.page.waitForFunction(() => window.__deckmaster, null, { timeout: 30000 });
@@ -302,4 +303,4 @@ const test = base.extend({
   },
 });
 
-module.exports = { test, expect, NEW, pending, engineShape, snapshot, decision, withDecision, find, inHand, opponentSpell, keyOf, locate, clone, sleep, STATES, CARDS };
+module.exports = { Table, test, expect, NEW, pending, engineShape, snapshot, decision, withDecision, find, inHand, opponentSpell, keyOf, locate, clone, sleep, STATES, CARDS };

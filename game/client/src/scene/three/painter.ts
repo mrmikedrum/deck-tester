@@ -14,7 +14,6 @@ import {
   paintPageShade,
   paintPlate,
   paintShade,
-  paintStrata,
   paintDieFace,
   paintPrinted,
   paintSign,
@@ -82,10 +81,6 @@ export class Painter {
   /** A die's face: pips (a d6) or a numeral. */
   dieFace(pips: boolean, n: number): Lease {
     return this.cache.lease(`die|${pips}|${n}`, (c) => paintDieFace(c, { pips, n }));
-  }
-  /** A block's wall, one card high (repeated by its material). */
-  strata(): Lease {
-    return this.cache.lease("strata", paintStrata);
   }
   shade(): Lease {
     return this.cache.lease("shade", paintShade);

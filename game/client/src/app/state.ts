@@ -1,4 +1,5 @@
 // AppState: everything more than one module reads. Renderers keep only private motion state. Focus is app/focus.ts.
+import type { ZoomRequest } from "../scene/stage/types";
 import type { CommitId, Continuity, Decision, Snapshot, StopId } from "../protocol";
 import type { Insets, Ms } from "../platform";
 import { NO_INSETS } from "../platform";
@@ -92,6 +93,13 @@ export interface AppState {
   readonly viewport: ViewportState;
   /** The hit group under a mouse pointer on the canvas (a `pick`'s id), or null: paint only, the plan never changes. */
   readonly hover: string | null;
+  /**
+   * The camera composed on a hit group or a seat's page (a zoom), whether the trial that offers it is on (`?zoom`: a
+   * long press on the table zooms to what is under it; any input brings the table back), and whether the scene last drew
+   * a camera other than the table's (`drawn`: zoomed, or on its way back; play hears nothing until it is false). Off,
+   * nothing ever zooms.
+   */
+  readonly zoom: { readonly trial: boolean; readonly on: ZoomRequest | null; readonly drawn: boolean };
   /** Reduced motion is asked for (`prefers-reduced-motion`): the scene shortens its moves; decision timing never changes. */
   readonly reducedMotion: boolean;
   readonly reserve: Reservations;
@@ -162,6 +170,8 @@ export interface InitialOptions {
   readonly lastGame?: NewGameRequest | null;
   /** The page's reduced-motion setting at start. */
   readonly reducedMotion?: boolean;
+  /** The camera zoom's trial (`?zoom`). */
+  readonly zoomTrial?: boolean;
 }
 
 export function initialState(o: InitialOptions): AppState {
@@ -182,6 +192,7 @@ export function initialState(o: InitialOptions): AppState {
     focus: NO_FOCUS_STATE,
     viewport,
     hover: null,
+    zoom: { trial: o.zoomTrial ?? false, on: null, drawn: false },
     reducedMotion: o.reducedMotion ?? false,
     reserve: reservations(viewport),
     moments: NO_MOMENTS,

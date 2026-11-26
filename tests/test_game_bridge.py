@@ -483,6 +483,9 @@ class NextClientServingTest(unittest.TestCase):
             second = json.loads(s.get("/api/bench", "POST", {"rows": []})[2])["file"]   # the same second: a new name
             self.assertNotEqual(pathlib.Path(second).name, name)
             self.assertEqual(s.get("/api/bench", "POST", {"no": "rows"})[0], 400)
+            # the render bench's run says which bench it is
+            render = json.loads(s.get("/api/bench", "POST", {"bench": "render", "table": "turn 15", "framesPerMoment": 120, "rows": []})[2])["file"]
+            self.assertEqual(json.loads((bench.folder / pathlib.Path(render).name).read_text())["bench"], "render")
         bench.KEEP = 1
         bench.add({"rows": []})
         self.assertEqual(len(list(bench.folder.glob("bench-*.json"))), 1)

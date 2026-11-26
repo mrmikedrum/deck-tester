@@ -23,6 +23,7 @@ import {
 } from "three";
 import type { Material, Object3D, Texture } from "three";
 import { fx as palette, mana, manaDark, seeded, signal } from "../../theme";
+import { batched } from "./batch";
 import type { FxSprite } from "../../theme";
 import type { Lease } from "./textures";
 
@@ -205,7 +206,7 @@ function emitter(kit: FxKit, rand: () => number, o: EmitterSpec): Emitter {
 
 /** A plane lying on the page (its +y up), textured with a sprite. */
 function flatPlane(map: Texture, w: number, d: number, mat: Partial<ConstructorParameters<typeof MeshBasicMaterial>[0]> = {}): Mesh<PlaneGeometry, MeshBasicMaterial> {
-  const m = new Mesh(new PlaneGeometry(w, d), new MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false, ...mat }));
+  const m = batched(new Mesh(new PlaneGeometry(w, d), new MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false, ...mat })));
   m.rotation.x = -Math.PI / 2;
   m.renderOrder = 0;
   return m;
@@ -349,7 +350,7 @@ export function wellFx(kit: FxKit, colours: readonly string[], seed: number, spe
   const W = FX.well;
   const group = new Group();
   const plane = (sx: number, sy: number, mat: Partial<ConstructorParameters<typeof MeshBasicMaterial>[0]>, z: number): Mesh<PlaneGeometry, MeshBasicMaterial> => {
-    const m = new Mesh(new PlaneGeometry(w * sx, h * sy), new MeshBasicMaterial({ map: kit.map("wellGlow"), transparent: true, depthWrite: false, toneMapped: false, ...mat }));
+    const m = batched(new Mesh(new PlaneGeometry(w * sx, h * sy), new MeshBasicMaterial({ map: kit.map("wellGlow"), transparent: true, depthWrite: false, toneMapped: false, ...mat })));
     m.position.z = z;
     m.renderOrder = 0;
     return m;

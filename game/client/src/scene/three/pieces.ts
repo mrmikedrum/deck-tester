@@ -13,10 +13,10 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  MeshLambertMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
   RepeatWrapping,
-  Vector3,
 } from "three";
 import type { Material, Object3D, Texture } from "three";
 import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
@@ -27,19 +27,17 @@ import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
 import { pileHeight, siftRoll } from "../stage/poses";
 import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
-import { createCard } from "./card";
-import { Block, CastShadow, Contact, blockHeight } from "./slab";
+import { createCard, setLook, setSignal } from "./cards";
+import { Block, Contact, blockHeight } from "./slab";
 import { DICE_AT, Dice } from "./dice";
-import type { CardObject, CardOptions } from "./card";
+import type { CardObject, CardOptions } from "./cards";
 import { burstFx, chosenFx, emberFx, moteFx, sigilFx, spellFx, standFx, wellFx } from "./fx";
 import type { StandTone } from "./fx";
 import type { Effect, FxKit } from "./fx";
 import type { Host } from "./host";
-import { setLook, setSignal } from "./materials";
 import type { Lease } from "./textures";
 
 const { slab } = materials;
-const FOOT = new Vector3();
 
 /** Stands (or is propped nearly upright): its stock runs behind it and its shadow is the lamp's, cast behind it. */
 const uprightOf = (p: Extract<Draw, { t: "unit" }>["posture"]): boolean => p === "stand" || p === "prop";
@@ -179,21 +177,22 @@ class CardPart {
     options: CardOptions = {},
   ) {
     this.lease = faceLease(host, spec);
-    this.obj = createCard(host.kit, this.lease.texture, options);
-    this.obj.group.traverse((o) => (o as Mesh).isMesh && covers(o as Mesh));
+    this.obj = createCard(host.kit, this.lease, options);
+    covers(this.obj.front);
   }
   face(spec: FaceSpec | null): void {
     const next = faceLease(this.host, spec);
     if (next.key === this.lease.key) return next.release();
+    this.obj.face(next);
     this.lease.release();
     this.lease = next;
-    this.obj.material.map = next.texture;
   }
-  /** `shaded`: tapped without the turn (a spent well's card, a sifted tapped card). */
-  look(tap: number, fade: number, mark: ActorView["mark"], glow: number, shaded = false): void {
-    this.obj.body.rotation.z = -tap * (Math.PI / 2);
-    setLook(this.obj.material, { tap: tap > 0.5 || shaded ? 1 : 0, dim: fade, turn: tap });
-    setSignal(this.obj.material, this.host.rim, glow > 0.5 ? mark : null);
+  /** `turn`: how far it is turned (a quarter at 1). `tapped`: shaded as tapped, whatever its turn (a spent well's card,
+   * a sifted tapped card, a card a tap turns only a notch). `flat`: how far a highlight has stepped it out of the light. */
+  look(turn: number, fade: number, mark: ActorView["mark"], glow: number, tapped = false, flat = 0): void {
+    this.obj.body.rotation.z = -turn * (Math.PI / 2);
+    setLook(this.obj, { tap: tapped ? 1 : 0, dim: fade, flat });
+    setSignal(this.obj, glow > 0.5 ? mark : null);
   }
   dispose(): void {
     this.lease.release();
@@ -306,7 +305,8 @@ class UnitView implements PieceView {
   private block: Block | null = null;
   private contact: Contact | null = null;
   private dice: Dice | null = null;
-  private readonly cast: CastShadow;
+  /** A standing card's foot: the soft dark where it meets the page (the lamp's shadow falls behind it). */
+  private foot: Contact | null = null;
   private lift = 0;
   private cards: CardPart[] = [];
   private dress: CardPart[] = [];
@@ -331,8 +331,6 @@ class UnitView implements PieceView {
   ) {
     const d = v.draw as Extract<Draw, { t: "unit" }>;
     this.group.add(this.pile);
-    this.cast = new CastShadow(env.host);
-    this.group.add(this.cast.mesh);
     this.ground = new Ground(this.group);
     this.marks = new MarkFx(env.fx, this.ground.group, d.seed, d.unit !== "well", d.posture !== "stand");
     this.patch(v);
@@ -498,10 +496,13 @@ class UnitView implements PieceView {
       this.pile.add(this.contact.mesh);
     }
     if (this.contact) this.contact.mesh.position.z = base - 0.002;
-    // The cast shadow is the top card's (a block's top throws it past the block's far edge).
-    const top = this.cards[0];
-    if (top && this.cast.anchor.parent !== top.obj.body) top.obj.body.add(this.cast.anchor);
-    this.cast.anchor.position.z = TH / 2;
+    if (upright && !this.foot) {
+      // Lying on the page along the foot, a little behind it, where the card's weight is.
+      this.foot = new Contact(this.host, slab.foot.opacity);
+      this.foot.mesh.rotation.x = -Math.PI / 2;
+      this.foot.mesh.position.set(0, 0.0005, -slab.foot.depth * 0.2);
+      this.ground.group.add(this.foot.mesh);
+    }
   }
 
   /**
@@ -557,7 +558,7 @@ class UnitView implements PieceView {
     if (w && !this.well) {
       const effect = wellFx(this.env.fx, w.colours, d.seed, w.spent, CW, CH);
       // Its light lies on the vellum under the lands, spilling round them.
-      effect.object.position.set(0, 0, TH / 2 - slab.depth - 0.003);
+      effect.object.position.set(0, 0, -TH / 2 - 0.0005);
       this.group.add(effect.object);
       this.well = { effect, key };
     }
@@ -601,11 +602,13 @@ class UnitView implements PieceView {
     // A well's card lies square however spent it is: its shade (and its badge) say tapped, never a turn.
     const spent = !!d.well?.spent;
     // A copy standing for tapped members is turned (a pile's) or shaded (a well's) on its own; the rest follow the pile.
+    const flat = v.hl?.flat ?? 0;
     for (const c of this.cards) {
       const own = c.obj.group.userData["tapped"] === true;
-      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own);
+      // Shaded by what the card is (tapped), never by how far it has turned: a tap may turn it only a notch.
+      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own || (!d.well && !!v.face?.tapped), flat);
     }
-    for (const c of this.dress) c.look(0, s.fade, null, 0);
+    for (const c of this.dress) c.look(0, s.fade, null, 0, false, flat);
     this.sign?.tone(1 - 0.8 * s.fade);
     this.ground.follow(s.rx);
     for (const sign of this.wellSign ? [this.wellSign, ...this.wellAlts] : []) {
@@ -629,8 +632,12 @@ class UnitView implements PieceView {
     this.pile.rotation.z = d.well ? 0 : -s.tap * (Math.PI / 2);
     this.block?.tone(1 - 0.75 * s.fade);
     this.contact?.fade(1 - 0.5 * s.fade);
-    this.cast.fade(1 - 0.6 * s.fade);
-    this.cast.ground = this.ground.group.getWorldPosition(FOOT).y - slab.depth * s.s;
+    if (this.foot) {
+      // As wide as the edge it stands on: its width, or its height turned a quarter (tapped).
+      const across = CW + (CH - CW) * Math.min(1, Math.max(0, d.well ? 0 : s.tap));
+      this.foot.mesh.scale.set(across / CW, slab.foot.depth / (CH * 1.43 * slab.contact.grow) / 0.7, 1);
+      this.foot.fade(1 - 0.6 * s.fade);
+    }
   }
 
   dispose(): void {
@@ -646,7 +653,7 @@ class UnitView implements PieceView {
     this.well?.effect.dispose();
     this.block?.dispose();
     this.contact?.dispose();
-    this.cast.dispose();
+    this.foot?.dispose();
     this.dice?.dispose();
   }
 }
@@ -668,7 +675,6 @@ class ZoneView implements PieceView {
   private readonly body = new Group();
   private readonly block: Block;
   private readonly contact: Contact;
-  private readonly cast: CastShadow;
   private top: CardPart | null = null;
   private sign: Decal | null = null;
   private chip: Decal | null = null;
@@ -688,8 +694,6 @@ class ZoneView implements PieceView {
     // The cards under the top one: a block of stock, its height its count, its strata on its walls.
     this.block = new Block(host, false);
     this.contact = new Contact(host);
-    this.cast = new CastShadow(host);
-    this.group.add(this.cast.mesh);
     this.patch(v);
   }
 
@@ -702,8 +706,7 @@ class ZoneView implements PieceView {
       this.top.obj.group.rotation.x = -Math.PI / 2;
       if (d.zone === "exile") this.top.obj.group.rotation.z = SIZE.exileTurn;
       this.body.add(this.top.obj.group);
-      this.top.obj.group.add(this.block.mesh, this.contact.mesh, this.cast.anchor);
-      this.cast.anchor.position.z = TH / 2;
+      this.top.obj.group.add(this.block.mesh, this.contact.mesh);
     } else this.top.face(v.face);
     // The top card's stock rests on the block, the block on the vellum.
     this.top.obj.group.position.y = h + slab.depth - TH / 2;
@@ -742,9 +745,7 @@ class ZoneView implements PieceView {
   }
 
   look(v: ActorView): void {
-    this.top?.look(0, v.sample.fade, v.mark, v.sample.glow);
-    this.cast.fade(1 - 0.6 * v.sample.fade);
-    this.cast.ground = this.group.getWorldPosition(FOOT).y;
+    this.top?.look(0, v.sample.fade, v.mark, v.sample.glow, false, v.hl?.flat ?? 0);
     this.sign?.tone(1 - 0.8 * v.sample.fade);
   }
 
@@ -754,7 +755,6 @@ class ZoneView implements PieceView {
     this.chip?.dispose();
     this.block.dispose();
     this.contact.dispose();
-    this.cast.dispose();
   }
 }
 
@@ -825,14 +825,15 @@ class StackView implements PieceView {
   ) {
     const host = env.host;
     const d = v.draw as Extract<Draw, { t: "stack" }>;
-    this.card = new CardPart(host, v.face);
+    // (Held up over the table, it throws no shadow onto it: its drop says where it stands.)
+    this.card = new CardPart(host, v.face, { shadow: false });
     this.tag = new Decal(host.painter.tag(d.tag, d.colour), SIZE.tag.w, SIZE.tag.h, { renderOrder: 6 });
     this.tag.mesh.position.set(0, SIZE.tag.y, 0.02);
     this.drop = new Decal(host.painter.drop(), CW * 1.62 * SIZE.drop.s, CH * 1.46 * SIZE.drop.s, { renderOrder: 4, covers: false });
     this.drop.mesh.position.set(SIZE.drop.x, SIZE.drop.y, SIZE.drop.z);
     (this.drop.mesh.material as MeshBasicMaterial).opacity = materials.surface.drop.opacity;
     this.print = new Mesh(new PlaneGeometry(CW, CH), new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
-    this.print.position.z = this.card.obj.front.position.z + 0.002;
+    this.print.position.z = TH / 2 + 0.002;
     this.print.visible = false;
     covers(this.print);
     this.edge = new Mesh(new PlaneGeometry(CW + STACK_EDGE, CH + STACK_EDGE * (CW / CH) * 1.4), new MeshBasicMaterial({ color: new Color(d.colour), toneMapped: false }));
@@ -909,7 +910,7 @@ class StackView implements PieceView {
     }
   }
   look(v: ActorView, clock: Clock): void {
-    this.card.look(0, v.sample.fade, v.mark, v.sample.glow);
+    this.card.look(0, v.sample.fade, v.mark, v.sample.glow, false, v.hl?.flat ?? 0);
     // It ignites the first frame it is drawn (h.js `buildStack`: a burst as it is cast).
     if (this.born === null) {
       this.born = clock.t;
@@ -990,7 +991,8 @@ export function buildPage(host: Host, w: number, d: number, place: SeatPlace, mi
     roughness: 0.95,
     depthWrite: false,
   });
-  const inkMat = new MeshBasicMaterial({ map: lease(painter.page({ ...spec, layer: "ink" })).texture, transparent: true, depthWrite: false });
+  // The ink is on the page: lit by the lamp and shaded by what stands on it, as the vellum is.
+  const inkMat = new MeshLambertMaterial({ map: lease(painter.page({ ...spec, layer: "ink" })).texture, transparent: true, depthWrite: false });
   const glowMat = new MeshBasicMaterial({ map: lease(painter.page({ ...spec, layer: "glow" })).texture, transparent: true, depthWrite: false, opacity: 0 });
   own.push(baseMat, inkMat, glowMat);
   const layer = (m: Material, y: number, order: number) => {
@@ -998,10 +1000,11 @@ export function buildPage(host: Host, w: number, d: number, place: SeatPlace, mi
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = y;
     mesh.renderOrder = order;
+    mesh.receiveShadow = m !== glowMat;
     return mesh;
   };
   const group = new Group();
-  group.add(layer(baseMat, 0, -3), layer(inkMat, 0.002, -2), layer(glowMat, 0.0025, -2));
+  group.add(layer(baseMat, 0, -3), layer(inkMat, 0.0002, -2), layer(glowMat, 0.0003, -2));
   return {
     group,
     tone: (k) => {
@@ -1092,9 +1095,8 @@ class SiftView implements PieceView {
   private readonly card: CardPart;
   constructor(host: Host, v: ActorView) {
     // Sift cards share the transparent pass with the vellum so render order puts them above it.
-    this.card = new CardPart(host, v.face, { transparent: true });
+    this.card = new CardPart(host, v.face, { transparent: true, order: 16, shadow: false });
     this.group.add(this.card.obj.group);
-    this.card.obj.group.traverse((o) => (o.renderOrder = 16));
   }
   front(): Mesh | null {
     return this.card.obj.front;

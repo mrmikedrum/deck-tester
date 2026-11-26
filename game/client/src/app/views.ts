@@ -8,7 +8,7 @@ import * as narrative from "../narrative";
 import type { Card, TableModel } from "../model";
 import * as play from "../play";
 import type { Carried } from "../play";
-import type { FocusTop, MomentView, SceneFrame, SceneReport } from "../scene/stage/types";
+import type { FocusTop, HighlightRequest, HighlightTone, MomentView, SceneFrame, SceneReport } from "../scene/stage/types";
 import { focusTopOf, isOpen, tableTop, top } from "./focus";
 import { platesOf, seatFocusOf } from "./seats";
 import { chipViewsOf, handSheetOf, inspectorOf, menuOf, mulliganOf, siftViewOf, stackRowsOf } from "./layers";
@@ -24,18 +24,33 @@ export const focusTop = (s: AppState): FocusTop => focusTopOf(s.focus);
 export function sceneFrame(s: AppState): SceneFrame | null {
   if (!s.model || !s.plan) return null;
   const moments: MomentView[] = s.moments.open.map((m) => ({ id: m.id, card: m.key.card, pose: m.from, owner: m.owner }));
+  const cues = play.present(s.play).board;
+  const highlight = targetsHighlight(s, cues);
   return {
     model: s.model,
     plan: s.plan,
     changes: s.changes.sets,
     mode: s.changes.cut || s.faults.cutNext ? "cut" : "animate",
-    cues: play.present(s.play).board,
+    cues,
     focus: focusTop(s),
     moments,
     hover: s.hover,
     commit: s.commit,
     reducedMotion: s.reducedMotion,
+    ...(highlight ? { highlight } : {}),
+    ...(s.zoom.on !== null ? { zoom: s.zoom.on } : {}),
   };
+}
+
+/**
+ * Choosing targets steps the cards I may choose out of the table's light (ember), and the ones chosen so far (gold),
+ * over a light dim. Only the look: what may be chosen, and what a tap sends, are play's as before.
+ */
+function targetsHighlight(s: AppState, cues: play.BoardCues): HighlightRequest | null {
+  if (s.session.decision?.kind !== "targets") return null;
+  const cards = new Map<CardId, HighlightTone>();
+  for (const [id, m] of cues.marks.cards) if (m === "option" || m === "selected") cards.set(id, m === "selected" ? "spell" : "mine");
+  return cards.size ? { cards } : null;
 }
 
 /** live.js: an instant or sorcery shows its rules on the opened card. */

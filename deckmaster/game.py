@@ -526,7 +526,8 @@ class BenchResults:
     KEEP = 20
     CAP = 256 * 1024
     ROWS = 64
-    FIELDS = ("userAgent", "screen", "viewport", "clockResolutionMs", "plansPerInput", "budgetMs", "rows")
+    # planTable's bench and the render bench (`bench: "render"`, its table and frames per moment) share the endpoint.
+    FIELDS = ("bench", "table", "framesPerMoment", "userAgent", "screen", "viewport", "clockResolutionMs", "plansPerInput", "budgetMs", "rows")
 
     def __init__(self, folder, clock=time.time):
         self.folder, self.clock = Path(folder), clock

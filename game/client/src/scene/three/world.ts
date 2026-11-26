@@ -1,17 +1,17 @@
-// The world under the cards: the tome the table is, and one lamp over it. Static; pieces are added by the stage.
-// Ported from old h.js `buildScene`.
+// The world under the cards: the tome the table is, the lamp over it and the room's fill. Static; pieces are added by
+// the stage. The lamp is the only light that casts: a spot whose soft shadow map falls on the tome, the pages and the
+// cards (the host redraws it only while something moves).
 import { ABOVE } from "./focus-pass";
 import {
-  AmbientLight,
   Color,
-  DirectionalLight,
   Group,
+  HemisphereLight,
   Mesh,
   MeshStandardMaterial,
-  PlaneGeometry,
-  PointLight,
   NoColorSpace,
+  PlaneGeometry,
   RepeatWrapping,
+  SpotLight,
   Texture,
   Vector2,
 } from "three";
@@ -25,12 +25,14 @@ const PLANE = { w: 60, d: 50, z: -4 } as const;
 export interface World {
   readonly group: Group;
   readonly background: Color;
-  /** The table's light: 1, or dimmed while the stack is the focus. */
+  /** The lamp: the one shadow-casting light. */
+  readonly lamp: SpotLight;
+  /** The table's light: 1, or dimmed under a sift. */
   tone(k: number): void;
   dispose(): void;
 }
 
-/** The table plane, with the tome painted on it (a lease the caller holds) and its normal map. */
+/** The table plane, with the tome painted on it (a lease the caller holds) and its normal map; the lamp and the fill. */
 export function createWorld(tome: Lease, normal: Source | null): World {
   const group = new Group();
   let nmap: Texture | null = null;
@@ -56,41 +58,32 @@ export function createWorld(tome: Lease, normal: Source | null): World {
   table.receiveShadow = true;
   table.renderOrder = -4;
   group.add(table);
-  // One lamp over the table, warm, and a little of the room: the pages shade by it, the cards never do.
-  const ambient = new AmbientLight(lights.ambient.colour, lights.ambient.intensity);
-  group.add(ambient);
-  const lamp = new PointLight(lights.lamp.colour, lights.lamp.intensity, lights.lamp.distance, lights.lamp.decay);
-  lamp.position.set(lights.lamp.at.x, lights.lamp.at.y, lights.lamp.at.z);
-  group.add(lamp);
-  const sun = new DirectionalLight(lights.sun.colour, lights.sun.intensity),
-    sh = lights.sun.shadow;
-  sun.position.set(lights.sun.at.x, lights.sun.at.y, lights.sun.at.z);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(sh.size, sh.size);
-  Object.assign(sun.shadow.camera, {
-    left: -sh.half,
-    right: sh.half,
-    top: sh.half,
-    bottom: -sh.half,
-    near: sh.near,
-    far: sh.far,
-  });
-  // (Its box was only ever assigned: without this the shadow camera keeps three's default ±5.)
-  sun.shadow.camera.updateProjectionMatrix();
-  sun.shadow.bias = sh.bias;
-  sun.shadow.normalBias = sh.normalBias;
-  group.add(sun);
+  const l = lights.lamp,
+    sh = l.shadow;
+  const lamp = new SpotLight(l.colour, l.intensity, 0, l.angle, l.penumbra, l.decay);
+  lamp.position.set(l.at.x, l.at.y, l.at.z);
+  lamp.target.position.set(l.aim.x, l.aim.y, l.aim.z);
+  lamp.castShadow = true;
+  lamp.shadow.mapSize.set(sh.size, sh.size);
+  lamp.shadow.camera.near = sh.near;
+  lamp.shadow.camera.far = sh.far;
+  lamp.shadow.bias = sh.bias;
+  lamp.shadow.normalBias = sh.normalBias;
+  lamp.shadow.radius = sh.radius;
+  const fill = new HemisphereLight(lights.fill.sky, lights.fill.ground, lights.fill.intensity);
+  group.add(lamp, lamp.target, fill);
   // The lights reach what the focus draws above its scrim, too.
-  for (const l of [ambient, lamp, sun]) l.layers.enable(ABOVE);
+  for (const x of [lamp, fill]) x.layers.enable(ABOVE);
   return {
     group,
     background: new Color(colour.table),
+    lamp,
     tone: (k) => mat.color.setScalar(k),
     dispose: () => {
       geo.dispose();
       mat.dispose();
       nmap?.dispose();
-      sun.shadow.map?.dispose();
+      lamp.shadow.dispose();
     },
   };
 }

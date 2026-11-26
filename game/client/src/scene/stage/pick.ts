@@ -19,6 +19,8 @@ export interface DrawnPiece {
   readonly pickable: boolean;
   /** A stack card drawn as the table's focus: reached by the plan's `hits.up` group, measured where it stands up. */
   readonly up?: boolean;
+  /** Stepped out of the light (a highlight): drawn over everything else on the table, so reached first. */
+  readonly above?: boolean;
   /** A sifted card: its card, whose it is, and its turn as drawn (poses `siftRoll`). */
   readonly sift?: { readonly card: CardId; readonly seat: SeatId | null; readonly roll: number };
 }
@@ -33,27 +35,102 @@ export const siftGroupId = (card: CardId): string => `sift:${card}`;
  * sift down. Groups in `skip` are looked through (the layout audit sets a focus aside).
  */
 export function pickDrawn(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece>, p: Point, skip?: ReadonlySet<string>): HitGroup | null {
-  const sifted = [...drawn.entries()].filter(([, d]) => d.sift);
+  const sifted = siftedOf(drawn);
   if (sifted.length) {
     let hit: HitGroup | null = null;
-    sifted.forEach(([, d], i) => {
-      const quad = poseQuad(plan.projector, { ...d.now, pos: { ...d.now.pos, y: d.now.pos.y + d.now.lift } }, d.sift?.roll ?? 0);
-      if (d.sift && inQuad(quad, p.x, p.y)) hit = { id: siftGroupId(d.sift.card), kind: "card", seat: d.sift.seat, members: [d.sift.card], quad, order: 1e6 + i };
+    sifted.forEach((d, i) => {
+      const g = siftGroup(plan, d, i);
+      if (inQuad(g.quad, p.x, p.y)) hit = g;
     });
     return hit;
   }
-  // The stack as the focus: its cards are reached where they stand up, in the order they are drawn, over everything.
-  const up = plan.stack.some((s) => drawn.get(`stack:${s.key}`)?.up);
-  const groups = up ? [...plan.hits.groups.filter((g) => g.kind !== "stack"), ...(plan.hits.up ?? [])] : plan.hits.groups;
-  let best: HitGroup | null = null;
-  for (const g of groups) {
+  // What a highlight steps out of the light is drawn over the rest (the focus pass): reached before anything under it.
+  let best: HitGroup | null = null,
+    above: HitGroup | null = null;
+  for (const g of candidates(plan, drawn)) {
     // A seat's nameplate is chrome (it takes its own taps): the table under it is what a tap on the canvas reaches.
-    if ((best && g.order < best.order) || skip?.has(g.id) || g.kind === "plate") continue;
+    if (skip?.has(g.id) || g.kind === "plate") continue;
     const d = drawn.get(g.id);
     if (d && !d.pickable) continue;
-    if (inQuad(d ? movedQuad(plan.projector, g.quad, d) : g.quad, p.x, p.y)) best = g;
+    const top = d?.above ? above : best;
+    if (top && g.order < top.order) continue;
+    if (!inQuad(d ? movedQuad(plan.projector, g.quad, d) : g.quad, p.x, p.y)) continue;
+    if (d?.above) above = g;
+    else best = g;
   }
-  return best;
+  return above ?? best;
+}
+
+/** The groups a tap may reach: the stack as the focus is reached where it stands up (layout's `hits.up`). */
+function candidates(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece>): readonly HitGroup[] {
+  const up = plan.stack.some((s) => drawn.get(`stack:${s.key}`)?.up);
+  return up ? [...plan.hits.groups.filter((g) => g.kind !== "stack"), ...(plan.hits.up ?? [])] : plan.hits.groups;
+}
+
+type Sifted = DrawnPiece & { readonly sift: NonNullable<DrawnPiece["sift"]> };
+
+/** The sifted cards as drawn, in draw order (the later over the earlier). */
+const siftedOf = (drawn: ReadonlyMap<string, DrawnPiece>): Sifted[] => [...drawn.values()].filter((d): d is Sifted => !!d.sift);
+
+/** A sifted card's group: one card, measured where it was drawn, over everything on the table. */
+function siftGroup(plan: TablePlan, d: Sifted, i: number): HitGroup {
+  const quad = poseQuad(plan.projector, { ...d.now, pos: { ...d.now.pos, y: d.now.pos.y + d.now.lift } }, d.sift.roll);
+  return { id: siftGroupId(d.sift.card), kind: "card", seat: d.sift.seat, members: [d.sift.card], quad, order: 1e6 + i };
+}
+
+/** Whether a sift is open: then only its cards are reached (`pickDrawn`, `pickHit`). */
+export const sifting = (drawn: ReadonlyMap<string, DrawnPiece>): boolean => siftedOf(drawn).length > 0;
+
+/**
+ * What a tap reaches under a composed camera (a zoom), from what a ray through it met there: the piece it hit, when that
+ * piece is a group a tap may reach, by its identity. Nothing else: a ray that met no piece (the table, a page, `hit`
+ * null) reaches nothing, as does one that met a piece no tap reaches; it is never mapped back through the table's camera,
+ * where a card standing between that camera and the point would take it. While a sift is open only a sifted card is
+ * reached (the caller's ray looks only for them).
+ */
+export function pickHit(
+  plan: TablePlan,
+  drawn: ReadonlyMap<string, DrawnPiece>,
+  hit: { readonly id: string | null } | null,
+  skip?: ReadonlySet<string>,
+): HitGroup | null {
+  if (!hit || hit.id === null || skip?.has(hit.id)) return null;
+  const d = drawn.get(hit.id);
+  const sifted = siftedOf(drawn);
+  if (sifted.length) {
+    const i = d ? sifted.indexOf(d as Sifted) : -1;
+    return i >= 0 ? siftGroup(plan, sifted[i]!, i) : null;
+  }
+  const g = candidates(plan, drawn).find((x) => x.id === hit.id && x.kind !== "plate");
+  return g && (!d || d.pickable) ? g : null;
+}
+
+/** A seat's page as drawn (a lean-in raises and turns it), from the piece `page:<seat>`; else where the plan put it. */
+export function drawnPage(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece>, seat: SeatId): { pos: V3; yaw: number; w: number; d: number } | null {
+  const pg = plan.seats.get(seat)?.fixtures.page;
+  if (!pg) return null;
+  const now = drawn.get(`page:${seat}`)?.now;
+  return now ? { pos: now.pos, yaw: now.ry, w: pg.w * now.s, d: pg.d * now.s } : { pos: pg.pos, yaw: pg.yaw, w: pg.w, d: pg.d };
+}
+
+/**
+ * The seat whose page, as drawn, lies under a ray: `onLevel(y)` is where the ray meets the level y (null: it does not).
+ * The highest page first (a raised page is drawn over the rest).
+ */
+export function seatUnder(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece>, onLevel: (y: number) => V3 | null): SeatId | null {
+  const pages = [...plan.seats.keys()].map((seat) => ({ seat, pg: drawnPage(plan, drawn, seat)! })).sort((a, b) => b.pg.pos.y - a.pg.pos.y);
+  for (const { seat, pg } of pages) {
+    const at = onLevel(pg.pos.y);
+    if (!at) continue;
+    const dx = at.x - pg.pos.x,
+      dz = at.z - pg.pos.z,
+      c = Math.cos(pg.yaw),
+      s = Math.sin(pg.yaw);
+    const lx = dx * c - dz * s,
+      lz = dx * s + dz * c;
+    if (Math.abs(lx) <= pg.w / 2 && Math.abs(lz) <= pg.d / 2) return seat;
+  }
+  return null;
 }
 
 const lifted = (s: Sample): V3 => ({ x: s.pos.x, y: s.pos.y + s.lift, z: s.pos.z });

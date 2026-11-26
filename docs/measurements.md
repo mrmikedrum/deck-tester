@@ -400,3 +400,27 @@ Shared goldfish and table servers were not restarted by this repair.
 Read-only investigation of the live four-player bridge game (parents g260–g262). No live pilot, game state, or mode was changed. Across the observed parent fork records there were zero stalled-fork failures; six earlier failures were Tempt with Discovery replay drift. One TimeoutException in the accumulated table log belonged to the previous evening, not this game. A recent 97-fork snapshot had a median file lifetime of 12.31s and maximum 50.38s (filesystem birth-to-modification times, not pure compute timings). The current Marath board was the outlier: its 282 observed fork files summed to about 1,228s, versus about 80s for 395 Atraxa forks and 66s for 194 other-Marath forks. Parallel work means these sums are not game wall time. A live JVM sample caught a fork inside Forge combat prediction and mana-source evaluation.
 
 The table pilot unconditionally uses outcomes mode, evaluating candidate continuations through the next turn before requesting a Jev pick. Every eligible response/activation can repeat that work; there is a per-engine-wait timeout, but no overall decision wall-time budget. Thus a succession of successful slow simulations can stall the visible board for minutes without recording a timeout. Three independent current-provider probes with retries disabled succeeded in 0.96s, 0.47s, and 0.59s. These are small prompts, not proof that historical real-game calls never retried. Those retries were not separately counted. Added api_retries, api_timeouts, and api_wall_seconds telemetry to close that gap for newly loaded pilots, plus a browser bridge diagnostics endpoint. Do not restart a human game just to load diagnostics.
+
+## The physical table's frame — 2026-11-25
+
+The render bench (`game/client` workbench, `workbench.html?only=render`) on the design pass's turn-15 table (91 cards
+drawn, four seats), 1180 x 820 at 2x, each frame drawn and finished on the GPU (one pixel read back), 240 frames a
+moment after a warm-up; WebKit headless on an Apple M4 Mac (Playwright). Not the iPad: the bench sends its results from
+there (Send to Mac) and those numbers decide.
+
+| Moment | Frame median / p90 / worst (ms) | Draw calls | Shadow map redrawn |
+|---|---|---|---|
+| At rest | 11 / 13 / 14 | 68 | never |
+| Highlight (6 cards out of the light, 0.3 scrim) | 15 / 16 / 19 | 73 | never |
+| A creature flying to the graveyard and back | 12 / 13 / 16 | 77 | every frame in flight |
+
+Every frame held the display's 60 fps pace (a 17 ms interval). Cards draw in 2 to 3 instanced batches (32 faces an atlas
+page) and the contact shades and pools in 4 to 6, against 700 to 1200 calls for the render study's per-mesh build; the
+count includes every pass (shadows when drawn, the table, the focus, bloom, output). In headless Chromium the CPU's share
+was negligible: the frame waits on the GPU. A highlight costs about 3 ms over rest whatever its dim, the focus pass's
+second render into the multisampled target (the stack's focus already drew so). WebKit's clock is 1 ms, so medians are
+rounded; the means were 11.2, 14.8 and 11.8 ms.
+
+The same table at rest with one post-processing setting changed (a second run, so the baseline moved to 12.8 ms mean):
+the composer at 1.0x, 10.6 ms; at 1.5x (the policy's), 12.3; bloom off, 11.6 (55 calls); MSAA off, 11.5; all three,
+9.2. On the M4 none of them dominates: the lit table itself is most of the frame. The iPad's run decides.

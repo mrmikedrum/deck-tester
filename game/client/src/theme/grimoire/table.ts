@@ -1,7 +1,9 @@
 // The table: the open tome seen from above its lower edge. Two pages meet at a spine that folds down into shadow; each
 // page curves up out of the fold and lies flat toward its outer edge, where the page block shows as a stack of fine
 // edges over the leather cover. Canvas units map to the table plane (60 x 50, centred at z = -4). Ported from old h.js
-// `tomeCanvas`; its foxing is seeded, so the table is the same every time.
+// `tomeCanvas`; its foxing is seeded, so the table is the same every time. The lamp is the scene's (materials `lights`):
+// the painting carries the book's own shading (the fold, the leaves' curve) but no lamplight, unless `lamp` asks for the
+// old painted pool (a page drawn without lights).
 import { begin, rr, seeded } from "./shapes";
 import type { Canvas } from "./shapes";
 import type { Surfaces } from "./surfaces";
@@ -10,7 +12,7 @@ export const TABLE_PX = 2048;
 /** The table plane's world size and centre. */
 export const TABLE_PLANE = { w: 60, d: 50, z: -4 } as const;
 
-export function paintTable(canvas: Canvas, s: Surfaces, seed = 1): void {
+export function paintTable(canvas: Canvas, s: Surfaces, seed = 1, lamp = false): void {
   const S = TABLE_PX,
     x = begin(canvas, S, S);
   const rand = seeded(seed);
@@ -135,11 +137,12 @@ export function paintTable(canvas: Canvas, s: Surfaces, seed = 1): void {
     x.arc(L + rand() * (Rr - L), T0 + rand() * (B - T0), 3 + rand() * 14, 0, Math.PI * 2);
     x.fill();
   }
+  if (!lamp) return;
   // Lamplight: warm over the middle, falling off toward the far corners.
-  const lamp = x.createRadialGradient(S / 2, pz(-2.5), S * 0.06, S / 2, pz(-2.5), S * 0.5);
-  lamp.addColorStop(0, "rgba(255,200,130,.1)");
-  lamp.addColorStop(0.55, "rgba(0,0,0,.06)");
-  lamp.addColorStop(1, "rgba(10,5,2,.8)");
-  x.fillStyle = lamp;
+  const pool = x.createRadialGradient(S / 2, pz(-2.5), S * 0.06, S / 2, pz(-2.5), S * 0.5);
+  pool.addColorStop(0, "rgba(255,200,130,.1)");
+  pool.addColorStop(0.55, "rgba(0,0,0,.06)");
+  pool.addColorStop(1, "rgba(10,5,2,.8)");
+  x.fillStyle = pool;
   x.fillRect(0, 0, S, S);
 }

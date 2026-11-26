@@ -10,6 +10,8 @@
 //   settled()            true when no frame is wanted (nothing moving, nothing queued, no deadline within a frame) and
 //                        no card art is loading: a recorder steps its clock only when it is
 //   redraw()             asks for a frame though nothing changed: a recorder's first frame is drawn at its clock's time
+//   zoom(to)             with the zoom's trial on (`?zoom`): the camera composed on a hit group (its id) or a seat's page
+//                        ({seat}), as a long press on it would; null brings the table back
 //   outstanding()        what the app is waiting on from the network: card data requests out, card art loading
 //   seats()              the seats, the perspective first, then in turn order
 //   card(id)             a card of the model, or null; zone(seat, zone) and attachments(id) the model's card ids
@@ -39,10 +41,11 @@
 import type { Zone } from "../model";
 import { seatId } from "../model";
 import * as play from "../play";
-import { after } from "../platform";
+import { after, now } from "../platform";
 import type { CardId } from "../protocol";
 import type { ScriptedTransport } from "../transport";
 import type { Loop } from "./loop";
+import type { InputMsg } from "./msg";
 import { readoutLines } from "./readout";
 import type { PageRenderer } from "./renderer";
 
@@ -87,6 +90,8 @@ export function plain<T>(v: T, seen = new Map<unknown, unknown>()): unknown {
 /** What the page installs besides the loop and renderer. */
 export interface DebugExtras {
   readonly script?: ScriptedTransport;
+  /** Queues the player's input (the zoom's trial, driven from the console or a recorder). */
+  readonly input?: (m: InputMsg) => void;
 }
 
 /** Images kept decoded for the page's CSS (the hand's art): held so the browser keeps them. */
@@ -132,6 +137,11 @@ export function installDebug(loop: Loop, renderer: PageRenderer, extras: DebugEx
     ready: renderer.ready,
     settled: () => loop.settled() && artPending() === 0,
     redraw: () => loop.wake(),
+    zoom: (to: string | { seat: string } | null) => {
+      const z = to === null ? null : typeof to === "string" ? { group: to } : { seat: seatId(to.seat) };
+      extras.input?.({ t: "zoom", stamp: { at: now(), commit: loop.state.commit }, to: z });
+      loop.wake();
+    },
     outstanding: () => ({ cards: loop.state.cardAsks.out.size, art: artPending() }),
     seats: () => model()?.seats.map((s) => s.id as string) ?? [],
     card: (id: number) => plain(model()?.cards.get(id as CardId) ?? null),

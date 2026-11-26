@@ -585,6 +585,8 @@ export interface SceneFrame {
   readonly moments: readonly MomentView[];       // cards a moment carries, with their poses and owner
   readonly hover: string | null; readonly commit: CommitId;  // the hit group under a mouse pointer: its piece lifts
   readonly reducedMotion?: boolean;              // shorter moves, no stagger; never changes decision timing
+  readonly highlight?: HighlightRequest | null;  // cards stepped out of the light, each with its tone (choosing targets)
+  readonly zoom?: ZoomRequest | null;            // the camera composed on a hit group or a seat's page; null: the table's
 }
 export interface SceneReport {
   readonly active: boolean;                      // anything moving: keep the loop running
@@ -603,6 +605,22 @@ Canvas gestures are bound by the app's renderer (below, "input"), not the scene;
 focus layers are ported: the stack as the focus (`TablePlan.stackUp`), a sift and a lean-in (`layout/focus.ts`). An idle
 table that still moves on its own (ambient effects) says so in its report (`ambient`): the loop then draws it about 10
 times a second (`AMBIENT_MS`) and still counts as settled, so a recorder's virtual clock is not held up by it.
+
+**Highlight** steps cards out of the physical light: each rises a little toward the eye (a tap reaches it where it rose),
+its face is drawn flat and unlit, a thin halo rings it in its tone's colour (ember mine, blood a threat, gold a spell),
+and one scrim dims the rest; each card eases out and back on its own over 200 ms (cut under reduced motion), and lifted
+cards keep throwing shadows onto the dimmed table. Drawn over the rest, a highlighted card is also reached first by a
+tap. The stack as the focus brings its own (its spells and what they aim
+at); the app asks for the rest (`highlight`: choosing targets). Each moment's look (dim, lift, flat, halo) is a theme
+token (`materials.highlight`).
+
+**Zoom** is a composed camera move, never navigation: `zoom` names a subject and the camera eases onto it (lower and
+from the right, so cards show their thickness and shadows) and back to the table's when it is gone. Picking stays right
+under it: a tap reaches the piece a ray through the zoomed camera meets, by its identity (what stands above the scrim
+first; with a sift open, only its cards), and a ray that meets none reaches nothing. A seat's page is found and framed
+where it is drawn (a lean-in raises it). For now it is a trial (`?zoom`: a long press on a card, a pile or a seat's page
+zooms; then any input, a tap, a button or Escape, only comes back, and nothing reaches play until the scene has drawn
+the table's camera again).
 
 Inside, the **stage** turns frames into motion:
 
@@ -635,10 +653,27 @@ Inside, the **stage** turns frames into motion:
   and it flies from its carried pose.
 
 **Resources.** The three.js host (`scene/three/`) is the only code importing three. It owns every GPU resource and is
-given a viewport and a device pixel ratio (it never measures the page): `Host` makes the renderer (ACES, `PCFShadowMap`:
-three r187 removed the soft variant), the bloom composer (renderer DPR at most 2, composer targets at most 1.5), the
-camera from layout's `CameraSpec` through `cameraParams`/`applyCamera` (so the camera equals the projector; a test holds
-them equal), the base world (the tome and its lamp), the shared geometry and materials, and the `Painter` facade.
+given a viewport and a device pixel ratio (it never measures the page): `Host` makes the renderer (ACES, `PCFShadowMap`
+with a radius: soft, and three r187 removed the soft variant), the bloom composer (renderer DPR at most 2, composer
+targets at most 1.5), the camera from layout's `CameraSpec` through `cameraParams`/`applyCamera` (so the camera equals
+the projector; a test holds them equal), the base world (the tome, one warm spot lamp whose shadow map falls on the tome,
+the pages and the cards, a hemisphere fill and a faint room reflection), the shared geometry, and the `Painter` facade.
+The table is physical: cards are lit card stock at their true thickness (0.3 mm; a pile's height is its count), with a
+faint paper grain, contact shades where they meet the page; the tome's texture paints no lamplight of its own. A card
+lifted off the table (the combat gathering, a lean-in) takes the lamp as it would on the table there, and its mirror of
+the lamp fades as it rises (`liftExposure`), so nothing lifted toward the lamp blows out; a behaviour spec holds a
+gathered card's face within a fifth of its brightness at rest.
+
+**Drawn together.** A card in the scene graph is a proxy (pose group, the body the tap turns, an invisible outline the
+audit measures and raycasts); each frame the host's `CardDeck` gathers the shown proxies into instanced meshes, one per
+face-atlas page, layer and pass, with each card's look (tapped, dim, flat, rim signal) as instance data. Faces are copied
+from their painted canvases into layers of array textures (`FaceAtlas`, 32 faces a page), so cards wearing different
+faces still draw together; a new face reuses the room of one nobody shows before the atlas grows, and pages showing
+nothing go past its budget (`BUDGETS.faces`); a block of cards is the same slab stretched to its height. Flat sprites (contact shades,
+pools, glows, halos) marked `batched` are drawn the same way by `DecalBatch`. The shadow map is drawn again only when
+something that throws a shadow moved, came or went. The turn-15 table draws in about 70 calls, post-processing included
+(`workbench.html?only=render` times it: below, "Budgets"; it also times the table at rest with the composer's pixel
+ratio at 1.0 and 1.5, bloom off and MSAA off, each alone, through the host's `setQuality`, which the game never calls).
 Painted textures are leased by content key (`TextureCache`): reference-counted by the pieces showing them, and, once
 unreferenced, kept in an LRU bounded by an estimated byte budget (`ByteCache`, pure, in `scene/resources/`: 160 MB of
 textures, 64 MB of decoded art, `BUDGETS` in `host.ts`); evicting disposes the texture and releases the canvas pixels.
@@ -646,7 +681,7 @@ Live leases are never evicted, so a board larger than the budget overshoots rath
 `ImageBitmap` cache (`ArtCache`) bounded the same way, with an injected loader. A bitmap is needed only to paint: a
 face or plate already painted with its art keeps that texture (`paintedFace`) even after the bitmap is evicted, so art
 is never loaded again for nothing, and fresh art is held until the next frame has painted what waited for it. Rim colours are shared `Color`s the
-host's `Rim` breathes once per `render(now)`; face materials hold them by reference, so nothing is walked per frame.
+host's `Rim` breathes once per `render(now)`; the deck reads them into each card's instance data as it draws.
 Composer targets are resized with the viewport and disposed with the host.
 
 **Context loss.** `webglcontextlost` is prevented and drawing stops; on `webglcontextrestored` the host disposes every
@@ -745,7 +780,8 @@ so the scene's flight sets off from where the card is drawn. Every moment ends e
 `theme/` holds Grimoire: `tokens.ts` (colours, seat colours by place, signals, fonts, motion timings, mana and FX palette),
 `css.ts` (the custom properties generated from the tokens: `cssText`, `installCss`), and `grimoire/`: canvas painters
 (card face and back, plates, signs, tags, chips, halos and shades, pages, the tome), material and light parameters
-(`materials.ts`, every tuned number named) and the surfaces the painters fill with. The scene and chrome read the theme;
+(`materials.ts`, every tuned number named: the card stock, the lamp and its shadows, each highlight's look, the zoom's
+composition) and the surfaces the painters fill with. The scene and chrome read the theme;
 nothing else does; theme imports nothing.
 
 **Painters are pure functions of an explicit description and an explicit canvas**: `paintFace(canvas, spec, env)` with a
@@ -761,7 +797,7 @@ names them and only the scene's loader imports it. Its interface grows only when
 The app installs `window.__deckmaster` (`app/debug.ts`, whose header lists every call) and `data-audit` hooks on what
 the layout audit measures. Everything it returns is plain data copied out of the app, never a reference into live
 state. It offers narrow queries (`state`, `seats`, `card`, `zone`, `hits`, `stack`, `plan`, `present`, `deadlines`),
-the scene's `inspect`, `pick`, per-frame `boxes`, the layout audit's `faces` and `under` (each card face as drawn, and
+the scene's `inspect`, `pick`, per-frame `boxes`, the zoom's trial (`zoom(group)`), the layout audit's `faces` and `under` (each card face as drawn, and
 what is drawn on top at a point), the host's texture and art counters (`stats`) and frame intervals
 (`frames`), art preloading, and readiness: `ready` (resolves when the scene can draw, rejects when it cannot start;
 mirrored as `data-ready` on `<html>`) and `settled()` (no frame wanted and no art loading: a recorder steps its clock
@@ -781,6 +817,7 @@ four), and enforced at cutover:
 | Frame while anything moves | 60 fps, no frame over 33 ms in a recorded game turn |
 | Tap to visible response | the next frame, within 50 ms |
 | `planTable` after a snapshot | 8 ms (`tools/bench-plan.mjs` measured about 1.8 ms, not on the iPad) |
+| The table's frame, drawn and finished on the GPU | under 16 ms on the turn-15 table at rest, in a highlight and in flight (`workbench.html?only=render`, which sends its results to the Mac; [measurements](measurements.md)) |
 | `update` per message, planning aside | 1 ms; a message that changes the plan's inputs also plans, synchronously, inside `update` |
 | GPU memory after a two-hour game | flat (within 10% of the first turn) |
 

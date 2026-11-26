@@ -2,13 +2,14 @@
 // lies on it, and its face on screen. No level-table assumption: a frame may be tilted or lifted (a spread brought
 // nearer), and everything here works in its own axes.
 import type { Projector } from "../projector";
+import { CH, CW, TH } from "../seat/geometry";
 import type { Quad } from "../shape";
 import type { SeatSlot } from "../template";
 import type { Point, V3 } from "../types";
 import type { CardPlace, SurfaceFrame } from "./contract";
 
-/** A card is 1 tall and this wide (the scene's card), this thick. */
-export const CARD = { w: 0.716, h: 1, thick: 0.014 } as const;
+/** A card is 1 tall and this wide, this thick: the scene's card, so a block's layers are as tall as it draws them. */
+export const CARD = { w: CW, h: CH, thick: TH } as const;
 /** A presented card's lean back from the frame's normal (designer §2: 25°). */
 export const LEAN = (25 * Math.PI) / 180;
 /** A tapped card lying in a lying tier turns a notch clockwise (designer §7.3). */

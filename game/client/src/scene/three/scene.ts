@@ -2,11 +2,11 @@
 // turns it into motion, the view draws it with the host, and the report says what happened. A throw in `show` is a
 // fault: reported, and the next commit is a cut; a lost context rebuilds the host and cuts likewise.
 import { tableTemplate } from "../../layout";
-import type { CameraSpec, HitGroup, Point, TablePlan, Viewport } from "../../layout";
+import type { CameraSpec, HitGroup, Point, SeatId, TablePlan, Viewport } from "../../layout";
 import { Queue, fontsReady } from "../../platform";
 import type { Ms } from "../../platform";
 import type { ArtLoader } from "../resources";
-import { pickDrawn } from "../stage/pick";
+import { pickDrawn, pickHit, seatUnder, sifting } from "../stage/pick";
 import { Stage } from "../stage/stage";
 import { estimate } from "../stage/labels";
 import { SIGN_FONT, font } from "../../theme";
@@ -15,6 +15,8 @@ import { loadAssets } from "./assets";
 import type { Assets } from "./assets";
 import { Host } from "./host";
 import { StageRenderer } from "./view";
+import { CameraMove, composeZoom } from "./zoom";
+import { materials } from "../../theme";
 
 export interface Scene {
   /** Classified gestures over the canvas. (A stub source for now: the gesture recognizer lands with input/.) */
@@ -32,6 +34,8 @@ export interface Scene {
    * looked through (the layout audit sets a focus aside).
    */
   pick(p: Point, skip?: ReadonlySet<string>): HitGroup | null;
+  /** The seat whose page is under `p` as drawn (a long press there zooms to it in the zoom's trial), or null. */
+  seatAt(p: Point): SeatId | null;
   dispose(): void;
 }
 
@@ -87,6 +91,8 @@ export function createScene(opts: SceneOptions): SceneHandle {
   /** The last frame drawn without a fault: its plan and where it drew each piece (what `pick` reaches). */
   let shown: { readonly plan: TablePlan; readonly drawn: StageView["drawn"] } | null = null;
   let pending: Promise<void> | null = null;
+  /** The camera's composed move (a zoom) and whether it holds a camera other than the table's. */
+  const move = new CameraMove();
   /** Set by dispose: an init still waiting on fonts or images builds nothing when they land. */
   let disposed = false;
 
@@ -138,10 +144,18 @@ export function createScene(opts: SceneOptions): SceneHandle {
         const vp = frame.plan.viewport;
         if (vp.w !== host.size.w || vp.h !== host.size.h) host.setViewport(vp, opts.dpr);
         const { report, view } = stage.show(frame, now);
+        const still = frame.reducedMotion ?? opts.reducedMotion ?? false;
+        // The camera first (labels are sized for it as they are drawn): the table's, or composed on what the app asked.
+        const table = host.camParams;
+        const z = frame.zoom ?? null;
+        const want = z ? composeZoom(z, frame.plan, view.drawn, vp, materials.camera) : null;
+        move.set(want, want && z ? ("group" in z ? `g:${z.group}` : `s:${z.seat}`) : "", table, now, z?.ms);
+        host.setCameraOverride(move.at(now, table, still));
         renderer.draw(view);
-        host.render(now, frame.reducedMotion ?? opts.reducedMotion ?? false);
+        host.render(now, still);
         shown = { plan: frame.plan, drawn: view.drawn };
-        return report;
+        const composed = move.active ? { composed: true } : {};
+        return { ...report, ...(move.moving(now, still) ? { active: true } : {}), ...composed };
       } catch (e) {
         renderer.clear();
         stage.reset();
@@ -149,7 +163,22 @@ export function createScene(opts: SceneOptions): SceneHandle {
       }
     },
     inspect: () => stage.inspect(),
-    pick: (p, skip) => (shown ? pickDrawn(shown.plan, shown.drawn, p, skip) : null),
+    pick: (p, skip) => {
+      if (!shown) return null;
+      // Under a composed camera, a tap reaches the piece the ray through it meets (while a sift is open, only its cards).
+      if (move.active && host && renderer) {
+        const drawn = shown.drawn;
+        const only = sifting(drawn) ? (id: string) => !!drawn.get(id)?.sift : undefined;
+        return pickHit(shown.plan, drawn, renderer.pickAt(host.camera, p.x, p.y, host.size.w, host.size.h, skip, only), skip);
+      }
+      return pickDrawn(shown.plan, shown.drawn, p, skip);
+    },
+    seatAt: (p) => {
+      if (!shown) return null;
+      const plan = shown.plan;
+      const onLevel = move.active && host && renderer ? renderer.onLevel(host.camera, p.x, p.y, host.size.w, host.size.h) : (y: number) => plan.projector.onTable(p.x, p.y, y);
+      return seatUnder(plan, shown.drawn, onLevel);
+    },
     dispose() {
       disposed = true;
       renderer?.dispose();
