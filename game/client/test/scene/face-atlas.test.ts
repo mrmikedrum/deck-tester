@@ -10,18 +10,18 @@ import type { Lease } from "../../src/scene/three/textures";
 const lease = (key: string): Lease => ({ key, texture: { image: null } as unknown as Texture, width: 0, height: 0, release: () => undefined });
 
 describe("the face atlas", () => {
-  it("a long run of face changes on a small board: its bytes plateau at what is on show", () => {
+  it("a long run of face changes on a small board: it takes no page more than what is on show needs", () => {
     const atlas = new FaceAtlas(1, 2 * PAGE_BYTES);
     const shown: FaceSlot[] = [];
-    const bytes: number[] = [];
-    // A board of eight cards whose faces keep changing (art arriving, counters, taps): 161 faces in all.
+    const pages: number[] = [];
+    // A board of eight cards whose faces keep changing (art arriving, counters, taps): 161 faces in all. Allocation
+    // alone, no trim: a new face takes the room of one nobody shows before the atlas grows.
     for (let i = 0; i < 161; i++) {
       shown.push(atlas.acquire(lease(`face|${i}`)));
       if (shown.length > 8) atlas.release(shown.shift()!);
-      atlas.trim();
-      bytes.push(atlas.bytes);
+      pages.push(atlas.stats().pages);
     }
-    expect(Math.max(...bytes)).toBe(PAGE_BYTES);
+    expect(Math.max(...pages)).toBe(1);
     expect(atlas.stats()).toMatchObject({ pages: 1, shown: 8 });
   });
 
