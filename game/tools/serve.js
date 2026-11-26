@@ -18,8 +18,8 @@ const BENCH_FIELDS = ["userAgent", "screen", "viewport", "clockResolutionMs", "p
 function benchRecord(body) {
   if (!body || typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.rows) || body.rows.length > BENCH_ROWS || !body.rows.every((r) => r && typeof r === "object" && !Array.isArray(r)))
     return { error: `expected the bench page's results: {rows: [...] (at most ${BENCH_ROWS}), ...}` };
-  const text = JSON.stringify(Object.fromEntries(BENCH_FIELDS.filter((k) => k in body).map((k) => [k, body[k]])));
-  return Buffer.byteLength(text) > BENCH_CAP ? { error: "too large" } : { text };
+  const text = JSON.stringify(Object.fromEntries(BENCH_FIELDS.filter((k) => k in body).map((k) => [k, body[k]]))) + "\n";
+  return Buffer.byteLength(text) > BENCH_CAP ? { error: "too large" } : { text };   // the file as kept, newline and all
 }
 
 /** Keep a bench run as a file; its name relative to the repository (the bench page shows it). Old runs past KEEP go. */
@@ -30,7 +30,7 @@ function keepBench(dir, text) {
   for (let n = 1; ; n++) {
     const name = n === 1 ? `bench-${stamp}.json` : `bench-${stamp}-${n}.json`;
     try {
-      fs.writeFileSync(path.join(dir, name), text + "\n", { flag: "wx" });   // never over another run
+      fs.writeFileSync(path.join(dir, name), text, { flag: "wx" });   // never over another run
     } catch (e) {
       if (e.code === "EEXIST") continue;
       throw e;

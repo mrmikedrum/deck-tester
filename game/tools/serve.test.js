@@ -43,6 +43,13 @@ test("POST /api/bench answers every request and never stops serving", async () =
     const kept = path.join(dir, path.basename((await r.json()).file));
     assert.ok(fs.statSync(kept).size <= 256 * 1024, `${fs.statSync(kept).size} bytes kept`);
     assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(kept, "utf8"))).sort(), ["rows", "userAgent"]);
+    // exactly at the cap as kept (its newline counted): kept; one byte more: refused
+    const fill = (n) => ({ rows: [{ pad: "x".repeat(n) }] });
+    const at = 256 * 1024 - Buffer.byteLength(JSON.stringify(fill(0))) - 1;
+    const exact = await post(fill(at));
+    assert.equal(exact.status, 200);
+    assert.equal(fs.statSync(path.join(dir, path.basename((await exact.json()).file))).size, 256 * 1024);
+    assert.equal((await post(fill(at + 1))).status, 413);
     // a folder it cannot write: 500, and the server goes on
     const blocked = await serve(0, { benchDir: path.join(dir, "file") });
     fs.writeFileSync(path.join(dir, "file"), "");
