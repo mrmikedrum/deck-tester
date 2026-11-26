@@ -78,4 +78,17 @@ describe("moments: light, in place", () => {
         expect(v?.members, u.id).toEqual(u.members);
       }
   });
+
+  it("review: a change of light alone is a new plan rev; the same plan again keeps it", () => {
+    const rest = table((view) => Object.assign(view, { active: "Dack", priority: "Dack", phase: "COMBAT_DECLARE_BLOCKERS" }));
+    const quiet = table((view) => Object.assign(view, { active: "Dack", priority: "Dack", phase: "COMBAT_DECLARE_BLOCKERS" }), rest);
+    expect(quiet.rev).toBe(rest.rev);
+    // Dack's turn before attacks: what can come at me is lit; nothing moves
+    const lit = table((view) => Object.assign(view, { active: "Dack", priority: "Dack", phase: "MAIN1" }), rest);
+    const again = table((view) => Object.assign(view, { active: "Dack", priority: "Dack", phase: "MAIN1" }), lit);
+    expect(unitsOf(lit, "Dack").some((u) => u.light === "forward")).toBe(true);
+    for (const u of unitsOf(rest, "Dack")) expect(unitsOf(lit, "Dack").find((v) => v.id === u.id)?.placement.pos, u.id).toEqual(u.placement.pos);
+    expect(lit.rev).not.toBe(rest.rev);
+    expect(again.rev).toBe(lit.rev);
+  });
 });
