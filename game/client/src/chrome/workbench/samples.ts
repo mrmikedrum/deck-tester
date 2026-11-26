@@ -273,6 +273,7 @@ export function view(more: Partial<ChromeView> = {}, w = 1180, h = 820): ChromeV
     newGame: false,
     stackOpen: false,
     log: NO_LOG,
+    logWidth: null,
     logSheet: null,
     losses: null,
     recap: null,

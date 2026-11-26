@@ -45,20 +45,25 @@ export function pickDrawn(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece
     return hit;
   }
   // What a highlight steps out of the light is drawn over the rest (the focus pass): reached before anything under it.
-  let best: HitGroup | null = null,
-    above: HitGroup | null = null;
-  for (const g of candidates(plan, drawn)) {
-    // A seat's nameplate is chrome (it takes its own taps): the table under it is what a tap on the canvas reaches.
-    if (skip?.has(g.id) || g.kind === "plate") continue;
-    const d = drawn.get(g.id);
-    if (d && !d.pickable) continue;
-    const top = d?.above ? above : best;
-    if (top && g.order < top.order) continue;
-    if (!inQuad(d ? movedQuad(plan.projector, g.quad, d) : g.quad, p.x, p.y)) continue;
-    if (d?.above) above = g;
-    else best = g;
-  }
-  return above ?? best;
+  // A face under the point first (layout's `hitTest`); where no face is, the place that holds it.
+  const pass = (face: boolean): HitGroup | null => {
+    let best: HitGroup | null = null,
+      above: HitGroup | null = null;
+    for (const g of candidates(plan, drawn)) {
+      // A seat's nameplate is chrome (it takes its own taps): the table under it is what a tap on the canvas reaches.
+      if (skip?.has(g.id) || g.kind === "plate") continue;
+      const d = drawn.get(g.id);
+      if (d && !d.pickable) continue;
+      const top = d?.above ? above : best;
+      if (top && g.order < top.order) continue;
+      const q = face ? (g.face ?? g.quad) : g.quad;
+      if (!inQuad(d ? movedQuad(plan.projector, q, d) : q, p.x, p.y)) continue;
+      if (d?.above) above = g;
+      else best = g;
+    }
+    return above ?? best;
+  };
+  return pass(true) ?? pass(false);
 }
 
 /** The groups a tap may reach: the stack as the focus is reached where it stands up (layout's `hits.up`). */

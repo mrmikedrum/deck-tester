@@ -124,9 +124,13 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const live = c.mayAnswer && s.model !== null;
   const mulligan = live && c.prompt?.style === "overlay" && !c.prompt.busy;
   const groups = s.plan?.hits.groups;
-  const has = (id: string): boolean => groups?.some((g) => g.id === id) ?? false;
+  // A graveyard or exile is there while it has cards, on the table or not (an opponent's lives in the nameplate's focus).
+  const has = (id: string): boolean => (groups?.some((g) => g.id === id) ?? false) || (!!s.model && !!s.plan && (siftCards(s.model, s.plan, id)?.zone ?? null) !== null && (siftCards(s.model, s.plan, id)?.ids.length ?? 0) > 0);
   const pages = (id: string): number => siftPages(s.model && s.plan ? (siftCards(s.model, s.plan, id)?.ids.length ?? 0) : 0);
-  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat), groups: has, pages }, origin);
+  const synced = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat, s.plan), groups: has, pages }, origin);
+  // A lean-in on a seat that has left the table (out of the game) goes with it.
+  const leaning = synced.layers.find((e) => e.layer === "lean");
+  const focus = leaning?.seat && s.plan && !s.plan.seats.has(leaning.seat) ? close(synced, "lean") : synced;
   return focus === s.focus ? s : { ...s, focus };
 }
 
@@ -168,6 +172,7 @@ function route(s: AppState, m: Msg): Step {
     case "listDecks":
     case "dismissRecap":
     case "board":
+    case "seat":
     case "zone":
     case "siftPage":
     case "hover":
@@ -300,7 +305,8 @@ function sifts(s: AppState, g: HitGroup): boolean {
 /** Play asks the player to choose one of a group's members (a gesture meant one of several): its sift opens, the stack
  * set aside first; a tap on a sifted card then acts on that card alone. */
 function chooseFrom(tx: Tx, group: string, rev: number): void {
-  const g = tx.s.plan ? groupById(tx.s.plan.hits, group) : undefined;
+  // (a graveyard or exile may be off the table: the model holds it)
+  const g = tx.s.plan ? (groupById(tx.s.plan.hits, group) ?? (tx.s.model && siftCards(tx.s.model, tx.s.plan, group)?.zone ? { id: group } : undefined)) : undefined;
   if (!g || (top(tx.s.focus)?.layer === "sift" && top(tx.s.focus)?.group === g.id)) return;
   // (A drag's other end, after its first was chosen: that sift gives way to this one.)
   const f = isOpen(tx.s.focus, "sift") ? close(tx.s.focus, "sift") : tx.s.focus;
@@ -640,18 +646,28 @@ function input(s: AppState, m: InputMsg): Step {
     case "zone": {
       // A zone of a nameplate opened in full: its sift, as a tap on its pile at the far strip opens it (the stack set
       // aside first). The nameplate closes under it; when the sift goes, keyboard focus goes back to the seat's plate.
+      // (An opponent's graveyard and exile are not on the table: the model holds them, and the sift reads it.)
       const group = `zone:${m.zone}:${m.seat}`;
-      const g = s.plan ? groupById(s.plan.hits, group) : undefined;
-      if (!g || !sifts(s, g)) return done(tx);
+      const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;
+      if (!seat || !s.model?.zone(seat, m.zone).length) return done(tx);
       const f = close(s.focus, "seat");
       const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
       tx.s = { ...s, focus: open(under, entry("sift", { group, restore: `plate:${m.seat}` })) };
       return done(tx);
     }
+    case "seat": {
+      // A seat out of the game: its chip opens its nameplate focus (a second press closes it), as a plate's tap does.
+      const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;
+      if (!seat) return done(tx);
+      const opened = s.focus.layers.find((e) => e.layer === "seat")?.seat === seat;
+      tx.s = { ...s, focus: opened ? close(s.focus, "seat") : open(close(s.focus, "seat"), entry("seat", { seat, restore: tx.origin ?? null })) };
+      return done(tx);
+    }
     case "board": {
       // The nameplate's "See … board": the nameplate closes and the table leans in on that seat (not my own).
       const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;
-      if (!seat || seat === s.model?.viewer.perspective) return done(tx);
+      // (a seat out of the game has no board on the table to lean in on)
+      if (!seat || seat === s.model?.viewer.perspective || !s.plan?.seats.has(seat)) return done(tx);
       tx.s = { ...s, focus: open(close(s.focus, "seat"), entry("lean", { seat, restore: tx.origin ?? null })) };
       return done(tx);
     }

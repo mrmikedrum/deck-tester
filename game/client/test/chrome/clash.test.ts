@@ -82,7 +82,8 @@ describe("the clash's words", () => {
 
   it("between opponents, the attacker's ink; the words say unblocked, never damage, and carry no pronoun but the seat named You", () => {
     const m = table("Atraxa", [20, 21].map((id) => ({ id, defender: "Dack" })), [{ id: 30, blocking: 20 }]);
-    const plan = planTable(tableInputOf(m, { viewport: VP }));
+    // (raised: by itself a fight between opponents takes the table form, its duel in the middle)
+    const plan = planTable(tableInputOf(m, { viewport: VP, combatForm: "clash" }));
     const v = clashViewOf(m, plan)!;
     expect(v.plaques[0]!.tone).toBe("ink");
     for (const p of v.plaques) {

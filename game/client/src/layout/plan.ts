@@ -16,16 +16,17 @@ import { tableTemplate } from "./template";
 import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
-import { shadowPlan } from "./arrange/shadow";
+import { planLeaf } from "./arrange/leaves";
 import { arrangedSeat } from "./arrange/adapter";
-import { leafFrame } from "./arrange/leaf";
-import { combatFormOf, gathering } from "./arrange/gathering";
+import { partShift } from "./arrange/leaf";
+import { posed } from "./arrange/solver";
+import { DUEL_ROW, combatFormOf, gathering } from "./arrange/gathering";
 import type { CombatForm, Gathering } from "./arrange/gathering";
 
 /** The clash's cards are reached over the whole table, the plates' table groups too (the plates themselves are chrome,
  *  over the canvas, and take their own taps first). */
 const FOCUS_ORDER = 2e6;
-import type { ShadowInput, ShadowPlan } from "./arrange/shadow";
+import type { EngineInput, LeafPlan } from "./arrange/leaves";
 
 // Planning a seat with the hard-limit audit and a fold-harder retry, and planning the table: four seats, plates, the
 // stack at rest, and what a tap can reach.
@@ -173,8 +174,9 @@ export interface TableInput {
   readonly blocked?: ReadonlySet<CardId>;
   /** The clash's attackers in the order it first stood them: no column jumps during a combat. */
   readonly order?: readonly CardId[];
-  /** Arrange this seat's leaf with the arrangement engine beside `mat`, recorded in `TablePlan.shadow` (debug only). */
-  readonly shadow?: ShadowInput;
+  /** Lay every opponent's leaf out with the arrangement engine (`TablePlan.leaves`): drawn as each seat's plan, or
+   *  recorded beside `mat`'s. */
+  readonly engine?: EngineInput;
 }
 
 export type GroupKind = "card" | "pile" | "well" | "summary" | "plate" | "zone" | "stack";
@@ -190,6 +192,9 @@ export interface HitGroup {
   readonly quad: Quad;
   /** Draw order among the table's groups: larger is drawn over smaller (plates and the stack are hit first anyway). */
   readonly order: number;
+  /** Its top face as drawn, where `quad` is the wider place it owns (an engine unit's slot): a tap on a face reaches that
+   *  face's group first; the place takes only taps on the table around it. */
+  readonly face?: Quad;
 }
 
 export interface HitGroups {
@@ -237,8 +242,15 @@ export interface TablePlan {
   readonly gathering: Gathering | null;
   /** My field row's tops on screen (px): the clash stops above them. */
   readonly fieldTop: number;
-  /** The arrangement engine's plan of one leaf beside `mat`'s, when asked (`TableInput.shadow`): never drawn. */
-  readonly shadow?: ShadowPlan;
+  /** The arrangement engine's plan of each opponent's leaf at rest, when asked (`TableInput.engine`). */
+  readonly leaves?: ReadonlyMap<SeatId, LeafPlan>;
+  /**
+   * How far the mats are parted, in card heights (0 at rest): every opponent's leaf drawn by the engine slides along its
+   * own `away` by this much to open the middle for duels or the stack (§5.3). Its units are the rest plan's.
+   */
+  readonly part: number;
+  /** A fight between opponents whose duels do not fit the middle, however far the mats part: the app raises the clash. */
+  readonly crowded: boolean;
 }
 
 function fnv(s: string): number {
@@ -260,15 +272,19 @@ export function planTable(input: TableInput): TablePlan {
   };
   const inputs = input.seats.map((_, i) => mk(i));
   const combat = input.combat ?? null, fight = fighters(combat);
-  // The arrangement engine's leaf (TableInput.shadow): recorded beside mat, or, when it is drawn, the seat's plan.
-  const at = input.shadow ? input.seats.findIndex((x) => x.seat === input.shadow!.seat) : -1;
-  const shadow = input.shadow && at >= 0 ? shadowPlan(input.shadow, tpl.slots[at]!, projector, reserve.safe) : undefined;
-  const drawn = input.shadow?.draw && shadow?.result ? at : -1;
-  const plans: SeatPlan[] = inputs.map((i, k) =>
-    k === drawn
-      ? arrangedSeat({ result: shadow!.result!, frame: leafFrame(tpl.slots[k]!), yaw: tpl.slots[k]!.yaw, board: i.board, cards: input.shadow!.cards, projector, reserve })
-      : planSeat(layout, i, { fighting: fight }),
-  );
+  // The opponents' leaves on the arrangement engine (TableInput.engine): recorded beside mat, or, drawn, each seat's
+  // plan. A parting draws the same arrangement again where it moves it (`posed`).
+  const leaves = new Map<SeatId, LeafPlan>();
+  input.seats.forEach((x, i) => {
+    const l = i > 0 ? input.engine?.leaves.find((y) => y.seat === x.seat) : undefined;
+    if (l) leaves.set(x.seat, planLeaf(l, tpl.slots[i]!, tpl.leaf, tpl.part, projector, reserve.safe));
+  });
+  const drawn = new Set(input.engine?.draw ? input.seats.flatMap((x, i) => (leaves.get(x.seat)?.result ? [i] : [])) : []);
+  const leafSeat = (k: number, part: number): SeatPlan => {
+    const l = leaves.get(input.seats[k]!.seat)!, at = part ? posed(l.input!, l.result!, partShift(part)) : l.result!;
+    return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, reach: partShift(tpl.part.most), board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
+  };
+  const plans: SeatPlan[] = inputs.map((i, k) => (drawn.has(k) ? leafSeat(k, 0) : planSeat(layout, i, { fighting: fight })));
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
   const geo = makeGeo(projector, reserve, FLOOR.mine);
@@ -277,29 +293,50 @@ export function planTable(input: TableInput): TablePlan {
   const fieldTop = openMiddle(tpl, projector, plans, geo.u).b * geo.u + 10 * geo.u;
   const cards = new Map(inputs.flatMap((i) => i.board.cards.map((c) => [c.id, c] as const)));
   const seatOf = (id: CardId) => inputs.find((i) => i.board.cards.some((c) => c.id === id))?.seat;
-  const form = input.combatForm ?? combatFormOf(combat, input.seats[0]!.seat, seatOf, input.blocked);
+  let form = input.combatForm ?? combatFormOf(combat, input.seats[0]!.seat, seatOf, input.blocked);
+  const gatherIn = (ps: readonly SeatPlan[], f: typeof form, duels: { foot: number; mid: number } | undefined) =>
+    gathering({
+      combat: combat!,
+      plans: ps,
+      perspective: input.seats[0]!.seat,
+      projector,
+      reserve,
+      u: geo.u,
+      form: f,
+      fieldTop,
+      power: (id) => cards.get(id)?.power ?? null,
+      twin: (id) => cards.get(id)?.sig ?? String(id),
+      ...(input.blocked ? { blocked: input.blocked } : {}),
+      ...(input.order ? { order: input.order } : {}),
+      tapped: (id) => tapped.has(id),
+      ...(duels ? { duels } : {}),
+    });
+  // The parting (§5.3): what rests on the middle at table size (duels, the stack) asks for a card standing there, clear
+  // of my field row's tops and of every opponent's feet above it; the leaves part by the least step that opens it.
+  const row = { foot: fieldTop - DUEL_ROW.foot * geo.u, mid: vp.w / 2 };
+  const room = partRoom(input, tpl, projector, plans, leaves, drawn, reserve.safe);
+  let part = 0, duels: typeof row | undefined, crowded = false;
+  if (combat && fight.size && form === "table" && combat.blocks.length) {
+    const g0 = gatherIn(plans, "table", row);
+    if (g0.duels) {
+      const away = new Set(g0.plans.flatMap((p) => p.units.filter((un) => un.fighting).flatMap((un) => [...un.members, ...un.dressing])));
+      const d = room.row(g0.duels.r - g0.duels.l, row.mid, g0.duels.t - DUEL_ROW.clear * geo.u, away);
+      if (d !== null) [part, duels] = [d.part, { ...row, mid: d.mid }];
+      else {
+        crowded = true;
+        // All or nothing: duels that do not fit raise the clash, unless the app has set it aside (everyone home, lit).
+        if (!input.combatForm) form = "clash";
+      }
+    }
+  }
+  // The stack set aside rests in the open middle, sized by the room it has: the mats part all the way for it.
+  if (input.stack.length && drawn.size) part = tpl.part.most;
+  if (part) for (const k of drawn) plans[k] = leafSeat(k, part);
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
   // open middle the pages leave (so it moves when they do), and the fight: the clash over it all, or at home.
   const compose = () => {
     const stack = stackAtRest(input, tpl, projector, plans, reserve.safe);
-    const gathered =
-      combat && fight.size
-        ? gathering({
-            combat,
-            plans,
-            perspective: input.seats[0]!.seat,
-            projector,
-            reserve,
-            u: geo.u,
-            form,
-            fieldTop,
-            power: (id) => cards.get(id)?.power ?? null,
-            twin: (id) => cards.get(id)?.sig ?? String(id),
-            ...(input.blocked ? { blocked: input.blocked } : {}),
-            ...(input.order ? { order: input.order } : {}),
-            tapped: (id) => tapped.has(id),
-          })
-        : null;
+    const gathered = combat && fight.size ? gatherIn(plans, form, form === "table" ? duels : undefined) : null;
     const placed = gathered ? gathered.plans : plans;
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
     let shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
@@ -325,7 +362,7 @@ export function planTable(input: TableInput): TablePlan {
     let moved = false;
     plans.forEach((p, i) => {
       // (The engine's leaf folds by its own ladder: the table does not refold it.)
-      if (!bad.has(p.seat) || p.report.lastResort || i === drawn) return;
+      if (!bad.has(p.seat) || p.report.lastResort || drawn.has(i)) return;
       floor[i] = Math.max(floor[i]!, p.report.pressure) + 1;
       // A seat already at the last notch (it passed its own audit there) has nothing harder to fold to but its last resort.
       plans[i] = floor[i]! > MAX_PRESSURE ? lastResort(inputs[i]!, p, fight) : planSeat(layout, inputs[i]!, { minPressure: floor[i]!, fighting: fight });
@@ -349,9 +386,25 @@ export function planTable(input: TableInput): TablePlan {
   if (focus.covers && stackUp[0]) v = [...v, { rule: "focus-covers", group: `stack:${stackUp[0].key}`, seat: null, measured: 0, limit: 1 }];
   const hits = hitGroups(final, shapes, stack, stackUp, c.gathered);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
-  const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
-  const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(shadow ? { shadow } : {}) };
+  // The rev covers everything drawn or reached: every unit's place, frame and turn, the fixtures, every group's quad and
+  // face, the stack at rest and as the focus, the gathering, and the parting.
+  const n = (x: number, d = 4) => x.toFixed(d);
+  const v3s = (a: V3) => `${n(a.x)},${n(a.y)},${n(a.z)}`;
+  const quads = (qs: readonly Quad[]) => qs.map((q) => q.map((p) => `${n(p.x, 1)},${n(p.y, 1)}`).join(" ")).join(";");
+  const placement = final
+    .map((p) =>
+      [
+        p.seat,
+        p.units.map((u) => [u.id, v3s(u.placement.pos), n(u.placement.scale), u.placement.posture, u.placement.frame ? `${v3s(u.placement.frame.right)}/${v3s(u.placement.frame.up)}` : "", u.turn ?? "", u.tapped ? 1 : 0].join(",")).join(";"),
+        v3s(p.fixtures.page.pos), n(p.fixtures.page.w, 3), n(p.fixtures.page.d, 3),
+        p.fixtures.commander ? `${p.fixtures.commander.card}@${v3s(p.fixtures.commander.placement.pos)}` : "",
+        p.fixtures.zones.map((z) => `${z.zone}@${v3s(z.placement.pos)}`).join(","),
+      ].join("|"),
+    )
+    .join("\n");
+  const screen = `${quads(hits.groups.map((g) => g.quad))}\n${quads(hits.groups.flatMap((g) => (g.face ? [g.face] : [])))}\n${quads(stack.map((x) => x.quad))}\n${quads(stackUp.map((x) => x.quad))}`;
+  const gathered = c.gathered ? JSON.stringify([c.gathered.form, c.gathered.step, c.gathered.extent, c.gathered.duels, c.gathered.moreAt, c.gathered.wings.map((w) => [w.attacker, w.defender, w.plaque, w.w, w.unblocked, w.walker, w.tallyAt, w.columns.map((col) => [col.unit, col.attackers, col.blockers, col.x, col.w, col.clasp, col.slot, col.power, col.blocked])]), c.gathered.more]) : "";
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${gathered}\n${part}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(input.engine ? { leaves } : {}), part, crowded };
 }
 
 /** A clash shape over a face of my field row or over the chrome: the clash must leave both uncovered. */
@@ -365,6 +418,56 @@ function clashCovers(fight: readonly Shape[], mine: readonly Shape[], reserve: R
     if (mine.some((m) => meet(b, box(m.face))) || chrome.some((c) => meet(b, c))) out.push({ rule: "clash-covers", group: f.group, seat: f.seat, measured: 0, limit: 0 });
   }
   return out;
+}
+
+/** Something on an opponent's leaf, as the parting measures it: its box on screen and the cards it holds. */
+interface Low {
+  readonly l: number;
+  readonly r: number;
+  readonly b: number;
+  readonly cards: readonly CardId[];
+}
+
+/**
+ * Where the parting finds room for a row `w` wide on the middle at table size (§5.3): the least parting (card heights, a
+ * multiple of the template's step, at most its most) at which nothing on an opponent's leaf under the row reaches lower
+ * than `top` (feet, a stack's dice), the row slid across the table to where it needs least, nearest `mid` among equals;
+ * null when no parting opens it. Only the engine's leaves part (`mat`'s pages hold still); cards in `away`
+ * are leaving their places (for the duels).
+ */
+function partRoom(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], leaves: ReadonlyMap<SeatId, LeafPlan>, drawn: ReadonlySet<number>, safe: Rect) {
+  const boxOf = (q: Quad, cards: readonly CardId[]): Low => {
+    const b = bounds(q);
+    return { l: b.l, r: b.r, b: b.b, cards };
+  };
+  const still: Low[] = [];
+  plans.forEach((p, i) => {
+    if (i === 0 || drawn.has(i)) return;
+    for (const sh of seatShapes(proj, p, false)) if (sh.kind !== "plate") still.push(boxOf(sh.face, p.units.find((un) => un.id === sh.group)?.members ?? []));
+  });
+  const steps = Math.round(tpl.part.most / tpl.part.step);
+  const parted: Low[][] = [];
+  const lowAt = (k: number): readonly Low[] => {
+    if (parted[k]) return parted[k];
+    const part = k * tpl.part.step, out: Low[] = [...still];
+    for (const i of drawn) {
+      const lp = leaves.get(input.seats[i]!.seat)!, fit = (part ? posed(lp.input!, lp.result!, partShift(part)) : lp.result!).fit;
+      for (const t of fit.targets) out.push(boxOf(t.region, t.members));
+      for (const un of fit.units) if (un.marker) out.push(boxOf(un.marker.room, un.members));
+    }
+    return (parted[k] = out);
+  };
+  const clear = (k: number, l: number, r: number, top: number, away: ReadonlySet<CardId>): boolean =>
+    lowAt(k).every((x) => x.b <= top || x.r <= l || x.l >= r || x.cards.some((id) => away.has(id)));
+  const row = (w: number, mid: number, top: number, away: ReadonlySet<CardId>): { mid: number; part: number } | null => {
+    const lo = safe.left + 16 + w / 2, hi = safe.right - 16 - w / 2;
+    if (lo > hi) return null;
+    const xs = [Math.min(hi, Math.max(lo, mid))];
+    for (let d = 8; mid - d >= lo || mid + d <= hi; d += 8) xs.push(...[mid - d, mid + d].filter((x) => x >= lo && x <= hi));
+    for (let k = 0; k <= steps; k++) for (const x of xs) if (clear(k, x - w / 2, x + w / 2, top, away)) return { mid: x, part: k * tpl.part.step };
+    return null;
+  };
+  return { row };
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle
@@ -628,8 +731,12 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
     return { xs: pts.map((q) => q.x / u), ys: pts.map((q) => q.y / u) };
   };
   const at = (pos: string) => plans.find((_, i) => tpl.slots[i]!.position === pos);
-  const across = at("across"), left = at("left"), right = at("right"), near = at("near");
-  let t = across ? Math.max(...pageBox(across).ys) : 60, b = near ? Math.min(...pageBox(near).ys) : 600;
+  const across = at("across"), near = at("near");
+  // Between the side pages when a page stands across from me; with fewer opponents (their leaves meet in the middle) the
+  // whole width, under every page's near edge.
+  const left = across ? at("left") : undefined, right = across ? at("right") : undefined;
+  const opponents = plans.filter((p) => p !== near);
+  let t = across ? Math.max(...pageBox(across).ys) : opponents.length ? Math.max(...opponents.flatMap((p) => pageBox(p).ys)) : 60, b = near ? Math.min(...pageBox(near).ys) : 600;
   for (const un of near?.units ?? [])
     if (un.role === "creature" && !un.fighting) {
       const p = un.placement;
@@ -644,7 +751,10 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
   for (const p of plans)
-    for (const un of p.units) groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: hitQuad(shape(un.id)), order: shape(un.id).order });
+    for (const un of p.units) {
+      const sh = shape(un.id);
+      groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.reach ?? un.members, quad: hitQuad(sh), ...(sh.hit ? { face: sh.face } : {}), order: sh.order });
+    }
   for (const p of plans) for (const z of p.fixtures.zones) {
     const id = `zone:${z.zone}:${p.seat}`;
     groups.push({ id, kind: "zone", seat: p.seat, members: [], quad: shape(id).face, order: shape(id).order });
@@ -689,9 +799,19 @@ export function groupById(hits: HitGroups, id: string): HitGroup | undefined {
  * cards meet.
  */
 export function hitTest(plan: TablePlan, p: Point): HitGroup | null {
-  const groups = plan.hits.groups;
-  let best: HitGroup | null = null;
-  for (const g of groups) if ((!best || g.order >= best.order) && inQuad(g.quad, p.x, p.y)) best = g;
-  return best;
+  return topmost(plan.hits.groups, p);
+}
+
+/**
+ * The group a tap at `p` reaches among `groups`, by draw order (a later group wins a tie): first the topmost whose face
+ * is under the point, then, where no face is, the topmost whose place holds it. `quadOf` is where the group is drawn now.
+ */
+function topmost(groups: readonly HitGroup[], p: Point, quadOf: (g: HitGroup, q: Quad) => Quad = (_g, q) => q): HitGroup | null {
+  let face: HitGroup | null = null, place: HitGroup | null = null;
+  for (const g of groups) {
+    if ((!face || g.order >= face.order) && inQuad(quadOf(g, g.face ?? g.quad), p.x, p.y)) face = g;
+    if ((!place || g.order >= place.order) && inQuad(quadOf(g, g.quad), p.x, p.y)) place = g;
+  }
+  return face ?? place;
 }
 

@@ -69,15 +69,15 @@ export function plaqueWords(model: TableModel, w: ClashWing, dealt: ReadonlyMap<
 /**
  * The combat as the focus hears of it (focus.ts `CombatSight`): its identity, a game's turn and Forge's combat ordinal
  * while the engine shows a combat in a combat step (so it ends with the combat, a jump to the main phase included),
- * and whether it raises the clash by itself.
+ * and whether it raises the clash by itself: it involves me, or the plan found its duels too many for the middle.
  */
-export function combatSightOf(model: TableModel | null, draft: CombatPairs | null): CombatSight {
+export function combatSightOf(model: TableModel | null, draft: CombatPairs | null, plan: TablePlan | null = null): CombatSight {
   if (!model || !model.combat || !/^COMBAT_/.test(model.phase)) return { key: "", wanted: false };
   const combat = mergeCombat(engineCombat(model), draft);
   const seatOf = (id: CardId) => model.cards.get(id)?.controller ?? undefined;
   return {
     key: `${model.gen}|${model.turn}|${model.combat.ordinal ?? 0}`,
-    wanted: combatFormOf(combat, model.viewer.perspective, seatOf, new Set(blockedOf(model))) === "clash",
+    wanted: combatFormOf(combat, model.viewer.perspective, seatOf, new Set(blockedOf(model))) === "clash" || !!plan?.crowded,
   };
 }
 
@@ -111,9 +111,13 @@ export function spreadPlaques<T extends { x: number; w: number }>(ps: readonly T
   return out;
 }
 
-/** The clash's chrome: null when it is not up. */
+/** The clash's chrome: null when it is not up. Duels in the middle (the table form) wear only their clasps. */
 export function clashViewOf(model: TableModel, plan: TablePlan | null): ClashView | null {
   const g: Gathering | null = plan?.gathering ?? null;
+  if (plan && g && !g.focus && g.duels) {
+    const clasps = g.wings.flatMap((w) => w.columns.flatMap((c) => (c.clasp ? [{ key: c.unit, x: c.clasp.x, y: c.clasp.y }] : [])));
+    return { unit: designUnit(plan.viewport), plaques: [], brands: [], clasps, tallies: [], more: null };
+  }
   if (!plan || !g?.focus) return null;
   const me = model.viewer.perspective, u = designUnit(plan.viewport);
   const dealt = combatDamage(model);

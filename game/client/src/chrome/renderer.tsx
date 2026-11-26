@@ -406,7 +406,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
                 />
               ) : null}
               <GameButton send={send} />
-              {view.waiting === null ? <LogStrip view={view.log} onOpen={() => send({ t: "open", layer: "log", card: null })} /> : null}
+              {view.waiting === null ? <LogStrip view={view.log} width={view.logWidth} onOpen={() => send({ t: "open", layer: "log", card: null })} /> : null}
               {view.chips.length || view.back !== null ? (
                 <div class="l-corner">
                   <Chips chips={view.chips} send={send} />

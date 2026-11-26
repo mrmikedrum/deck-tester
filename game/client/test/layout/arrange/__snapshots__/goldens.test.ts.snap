@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the corpus's eliminations on the engine's table > 049 (two players left) and 050 (one): the seats still in, and their leaves 1`] = `
+{
+  "one": {
+    "leaves": [],
+    "out": [
+      "Atraxa",
+      "Dack",
+      "Princess",
+    ],
+    "seats": [
+      "You",
+    ],
+  },
+  "two": {
+    "leaves": [
+      "Princess",
+    ],
+    "out": [
+      "Atraxa",
+      "Dack",
+    ],
+    "seats": [
+      "You",
+      "Princess",
+    ],
+  },
+}
+`;

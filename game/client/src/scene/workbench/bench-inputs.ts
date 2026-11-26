@@ -1,6 +1,6 @@
 // The arrangement engine's timing inputs (docs/game-arrangement-engine.md §7.3), shared by the Node bench
 // (tools/bench-plan.mjs) and the workbench's bench page (`workbench.html?only=bench`) so both time exactly the same
-// tables. Every input goes the app's way: a snapshot decoded, a model, `tableInputOf` with the shadow plan on, and
+// tables. Every input goes the app's way: a snapshot decoded, a model, `tableInputOf` with the opponents' leaves on the engine, and
 // `planTable`, with memory carried from one plan to the next. Pure: no DOM, no clock (the callers time it).
 import { decodeCatalog, modelOf, playerViewer } from "../../model";
 import type { TableModel } from "../../model";
@@ -20,7 +20,7 @@ export interface Named {
   readonly frames: readonly Frame[];
 }
 
-/** One plan of `f`, carrying the last plan's memory (mat's and the shadow's). */
+/** One plan of `f`, carrying the last plan's memory (mat's and the engine's). */
 export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
   return planTable(
     tableInputOf(f.model, {
@@ -28,17 +28,18 @@ export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
       mode: "normal",
       memory: prev?.memory ?? null,
       settling: f.settling,
-      // as the app plans: the across leaf drawn by the engine (its memory rides in the layout memory), fights gathered
-      shadow: { draw: true },
+      // as the app plans: every opponent leaf drawn by the engine (its memory rides in the layout memory), fights gathered
+      engine: { draw: true },
     }),
   );
 }
 
-export const VIEWPORT = { w: 1180, h: 820 } as const;
+/** The iPad held in landscape (CSS px), as the game is played: every input is planned at it, in Node and on the device. */
+export const VIEWPORT = { w: 1210, h: 834 } as const;
 
 /**
- * The same plan as if the engine's leaf's cards had just changed: what the engine keeps between plans is forgotten (all but
- * its rows, which follow the container's geometry), so the leaf is arranged from scratch. A snapshot that changes a seat
+ * The same plan as if every engine leaf's cards had just changed: what the engine keeps between plans is forgotten (all but
+ * its rows, which follow the container's geometry), so the leaves are arranged from scratch. A snapshot that changes a seat
  * costs this; one that does not, `planFrame`'s.
  */
 export function planFrameChanged(f: Frame, prev: TablePlan | null): TablePlan {

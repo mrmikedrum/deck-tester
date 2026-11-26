@@ -1,20 +1,24 @@
+/// <reference types="node" />
 // The seats as the chrome tells them (app/seats.ts): the top row of nameplates bends round the table's cards, and a
 // seat's summary counts what the data supports, once per model.
 import { describe, expect, it } from "vitest";
-import { placeTop, plateWidth, platesOf, seatFocusOf, summaryOf } from "../../src/app/seats";
+import { feedWidthOf, placeTop, plateWidth, platesOf, seatFocusOf, summaryOf } from "../../src/app/seats";
 import type { Box } from "../../src/app/seats";
 import { NO_INSETS, planTable, tableInputOf } from "../../src/layout";
 import type { TablePlan } from "../../src/layout";
 import { modelOf, seatId } from "../../src/model";
 import { card, catalog, corpusNames, corpusSnapshot, creature, land, snapshotOf, tableOf, viewerOf } from "../model/fixtures";
 import { SUPPORTED } from "../layout/boards";
+import { designModels } from "../../src/scene/workbench/bench-inputs";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const TABLE = { w: 1180, h: 820, safe: NO_INSETS };
 
 const intersects = (a: Box, b: Box): boolean => Math.min(a.r, b.r) > Math.max(a.l, b.l) && Math.min(a.b, b.b) > Math.max(a.t, b.t);
 
 function boxOf(p: ReturnType<typeof platesOf>[number]): Box {
-  const width = plateWidth(p.name, p.life, p.icons) * p.unit, height = Math.max(44, 44 * p.unit);
+  const width = plateWidth(p.name, p.life, p.icons, undefined, p.out) * p.unit, height = Math.max(44, 44 * p.unit);
   const l = p.mine ? p.x - width / 2 : p.x, t = p.mine ? p.y - height : p.y;
   return { l, t, r: l + width, b: t + height };
 }
@@ -32,6 +36,20 @@ describe("the top row of nameplates", () => {
     expect(x).toBeGreaterThanOrEqual(commander.r);
     expect(x - commander.r).toBeLessThan(8);
   });
+  it("keeps the plates in their leaves' order, even where swapping two would clear a card", () => {
+    // A wide plate on the left and a card at the top of the left leaf: swapping would clear it, but seats never swap.
+    const at = placeTop(
+      [
+        { seat: "Marath", place: "left", w: 330, pref: 120 },
+        { seat: "Atraxa", place: "across", w: 260, pref: 460 },
+        { seat: "Dack", place: "right", w: 240, pref: 800 },
+      ],
+      [{ l: 130, t: 9, r: 190, b: 80 }],
+      row,
+    );
+    expect(at.get("Marath")!).toBeLessThan(at.get("Atraxa")!);
+    expect(at.get("Atraxa")!).toBeLessThan(at.get("Dack")!);
+  });
   it("never lays one plate over another, and stays clear of the Game button", () => {
     const at = placeTop(
       [
@@ -46,6 +64,43 @@ describe("the top row of nameplates", () => {
     expect(boxes[0]!.l).toBeGreaterThanOrEqual(row.l);
     for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.l).toBeGreaterThanOrEqual(boxes[i - 1]!.r);
     expect(boxes.at(-1)!.r).toBeLessThanOrEqual(row.r);
+  });
+});
+
+describe("the plates after an elimination", () => {
+  it("stay in the seats' order: the chip of a seat out of the game keeps its place between the others", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: { players: { name: string }[] } } }[]; catalog: unknown };
+    for (const gone of [["Atraxa"], ["Marath"], ["Dack"], ["Marath", "Atraxa"]]) {
+      const st = structuredClone(raw.stages.find((x) => x.turn === 15)!);
+      st.envelope.view.players = st.envelope.view.players.filter((p) => !gone.includes(p.name));
+      const m = designModels({ stages: [st], catalog: raw.catalog }).get(15)!;
+      const plan = planTable(tableInputOf(m, { viewport: TABLE, engine: { draw: true } }));
+      const xs = platesOf(m, plan, new Map(), TABLE).filter((p) => !p.mine).map((p) => [p.seat, p.x] as const);
+      expect(xs.map(([seat]) => seat), gone.join("+")).toEqual(["Marath", "Atraxa", "Dack"]);
+      for (let i = 1; i < xs.length; i++) expect(xs[i]![1], gone.join("+")).toBeGreaterThan(xs[i - 1]![1]);
+    }
+  });
+});
+
+describe("the log strip under the Game button", () => {
+  it("narrows to keep clear of a card at the top of the left leaf, never under its heading", () => {
+    const quad = (l: number, t: number, r: number, b: number) => [{ x: l, y: b }, { x: r, y: b }, { x: r, y: t }, { x: l, y: t }] as const;
+    const plan = (groups: { l: number; t: number; r: number; b: number }[]) => ({ hits: { rev: 0, groups: groups.map((g, i) => ({ id: `g${i}`, kind: "pile", seat: null, members: [], quad: quad(g.l, g.t, g.r, g.b), order: 0 })) } }) as unknown as TablePlan;
+    expect(feedWidthOf(plan([]), TABLE)).toBeNull();
+    expect(feedWidthOf(plan([{ l: 250, t: 74, r: 330, b: 125 }]), TABLE)).toBe(230);
+    expect(feedWidthOf(plan([{ l: 60, t: 74, r: 120, b: 125 }]), TABLE)).toBe(128);
+    // below the strip, nothing to keep clear of
+    expect(feedWidthOf(plan([{ l: 250, t: 120, r: 330, b: 200 }]), TABLE)).toBeNull();
+  });
+  it("is worked out once per plan and viewport, not every frame", () => {
+    let reads = 0;
+    const groups = [{ id: "g", kind: "pile", seat: null, members: [], quad: [{ x: 250, y: 125 }, { x: 330, y: 125 }, { x: 330, y: 74 }, { x: 250, y: 74 }], order: 0 }];
+    const p = { hits: { rev: 0, get groups() { reads++; return groups; } } } as unknown as TablePlan;
+    const w = feedWidthOf(p, TABLE);
+    for (let i = 0; i < 5; i++) expect(feedWidthOf(p, TABLE)).toBe(w);
+    expect(reads).toBe(1);
+    feedWidthOf(p, { ...TABLE, w: 1210, h: 834 });
+    expect(reads).toBe(2);
   });
 });
 

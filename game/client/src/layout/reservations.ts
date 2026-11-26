@@ -64,6 +64,22 @@ export function reservations(viewport: Viewport, mode: ChromeMode = "normal", sa
   };
 }
 
+/**
+ * The chrome along the top that the opponents' leaves keep clear of (design units at 1180x820): the row of nameplates and
+ * a gap under it, and the log strip under the Game button at its least (its turn heading; it narrows to that where a
+ * card would be under it at its widest: app/seats.ts `feedWidthOf`).
+ */
+export const PLATES_UNITS = { top: 6, h: 44, clear: 8 } as const;
+export const FEED_UNITS = { left: 12, top: 62, height: 44, widest: 322, least: 128, gap: 8 } as const;
+
+export function topChrome(viewport: Viewport, safe: Insets = NO_INSETS): Rect[] {
+  const u = designUnit(viewport);
+  return [
+    { left: safe.left, top: safe.top, right: viewport.w - safe.right, bottom: safe.top + (PLATES_UNITS.top + PLATES_UNITS.h + PLATES_UNITS.clear) * u },
+    { left: safe.left + FEED_UNITS.left * u, top: safe.top + FEED_UNITS.top * u, right: safe.left + (FEED_UNITS.left + FEED_UNITS.least + FEED_UNITS.gap) * u, bottom: safe.top + FEED_UNITS.top * u + Math.max(FEED_UNITS.height, FEED_UNITS.height * u) },
+  ];
+}
+
 export function reserved(r: Reservations, kind: ReservedKind): Rect | null {
   return r.items.find((i) => i.kind === kind)?.rect ?? null;
 }

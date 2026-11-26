@@ -11,9 +11,9 @@ import { engineCombat, fighters, mergeCombat } from "./combat";
 import type { CombatPairs } from "./combat";
 import type { CombatForm } from "./arrange/gathering";
 import type { TableModel } from "../model";
-import { shadowInputOf } from "./arrange/shadow";
+import { leafInputOf } from "./arrange/leaves";
 import { arrangedMemory } from "./arrange/adapter";
-import type { ShadowOptions } from "./arrange/shadow";
+import type { EngineOptions } from "./arrange/leaves";
 
 export interface TableInputOptions {
   readonly viewport: Viewport;
@@ -33,8 +33,8 @@ export interface TableInputOptions {
   readonly blocked?: ReadonlySet<CardId>;
   /** The clash's attackers in the order it first stood them (the app keeps it for the combat). */
   readonly order?: readonly CardId[];
-  /** Plan the across leaf with the arrangement engine too (debug only; `TablePlan.shadow`). */
-  readonly shadow?: ShadowOptions;
+  /** Lay every opponent's leaf out with the arrangement engine (`TablePlan.leaves`); drawn when `draw` (the app). */
+  readonly engine?: EngineOptions;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -60,11 +60,16 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     seats: s.targets.flatMap((t) => ("seat" in t ? [t.seat] : [])),
     controller: s.controller,
   }));
+  // The near place is the camera's: the perspective's seat, whether or not it is still in the game (out, its board is
+  // empty and its plate says so). The other places are the opponents still in the game: one out gives its room back
+  // (its plate stays, a chip). With none left the game is over and the table is the near place alone.
+  // (`mat` alone, as tests and the bench plan it, keeps every seat in its four-seat template.)
+  const seats = boards(model).filter((b, i) => i === 0 || !o.engine || !model.seat(b.seat)?.out);
   return {
     viewport: o.viewport,
     ...(o.safe ? { safe: o.safe } : {}),
     mode: o.mode ?? "normal",
-    seats: boards(model),
+    seats,
     involved,
     settling: o.settling ?? false,
     memory: o.memory ?? null,
@@ -74,6 +79,16 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.
     ...(blocked.size ? { blocked } : {}),
     ...(o.order?.length ? { order: o.order } : {}),
-    ...(o.shadow && model.seats.length === 4 ? { shadow: shadowInputOf(model, model.seats[2]!.id, involved, o.settling ?? false, { ...o.shadow, memory: o.shadow.memory ?? arrangedMemory(o.memory?.get(model.seats[2]!.id)) }) } : {}),
+    ...(o.engine && seats.length <= 4 ? { engine: engineInputOf(model, seats, involved, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
   };
+}
+
+/** Every opponent's leaf (every seat but the perspective's), each with its own memory: given, or carried in the layout
+ *  memory. */
+function engineInputOf(model: TableModel, seats: TableInput["seats"], involved: ReadonlySet<CardId>, settling: boolean, o: EngineOptions, memory: ReadonlyMap<SeatId, LayoutMemory> | null) {
+  const leaves = seats.slice(1).map(({ seat, board }) => {
+    const m = o.memory?.has(seat) ? (o.memory.get(seat) ?? null) : arrangedMemory(memory?.get(seat));
+    return leafInputOf(model, seat, involved, settling, { ...o, memory: m }, board);
+  });
+  return { leaves, draw: !!o.draw };
 }

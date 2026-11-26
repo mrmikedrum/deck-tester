@@ -1,7 +1,7 @@
 // The seats as the chrome tells them: each seat's nameplate with its summary as icons, and the nameplate focus with the
 // same summary in words and the seat's zones picked up as printed cards. Figures are facts the engine sent, never a
 // verdict. The client's words name a seat by its name, never by a pronoun. Pure.
-import { designUnit } from "../layout";
+import { FEED_UNITS, designUnit } from "../layout";
 import type { TablePlan } from "../layout";
 import { RULE_CARDS, isLand } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
@@ -27,8 +27,10 @@ type Measure = (text: string, font: string) => number;
 const estimate: Measure = (text, style) => text.length * (style.startsWith("400") ? 10 : 9);
 
 /** A plate's width in design units, including the life box's padding and the name's letter spacing (chrome.css). */
-export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate): number {
+export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate, out = false): number {
   const title = measure(name, `600 19px ${font.ui}`) + name.length * 19 * 0.02;
+  // Out of the game: the sigil, the name and "Out", nothing else.
+  if (out) return 10 + 18 + 8 + title + 8 + measure("Out", `italic 400 15px ${font.serif}`) + 4 + 6 + 2;
   const lifeBox = Math.max(34, measure(String(life), `700 19px ${font.ui}`)) + 12;
   const bronze = 10 + 18 + 8 + title + 8 + lifeBox + 6;
   const tab = icons.length ? 20 + icons.reduce((n, i) => n + 18 + 3 + measure(i.figure, `700 16px ${font.ui}`), 0) + 10 * (icons.length - 1) : 0;
@@ -39,8 +41,8 @@ const overlap = (a: Box, b: Box): number => Math.max(0, Math.min(a.r, b.r) - Mat
 
 /**
  * Where the top row's plates go (each its left edge, CSS px): each as near its leaf (`pref`, its preferred left edge)
- * as it can be without covering a card the table shows (`under`: the boxes of the plan's hit groups) or another plate.
- * Keep the whole row on screen and favor the preferred position of the plate across the table.
+ * as it can be without covering a card the table shows (`under`: the boxes of the plan's hit groups) or another plate,
+ * in the order given (the seats' order). Keep the whole row on screen and favor the preferred position of the plate across the table.
  */
 export function placeTop(
   plates: readonly { readonly seat: string; readonly place: string; readonly w: number; readonly pref: number }[],
@@ -68,7 +70,9 @@ export function placeTop(
   const shifts = [...stops].sort((a, b) => a - b);
   const best: { cost: number; plate: number }[][] = [shifts.map(() => ({ cost: 0, plate: -1 }))];
   for (let mask = 1; mask < count; mask++) {
-    const choices = plates.flatMap((p, j) => mask & (1 << j) ? [{ p, j, prev: mask ^ (1 << j) }] : []);
+    // Plates keep the seats' order, as given (opponents always sit in the same place relative to me, a seat out of the
+    // game included): the rightmost of a set is the last of it. Preferred positions only steer how far each drifts.
+    const choices = plates.flatMap((p, j) => (mask & (1 << j) && !(mask >> (j + 1)) ? [{ p, j, prev: mask ^ (1 << j) }] : []));
     const scores: typeof best[number] = [];
     best.push(scores);
     for (const [i, shift] of shifts.entries()) {
@@ -95,6 +99,37 @@ export function placeTop(
     out.set(plates[plate]!.seat, row.l + widths[mask]! + shifts[i]!);
   }
   return out;
+}
+
+/** The log strip under the Game button (chrome.css `.l-feed`): layout keeps its leaves clear of it at its least. */
+const FEED = FEED_UNITS;
+
+/**
+ * How wide the log strip may be (CSS px): its widest, or less where a card the table shows (the plan's hit groups) would
+ * be under it, as the plates keep clear of them; never under its heading's width. Null: as wide as it likes.
+ */
+export function feedWidthOf(plan: TablePlan | null, viewport: ViewportState): number | null {
+  if (!plan) return null;
+  // (kept for the plan and viewport it was found for: views are made every commit, the plan changes far less often)
+  const key = `${viewport.w}x${viewport.h}|${viewport.safe.top},${viewport.safe.left}`;
+  const kept = FEED_WIDTHS.get(plan);
+  if (kept && kept.key === key) return kept.width;
+  const width = feedWidth(plan, viewport);
+  FEED_WIDTHS.set(plan, { key, width });
+  return width;
+}
+
+const FEED_WIDTHS = new WeakMap<TablePlan, { readonly key: string; readonly width: number | null }>();
+
+function feedWidth(plan: TablePlan, viewport: ViewportState): number | null {
+  const u = designUnit(viewport), l = viewport.safe.left + FEED.left * u, t = viewport.safe.top + FEED.top * u, b = t + Math.max(FEED.height, FEED.height * u);
+  let w = FEED.widest * u;
+  for (const g of plan.hits.groups) {
+    if (g.kind === "plate") continue;
+    const xs = g.quad.map((p) => p.x), ys = g.quad.map((p) => p.y), gl = Math.min(...xs);
+    if (Math.min(...ys) < b && Math.max(...ys) > t && Math.max(...xs) > l && gl < l + w) w = Math.min(w, gl - l - FEED.gap * u);
+  }
+  return w >= FEED.widest * u ? null : Math.max(FEED.least * u, w);
 }
 
 /** What a seat has on the table, counted in one pass. */
@@ -230,7 +265,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
     const at = plan ? centre(plan, s.id) : null;
     const i = others.indexOf(s);
     const mark = marks.get(s.id);
-    const icons = mine ? [] : restIcons(model, s.id, summaryOf(model, s.id));
+    const icons = mine || s.out ? [] : restIcons(model, s.id, summaryOf(model, s.id));
     return {
       seat: String(s.id),
       group: `plate:${s.id}`,
@@ -245,7 +280,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       bottom: at?.bottom ?? null,
       // Mine carries no icons at rest: my own table is in front of me (my nameplate focus has the words).
       icons,
-      width: plateWidth(String(s.name), s.life, icons, measure),
+      width: plateWidth(String(s.name), s.life, icons, measure, s.out),
     };
   });
   const top = safe.top + PLATE.top * u;
@@ -339,6 +374,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
   ];
   const graveyard = picked(model, [...model.zone(seat, "graveyard")].reverse());
   const exile = picked(model, [...model.zone(seat, "exile")].reverse());
+  const command = picked(model, model.zone(seat, "command"));
   const handIds = model.zone(seat, "hand");
   const hand = mine || s.handVisible ? picked(model, handIds) : Array.from({ length: s.hand }, () => ({ id: null, name: "A card in hand", image: null }));
   const also = [
@@ -356,6 +392,8 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
     commanderDamage: t.commanderDamage,
     graveyard,
     exile,
+    command,
+    board: !s.out,
     hand,
     handCount: s.hand,
     library: s.library,

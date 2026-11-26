@@ -1,30 +1,28 @@
-// The across leaf, drawn (§6.1 step 6): an arrangement as the seat plan the rest of the client already reads, so the
-// scene, picking, the table's audit, the lean-in and the combat row take it unchanged. Each unit carries the engine's
-// pose for its top card (the orientation unturned, and how far it is turned: a quarter or a notch) and its target
+// An opponent's leaf, drawn (§6.1 step 6, §6.2 step 8): an arrangement as the seat plan the rest of the client already
+// reads, so the scene, picking, the table's audit, the lean-in and the gathering take it unchanged. A parted table hands
+// it the arrangement as the pose draws it (`posed`): its fixtures follow the frame it was drawn on. Each unit carries the
+// engine's pose for its top card (the orientation unturned, and how far it is turned: a quarter or a notch) and its target
 // region on screen (its place: what a tap at rest reaches); everything else (fixtures, ids, titles) is the seat plan's
 // usual shape.
 import type { SeatBoard } from "../board";
-import { FLOOR, TAP_PX } from "../board";
 import { Ledger } from "../ledger";
-import { bounds, zoneShape } from "../shape";
+import { bounds, commanderShape } from "../shape";
 import type { Projector } from "../projector";
+import { topChrome } from "../reservations";
 import type { Reservations } from "../reservations";
 import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
-import { CW, PLATE_S, ZONE_S, floorScale, makeGeo } from "../seat/geometry";
+import { CW, PLATE_S } from "../seat/geometry";
 import type { CardId, SeatId, V3 } from "../types";
-import type { ArrCard, ArrUnit, ArrangeResult, CardPlace, ContainerMemory, SurfaceFrame } from "./contract";
-import { CARD, onFrame } from "./frame";
+import type { ArrCard, ArrUnit, ArrangeResult, CardPlace, ContainerMemory, PickTarget } from "./contract";
+import { CARD, LEAN, clearBehind, onFrame } from "./frame";
+import { LIE_DEPTH } from "./rows";
 import { kindOf } from "./policies/kinds";
-import { S_TABLE } from "./scale";
-import { LEAF } from "./leaf";
+import { S_TABLE, SLOT } from "./scale";
 
 /** The seat plan's memory for an arranged leaf: the engine's container memory, carried as layout memory is. */
 export const ARRANGED = "arranged";
 export const arrangedMemory = (m: LayoutMemory | null | undefined): ContainerMemory | null =>
   m && m.paradigm === ARRANGED && m.v === 1 ? (m.fit as ContainerMemory) : null;
-
-/** The zone piles along the far strip: the first's left edge in from the leaf's edge, and the space between two. */
-const ZONE_EDGE = 0.45, ZONE_GAP = 0.3;
 
 const madd = (a: V3, b: V3, k: number): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k });
 
@@ -50,58 +48,81 @@ const roleOf = (c: ArrCard | undefined): UnitRole => {
 };
 
 export interface ArrangedSeatInput {
+  /** As drawn: at rest, or as a pose moved it (its frame is the one it was drawn on). */
   readonly result: ArrangeResult;
-  readonly frame: SurfaceFrame;
-  readonly yaw: number;
+  /** The far strip's depth (the template's leaf). */
+  readonly far: number;
+  /** How far the arrangement was drawn slid along its `away` (a parting): the fixtures are measured at rest. */
+  readonly shift: number;
+  /** How far a parting may slide it (the template's most): a fixture holds at both ends. */
+  readonly reach: number;
   readonly board: SeatBoard;
   readonly cards: readonly ArrCard[];
   readonly projector: Projector;
   readonly reserve: Reservations;
 }
 
-/** The across leaf's seat plan from its arrangement. */
+/** The far strip's depth found for an arrangement (its rows and frame decide it), by what lies on the strip. */
+const STRIP_V = new WeakMap<object, Map<string, number>>();
+
+/** An opponent's seat plan from its arrangement. */
 export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
-  const { result, frame: f, board } = a;
+  const { result, board } = a, f = result.fit.frame, yaw = Math.atan2(-f.across.z, f.across.x);
   const fit = result.fit, byId = new Map(a.cards.map((c) => [c.id, c]));
-  const regionOf = new Map(fit.targets.map((t) => [t.piece, t.region]));
+  const targetOf = new Map(fit.targets.map((t) => [t.piece, t]));
   const units: Unit[] = [];
-  for (const u of fit.units) units.push(unitOf(u, byId, regionOf.get(u.id)));
+  for (const u of fit.units) units.push(unitOf(u, board.seat as SeatId, byId, targetOf.get(u.id)));
   // Cards no place could hold (actors past every place) are reached through the entry: one pile by the plate.
   const placed = new Set(units.flatMap((u) => [...u.members, ...u.dressing]));
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
 
-  // The far strip holds the fixtures side by side along its near edge (further back they would leave the screen's top):
-  // the zone piles, the plate, the commander waiting beside it.
-  const g = makeGeo(a.projector, a.reserve, FLOOR.any);
-  const strip = f.d - LEAF.far, edge = f.w / 2;
-  const plate = { pos: onFrame(f, 0.6, strip + 0.25), scale: PLATE_S, posture: "stand" as const };
-  const zones: Fixtures["zones"][number][] = [];
-  const present = (["graveyard", "exile"] as const).filter((z) => (z === "graveyard" ? board.fixtures.graveyard : board.fixtures.exile) > 0);
-  // Side by side by their widths as drawn: a pile grows past ZONE_S to meet the floor (measured as it is drawn: another's
-  // pile is propped up, so it needs far less than one lying flat would), and the next stands clear of it.
-  const scaleAt = (at: number): number => {
-    const one = zoneShape(a.projector, board.seat, "graveyard", { pos: onFrame(f, at, strip + 0.05), scale: 1, posture: "flat" }, board.mine), b = bounds(one.face);
-    return Math.max(ZONE_S, (Math.max(FLOOR.any * g.u, TAP_PX) * 1.09) / one.width, (TAP_PX * 1.09) / (b.b - b.t));
+  // Graveyard and exile are not on the leaf (the nameplate's focus holds them; a card bound there flies to the plate).
+  // The commander waiting in the command zone stands at table size behind the rows in use, as deep as keeps its face
+  // wholly clear of the chrome along the top (the nameplates' row, the log strip) at rest and parted at the most (a
+  // parting carries it with the leaf). Where no depth does, it is not on the leaf: the nameplate's focus shows it.
+  const rest = { ...f, anchor: onFrame(f, 0, -a.shift) }, edge = f.w / 2, s = fit.scale;
+  const vp = a.projector.viewport, safe = a.reserve.safe;
+  const top = topChrome(vp, { left: safe.left, top: safe.top, right: vp.w - safe.right, bottom: vp.h - safe.bottom });
+  const commanderAt = (on: typeof f, v: number): Fixtures["commander"] => {
+    if (board.fixtures.commander === undefined) return undefined;
+    const pos = onFrame(on, edge - (CW * S_TABLE) / 2 - SLOT.margin, v);
+    return { card: board.fixtures.commander, placement: { pos, scale: S_TABLE, posture: "stand" } };
   };
-  let u = -edge + ZONE_EDGE;
-  for (const zone of present) {
-    let scale = scaleAt(u + (CW * ZONE_S) / 2);
-    for (let k = 0; k < 2; k++) scale = scaleAt(u + (CW * scale) / 2);   // at its middle, at the scale it draws at
-    zones.push({ zone, placement: { pos: onFrame(f, u + (CW * scale) / 2, strip + 0.05), scale, posture: "flat" } });
-    u += CW * scale + ZONE_GAP;
+  const ends = [rest, { ...rest, anchor: onFrame(rest, 0, a.reach) }];
+  const clear = (v: number): boolean =>
+    ends.every((on) => {
+      const c = commanderAt(on, v);
+      if (!c) return true;
+      const b = bounds(commanderShape(a.projector, board.seat, c).face);
+      return b.t >= safe.top && b.l >= safe.left && b.r <= safe.right && top.every((r) => b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom);
+    });
+  // Nearest it may come: behind the rows in use (a standing row's tops, a lying row's far edge and proud strip).
+  const behind = fit.rows.reduce((t, r) => Math.max(t, r.posture === "stand" ? clearBehind(a.projector, rest, r.v, s, 2, LEAN) : r.v + LIE_DEPTH * s + 0.3 * CARD.h * s), 0) + 0.1;
+  const key = `${board.fixtures.commander ?? ""}|${a.shift}|${a.reach}|${top.map((r) => r.bottom.toFixed(2)).join(",")}`;
+  let v = STRIP_V.get(fit)?.get(key);
+  if (v === undefined) {
+    v = Number.NaN;
+    if (board.fixtures.commander !== undefined && clear(behind)) {
+      let a0 = behind, b0 = f.d;
+      for (let k = 0; k < 14; k++) {
+        const m = (a0 + b0) / 2;
+        if (clear(m)) a0 = m;
+        else b0 = m;
+      }
+      v = a0;
+    }
+    if (!STRIP_V.has(fit)) STRIP_V.set(fit, new Map());
+    STRIP_V.get(fit)!.set(key, v);
   }
-  if (left.length) {
-    const pos = onFrame(f, edge - 0.9, strip + 0.05);
-    units.push({ id: `u:entry:${board.seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos, scale: S_TABLE, posture: "flat" } });
-  }
-  let commander: Fixtures["commander"];
-  if (board.fixtures.commander !== undefined) {
-    const pos = onFrame(f, edge - 0.8, strip + 0.2);
-    commander = { card: board.fixtures.commander, placement: { pos, scale: Math.max(0.9, floorScale(g, pos, FLOOR.any, false, 0.9)), posture: "stand" } };
-  }
+  const commander = Number.isNaN(v) ? undefined : commanderAt(f, v);
+  // (The plate's own table group lies past the leaf's far edge, out of the way: the nameplate is chrome.)
+  const plate = { pos: onFrame(f, 0, f.d + 0.25), scale: PLATE_S, posture: "stand" as const };
+  const zones: Fixtures["zones"] = [];
+  if (left.length)
+    units.push({ id: `u:entry:${board.seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(f, 0, behind + 0.2), scale: S_TABLE, posture: "flat" } });
   // The page from its front row's feet back (the strip in front of them, for a stack's dice, is the open table's).
   const v0 = fit.rows[0] ? fit.rows[0].v : 0;
-  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw: a.yaw }, plate, zones, ...(commander ? { commander } : {}) };
+  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw }, plate, zones, ...(commander ? { commander } : {}) };
   const memory: LayoutMemory = { v: 1, paradigm: ARRANGED, fit: fit.memory };
   const folded = fit.units.reduce((t, u) => t + Math.max(0, u.members.length - 1), 0);
   return new Ledger(board.cards.map((c) => c.id)).seal({
@@ -113,7 +134,16 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   });
 }
 
-function unitOf(u: ArrUnit, byId: ReadonlyMap<CardId, ArrCard>, region: Unit["hit"]): Unit {
+/**
+ * A unit's id on the table: the engine's ids are its container's (every leaf has its `u:frest`), so all but a single
+ * card's own (`u:c<card>`, unique already) carry their seat.
+ */
+export const tableUnitId = (id: string, seat: SeatId): string => (/^u:c\d+$/.test(id) ? id : `${id}@${seat}`);
+
+function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, target: PickTarget | undefined): Unit {
+  const region = target?.region;
+  // The solver's target opens a chooser where an attachment on this unit is offered: the tap reaches the attachment too.
+  const reach = target && "open" in target.action && u.dressing.length && target.members.length > u.members.length ? target.members : undefined;
   const topId = u.top ?? u.members[0]!;
   const topPlace = u.cards.find((p) => p.card === topId) ?? u.cards.at(-1)!;
   const pose = unturned(topPlace);
@@ -122,7 +152,7 @@ function unitOf(u: ArrUnit, byId: ReadonlyMap<CardId, ArrCard>, region: Unit["hi
   // (A lying place is a notched card wide: its pile says only how many; what they are is its top and its facts.)
   const title = u.kind === "fan" ? `${u.members.length}` : u.kind === "summary" ? `All ${u.members.length}` : u.kind === "stack" && u.tier !== "lands" ? `${top?.name ?? ""} ${u.members.length}` : null;
   return {
-    id: u.id,
+    id: tableUnitId(u.id, seat),
     role: roleOf(top),
     kind,
     members: u.members,
@@ -135,5 +165,6 @@ function unitOf(u: ArrUnit, byId: ReadonlyMap<CardId, ArrCard>, region: Unit["hi
     placement: { pos: pose.foot, scale: S_TABLE, posture: topPlace.posture === "stand" ? "stand" : "flat", frame: { right: pose.right, up: pose.up } },
     turn: pose.turn,
     ...(region ? { hit: region } : {}),
+    ...(reach ? { reach } : {}),
   };
 }

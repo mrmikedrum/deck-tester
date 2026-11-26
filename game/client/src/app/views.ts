@@ -10,7 +10,7 @@ import * as play from "../play";
 import type { Carried } from "../play";
 import type { FocusTop, HighlightRequest, HighlightTone, MomentView, SceneFrame, SceneReport } from "../scene/stage/types";
 import { focusTopOf, isOpen, tableTop, top } from "./focus";
-import { platesOf, seatFocusOf } from "./seats";
+import { feedWidthOf, platesOf, seatFocusOf } from "./seats";
 import { chipViewsOf, handSheetOf, inspectorOf, menuOf, mulliganOf, siftViewOf, stackRowsOf } from "./layers";
 import { sceneHas } from "./moments";
 import { offersNewGame, waitingLine } from "./readout";
@@ -178,6 +178,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
     newGame: offersNewGame(s),
     stackOpen: isOpen(f, "stack"),
     log: narrative.logStripView(n, model),
+    logWidth: feedWidthOf(s.plan, s.viewport),
     logSheet: model && isOpen(f, "log") ? narrative.logSheetView(n) : null,
     losses: model && isOpen(f, "losses") ? narrative.lossReport(n) : null,
     recap: model ? narrative.recapView(n) : null,

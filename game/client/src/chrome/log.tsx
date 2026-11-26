@@ -17,14 +17,17 @@ const STRIP_TONE: Readonly<Record<LogStripView["tone"], string>> = {
 /** The strip: hidden until a turn has begun; a tap opens the log. */
 export function LogStrip({
   view,
+  width = null,
   onOpen,
 }: {
   readonly view: LogStripView;
+  /** Narrower than its own where a card would be under it (app/seats.ts `feedWidthOf`). */
+  readonly width?: number | null;
   readonly onOpen: () => void;
 }): JSX.Element | null {
   if (!view.heading) return null;
   return (
-    <button type="button" class="l-feed" data-audit="log" data-fk="log" aria-label="What happened" onClick={onOpen}>
+    <button type="button" class="l-feed" data-audit="log" data-fk="log" aria-label="What happened" onClick={onOpen} {...(width !== null ? { style: `max-width:${width}px` } : {})}>
       <span class="l-feed-turn">{view.heading}</span>
       {view.lines.length ? (
         <span class={STRIP_TONE[view.tone]}>

@@ -449,7 +449,7 @@ with the design unit, the target never does. `planTable` audits the composed tab
 cards acting standing where they are drawn, and the stack; the clash apart, over it): floors, the tappable patch
 inside the safe area and off visible chrome, nothing covering a card's name, foot or most of its face. It folds harder
 where seats collide or the stack covers them, down to a last resort that is always reachable: the whole seat as one
-summary that opens a sift. The stack stands in the open middle the pages leave; an entry with no room there
+summary that opens a sift. The stack stands in the open middle the pages leave, the mats parted all the way for it; an entry with no room there
 (`no-room`), off the safe area (`off-screen`) or without a patch of its own is not `reachable`: it has no hit group, a
 sheet offers it, and the plan reports the violation. As the focus, the top never stands under its floor: past what
 fits, the cards under it overlap further (each keeping a finger's strip), then the deepest lie under the last one shown.
@@ -458,13 +458,17 @@ set aside; the focus clears what the stack aims at and the chrome, or reports `f
 break limits on dense boards.
 
 **Combat** is the gathering's (`layout/arrange/gathering.ts`, every table), in one of two forms
-(`TableInput.combatForm`; absent, `combatFormOf`). **The clash**, when I am attacked or anyone is blocked: every
+(`TableInput.combatForm`; absent, `combatFormOf`). **The clash**, when I am attacked or my attackers are blocked (or opponents' duels do not fit): every
 fighter upright on a plane carried toward the eye, one rank of columns between the plaques and my field row's tops
 (`TablePlan.fieldTop`, which it never covers: `clash-covers`), wings by defender, a blocker on its controller's side
 of its attacker, at the largest step from 1.8 at which every column fits one tier, the rest in a "more" column. Its
 fighters, brand slots (`slot:<attacker>`, reaching the attacker) and "more" (`clash:more`) are reached over the whole
-table; what it covers is reached once it is set aside. **The table form** moves nothing: each attack is a lane, one
-trunk per attacking seat and defender. `TablePlan.gathering` carries the columns, wings, plaques and extent for the
+table; what it covers is reached once it is set aside. **The table form**: each unblocked attack I am in is a lane,
+one trunk per attacking seat and defender, its attackers at home (between opponents, no lane: the attackers' light and
+the defender's tally say it); each blocked fight stands as a **duel** in a row across
+the middle at table size (the attacker, turned when tapped, a clasp, its blockers), the mats parted for it and the row
+slid to where it needs least. A fight between opponents takes the table form by itself; duels that do not fit the
+middle raise the clash (`TablePlan.crowded`, and the app's clash layer), or, set aside, stay home. `TablePlan.gathering` carries the columns, wings, plaques and extent for the
 scene (one light shade, a calm ground of the page's tone under the picture, fighters above both, no lanes) and the
 chrome (plaques, brands, clasps, the plates' tallies, `app/clash.ts`). They count the unblocked attackers' current
 power and say "unblocked", never "damage"; once the engine reports combat damage dealt to a wing's defender (a player
@@ -472,10 +476,11 @@ or a planeswalker) by the attackers aimed at it, the plaque says what was dealt.
 whose attackers all wait in "more" keeps its wing and tally.
 
 `hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
-by depth, so the stack's top wins where its cards meet), a later group winning a tie. It is what layout tests, the
+by depth, so the stack's top wins where its cards meet), a later group winning a tie; first among the faces drawn
+(`HitGroup.face`), and only where no face is among the wider places an engine unit owns. It is what layout tests, the
 scene's `pick` and the tools use; the scene picks the poses it drew (`pickDrawn`), which at rest equals `hitTest` on the
 committed plan. The app replans only when the plan key changes: gen, model rev, viewport, insets, chrome mode, the
-combat draft's cards and `settling`: cards in flight between zones, while a change set the scene has not taken moves a
+combat draft's cards, the decision in hand (its kind and the cards it offers: `decisionFactsOf`) and `settling`: cards in flight between zones, while a change set the scene has not taken moves a
 card or its last report said `flying`. Pages then hold their shape while cards leave them; the app replans when it turns
 false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
 today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
@@ -483,8 +488,17 @@ cards, needs `planTable` work too.
 
 **The arrangement engine** ([its design](game-arrangement-engine.md), `layout/arrange/`) replaces `SeatLayout` one
 container at a time: a container's cards and space in, units, places, pick targets and attention out, with the rules
-(a `Policy`) swappable and no count of rows or places assumed. Its first slice plans the across leaf in the shadow of
-`mat`: `tableInputOf(model, { shadow: {} })` asks for it and `TablePlan.shadow` records it; nothing drawn reads it yet.
+(a `Policy`) swappable and no count of rows or places assumed. Every opponent's leaf is the engine's
+(`tableInputOf(model, { engine: { draw: true } })`, as the app plans; `TablePlan.leaves` holds each at rest), on the
+template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row on one line); my side is still `mat`'s.
+At rest no middle is held back. **The parting** makes room when something rests on the middle at table size: every
+engine leaf slides along its own `away` by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
+it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and
+patches parted). `TablePlan.part` says how far. No leaf goes under the chrome along the top (`topChrome`); graveyard and
+exile are in the nameplate's focus, not on the leaves (a sift of one reads the zone from the model). The template is
+tuned for one to four seats: the near place is the camera's (the perspective, in the game or not), the others the
+opponents still in it; one out gives its room back (its nameplate a small "Out" chip that opens its focus), and with
+none left the table is the near place alone.
 
 ## play: the decision controller
 

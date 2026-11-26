@@ -1415,8 +1415,17 @@
   .l-plate.selected .tab {
     box-shadow: var(--plaque-shadow), 0 0 0 3px #e0a62c, 0 0 18px rgba(241, 200, 106, 0.8);
   }
+  /* A seat out of the game: a small quiet chip (its leaf's room went to the others). */
   .l-plate.out {
-    filter: grayscale(0.8) brightness(0.7);
+    filter: grayscale(0.8) brightness(0.7) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+    opacity: 0.8;
+  }
+  .l-plate.out .bronze {
+    border-radius: 5px;
+  }
+  .l-plate .gone {
+    font: italic 400 calc(15 * var(--u)) var(--serif);
+    padding-right: calc(4 * var(--u));
   }
   .l-plate:focus-visible {
     outline: 2px solid var(--sig-option);
@@ -1709,6 +1718,12 @@
     flex-wrap: wrap;
     align-items: flex-end;
     row-gap: calc(2 * var(--u));
+  }
+  .l-picked button.pc {
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
   }
   .l-picked .pc {
     flex: none;

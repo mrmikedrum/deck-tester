@@ -49,6 +49,9 @@ import type { Intent } from "./validate";
 const PLANNERS = new Lru<RowPlanner>(32, true);
 const AUDITS = new Lru<ArrViolation[]>(256);
 const RESULTS = new Lru<ArrangeResult>(64);
+/** What each returned arrangement drew, so a pose can draw it again where the pose moves it (`posed`). */
+const PLACED = new WeakMap<Arrangement, { readonly placed: Candidate["placed"]; readonly tapped: (id: CardId) => boolean }>();
+const POSED = new WeakMap<Arrangement, Map<number, ArrangeResult>>();
 /** The walk's batching of moves out of an overflowing band (tests turn it off to show it changes nothing). */
 export const BATCHING = { on: true };
 
@@ -265,6 +268,7 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
     report: { edits: cand.edits, candidates, audits, policyInvalid: invalid, violations: cand.violations, poses },
     memory,
   };
+  PLACED.set(fit, { placed: cand.placed, tapped: (id) => byId.get(id)!.tapped });
   return overflow ? { fit, overflow } : { fit, overflow: null };
 }
 
@@ -1109,6 +1113,36 @@ function auditAt(input: ArrangeInput, cand: Candidate, s: number, du: number, sh
     return { id: p.unit.id, face: d.face, scale: s, creature: d.face ? cardOf(d.face.card).types.creature : false, region: d.region, order: paint, faces, paint: faces.at(-1)?.paint ?? 0 };
   });
   return auditUnits(c, audited, du);
+}
+
+/**
+ * The same arrangement under a pose (§5.3): the frame slid `shift` along its `away`, every card, marker and target drawn
+ * again where the pose moves it. Nothing else changes (units, members, slots, memory, paint order): a pose replans no
+ * board. The rows were laid to hold under the container's poses, so a shift up to the deepest of them meets every floor
+ * and patch.
+ */
+export function posed(input: ArrangeInput, r: ArrangeResult, shift: number): ArrangeResult {
+  const got = PLACED.get(r.fit);
+  if (!shift || !got) return r;
+  let kept = POSED.get(r.fit);
+  const hit = kept?.get(shift);
+  if (hit) return hit;
+  const c = input.container, f = { ...c.frame, anchor: onFrame(c.frame, 0, shift) };
+  const drawn = new Map(got.placed.map((p) => [p.unit.id, drawUnit(c, f, p.row, { kind: p.unit.kind, members: p.unit.members, dressing: p.unit.dressing, tapped: got.tapped, stands: p.stands, show: p.show, u: p.u, w: p.w }, r.fit.scale)] as const));
+  const units = r.fit.units.map((un) => {
+    const d = drawn.get(un.id);
+    return d ? { ...un, cards: d.cards, marker: d.marker } : un;
+  });
+  const targets = r.fit.targets.map((t) => {
+    const d = drawn.get(t.piece);
+    return d ? { ...t, region: d.region } : t;
+  });
+  const pts = targets.flatMap((t) => t.region);
+  const screen = pts.length ? { left: Math.min(...pts.map((p) => p.x)), right: Math.max(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), bottom: Math.max(...pts.map((p) => p.y)) } : r.fit.used.screen;
+  const out: ArrangeResult = { fit: { ...r.fit, frame: f, units, targets, used: { ...r.fit.used, screen } }, overflow: r.overflow } as ArrangeResult;
+  if (!kept) POSED.set(r.fit, (kept = new Map()));
+  kept.set(shift, out);
+  return out;
 }
 
 function containerOverflow(input: ArrangeInput, policy: Policy, cards: readonly ArrCard[], seq: Record<string, number>, next: number, invalid: string | null): ArrangeResult {

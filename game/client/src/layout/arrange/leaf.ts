@@ -1,31 +1,40 @@
-// An opponent's leaf as a container (§1.1), shaped to the designer's no-middle table: the leaf reaches toward my
-// creatures (its front row stands at z ≈ −3.9 across) and ends in a far strip (library, graveyard, exile, the waiting
-// commander) the builder keeps; how many rows fit between is the engine's to find from the space. Plates are chrome at
-// the top of the screen, over their leaf: a screen keepout. The template's no-middle variant (a later step) will own
-// these numbers; the slice builds the across leaf from today's slot with them.
+// An opponent's leaf as a container (§1.1), shaped by the no-middle template (template.ts `LeafGeometry`): every leaf's
+// front row reaches toward my creatures on one front line, and the leaf ends in a far strip (library, graveyard, exile,
+// the waiting commander) the builder keeps; how many rows fit between is the engine's to find from the space. Plates are
+// chrome at the top of the screen, over their leaf: a screen keepout. The leaf's one pose is the parting at its most
+// (§5.3): its rows are laid to hold there, so any lesser parting holds too.
 import type { Projector } from "../projector";
-import type { SeatSlot } from "../template";
+import { tableTemplate } from "../template";
+import type { LeafGeometry, Parting, SeatSlot } from "../template";
 import type { Rect, SeatId } from "../types";
+import { topChrome } from "../reservations";
 import type { Container, FramePose, SurfaceFrame } from "./contract";
 import { CARD, LEAN, onFrame, slotFrame } from "./frame";
 import { S_TABLE, SLOT } from "./scale";
 
-/** Where a leaf's front row stands (world z, across) at rest: its anchor is the count strip and margin nearer. */
-export const FRONT_Z = -3.9;
-/** How deep a leaf is from its anchor edge, the far strip included, and the far strip's depth. */
-export const LEAF = { d: 13, far: 2.2 } as const;
-/** A plate on the top of the screen, CSS px: the seat's summary as icons (designer §6, §7.2). */
-export const PLATE = { top: 6, h: 44, w: 330 } as const;
-/** The mats part for a fight or a set-aside spell: the leaves slide away by about two card heights (designer §1). */
-export const PARTED: FramePose = { id: "parted", shift: 2 * CARD.h * S_TABLE };
+const TEMPLATE = tableTemplate(4);
+/** Where a leaf's front row stands (world z, at its middle) at rest, in the four-seat template. */
+export const FRONT_Z = TEMPLATE.leaf.front;
+/** How deep a leaf is from its anchor edge, the far strip included, and the far strip's depth (four seats). */
+export const LEAF: LeafGeometry = TEMPLATE.leaf;
+/** World units a parting of `cards` card heights slides a leaf along its `away`. */
+export const partShift = (cards: number): number => cards * CARD.h * S_TABLE;
+/** The parting at its most, as a pose: the leaves' rows hold their floors and patches there. */
+export const partedPose = (part: Parting): FramePose => ({ id: "parted", shift: partShift(part.most) });
+/** The four-seat template's parting at its most. */
+export const PARTED: FramePose = partedPose(TEMPLATE.part);
 
-/** The leaf's frame for a slot: today's slot turned the same way, brought toward me to the no-middle reach. */
-export function leafFrame(slot: SeatSlot): SurfaceFrame {
-  const f = slotFrame(slot);
+/**
+ * The leaf's frame for a slot: square to me (every leaf's rows run straight across, so all their front rows stand on one
+ * line), its anchor slid along `away` to the front line. A side slot's turn is `mat`'s: turned, a side leaf's back row
+ * reaches under its plate as the mats part.
+ */
+export function leafFrame(slot: SeatSlot, leaf: LeafGeometry = LEAF): SurfaceFrame {
+  const f = slotFrame({ ...slot, yaw: 0 });
   const front = SLOT.margin + SLOT.strip * S_TABLE;
-  // Slide the anchor along `away` so the front row's feet are at FRONT_Z (on a turned leaf, at its middle).
-  const now = onFrame(f, 0, front).z, k = (now - FRONT_Z) / f.away.z;
-  return { ...f, anchor: onFrame(f, 0, -k), d: LEAF.d };
+  // Slide the anchor along `away` so the front row's feet are on the front line.
+  const now = onFrame(f, 0, front).z, k = (now - leaf.front) / f.away.z;
+  return { ...f, anchor: onFrame(f, 0, -k), d: leaf.d };
 }
 
 export interface LeafOptions {
@@ -38,13 +47,14 @@ export interface LeafOptions {
   readonly poses?: readonly FramePose[];
   /** Extra screen keepouts (the stack's place, chrome). */
   readonly keepouts?: Container["keepouts"];
+  /** The template's leaf (the four-seat one by default). */
+  readonly leaf?: LeafGeometry;
 }
 
 export function leafContainer(o: LeafOptions): Container {
-  const frame = leafFrame(o.slot);
-  // The plate sits over the leaf's middle, at the top of the screen.
-  const x = o.projector.project(onFrame(frame, 0, frame.d)).x;
-  const plate: Rect = { left: x - PLATE.w / 2, right: x + PLATE.w / 2, top: o.safe.top + PLATE.top, bottom: o.safe.top + PLATE.top + PLATE.h };
+  const leaf = o.leaf ?? LEAF, frame = leafFrame(o.slot, leaf), vp = o.projector.viewport;
+  // Nothing of a leaf goes under the chrome along the top: the nameplates' row (and a gap under it), the log strip.
+  const top = topChrome(vp, { left: o.safe.left, top: o.safe.top, right: vp.w - o.safe.right, bottom: vp.h - o.safe.bottom });
   return {
     id: `rest:${o.seat}`,
     role: "rest",
@@ -57,8 +67,8 @@ export function leafContainer(o: LeafOptions): Container {
     stand: { lean: LEAN },
     floors: { creature: o.seat === o.viewer ? 72 : 56, any: 44, tapPx: 44 },
     keepouts: [
-      { on: "screen", rect: plate, kind: "plate" },
-      { on: "frame", u0: -frame.w / 2, u1: frame.w / 2, v0: frame.d - LEAF.far, v1: frame.d, kind: "zones" },
+      ...top.map((rect, i) => ({ on: "screen" as const, rect, kind: i === 0 ? ("plate" as const) : ("other" as const) })),
+      ...(leaf.far > 0 ? [{ on: "frame" as const, u0: -frame.w / 2, u1: frame.w / 2, v0: frame.d - leaf.far, v1: frame.d, kind: "zones" as const }] : []),
       ...(o.keepouts ?? []),
     ],
     safe: o.safe,

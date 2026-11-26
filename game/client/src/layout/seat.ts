@@ -61,6 +61,9 @@ export interface Unit {
   readonly turn?: number;
   /** What a tap at rest reaches, on screen, when it is not its face (the arrangement engine's place). */
   readonly hit?: Quad;
+  /** The cards a tap on it reaches when that is more than its members: an attachment the decision offers rides on its
+   *  host, and the host's place opens a chooser of both (the arrangement engine's `open` target). */
+  readonly reach?: readonly CardId[];
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */

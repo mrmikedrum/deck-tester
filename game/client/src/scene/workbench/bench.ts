@@ -1,6 +1,6 @@
 // The bench page (`workbench.html?only=bench`): `planTable` timed in this browser on the same named inputs as the Node
-// bench (tools/bench-plan.mjs): as the app plans (the across leaf drawn by the arrangement engine, a fight gathered), with
-// that leaf arranged from scratch every plan, and with mat alone. It is how the 8 ms budget is
+// bench (tools/bench-plan.mjs): as the app plans (every opponent leaf drawn by the arrangement engine, a fight gathered), with
+// the leaves arranged from scratch every plan, and with mat alone. It is how the 8 ms budget is
 // measured on the iPad (docs/game-arrangement-engine.md §7.3): open it there from the Home Screen or Safari, wait for
 // "Done", and press "Send to Mac": the results go back to the machine serving the page (POST api/bench, kept under
 // .deckmaster/bench/). Over plain http on the network a browser offers no clipboard or share sheet, so the page also
@@ -31,7 +31,7 @@ interface Row {
   readonly what: string;
   readonly plans: number;
   readonly withShadow: Stats;
-  /** The same, as if the leaf's cards had just changed (what the engine keeps between plans forgotten). */
+  /** The same, as if every leaf's cards had just changed (what the engine keeps between plans forgotten). */
   readonly leafChanged: Stats;
   readonly matOnly: Stats;
   readonly engine: { readonly units: number; readonly candidates: number; readonly audits: number; readonly overflow: number; readonly errors: number };
@@ -49,8 +49,9 @@ interface EngineDid {
 }
 /** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
 const did = (p: TablePlan): EngineDid => {
-  const f = p.shadow?.result?.fit;
-  return { units: f?.units.length ?? 0, candidates: f?.report.candidates ?? 0, audits: f ? f.report.audits + f.report.poses.length : 0, overflow: !!p.shadow?.result?.overflow, error: !!p.shadow?.error };
+  const ls = [...(p.leaves?.values() ?? [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
+  const sum = (f: (x: (typeof fs)[number]) => number) => fs.reduce((t, x) => t + f(x), 0);
+  return { units: sum((f) => f.units.length), candidates: sum((f) => f.report.candidates), audits: sum((f) => f.report.audits + f.report.poses.length), overflow: ls.some((l) => !!l.result?.overflow), error: ls.some((l) => !!l.error) };
 };
 
 /** Per-plan times over `PLANS` plans of `input` in the shared course (bench-inputs.ts `course`: what Node times), after
@@ -125,7 +126,7 @@ export async function bench(root: HTMLElement): Promise<void> {
   const run = async () => {
     const rows: Row[] = [];
     const table = $("b-table");
-    table.innerHTML = `<tr><th align=left>input</th><th>as the app plans: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>leaf changed: median</th><th>worst</th><th>batch mean</th><th>mat only: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
+    table.innerHTML = `<tr><th align=left>input</th><th>as the app plans: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>leaves changed: median</th><th>worst</th><th>batch mean</th><th>mat only: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
     for (const input of inputs) {
       $("b-status").textContent = `Timing ${input.name} (${input.what})…`;
       await wait(50);

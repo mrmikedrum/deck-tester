@@ -87,7 +87,7 @@ describe("the design pass's tables on the across leaf", () => {
   });
 });
 
-describe("the protocol corpus: planTable's shadow of the across leaf", () => {
+describe("the protocol corpus: planTable's across leaf, recorded beside mat", () => {
   it("every snapshot with a table plans its across leaf, every card placed, beside mat", async () => {
     const lines: string[] = [];
     let memory = null as Arrangement["memory"] | null;
@@ -95,8 +95,16 @@ describe("the protocol corpus: planTable's shadow of the across leaf", () => {
       const snap = corpusSnapshot(n);
       const model = snap.view && modelOf(snap, catalog, viewerOf());
       if (!model || model.seats.length !== 4) continue;
-      const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", shadow: { memory } }));
-      const sh = plan.shadow!;
+      const across = model.seats[2]!.id;
+      const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", engine: { memory: new Map([[across, memory]]) } }));
+      const sh = plan.leaves!.get(across);
+      // a seat out of the game is not laid out; one still in always is
+      if (model.seat(across)?.out) {
+        expect(sh, n).toBeUndefined();
+        continue;
+      }
+      expect(sh, n).toBeDefined();
+      if (!sh) continue;
       expect(sh.error, n).toBeNull();
       const fit = sh.result!.fit;
       memory = fit.memory;
@@ -111,6 +119,24 @@ describe("the protocol corpus: planTable's shadow of the across leaf", () => {
     }
     expect(lines.length).toBeGreaterThan(10);
     await expect(lines.join("\n") + "\n").toMatchFileSnapshot("__goldens__/corpus.txt");
+  });
+});
+
+describe("the corpus's eliminations on the engine's table", () => {
+  it("049 (two players left) and 050 (one): the seats still in, and their leaves", () => {
+    const seen = (n: string) => {
+      const snap = corpusSnapshot(n);
+      const model = modelOf(snap, catalog, viewerOf())!;
+      const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", engine: { draw: true } }));
+      return { seats: [...plan.seats.keys()].map(String), leaves: [...plan.leaves!.keys()].map(String), out: model.seats.filter((s) => s.out).map((s) => String(s.id)) };
+    };
+    const two = seen("049-play-two-players.json"), one = seen("050-over-one-player.json");
+    expect(two.seats.length).toBe(4 - two.out.filter((s) => s !== two.seats[0]).length);
+    expect(two.leaves).toEqual(two.seats.slice(1));
+    for (const s of two.out) expect(two.leaves).not.toContain(s);
+    expect(one.leaves).toEqual(one.seats.slice(1));
+    for (const s of one.out) expect(one.leaves).not.toContain(s);
+    expect({ two, one }).toMatchSnapshot();
   });
 });
 

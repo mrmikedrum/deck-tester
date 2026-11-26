@@ -62,7 +62,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
   return (
     <div class="l-plates" inert={inert}>
       {plates.map((p) => {
-        const said = `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}${p.tally ? `, ${p.tally.figure.slice(1)} unblocked` : ""}`;
+        const said = p.out ? `${p.name}, out of the game` : `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}${p.tally ? `, ${p.tally.figure.slice(1)} unblocked` : ""}`;
         return (
           <button
             key={p.seat}
@@ -73,12 +73,12 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             aria-label={said}
             aria-expanded={open === p.seat}
             style={`left:${p.x}px;top:${p.y}px;${p.mine ? "transform:translate(-50%,-100%);" : ""}--u:${p.unit}px;--seat:var(--seat-${p.place})`}
-            onClick={() => send({ a: "tap", on: { group: p.group as never, members: [] } })}
+            onClick={() => send(p.out ? { t: "seat", seat: p.seat } : { a: "tap", on: { group: p.group as never, members: [] } })}
           >
             <span class="bronze">
               <i class="sigil" />
               <b class="name">{p.name}</b>
-              <span class="life">{p.life}</span>
+              {p.out ? <span class="gone">Out</span> : <span class="life">{p.life}</span>}
             </span>
             {p.tally ? (
               <span class={`tally ${p.tally.tone}`} style={`--tally-ink:var(--seat-${p.tally.place})`}>
@@ -108,15 +108,14 @@ function Picked({ cards, max, empty, more }: { cards: readonly PickedCard[]; max
   const rest = cards.length - max;
   return (
     <div class="l-picked">
-      {shown.map((c, i) => (
-        <span
-          key={c.id ?? `b${i}`}
-          class={c.image ? "pc" : "pc back"}
-          role="img"
-          aria-label={c.name}
-          style={c.image ? `background-image:url("${c.image}")` : undefined}
-        />
-      ))}
+      {shown.map((c, i) =>
+        more ? (
+          // A card picked up from a zone opens that zone in full (each card its own there, to read or to choose).
+          <button key={c.id ?? `b${i}`} type="button" class={c.image ? "pc" : "pc back"} aria-label={c.name} style={c.image ? `background-image:url("${c.image}")` : undefined} onClick={more} />
+        ) : (
+          <span key={c.id ?? `b${i}`} class={c.image ? "pc" : "pc back"} role="img" aria-label={c.name} style={c.image ? `background-image:url("${c.image}")` : undefined} />
+        ),
+      )}
       {rest > 0 ? (
         more ? (
           <button type="button" class="l-more" onClick={more}>
@@ -198,6 +197,14 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
                 <ZoneHead label="Exile" n={v.exile.length} open={v.exile.length ? openZone("exile") : undefined} />
                 <Picked cards={v.exile} max={3} empty="Empty" more={openZone("exile")} />
               </section>
+              {v.command.length ? (
+                <section>
+                  <h4>
+                    Command <b>{v.command.length}</b>
+                  </h4>
+                  <Picked cards={v.command} max={2} empty="Empty" />
+                </section>
+              ) : null}
               <section>
                 <h4>
                   Hand <b>{v.handCount}</b>
@@ -215,7 +222,7 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
           </div>
         </div>
         <div class="l-row">
-          {!v.mine ? (
+          {!v.mine && v.board ? (
             <button type="button" data-fk={`board:${v.seat}`} onClick={() => send({ t: "board", seat: v.seat })}>
               See {v.name}'s board
             </button>

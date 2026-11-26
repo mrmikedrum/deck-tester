@@ -371,6 +371,8 @@ export interface SiftCards {
   readonly tapped: readonly boolean[];
   /** A graveyard or exile, which keeps its order; else a pile on the battlefield. */
   readonly zone: "graveyard" | "exile" | null;
+  /** Whose: the group's seat, or the seat a zone group names (its pile off the table). */
+  readonly seat: SeatId | null;
 }
 
 /**
@@ -379,10 +381,13 @@ export interface SiftCards {
  */
 export function siftCards(model: TableModel, plan: TablePlan, group: string): SiftCards | null {
   const g = plan.hits.groups.find((x) => x.id === group);
-  if (!g) return null;
   const m = /^zone:(graveyard|exile):(.+)$/.exec(group);
   const zone = m ? (m[1] as "graveyard" | "exile") : null;
-  let ids: CardId[] = zone ? [...model.zone(g.seat!, zone)] : [...g.members];
+  // A graveyard or exile is the seat's in the model, whether or not a pile of it lies on the table (an opponent's is in
+  // the nameplate's focus only).
+  const seat = g?.seat ?? (m ? zoneSeat(model, m[2]!) : null);
+  if (!g && (!zone || !seat)) return null;
+  let ids: CardId[] = zone ? [...model.zone(seat!, zone)] : [...g!.members];
   if (!zone) {
     const by = new Map<string, CardId[]>();
     for (const id of ids) {
@@ -392,14 +397,20 @@ export function siftCards(model: TableModel, plan: TablePlan, group: string): Si
     const tapped = (id: CardId) => model.cards.get(id)?.tapped ?? false;
     ids = [...by.values()].sort((a, b) => b.length - a.length).flatMap((cs) => [...cs.filter((id) => !tapped(id)), ...cs.filter(tapped)]);
   }
-  return { ids, tapped: ids.map((id) => (!zone && model.cards.get(id)?.tapped) || false), zone };
+  return { ids, tapped: ids.map((id) => (!zone && model.cards.get(id)?.tapped) || false), zone, seat: seat ?? null };
+}
+
+/** The seat a zone group names ("zone:<zone>:<seat>"), when the model has it. */
+function zoneSeat(model: TableModel, name: string): SeatId | null {
+  return model.seats.find((x) => String(x.id) === name)?.id ?? null;
 }
 
 /** A sift's pieces: the shade, and one page of the group's cards in rows (`siftCards`'s order). */
 function siftPieces(model: TableModel, plan: TablePlan, group: string, page: number): Piece[] {
   const all = siftCards(model, plan, group);
   if (!all || !all.ids.length) return [];
-  const g = plan.hits.groups.find((x) => x.id === group)!;
+  const g = plan.hits.groups.find((x) => x.id === group);
+  const seat = g?.seat ?? zoneSeat(model, /^zone:(?:graveyard|exile):(.+)$/.exec(group)?.[1] ?? "");
   const zone = all.zone;
   const p = Math.max(0, Math.min(siftPages(all.ids.length) - 1, page));
   const ids = all.ids.slice(p * SIFT_PAGE, (p + 1) * SIFT_PAGE);
@@ -433,7 +444,7 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
     out.push({
       id: `sift:${id}`,
       kind: "sift",
-      seat: g.seat,
+      seat,
       members: [],
       face: id,
       pose: screenPose(proj, { rect: pl.rect, rotation: 0, scale: 1 }, SIFT_HEIGHT.cards),
@@ -689,8 +700,16 @@ function wellRows(units: readonly Unit[]): Map<string, { alt: boolean; small: bo
 function lanesOf(model: TableModel, plan: TablePlan, cues: BoardCues, pieces: ReadonlyMap<string, Piece>): Lane[] {
   const combat = mergeCombat(engineCombat(model), cues.combat);
   const out: Lane[] = [];
-  for (const l of combatLanes(plan.seats, model.viewer.perspective, combat, plan.blocked)) {
-    if (!pieces.has(l.from.unit)) continue;
+  // Only an attack I am in draws a lane. Between opponents a line would cross other seats' cards and read as a link to
+  // them: the attackers' light, a duel's clasp and the defender's plate tally say who fights whom.
+  const me = model.viewer.perspective;
+  const mine = (a: (typeof combat & object)["attacks"][number]): boolean => {
+    const def = "seat" in a.defender ? a.defender.seat : (a.defending ?? model.cards.get(a.defender.card)?.controller ?? null);
+    return model.cards.get(a.attacker)?.controller === me || def === me;
+  };
+  const involved = new Set((combat?.attacks ?? []).filter(mine).map((a) => a.attacker));
+  for (const l of combatLanes(plan.seats, me, combat, plan.blocked)) {
+    if (!pieces.has(l.from.unit) || !involved.has(l.attacker)) continue;
     if ("unit" in l.to && !pieces.has(l.to.unit)) continue;
     out.push({
       id: l.id,
