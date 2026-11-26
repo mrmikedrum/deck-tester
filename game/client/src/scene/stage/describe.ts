@@ -689,10 +689,16 @@ function wellRows(units: readonly Unit[]): Map<string, { alt: boolean; small: bo
 function lanesOf(model: TableModel, plan: TablePlan, cues: BoardCues, pieces: ReadonlyMap<string, Piece>): Lane[] {
   const combat = mergeCombat(engineCombat(model), cues.combat);
   const out: Lane[] = [];
-  // A duel in the middle shows its pairing by standing together: no lane from its attacker.
-  const duelling = new Set(plan.gathering?.duels ? [...plan.seats.values()].flatMap((sp) => sp.units.filter((u) => u.fighting).map((u) => u.id)) : []);
-  for (const l of combatLanes(plan.seats, model.viewer.perspective, combat, plan.blocked)) {
-    if (!pieces.has(l.from.unit) || duelling.has(l.from.unit)) continue;
+  // Only an attack I am in draws a lane. Between opponents a line would cross other seats' cards and read as a link to
+  // them: the attackers' light, a duel's clasp and the defender's plate tally say who fights whom.
+  const me = model.viewer.perspective;
+  const mine = (a: (typeof combat & object)["attacks"][number]): boolean => {
+    const def = "seat" in a.defender ? a.defender.seat : (a.defending ?? model.cards.get(a.defender.card)?.controller ?? null);
+    return model.cards.get(a.attacker)?.controller === me || def === me;
+  };
+  const involved = new Set((combat?.attacks ?? []).filter(mine).map((a) => a.attacker));
+  for (const l of combatLanes(plan.seats, me, combat, plan.blocked)) {
+    if (!pieces.has(l.from.unit) || !involved.has(l.attacker)) continue;
     if ("unit" in l.to && !pieces.has(l.to.unit)) continue;
     out.push({
       id: l.id,

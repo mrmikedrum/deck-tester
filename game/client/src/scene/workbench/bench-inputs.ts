@@ -34,7 +34,8 @@ export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
   );
 }
 
-export const VIEWPORT = { w: 1180, h: 820 } as const;
+/** The iPad held in landscape (CSS px), as the game is played: every input is planned at it, in Node and on the device. */
+export const VIEWPORT = { w: 1210, h: 834 } as const;
 
 /**
  * The same plan as if every engine leaf's cards had just changed: what the engine keeps between plans is forgotten (all but

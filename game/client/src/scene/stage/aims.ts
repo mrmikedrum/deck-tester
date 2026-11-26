@@ -84,10 +84,27 @@ export function aimPath(proj: Projector, from: Sample, to: Sample, onto: "card" 
       const land = add(add(topPt, scaled(U, 0.02)), scaled(N, -0.05 * s));
       const end = standing ? add(add(mid, scaled(ax, 0.1 * CH * s)), scaled(N, -0.45 * s)) : land;
       const wide = v3(-sd * 0.9 * s, 0, 0);
-      const climb = bezier(start, add(start, scaled(U, dot(sub(crest, start), U) * 0.75)), add(crest, scaled(wide, 0.7)), crest);
       const fall = bezier(crest, lerp(crest, land, 0.33), lerp(crest, land, 0.67), land);
       const tuck = bezier(land, lerp(land, end, 0.33), lerp(land, end, 0.67), end);
-      curve = (k) => (k < 0.55 ? climb(k / 0.55) : k < 0.9 ? fall((k - 0.55) / 0.35) : tuck((k - 0.9) / 0.1));
+      if (!up && mid.z < sp.z - 1 && Math.abs(mid.x - sp.x) > 0.9 * s) {
+        // A card on an opponent's leaf, off to the side of the set-aside stack: level along the open middle (under every
+        // leaf's front) to the target's own column, then straight up it to the crest, so the arc passes over no other
+        // seat's cards and reads as linked to nothing it passes.
+        // (The corner is under the crest on screen, so the rise runs up the target's own column as the eye sees it; the
+        // crest is low, just over the target's top, so it never reaches into the row behind.)
+        const low = add(add(topPt, scaled(U, 0.08 * s)), scaled(N, -0.05 * s));
+        const fall = bezier(low, lerp(low, land, 0.33), lerp(low, land, 0.67), land), crest = low;
+        const ps = proj.project(start), pc = proj.project(crest);
+        const corner = proj.onTable(pc.x, ps.y, start.y), r = Math.min(0.6 * s, Math.abs(corner.x - start.x) / 3);
+        const c0 = add(corner, v3(-sd * r, 0, 0)), c1 = add(corner, scaled(norm(sub(crest, corner)), r));
+        const run = bezier(start, lerp(start, c0, 0.33), lerp(start, c0, 0.67), c0);
+        const bend = bezier(c0, lerp(c0, corner, 0.6), lerp(c1, corner, 0.6), c1);
+        const rise = bezier(c1, lerp(c1, crest, 0.33), lerp(c1, crest, 0.67), crest);
+        curve = (k) => (k < 0.35 ? run(k / 0.35) : k < 0.45 ? bend((k - 0.35) / 0.1) : k < 0.7 ? rise((k - 0.45) / 0.25) : k < 0.93 ? fall((k - 0.7) / 0.23) : tuck((k - 0.93) / 0.07));
+      } else {
+        const climb = bezier(start, add(start, scaled(U, dot(sub(crest, start), U) * 0.75)), add(crest, scaled(wide, 0.7)), crest);
+        curve = (k) => (k < 0.55 ? climb(k / 0.55) : k < 0.9 ? fall((k - 0.55) / 0.35) : tuck((k - 0.9) / 0.1));
+      }
     }
   }
   return Array.from({ length: AIM_POINTS + 1 }, (_, i) => curve(i / AIM_POINTS));
