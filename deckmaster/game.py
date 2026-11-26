@@ -18,6 +18,7 @@ import re
 import shutil
 import socket
 import subprocess
+import tempfile
 import threading
 import time
 import traceback
@@ -275,6 +276,8 @@ TABLE = Table()
 # ---- Card art and data from Scryfall -------------------------------------------------------------------------------
 
 CARDS_FILE = CACHE / "cards.json"
+PRINT_DIR = "card-large"
+LEGACY_PRINT = "cache/card/"
 CARD_LOCK = threading.Lock()
 CARDS = {}
 
@@ -321,24 +324,46 @@ def scryfall(names):
 def fetch_image(url, path):
     if path.exists():
         return
+    data = get(url, raw=True)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(get(url, raw=True))
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+        tmp = Path(output.name)
+        try:
+            output.write(data)
+            output.close()
+            tmp.replace(path)
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
-def entry(name, c):
+def large_print_path(img):
+    return f"{PRINT_DIR}/" + img[len(LEGACY_PRINT):]
+
+
+def card_face(name, c):
     faces = c.get("card_faces") if "card_faces" in c and "image_uris" not in c else None
     base = name[:-6] if name.endswith(" Token") else name
     face = next((f for f in (c.get("card_faces") or []) if f["name"] == base), None) or c
     uris = (face.get("image_uris") if faces else None) or c.get("image_uris") or {}
+    return face, uris
+
+
+def entry(name, c):
+    face, uris = card_face(name, c)
     s = slug(name)
     art = img = None
     if uris:
         try:
             fetch_image(uris["art_crop"], CACHE / "art" / (s + ".jpg"))
-            fetch_image(uris["normal"], CACHE / "card" / (s + ".jpg"))
-            art, img = "cache/art/" + s + ".jpg", "cache/card/" + s + ".jpg"
+            art = "cache/art/" + s + ".jpg"
         except Exception:
             pass
+        try:
+            fetch_image(uris["large"], CACHE / PRINT_DIR / (s + ".jpg"))
+            img = f"cache/{PRINT_DIR}/{s}.jpg"
+        except Exception:
+            if (CACHE / "card" / (s + ".jpg")).is_file():
+                img = LEGACY_PRINT + s + ".jpg"
     return {"name": name, "faces": [{
         "name": name, "cost": face.get("mana_cost", ""), "type": face.get("type_line", c.get("type_line", "")),
         "text": face.get("oracle_text", c.get("oracle_text", "")), "power": face.get("power"),
@@ -347,17 +372,38 @@ def entry(name, c):
         "produces": c.get("produced_mana", []), "identity": c.get("color_identity", []), "layout": c.get("layout", "normal")}
 
 
+def upgrade_prints(faces, found):
+    """Keep cached metadata and art, replacing a normal print URL only after its large image is ready."""
+    for face in faces:
+        rel = large_print_path(face["img"])
+        path = CACHE / rel
+        try:
+            if not path.is_file():
+                _, uris = card_face(face["name"], found or {})
+                fetch_image(uris["large"], path)
+            face["img"] = "cache/" + rel
+        except Exception:
+            pass
+
+
 def cards(names):
     with CARD_LOCK:
         missing = [n for n in names if n and n not in CARDS]
-        if missing:
+        upgrades = {n: [f for f in CARDS[n]["faces"] if (f.get("img") or "").startswith(LEGACY_PRINT)]
+                    for n in names if n in CARDS}
+        upgrades = {n: faces for n, faces in upgrades.items() if faces}
+        if missing or upgrades:
+            lookup = list(dict.fromkeys(missing + [
+                n for n, faces in upgrades.items()
+                if any(not (CACHE / large_print_path(f["img"])).is_file() for f in faces)]))
             try:
-                found = scryfall(missing)
+                found = scryfall(lookup) if lookup else {}
             except Exception:
                 traceback.print_exc()
                 found = {}
             from concurrent.futures import ThreadPoolExecutor
             with ThreadPoolExecutor(8) as pool:  # images download side by side
+                list(pool.map(lambda n: upgrade_prints(upgrades[n], found.get(n)), upgrades))
                 made = dict(zip(missing, pool.map(lambda n: entry(n, found[n]) if n in found else None, missing)))
             for n in missing:
                 CARDS[n] = made[n] if made[n] else {"name": n, "faces": [{"name": n, "art": None, "img": None, "keywords": []}], "produces": [], "identity": [], "layout": "normal"}
@@ -654,6 +700,10 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/decks":
             return self.send(200, [d.slug for d in decks.all_decks()])
         path = url.path.lstrip("/") or "live.html"
+        if path.startswith(LEGACY_PRINT):
+            large = large_print_path(path)
+            if (CACHE / large).is_file():
+                return self.file(CACHE, large)
         root, rel = (CACHE, path[len("cache/"):]) if path.startswith("cache/") else (CLIENT, path)
         return self.file(root, rel)
 
@@ -717,18 +767,19 @@ def fixture_faces():
 
 def fill_cache():
     """Fetch the client's fixture card images into the cache: Scryfall's images aren't in git, so a fresh checkout
-    has none. Each goes to the file data.js names, fetched by the face's name."""
-    missing = [f for f in fixture_faces() if not (CACHE / f["img"][len("cache/"):]).exists()]
+    has none. Large prints keep the filenames data.js names in a versioned directory."""
+    missing = [f for f in fixture_faces() if not (CACHE / large_print_path(f["img"])).is_file()
+               or not (CACHE / f["art"][len("cache/"):]).is_file()]
     found = scryfall(sorted({f["name"] for f in missing})) if missing else {}
     lost = []
     for f in missing:
         c = found.get(f["name"])
         face = next((x for x in (c or {}).get("card_faces", []) if x["name"] == f["name"] and "image_uris" in x), c or {})
         uris = face.get("image_uris") or (c or {}).get("image_uris")
-        if not uris:
+        if not uris or "large" not in uris:
             lost.append(f["name"])
             continue
-        fetch_image(uris["normal"], CACHE / f["img"][len("cache/"):])
+        fetch_image(uris["large"], CACHE / large_print_path(f["img"]))
         fetch_image(uris["art_crop"], CACHE / f["art"][len("cache/"):])
     print(f"{len(missing) - len(lost)} fixture card images fetched into {CACHE}" + (f"; not found: {', '.join(lost)}" if lost else ""))
     return 1 if lost else 0

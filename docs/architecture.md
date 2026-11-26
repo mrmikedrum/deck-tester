@@ -407,7 +407,10 @@ combat, mana, Forge's game log) and serves it to the client by long polling (`/a
 option numbers guarded by the decision's key (`/api/answer`; see the protocol below).
 Mana stays the player's own: `--mana creatures` asks which sources pay when a creature could; mana abilities can
 float real mana before a cast. Card text and Scryfall images are fetched on demand (`/api/cards`) into
-`.deckmaster/cache/cards/` and served same-origin, which the client's canvases need.
+`.deckmaster/cache/cards/` and served same-origin, which the client's canvases need. Printed cards use Scryfall's
+672 × 936 large JPEG in `card-large/`. Card lookups upgrade cached normal prints on demand and keep the old image
+available if a download fails. `deckmaster game --fill-cache` upgrades the fixtures, whose older URLs also serve
+the large image when available.
 
 The client (`game/client/`) is a three.js table (`h.js`, with `world.js` textures and `fx.js` effects) under an
 HTML layer (`live.js`): prompt and buttons, hand, stack panel, sheets, log. Its design goals live in

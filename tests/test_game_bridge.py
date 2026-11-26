@@ -78,6 +78,31 @@ def settle(t, state, timeout=3):
     raise AssertionError(f"answer status never became {state}: {t.snapshot.get('answer')}")
 
 
+class CardImageTest(unittest.TestCase):
+    def test_cached_normal_print_is_kept_until_its_large_image_is_available(self):
+        name = "Forest"
+        face = {"name": name, "img": "cache/card/forest.jpg", "art": "cache/art/forest.jpg"}
+        catalog = {name: {"faces": [face]}}
+        found = {name: {"image_uris": {"large": "https://example.test/forest.jpg"}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = pathlib.Path(tmp)
+            normal = cache / "card" / "forest.jpg"
+            normal.parent.mkdir()
+            normal.write_bytes(b"normal")
+            with mock.patch.multiple(game, CACHE=cache, CARDS=catalog, CARDS_FILE=cache / "cards.json"), \
+                    mock.patch.object(game, "scryfall", return_value=found) as lookup, \
+                    mock.patch.object(game, "get", side_effect=[OSError(), b"large"]) as download:
+                self.assertEqual(game.cards([name])[name]["faces"][0]["img"], "cache/card/forest.jpg")
+                large_url = "cache/card-large/forest.jpg"
+                self.assertEqual(game.cards([name])[name]["faces"][0]["img"], large_url)
+                self.assertEqual(game.cards([name])[name]["faces"][0]["img"], large_url)
+                self.assertEqual(lookup.call_count, 2)
+                self.assertEqual(download.call_count, 2)
+            self.assertEqual((cache / "card-large" / "forest.jpg").read_bytes(), b"large")
+            self.assertEqual(normal.read_bytes(), b"normal")
+            self.assertEqual(face["art"], "cache/art/forest.jpg")
+
+
 class AnswerStatusTest(unittest.TestCase):
     def test_an_accepted_answer_is_working_until_the_engine_returns_then_applied(self):
         t, eng = table(), Engine("block")
