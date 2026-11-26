@@ -560,7 +560,7 @@ export function setLook(c: CardObject, look: { readonly tap?: number; readonly d
 
 // ---- the deck: every card drawn ---------------------------------------------------------------------------------------
 
-const WIDTH: Readonly<Record<Signal, number>> = { option: rimParams.option, selected: rimParams.selected, danger: rimParams.danger };
+const WIDTH: Readonly<Record<Signal, number>> = { option: rimParams.option, selected: rimParams.selected, danger: rimParams.danger, lit: rimParams.lit };
 
 /** One instanced mesh: the cards of one atlas page, layer (table or above the scrim), pass and order. */
 class Batch {

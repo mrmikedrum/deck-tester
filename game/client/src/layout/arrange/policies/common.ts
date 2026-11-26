@@ -126,7 +126,8 @@ export function seatOf(units: readonly DraftUnit[], ctx: PolicyCtx): SeatFacts {
 /** What matters if hidden (§2.4): cued, never moved. */
 export function mattersOf(c: ArrCard, m: Moment, ctx: PolicyCtx): AttentionWhy | null {
   if (ctx.acting.offered.has(c.id)) return "offered";
-  if (m.q === "aim" && m.legal.includes(c.id)) return "aimed";
+  if (ctx.acting.aimed?.has(c.id)) return "aimed";
+  if ((m.q === "aim" && m.legal.includes(c.id)) || (m.q === "stack" && m.aimed.includes(c.id))) return "aimed";
   if (m.q === "sweep" && m.reaches.includes(c.id)) return "in-danger";
   if (m.q === "strike" && !ctx.mine && c.types.creature && !c.tapped && (!m.airborne || blocksFliers(c))) return "answers";
   if (m.q === "threat" && c.controller === m.seat && ready(c)) return "can-hurt-me";
@@ -139,7 +140,8 @@ export function mattersOf(c: ArrCard, m: Moment, ctx: PolicyCtx): AttentionWhy |
 export function emphasisOf(u: DraftUnit, m: Moment, ctx: PolicyCtx): { emphasis: Emphasis | null; lit: CardId[] } {
   const seat = ctx.owner;
   if (!seat) return { emphasis: null, lit: [] };
-  const st = u.members.map((id) => [id, stanceOf(need(ctx, id), seat, ctx.mine, m)] as const);
+  // (what the stack aims at answers whatever moment is up: a decision over it does not put its light out)
+  const st = u.members.map((id) => [id, ctx.acting.aimed?.has(id) ? "forward" : stanceOf(need(ctx, id), seat, ctx.mine, m)] as const);
   const lit = st.filter(([, s]) => s === "forward").map(([id]) => id);
   if (lit.length) return { emphasis: "forward", lit };
   if (st.length && st.every(([, s]) => s === "down")) return { emphasis: "down", lit: [] };

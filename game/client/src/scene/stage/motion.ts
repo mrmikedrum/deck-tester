@@ -114,6 +114,9 @@ export const DIM = {
   leanMine: 0.45,
   /** The others' things on another player's turn (`soft`: `0.4`). */
   soft: 0.4,
+  /** What a moment leaves out (the arrangement engine's `down`: the attacking seat's creatures that stay home): its light
+   *  goes out, a little, never dark. */
+  down: 0.3,
   /** The table itself under a sift (`tableMesh` colour 0.42). */
   table: 0.42,
   /** A chosen card lifts off its page (`t.lift = 0.1`). */

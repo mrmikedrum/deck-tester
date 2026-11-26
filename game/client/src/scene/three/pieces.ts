@@ -28,6 +28,7 @@ import { pileHeight, siftRoll } from "../stage/poses";
 import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard, setLook, setSignal } from "./cards";
+import type { Signal } from "./materials";
 import { Block, Contact, blockHeight } from "./slab";
 import { DICE_AT, Dice } from "./dice";
 import type { CardObject, CardOptions } from "./cards";
@@ -189,7 +190,7 @@ class CardPart {
   }
   /** `turn`: how far it is turned (a quarter at 1). `tapped`: shaded as tapped, whatever its turn (a spent well's card,
    * a sifted tapped card, a card a tap turns only a notch). `flat`: how far a highlight has stepped it out of the light. */
-  look(turn: number, fade: number, mark: ActorView["mark"], glow: number, tapped = false, flat = 0): void {
+  look(turn: number, fade: number, mark: Signal | null, glow: number, tapped = false, flat = 0): void {
     this.obj.body.rotation.z = -turn * (Math.PI / 2);
     setLook(this.obj, { tap: tapped ? 1 : 0, dim: fade, flat });
     setSignal(this.obj, glow > 0.5 ? mark : null);
@@ -320,7 +321,7 @@ class UnitView implements PieceView {
   /** The light it stands in: a pale pool, or mist while it is not yet awake. */
   private stand: { effect: Effect; tone: StandTone } | null = null;
   /** The cue on a pile that holds something that matters. */
-  private mote: { effect: Effect; cue: "act" | "threat" } | null = null;
+  private mote: { effect: Effect; cue: NonNullable<Extract<Draw, { t: "unit" }>["cue"]> } | null = null;
   private well: { effect: Effect; key: string } | null = null;
   private wellSign: Decal | null = null;
   private wellAlts: Decal[] = [];
@@ -431,10 +432,14 @@ class UnitView implements PieceView {
 
   /**
    * The light under it: a presented (standing) card is lifted on a pale pool, or stands in mist while it is not yet
-   * awake; a pile holding something that matters glows low under it and a mote rises from it.
+   * awake; the moment brightens the pool under what answers it (and lights its edge: `look`) and puts out the light of
+   * what it leaves out; a pile holding something that matters glows low under it and a mote rises from it.
    */
   private light(d: Extract<Draw, { t: "unit" }>, mark: ActorView["mark"]): void {
-    const tone: StandTone | null = mark === "option" ? "ember" : d.posture === "stand" ? (d.sick ? "mist" : "pale") : null;
+    // (a lying card's moment light is on its edge alone: a pool under it would show through it)
+    const stands = d.posture === "stand";
+    const tone: StandTone | null =
+      mark === "option" ? "ember" : !stands ? null : d.light === "forward" ? "lit" : d.light === "down" ? null : d.sick ? "mist" : "pale";
     if (this.stand && this.stand.tone !== tone) {
       this.ground.group.remove(this.stand.effect.object);
       this.stand.effect.dispose();
@@ -450,7 +455,7 @@ class UnitView implements PieceView {
       this.mote = null;
     }
     if (d.cue && !this.mote) {
-      this.mote = { effect: moteFx(this.env.fx, d.seed, d.cue), cue: d.cue };
+      this.mote = { effect: moteFx(this.env.fx, d.seed, d.cue === "answer" ? "news" : d.cue), cue: d.cue };
       // On the page under the pile's middle: behind a standing pile's foot, a card's length in from a lying one's.
       this.ground.group.add(this.mote.effect.object);
       this.mote.effect.object.position.set(0, 0, uprightOf(d.posture) ? -0.25 : -CH / 2);
@@ -603,10 +608,12 @@ class UnitView implements PieceView {
     const spent = !!d.well?.spent;
     // A copy standing for tapped members is turned (a pile's) or shaded (a well's) on its own; the rest follow the pile.
     const flat = v.hl?.flat ?? 0;
+    // (what the moment brings forward wears the lamp's light round its edge, unless a mark says more)
+    const signal: Signal | null = v.mark ?? (d.light === "forward" ? "lit" : null);
     for (const c of this.cards) {
       const own = c.obj.group.userData["tapped"] === true;
       // Shaded by what the card is (tapped), never by how far it has turned: a tap may turn it only a notch.
-      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own || (!d.well && !!v.face?.tapped), flat);
+      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, signal, s.glow, spent || own || (!d.well && !!v.face?.tapped), flat);
     }
     for (const c of this.dress) c.look(0, s.fade, null, 0, false, flat);
     this.sign?.tone(1 - 0.8 * s.fade);
@@ -1106,7 +1113,7 @@ class SiftView implements PieceView {
   }
   look(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "sift" }>;
-    this.card.look(0, 0, null, 0, d.tapped);
+    this.card.look(0, 0, v.mark, v.sample.glow, d.tapped);
     // (Turned as it lies, as far as it has risen.)
     this.card.obj.body.rotation.z = siftRoll(d.tapped, v.sample.alpha);
   }

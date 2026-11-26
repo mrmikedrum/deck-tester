@@ -43,6 +43,8 @@ export interface DescribeInput {
   readonly measure?: Measure;
   /** Cards the app steps out of the light (choosing targets). */
   readonly highlight?: HighlightRequest | null;
+  /** What another player has just put onto the battlefield. */
+  readonly news?: readonly CardId[];
 }
 
 /** The hover lift: a card under the pointer comes up off its page (a guess; the old client peeked in HTML instead). */
@@ -203,6 +205,7 @@ export function describe(input: DescribeInput): Description {
           seed: cmd.card,
           sick: false,
           cue: null,
+          light: null,
         },
         needsMembers: true,
       });
@@ -290,7 +293,7 @@ export function describe(input: DescribeInput): Description {
   });
 
   // A sift: the pile's cards fanned out in front of the camera over a shade, each flying out of the pile.
-  if (sifting) for (const p of siftPieces(model, plan, sifting, table?.page ?? 0)) pieces.set(p.id, p);
+  if (sifting) for (const p of siftPieces(model, plan, sifting, table?.page ?? 0, markOf)) pieces.set(p.id, p);
 
   // While I lean in on a seat the stack is set aside, and its arcs with it.
   const aims = lean ? [] : aimsOf(model, pieces, home, stackUp);
@@ -406,7 +409,7 @@ function zoneSeat(model: TableModel, name: string): SeatId | null {
 }
 
 /** A sift's pieces: the shade, and one page of the group's cards in rows (`siftCards`'s order). */
-function siftPieces(model: TableModel, plan: TablePlan, group: string, page: number): Piece[] {
+function siftPieces(model: TableModel, plan: TablePlan, group: string, page: number, markOf: (id: CardId) => Mark | undefined = () => undefined): Piece[] {
   const all = siftCards(model, plan, group);
   if (!all || !all.ids.length) return [];
   const g = plan.hits.groups.find((x) => x.id === group);
@@ -441,6 +444,8 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
   ids.forEach((id, i) => {
     const pl = places[i]!;
     const c = model.cards.get(id);
+    // (each card keeps what the decision says of it: an option, chosen, in danger, or nothing)
+    const mark = markOf(id) ?? null;
     out.push({
       id: `sift:${id}`,
       kind: "sift",
@@ -448,10 +453,10 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
       members: [],
       face: id,
       pose: screenPose(proj, { rect: pl.rect, rotation: 0, scale: 1 }, SIFT_HEIGHT.cards),
-      look: { ...LOOK, tap: pl.turn !== 0 ? 1 : 0 },
+      look: { ...LOOK, tap: pl.turn !== 0 ? 1 : 0, glow: mark ? 1 : 0 },
       form: `sift|${id}`,
-      mods: `${pl.turn}`,
-      mark: null,
+      mods: `${pl.turn}#${mark ?? ""}`,
+      mark,
       draw: { t: "sift", card: id, tapped: !!c?.tapped && !zone, from: group },
       needsMembers: false,
     });
@@ -501,6 +506,9 @@ function unitPiece(
 ): Piece {
   const { model, plan } = input;
   const members = [...u.members, ...u.dressing];
+  // The moment's light: what it leaves out goes a little darker (never darker than a dim already is).
+  const dim = u.light === "down" && !u.fighting ? Math.max(fade, DIM.down) : fade;
+  const news = !!input.news?.some((id) => u.members.includes(id) || u.dressing.includes(id));
   const top = model.cards.get(u.top);
   const mark = strongest(u.members.map(markOf));
   const pose = unitPose(plan.projector, u.placement, u.tapped);
@@ -535,8 +543,11 @@ function unitPiece(
     seatColour: colourOf(model, seat),
     seed: u.members[0] ?? 0,
     sick: !!top && top.sick && model.active === seat,
-    // A pile with an option or a danger inside it signals it (the arrangement engine's `notable` will say which, and why).
-    cue: u.members.length > 1 ? (mark === "option" ? "act" : mark === "danger" ? "threat" : null) : null,
+    // A pile with an option or a danger inside it signals it, or what the engine finds hidden there that answers the
+    // moment; a card another player has just put down is news, alone or in a pile, and the lamp is on it.
+    // (a lone card's own mark is on its face; what it carries, an offered or aimed attachment, is the engine's cue)
+    cue: (u.members.length > 1 && mark === "option" ? "act" : u.members.length > 1 && mark === "danger" ? "threat" : (u.cue ?? null)) ?? (news ? "news" : null),
+    light: u.fighting ? null : (u.light ?? (news ? "forward" : null)),
   };
   return {
     id: u.id,
@@ -545,10 +556,10 @@ function unitPiece(
     members,
     face: u.top,
     pose,
-    look: lookOf(fade, mark, input.hover === u.id, u.turn !== undefined && !u.fighting ? u.turn : u.tapped),
+    look: { ...lookOf(dim, mark, input.hover === u.id, u.turn !== undefined && !u.fighting ? u.turn : u.tapped), glow: mark || draw.light === "forward" ? 1 : 0 },
     form: `unit|${u.kind}|${u.placement.posture}|${u.top}|${draw.token}|${u.title !== null}`,
     // Everything its tab says is here (the title shown, its second line, whether it is mixed): the view repaints on this.
-    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.sick, draw.cue ?? ""].join("#"),
+    mods: [face ? faceKey(face) : "", draw.title ?? "", tapNote ?? "", copies.map((c) => (c.face ? faceKey(c.face) : "") + c.tapped).join(","), draw.sub ?? "", draw.mixed, chips.map((c) => canonical(c)).join(","), mark ?? "", well ? canonical(well) : "", dressed.map((d) => faceKey(d.face)).join(","), draw.sick, draw.cue ?? "", draw.light ?? ""].join("#"),
     mark,
     small,
     draw,

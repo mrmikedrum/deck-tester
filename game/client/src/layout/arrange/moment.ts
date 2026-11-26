@@ -13,7 +13,7 @@ import { blocksFliers, ready } from "./policies/kinds";
 /**
  * `rest`: nothing in particular. `threat`: what can seat X hit me with (its turn, before attackers). `strike`: what can
  * block my attack (`airborne` once every attacker I picked flies). `fight`: who is hitting whom. `aim`: what can this
- * point at (the engine's legal targets). `stack`: a spell aimed at something. `sweep`: what a spell on the stack takes.
+ * point at (the engine's legal targets). `stack`: a spell aimed at something (the cards it aims at). `sweep`: what a spell on the stack takes.
  */
 export type Moment =
   | { readonly q: "rest" }
@@ -27,7 +27,7 @@ export type Moment =
       readonly blockers: readonly CardId[];
     }
   | { readonly q: "aim"; readonly legal: readonly CardId[] }
-  | { readonly q: "stack" }
+  | { readonly q: "stack"; readonly aimed: readonly CardId[] }
   | { readonly q: "sweep"; readonly reaches: readonly CardId[]; readonly caster: SeatId | null };
 
 export const REST: Moment = { q: "rest" };
@@ -54,7 +54,7 @@ export function momentOf(model: TableModel, d: DecisionFacts = NO_DECISION): Mom
     if (reaches.length) return { q: "sweep", reaches, caster: top.controller };
   }
   if (d.kind === "targets" && d.options.length) return { q: "aim", legal: d.options };
-  if (top && top.targets.length) return { q: "stack" };
+  if (top && top.targets.length) return { q: "stack", aimed: top.targets.flatMap((t) => ("card" in t ? [t.card] : [])) };
   if (d.kind === "attack") {
     const airborne = d.draft.length > 0 && d.draft.every((id) => model.cards.get(id)?.keywords.some((k) => k.toLowerCase() === "flying"));
     return { q: "strike", draft: d.draft, airborne, options: d.options };
@@ -79,8 +79,9 @@ export function momentOf(model: TableModel, d: DecisionFacts = NO_DECISION): Mom
 export function momentKey(m: Moment): string {
   switch (m.q) {
     case "rest":
-    case "stack":
       return m.q;
+    case "stack":
+      return `stack:${m.aimed.join(",")}`;
     case "threat":
       return `threat:${m.seat}`;
     case "strike":
@@ -101,8 +102,9 @@ export function momentKey(m: Moment): string {
 export function stanceOf(c: ArrCard, seat: SeatId, mine: boolean, m: Moment): Emphasis | null {
   switch (m.q) {
     case "rest":
-    case "stack":
       return null;
+    case "stack":
+      return m.aimed.includes(c.id) ? "forward" : null;
     case "threat":
       if (seat !== m.seat || !c.types.creature) return null;
       return ready(c) ? "forward" : "down";
@@ -112,7 +114,7 @@ export function stanceOf(c: ArrCard, seat: SeatId, mine: boolean, m: Moment): Em
       return !c.tapped && (!m.airborne || blocksFliers(c)) ? "forward" : "down";
     case "fight":
       if (!c.types.creature) return null;
-      if (seat === m.attacker) return m.attackers.includes(c.id) ? null : "down";
+      if (seat === m.attacker) return m.attackers.includes(c.id) ? "forward" : "down";
       return m.blockers.includes(c.id) ? "forward" : m.blockers.length ? "down" : null;
     case "aim":
       return m.legal.includes(c.id) ? "forward" : null;

@@ -38,6 +38,8 @@ const side = (vp: Viewport = IPAD) => {
   return mineContainer({ seat: ME, slot: tpl.slots[0]!, tpl, projector, reserve: reservations(vp, "normal") });
 };
 const mineRun = (r: Omit<Run, "policy" | "container">): ArrangeResult => run({ ...r, policy: mine, container: side(r.vp), clock: { active: ME, ...r.clock } });
+/** My side at rest, planned twice (its memory carried): the table as a moment finds it. */
+const settled = (r: Omit<Run, "policy" | "container">): ArrangeResult => mineRun({ ...r, memory: mineRun(r).fit.memory });
 const me = (o: Parameters<typeof ac>[0]): ArrCard => ac({ controller: ME, ...o });
 const unitOf = (r: ArrangeResult, id: number) => r.fit.units.find((u) => u.members.includes(id as CardId) || u.dressing.includes(id as CardId))!;
 const across = (r: ArrangeResult, id: number): number => unitOf(r, id).cards.find((c) => c.card === unitOf(r, id).top)!.foot.x;
@@ -170,18 +172,55 @@ describe("my side's policy (`mine`)", () => {
     const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
     const creatures = Array.from({ length: 11 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
     const cards = [...lands, ...creatures];
-    const rest = mineRun({ cards });
+    const rest = settled({ cards });
     expect(unitOf(rest, lands[3]!.id).kind).toBe("fan");
-    // a target among my lands: it lies on its own, where it can be tapped
+    // two targets among my lands: my mana row holds the pile in its middle place, so one whole place is free after it;
+    // the first in the acting rank (the oldest: they weigh the same) lies there, the other is named on the pile
     const two = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set([lands[3]!.id, lands[9]!.id]), choosing: true } });
-    for (const l of [lands[3]!, lands[9]!]) expect(unitOf(two, l.id).members, l.name).toEqual([l.id]);
+    expect(unitOf(two, lands[3]!.id).members).toEqual([lands[3]!.id]);
+    expect(two.fit.attention).toContainEqual({ unit: unitOf(two, lands[9]!.id).id, cards: [lands[9]!.id], why: "offered" });
     expect(two.fit.report.violations).toEqual([]);
     expect(two.overflow).toBeNull();
-    // every land offered (a payment): more than the row holds, so they fold as at rest and the pile names them
+    // the pile did not move to make room
+    expect(unitOf(two, lands[0]!.id).cards[0]!.foot).toEqual(unitOf(rest, lands[0]!.id).cards[0]!.foot);
+    // every land offered (a payment): more than the row holds, so as many as its free places hold step out, in the
+    // acting rank (here the oldest first, all alike), and the rest fold as at rest in a pile that names them
     const all = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(lands.map((l) => l.id)), choosing: true } });
-    const pile = unitOf(all, lands[3]!.id);
+    expect(all.fit.report.violations).toEqual([]);
+    // the pile's top is shown at rest: it stays on top, where it was; what steps out is what it hid, the oldest first
+    const restPile = unitOf(rest, lands[15]!.id), topAt = (r: ArrangeResult, id: CardId) => unitOf(r, id).cards.find((p) => p.card === id)!.foot;
+    expect(unitOf(all, restPile.top!).top).toBe(restPile.top);
+    // (on the table: its height is its pile's, one card thinner)
+    const [a, b] = [topAt(all, restPile.top!), topAt(rest, restPile.top!)];
+    expect([a.x, a.z]).toEqual([b.x, b.z]);
+    const out = lands.filter((l) => unitOf(all, l.id).kind === "card");
+    expect(out.length).toBeGreaterThan(0);
+    const hidden = lands.filter((l) => l.id !== restPile.top);
+    expect(out.map((l) => l.id)).toEqual(hidden.slice(0, out.length).map((l) => l.id));
+    const pile = unitOf(all, lands[15]!.id);
     expect(pile.kind).toBe("fan");
     expect(all.fit.attention.some((a) => a.unit === pile.id && a.why === "offered")).toBe(true);
+    // nothing else moved for them: every creature keeps its place
+    for (const c of creatures) expect(unitOf(all, c.id).slot, c.name).toEqual(unitOf(rest, c.id).slot);
+  });
+
+  it("no room without moving something: the Island block and a pile of lands centred in three places stay as they are, lit", () => {
+    resetIds(150);
+    const creatures = Array.from({ length: 11 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const islands = many(6, { kind: "land", name: "Island", basic: true, controller: ME });
+    const lands = Array.from({ length: 12 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const cards = [...creatures, ...islands, ...lands];
+    const rest = settled({ cards });
+    const offered = [...islands, ...lands];
+    const r = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(offered.map((c) => c.id)), choosing: true } });
+    expect(r.fit.report.violations).toEqual([]);
+    for (const u of rest.fit.units) expect(r.fit.units.find((x) => x.id === u.id)?.cards.map((p) => p.foot), u.id).toEqual(u.cards.map((p) => p.foot));
+    // every offered card is drawn whole (alone or on top), in its block of copies, or named on the pile that hides it
+    const named = new Set(r.fit.attention.filter((a) => a.why === "offered").flatMap((a) => a.cards));
+    for (const c of offered) {
+      const u = unitOf(r, c.id);
+      expect(u.kind === "card" || u.kind === "stack" || u.top === c.id || named.has(c.id), c.name).toBe(true);
+    }
   });
 
   it("classification follows current types: a stationed spacecraft that becomes a creature stands with the creatures", () => {
@@ -223,14 +262,37 @@ describe("my side's policy (`mine`)", () => {
     expect(Math.min(z("Sol Ring"), z("Temple"))).toBeGreaterThan(Math.max(z("Wurm"), z("Bear")) + 1);
   });
 
-  it("review: offered sources spill into my field's free places before falling back to the well", () => {
+  it("review: the same lands keep my field's spill places plan after plan (equal weights never swap)", () => {
     resetIds(300);
     const creatures = Array.from({ length: 8 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
     const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const cards = [...creatures, ...lands];
+    let r = mineRun({ cards });
+    const spilled = (x: ArrangeResult) => x.fit.units.filter((u) => u.tier === "spill").map((u) => u.members[0]).sort();
+    const first = spilled(r);
+    expect(first.length).toBeGreaterThan(0);
+    for (let k = 0; k < 3; k++) {
+      r = mineRun({ cards, memory: r.fit.memory });
+      expect(spilled(r), `plan ${k + 2}`).toEqual(first);
+    }
+  });
+
+  it("offered sources step out into free places only: what rest shows stays where it is, the rest lit in their pile", () => {
+    resetIds(300);
+    const creatures = Array.from({ length: 8 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const cards = [...creatures, ...lands];
+    const rest = settled({ cards });
     const offered = new Set(lands.slice(0, 4).map((l) => l.id));
-    const r = mineRun({ cards: [...creatures, ...lands], acting: { offered, choosing: true } });
+    const r = mineRun({ cards, memory: rest.fit.memory, acting: { offered, choosing: true } });
     expect(r.fit.report.violations).toEqual([]);
-    for (const id of offered) expect(unitOf(r, id).members, String(id)).toEqual([id]);
+    // every card rest shows alone is still alone, in the same place (lands spilled into my field among them)
+    for (const u of rest.fit.units.filter((x) => x.kind === "card")) expect(unitOf(r, u.members[0]!).slot, String(u.members[0])).toEqual(u.slot);
+    // what rest hid steps out where a place is free; what does not fit is named on its pile
+    const out = [...offered].filter((id) => unitOf(r, id).kind === "card");
+    expect(out.length).toBeGreaterThan(rest.fit.units.filter((x) => x.kind === "card" && offered.has(x.members[0]!)).length);
+    const named = new Set(r.fit.attention.filter((a) => a.why === "offered").flatMap((a) => a.cards));
+    for (const id of offered) expect(unitOf(r, id).kind === "card" || named.has(id), String(id)).toBe(true);
   });
 
   it("review: cards no place holds do not re-deal my side every plan as if their data had just landed", () => {

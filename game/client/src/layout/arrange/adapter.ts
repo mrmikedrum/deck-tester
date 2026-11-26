@@ -13,7 +13,7 @@ import type { Reservations } from "../reservations";
 import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
 import { CW, PLATE_S } from "../seat/geometry";
 import type { CardId, SeatId, V3 } from "../types";
-import type { ArrCard, ArrUnit, ArrangeResult, CardPlace, ContainerMemory, PickTarget } from "./contract";
+import type { ArrCard, ArrUnit, ArrangeResult, Attention, CardPlace, ContainerMemory, PickTarget } from "./contract";
 import { CARD, LEAN, clearBehind, onFrame } from "./frame";
 import { LIE_DEPTH } from "./rows";
 import { kindOf } from "./policies/kinds";
@@ -73,7 +73,8 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const fit = result.fit, byId = new Map(a.cards.map((c) => [c.id, c]));
   const targetOf = new Map(fit.targets.map((t) => [t.piece, t]));
   const units: Unit[] = [];
-  for (const u of fit.units) units.push(unitOf(u, board.seat as SeatId, byId, targetOf.get(u.id)));
+  const cues = cuesOf(fit.attention);
+  for (const u of fit.units) units.push(unitOf(u, board.seat as SeatId, byId, targetOf.get(u.id), false, cues.get(u.id)));
   // Cards no place could hold (actors past every place) are reached through the entry: one pile by the plate.
   const placed = new Set(units.flatMap((u) => [...u.members, ...u.dressing]));
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
@@ -157,7 +158,8 @@ export function mineSeat(a: MineSeatInput): SeatPlan {
   const { result, board } = a, fit = result.fit, f = fit.frame, seat = board.seat as SeatId;
   const byId = new Map(a.cards.map((c) => [c.id, c]));
   const targetOf = new Map(fit.targets.map((t) => [t.piece, t]));
-  const units: Unit[] = fit.units.map((u) => unitOf(u, seat, byId, targetOf.get(u.id), true));
+  const cues = cuesOf(fit.attention);
+  const units: Unit[] = fit.units.map((u) => unitOf(u, seat, byId, targetOf.get(u.id), true, cues.get(u.id)));
   const placed = new Set(units.flatMap((u) => [...u.members, ...u.dressing]));
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
   // Cards no place could hold are reached through the entry: one pile on the row's anchor.
@@ -188,7 +190,23 @@ export const tableUnitId = (id: string, seat: SeatId, members: readonly CardId[]
 /** My mana's tiers (policies/mine.ts): each pile there is a well. */
 const MY_MANA: ReadonlySet<string> = new Set(MANA_TIERS);
 
-function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, target: PickTarget | undefined, mine = false): Unit {
+/**
+ * What a unit hides that answers the moment, as the cue its pile shows: what I may act on first, then what can hurt me or
+ * is in danger, then what answers my attack. What matters at rest alone (a big creature, a card that binds me) is the
+ * attention's, not cued yet.
+ */
+function cuesOf(attention: readonly Attention[]): Map<string, NonNullable<Unit["cue"]>> {
+  const rank = { act: 3, threat: 2, answer: 1 } as const;
+  const out = new Map<string, NonNullable<Unit["cue"]>>();
+  for (const a of attention) {
+    const cue = a.why === "offered" || a.why === "aimed" ? "act" : a.why === "in-danger" || a.why === "can-hurt-me" ? "threat" : a.why === "answers" ? "answer" : null;
+    const was = out.get(a.unit);
+    if (cue && (!was || rank[cue] > rank[was])) out.set(a.unit, cue);
+  }
+  return out;
+}
+
+function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, target: PickTarget | undefined, mine = false, cue?: Unit["cue"]): Unit {
   const region = target?.region;
   // The solver's target opens a chooser where an attachment on this unit is offered: the tap reaches the attachment too.
   const reach = target && "open" in target.action && u.dressing.length && target.members.length > u.members.length ? target.members : undefined;
@@ -223,5 +241,7 @@ function unitOf(u: ArrUnit, seat: SeatId, byId: ReadonlyMap<CardId, ArrCard>, ta
     turn: pose.turn,
     ...(region ? { hit: region } : {}),
     ...(reach ? { reach } : {}),
+    ...(u.emphasis === "forward" || u.emphasis === "down" ? { light: u.emphasis } : {}),
+    ...(cue ? { cue } : {}),
   };
 }

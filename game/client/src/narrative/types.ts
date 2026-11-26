@@ -120,6 +120,9 @@ export interface State {
   readonly restoring: boolean;
   /** The cards that last came into my hand this game (live.js `lastHandArrivals`): the fan's glow, "Last added". */
   readonly fresh: readonly CardId[];
+  /** What another player last put onto the battlefield (news on the table), this turn: kept until the next arrive, the
+   *  turn or the position changes. */
+  readonly arrived: readonly CardId[];
 }
 
 // ---- views -------------------------------------------------------------------------------------------------------------

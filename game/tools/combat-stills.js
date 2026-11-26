@@ -122,8 +122,66 @@ const usable = (v) => {
   return e;
 };
 
+
+/** A decision of mine on the turn-15 table (or `turn`'s): `kind`, its options as [label, card]. */
+const decide = (v, kind, prompt, opts, o = {}) => {
+  const e = o.turn ? at(o.turn, v) : rest(v);
+  if (o.edit) o.edit(e);
+  e.decision = { gen: 1, id: 11, turn: `T${o.turn ?? 15} main1`, repeat: !!o.repeat, mine: true, kind, prompt, options: opts.map(([l]) => l), refs: opts.map(([, card]) => (card === null ? {} : { card })), min: o.min ?? 1, max: o.max ?? 1 };
+  return e;
+};
+/** My plays at turn 9: the land in hand, Snap, and abilities of permanents, some inside piles (an Illusion, a Thopter). */
+const usable9 = (v) => {
+  const plays = [["Island (land)", 1003], ["Snap", 1004], ["Otawara, Soaring City: channel", 1054], ["Springleaf Drum: tap a creature", 1029], ["Insight Engine: put a charge counter", 1091], ["Meloku the Clouded Mirror: make an Illusion", 1089], ["Thopter: sacrifice", 1094], ["Illusion: sacrifice", 1092]];
+  return decide(v, "play", "", [["Pass", null], ...plays], { turn: 9 });
+};
+/** Paying {1}{U} for Snap: my untapped lands and rocks, the Islands in their block among them. */
+const PAY = [[1001, "Island (U)"], [1055, "Island (U)"], [1086, "Island (U)"], [1191, "Island (U)"], [1193, "Island (U)"], [1025, "Mystic Sanctuary (U)"], [1054, "Otawara, Soaring City (U)"], [1087, "Minamo, School at Water's Edge (U)"], [1139, "Vesuva (C)"], [1056, "Arcane Signet (U)"], [1088, "Fellwar Stone (U)"], [1140, "Everflowing Chalice (C)"]];
+/** The turn-15 table after a sweep of my tokens: my field has free places again, my mana still piles. */
+const swept = (e) => {
+  const me = e.view.players.find((p) => p.name === "You");
+  me.battlefield = me.battlefield.filter((c) => !c.token);
+  return e;
+};
+const payment = (v, edit = swept) => decide(v, "pay", "Choose mana to pay {1}{U} for Snap", PAY.map(([id, l]) => [l, id]), { min: 0, max: 2, repeat: true, edit });
+/** Snap's target: any of Marath's creatures, the Beasts, Elementals and Cat Beasts in their stacks among them. */
+const target = (v) => {
+  const m = base().view.players.find((p) => p.name === "Marath").battlefield.filter((c) => /Creature/.test(c.type));
+  return decide(v, "targets", "target for Return target creature to its owner's hand. Untap up to two lands.", m.map((c) => [c.name, c.id]));
+};
+/** Dack's Swords to Plowshares on the stack, aimed at my Meloku; I may respond. */
+/** The turn-15 table at rest in `who`'s first main phase, priority theirs. */
+const mainOf = (v, who) => {
+  const e = rest(v);
+  e.view = { ...e.view, active: who, priority: who, phase: "MAIN1" };
+  return e;
+};
+const swords = (v) => {
+  const e = decide(v, "play", "", [["Pass", null], ["Snap", 1004], ["Arcane Denial", 1005]]);
+  e.view = { ...e.view, active: "Dack", priority: "You", phase: "MAIN1", stack: [{ id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [1089] }] };
+  return e;
+};
+/** A creature enters: Dack's second Wispweaver Angel lands on Dack's side. */
+const enters = (v) => {
+  const e = rest(v);
+  const dack = e.view.players.find((p) => p.name === "Dack");
+  dack.battlefield.push({ ...dack.battlefield.find((c) => c.id === 1129), id: 9100 });
+  return e;
+};
+
 const MARATH4 = [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]];
 const MOMENTS = {
+  "moment-priority-9": { what: "Turn 9, my main phase: plays lit, an Illusion and a Thopter among them", envs: [at(9, 18), usable9(19)] },
+  "moment-priority-15": { what: "Turn 15, my main phase: plays lit, lands and rocks inside my mana piles", envs: [rest(18), usable(19)] },
+  "moment-payment": { what: "Paying {1}{U} for Snap after a sweep of my tokens: Arcane Signet already lies alone; no place is free, so the other sources stay lit in their piles", envs: [swept(rest(18)), payment(19)] },
+  "moment-payment-rest": { what: "The same table at rest, before the payment", env: swept(rest(18)) },
+  "moment-target": { what: "Snap's target: any of Marath's creatures, Beasts and Elementals inside their stacks", envs: [rest(18), target(19)] },
+  "moment-target-pile": { what: "Snap's target, Marath's back pile tapped: it opens with the options in it", envs: [rest(18), target(19)], taps: [1102] },
+  "moment-swords": { what: "Dack's Swords to Plowshares on the stack, aimed at my Meloku", envs: [mainOf(18, "Dack"), swords(19)] },
+  "moment-swords-aside": { what: "The same, the stack set aside: Meloku lit where it stands", envs: [mainOf(18, "Dack"), swords(19)], keys: ["Escape"] },
+  "moment-threat": { what: "Dack's first main phase, before attacks: what can come at me", envs: [rest(18), mainOf(19, "Dack")] },
+  "moment-opponents-attack": { what: "Marath attacks Dack with four, no blocks yet: the rest of the table", envs: [mainOf(18, "Marath"), fight({ active: "Marath", attackers: [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]], phase: "COMBAT_DECLARE_ATTACKERS", priority: "Marath" })] },
+  "moment-enters": { what: "A second Wispweaver Angel enters on Dack's side", envs: [rest(19), enters(20)] },
   "turn-4": { what: "Turn 4 at rest: an early board", env: at(4, 19) },
   "turn-9": { what: "Turn 9 at rest: a mid board", env: at(9, 19) },
   "turn-15": { what: "Turn 15 at rest: the dense board", env: rest(19) },

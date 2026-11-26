@@ -186,6 +186,13 @@ test.describe("targets and choices on the table", () => {
   test("an option in a well of same-named cards, with other untapped ones that are not options, is chosen from a sheet", async ({ table }) => {
     const s = snapshot("main"), isl = you(s, "Island", 4);
     await table.open(withDecision(s, { kind: "choose", prompt: "Choose a land (Ghostly Flicker)", options: ["Island"], refs: [{ card: isl.id }], min: 1, max: 1 }));
+    if (NEW) {
+      // the new entry keeps it on the table: the well holds one option, so a tap on it means that one
+      expect(await table.sheet().count()).toBe(0);
+      await table.tapCard(isl.id);
+      expect((await table.answered(1))[0].answer).toEqual([1]);
+      return;
+    }
     expect(await table.sheet().count()).toBe(1);
   });
   test("a well where every untapped card is an option is chosen on the table", async ({ table }) => {

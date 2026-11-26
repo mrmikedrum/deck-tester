@@ -16,6 +16,8 @@ export const signal = {
   giltRim: "#e0a62c",
   /** The danger text and ink on parchment. */
   dangerInk: "#9c1f24",
+  /** The lamp's light on what a moment brings forward: warm lamp gold, softer than the ember and never its orange. */
+  lit: "#ffc65c",
 } as const;
 
 /** The Grimoire: the table is the open pages of a tome, each seat an illuminated page bound in oxidised bronze. */

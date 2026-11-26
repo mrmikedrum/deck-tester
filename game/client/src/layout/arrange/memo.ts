@@ -208,7 +208,7 @@ export function inputKey(input: ArrangeInput, geometry: string): string {
   h.val(m.a >>> 0).val(m.b >>> 0);
   h.str(input.relations.combat ? JSON.stringify(input.relations.combat) : "-").val(input.relations.homes.size);
   const a = input.acting;
-  h.str(ids(a.involved)).str(ids(a.offered)).str(ids(a.usable)).val(a.choosing);
+  h.str(ids(a.involved)).str(ids(a.aimed ?? new Set())).str(ids(a.offered)).str(ids(a.usable)).val(a.choosing);
   h.str(momentKey(input.moment)).str(policyKey(input.policy)).str(input.selection ? `${input.selection.policy}@${input.selection.since}` : "-");
   const k = input.clock;
   h.val(k.turn).str(String(k.phase)).val(k.active).val(k.settling).val(input.minEdit ?? 0).val(!!input.auditPoses);

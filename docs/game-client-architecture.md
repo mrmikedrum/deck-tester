@@ -501,7 +501,10 @@ patches parted). `TablePlan.part` says how far. No leaf goes under the chrome al
 exile are in the nameplate's focus, not on the leaves (a sift of one reads the zone from the model). The template is
 tuned for one to four seats: the near place is the camera's (the perspective, in the game or not), the others the
 opponents still in it; one out gives its room back (its nameplate a small "Out" chip that opens its focus), and with
-none left the table is the near place alone.
+none left the table is the near place alone. **Moments** change light, never places: each unit carries the engine's
+light for the moment (`Unit.light`: what answers it, what it leaves out) and a cue when it hides what answers it
+(`Unit.cue`). What a decision offers on my side, and what the stack aims at anywhere, steps out of a pile only into
+whole free places after what rest shows, in the acting rank; anything else stays in its pile, lit, and a tap opens it.
 
 ## play: the decision controller
 
@@ -637,9 +640,12 @@ focus layers are ported: the stack as the focus (`TablePlan.stackUp`), a sift an
 table that still moves on its own (ambient effects) says so in its report (`ambient`): the loop then draws it about 10
 times a second (`AMBIENT_MS`) and still counts as settled, so a recorder's virtual clock is not held up by it.
 
+**Moment light** stays on the physical table: what answers the moment wears warm lamp gold round its edge (a soft,
+still rim, `signal.lit`, under the ember) and a gold pool where it stands; what it leaves out loses its pool and greys a little; a
+pile hiding what answers it, and what another player has just put down (the narrative's `arrived`), carry a mote.
 **Highlight** steps cards out of the physical light: each rises a little toward the eye (a tap reaches it where it rose),
 its face is drawn flat and unlit, a thin halo rings it in its tone's colour (ember mine, blood a threat, gold a spell),
-and one scrim dims the rest; each card eases out and back on its own over 200 ms (cut under reduced motion), and lifted
+and one light scrim dims the rest (0.16 under the stack, 0.12 choosing targets: the table stays readable); each card eases out and back on its own over 200 ms (cut under reduced motion), and lifted
 cards keep throwing shadows onto the dimmed table. Drawn over the rest, a highlighted card is also reached first by a
 tap. The stack as the focus brings its own (its spells and what they aim
 at); the app asks for the rest (`highlight`: choosing targets). Each moment's look (dim, lift, flat, halo) is a theme

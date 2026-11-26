@@ -1,8 +1,9 @@
 // What the table can reach: a gesture's target as the cards and seat it means, and whether a choice is made on the
-// table or in a sheet. The rule is live.js `boardChoice`, read from layout's hit groups instead of the scene's pieces:
-// every option must be a card on the table (or the stack) that a tap can reach, or a player with a plate; a card
-// hidden in a pile of unlike cards (or in a well beside untapped cards that are not options) sends the choice to a
-// sheet, where each can be seen.
+// table or in a sheet. The rule follows live.js `boardChoice`, read from layout's hit groups instead of the scene's
+// pieces: every option must be a card on the table (or the stack) that a tap can reach, or a player with a plate. A card
+// hidden in a pile of unlike cards (or in a well beside untapped cards that are not options) is reached through its
+// pile: the pile says it holds an option, and a tap opens it with the options lit (the grouped-gesture rule, resolve.ts).
+// The prompt's List still offers every option as a sheet.
 import type { CardId, ChooseDecision, TargetsDecision } from "../protocol";
 import type { SeatId } from "../model";
 import type { HitGroups } from "../layout";
@@ -40,26 +41,13 @@ export function reached(t: Target, groups: readonly Group[], f: Facts): Reached 
 /** live.js `boardChoice`: whether a targets or choose decision is answered by tapping the table. */
 export function onTable(d: TargetsDecision | ChooseDecision, f: Facts, groups: readonly Group[]): boolean {
   if (!d.refs.length) return false;
-  const opt = new Set(d.refs.map((r) => r.card).filter((c): c is CardId => c !== null));
-  const hidden = (id: CardId, g: Group) => {
-    const name = f.cards[id]?.name;
-    // (an attachment offered on its host is reached through the host's group, whose chooser holds both)
-    const host = f.cards[id]?.attachedTo;
-    if (host != null && g.members.includes(host)) return false;
-    return (
-      g.members.length > 1 &&
-      !g.members.every((x) => {
-        const c = f.cards[x];
-        return !!c && (opt.has(x) || c.tapped) && c.name === name;
-      })
-    );
-  };
   return d.refs.every((r) => {
     if (r.card !== null) {
       const zone = f.cards[r.card]?.zone;
       if (zone !== "battlefield" && zone !== "stack") return false;
-      const g = groups.find((x) => x.kind !== "plate" && x.kind !== "zone" && x.members.includes(r.card!));
-      return !!g && !hidden(r.card, g);
+      // (an attachment offered on its host is reached through the host's group, whose chooser holds both)
+      const host = f.cards[r.card]?.attachedTo;
+      return groups.some((x) => x.kind !== "plate" && x.kind !== "zone" && (x.members.includes(r.card!) || (host != null && x.members.includes(host))));
     }
     return r.player !== null && groups.some((g) => g.kind === "plate" && g.seat === r.player);
   });

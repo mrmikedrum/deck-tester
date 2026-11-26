@@ -45,6 +45,10 @@ export const rim = {
   idle: 0.028,
   /** What you can act on: a soft ember ring that breathes. */
   option: 0.024,
+  /** What a moment brings forward: the lamp's light round its edge, soft and still (just under the hard band). */
+  lit: 0.036,
+  /** How bright that edge burns: enough to find at a glance across the table, still under the ember's flame. */
+  litGain: 1.3,
   /** Chosen: a gilt band three embers wide, crisp and unlit, a line of ink round it. */
   selected: 0.072,
   /** Danger: a narrower band of blood, darkening and deepening with a heartbeat but never lit. */
@@ -116,10 +120,11 @@ export const palette = fx;
  */
 export const highlight = {
   ms: 200,
-  /** The stack as the focus: the spell held up, and what it aims at. */
-  stack: { dim: 0.3, lift: 0.14, flat: 0.85, halo: 1 },
-  /** Choosing targets: the cards I may choose. A lighter touch: the table stays readable round them. */
-  target: { dim: 0.22, lift: 0.12, flat: 0.8, halo: 1 },
+  /** The stack as the focus: the spell held up, and what it aims at. The table stays plainly lit under it (the owner:
+   *  much lighter than the render study's 0.55). */
+  stack: { dim: 0.16, lift: 0.14, flat: 0.85, halo: 1 },
+  /** Choosing targets: the cards I may choose. A lighter touch still: the table stays readable round them. */
+  target: { dim: 0.12, lift: 0.12, flat: 0.8, halo: 1 },
   tones: { mine: signal.option, threat: signal.dangerRim, spell: signal.giltRim },
 } as const;
 

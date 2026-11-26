@@ -50,7 +50,11 @@ function choiceKind<D extends Choice>(): Kind<D> {
     sheet: (c, open) => (open.k === "chooser" ? chooserSheet(c) : null),
     tap(c, at) {
       if (modeOf(c) !== "board") return null;
-      const i = c.d.refs.findIndex((r) => (at.seat !== null ? (r.player as string | null) === (at.seat as string) : r.card !== null && at.ids.includes(r.card)));
+      const hits = c.d.refs.flatMap((r, k) => ((at.seat !== null ? (r.player as string | null) === (at.seat as string) : r.card !== null && at.ids.includes(r.card)) ? [k] : []));
+      // A group (a well of twins) reads as its next option not yet picked, as a well pays with its next free source; with
+      // every one picked, the last comes back off. A single card toggles its first option.
+      const group = at.ids.length > 1;
+      const i = group ? (hits.find((k) => !c.draft.sel.includes(k + 1)) ?? [...hits].reverse().find((k) => c.draft.sel.includes(k + 1)) ?? -1) : (hits[0] ?? -1);
       if (i < 0) return null;
       const p = toggle(c.draft.sel, i + 1, c.d);
       const draft = { ...c.draft, sel: p.sel, mode: "board" as const };

@@ -58,7 +58,7 @@ const card = (id: string, z: number): ActorView =>
     kind: "unit",
     form: `unit|${id}`,
     mods: "",
-    draw: { t: "unit", unit: "card", posture: "stand", token: false, title: null, sub: null, mixed: false, mine: true, chips: [], dressed: [], colours: [], well: null, copies: [], tapNote: null, label: null, seatColour: "#000", seed: 1, sick: false, cue: null },
+    draw: { t: "unit", unit: "card", posture: "stand", token: false, title: null, sub: null, mixed: false, mine: true, chips: [], dressed: [], colours: [], well: null, copies: [], tapNote: null, label: null, seatColour: "#000", seed: 1, sick: false, cue: null, light: null },
     mark: null,
     face: { ...FACE_DEFAULTS, name: id, art: null },
     shown: 1,

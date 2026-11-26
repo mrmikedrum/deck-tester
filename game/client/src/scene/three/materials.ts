@@ -5,7 +5,7 @@ import { materials, motion, signal } from "../../theme";
 
 const { rim: rimParams } = materials;
 
-export type Signal = "option" | "selected" | "danger";
+export type Signal = "option" | "selected" | "danger" | "lit";
 
 /** The rim colours and clock every face material shares: set once a frame, read by every lit card. */
 export class Rim {
@@ -15,6 +15,7 @@ export class Rim {
     option: new Color(signal.option),
     selected: new Color(signal.giltRim),
     danger: new Color(signal.dangerRim),
+    lit: new Color(signal.lit).multiplyScalar(rimParams.litGain),
   };
 
   /**

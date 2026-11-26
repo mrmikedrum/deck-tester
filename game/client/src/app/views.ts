@@ -39,6 +39,7 @@ export function sceneFrame(s: AppState): SceneFrame | null {
     commit: s.commit,
     reducedMotion: s.reducedMotion,
     ...(highlight ? { highlight } : {}),
+    ...(s.narrative.arrived.length ? { news: s.narrative.arrived } : {}),
     ...(s.zoom.on !== null ? { zoom: s.zoom.on } : {}),
   };
 }

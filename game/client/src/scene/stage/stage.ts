@@ -107,6 +107,7 @@ interface DescribedFrom {
   readonly focus: string;
   readonly hover: string | null;
   readonly highlight: string;
+  readonly news: SceneFrame["news"];
   readonly desc: Description;
 }
 
@@ -250,7 +251,7 @@ export class Stage {
     const focus = tableFocusKey(frame.focus);
     const d = this.described;
     const highlight = highlightKey(frame.highlight);
-    if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover && d.highlight === highlight) return d.desc;
+    if (d && d.model === frame.model && d.plan === frame.plan && d.cues === frame.cues && d.focus === focus && d.hover === frame.hover && d.highlight === highlight && d.news === frame.news) return d.desc;
     const desc = describe({
       model: frame.model,
       plan: frame.plan,
@@ -258,9 +259,10 @@ export class Stage {
       focus: frame.focus,
       hover: frame.hover,
       ...(frame.highlight ? { highlight: frame.highlight } : {}),
+      ...(frame.news ? { news: frame.news } : {}),
       ...(this.opts.measure ? { measure: this.opts.measure } : {}),
     });
-    this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, highlight, desc };
+    this.described = { model: frame.model, plan: frame.plan, cues: frame.cues, focus, hover: frame.hover, highlight, news: frame.news, desc };
     return desc;
   }
 
