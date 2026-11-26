@@ -640,8 +640,8 @@ focus layers are ported: the stack as the focus (`TablePlan.stackUp`), a sift an
 table that still moves on its own (ambient effects) says so in its report (`ambient`): the loop then draws it about 10
 times a second (`AMBIENT_MS`) and still counts as settled, so a recorder's virtual clock is not held up by it.
 
-**Moment light** stays on the physical table: what answers the moment wears the lamp's light round its edge (a soft,
-still rim, `signal.lit`) and a brighter pool where it stands; what it leaves out loses its pool and greys a little; a
+**Moment light** stays on the physical table: what answers the moment wears warm lamp gold round its edge (a soft,
+still rim, `signal.lit`, under the ember) and a gold pool where it stands; what it leaves out loses its pool and greys a little; a
 pile hiding what answers it, and what another player has just put down (the narrative's `arrived`), carry a mote.
 **Highlight** steps cards out of the physical light: each rises a little toward the eye (a tap reaches it where it rose),
 its face is drawn flat and unlit, a thin halo rings it in its tone's colour (ember mine, blood a threat, gold a spell),
