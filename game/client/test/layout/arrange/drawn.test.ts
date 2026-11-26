@@ -139,6 +139,26 @@ describe("every opponent's leaf, drawn by the engine", () => {
     }
   });
 
+  it("the stack held up as the focus moves nothing; set aside it parts the mats (playtest: the mats shifted at every cast)", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
+    const spell = { id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [] };
+    const modelWith = (turn: number, stack: unknown[]) => {
+      const st = structuredClone(raw.stages.find((x) => x.turn === turn)!);
+      st.envelope.view = { ...st.envelope.view, stack };
+      return designModels({ stages: [st], catalog: raw.catalog }).get(turn)!;
+    };
+    const places = (p: TablePlan) => [...p.seats.values()].flatMap((sp) => [`${sp.seat}:${JSON.stringify(sp.fixtures.page)}`, ...sp.units.map((u) => `${u.id}@${JSON.stringify(u.placement.pos)}`)]);
+    for (const turn of [4, 9, 15]) {
+      const rest = planTable(tableInputOf(modelWith(turn, []), { viewport: VP, engine: { draw: true } }));
+      const held = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: { draw: true }, stackHeld: true }));
+      const aside = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: { draw: true } }));
+      expect(held.part, `turn ${turn}`).toBe(0);
+      expect(places(held), `turn ${turn}`).toEqual(places(rest));
+      expect(held.violations.filter((v) => v.group.startsWith("stack:")), `turn ${turn}`).toEqual([]);
+      expect(aside.part, `turn ${turn}`).toBeGreaterThan(0);
+    }
+  });
+
   it("the plan's rev follows the stack as the focus (review: turn 9, the lower stack entry's controller switched)", () => {
     const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
     const spell = (id: number, who: string) => ({ id, source: { id, name: "Swords to Plowshares", owner: who, controller: who, type: "Instant", zone: "stack" }, controller: who, spell: true, text: "Swords to Plowshares", targets: [] });

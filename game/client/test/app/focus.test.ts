@@ -207,17 +207,23 @@ describe("the app's focus", () => {
   });
   it("Escape sets the stack aside, its chip restores it, a new item brings it up again, and an empty stack ends it", () => {
     const r = started(table({ v: 1, decision: null, stack: [spell(1)] }));
+    // held up, the stack floats over the table: the mats part only once it is set aside, to rest in the middle
+    expect(r.state.plan!.part).toBe(0);
     input(r, { t: "dismiss" });
     r.frame(1320);
     expect(view(r).chips.map((c) => c.layer)).toEqual(["stack"]);
+    expect(r.state.plan!.part).toBeGreaterThan(0);
     input(r, { t: "restore", layer: "stack" });
     r.frame(1330);
     expect(topLayer(r)).toBe("stack");
+    expect(r.state.plan!.part).toBe(0);
     input(r, { t: "dismiss" });
     r.frame(1340);
     r.transport.push(table({ v: 2, decision: null, stack: [spell(1), { ...spell(2), source: { ...SWORDS, id: 78 } }] }));
     r.frame(1350);
     expect([topLayer(r), view(r).chips]).toEqual(["stack", []]);
+    // (a new item brings it up again: planned held from the snapshot on, never parted for a frame first)
+    expect(r.state.plan!.part).toBe(0);
     r.transport.push(table({ v: 3, decision: null, stack: [] }));
     r.frame(1360);
     expect([r.state.focus.layers, r.state.focus.aside]).toEqual([[], []]);
