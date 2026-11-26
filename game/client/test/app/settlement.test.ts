@@ -33,6 +33,28 @@ describe("settling an answer", () => {
     expect(r.state.answer.pending?.token).toBe(r.transport.answers[0]?.token);
   });
 
+  it("reconnecting keeps the prompt busy when the same numbered answer returns", () => {
+    const r = playing();
+    const answer = { id: 1, attempt: 7, state: "working" as const };
+    r.reply(0, { t: "queued" }, answer.attempt);
+    r.transport.push({ ...envelope({ v: 2, state: "reconnecting", decision: 1, answer }), view: null, decision: null });
+    r.frame(30);
+    expect(r.state.session.stop).toBeNull();
+    expect(r.state.answer.pending?.attempt).toBe(7);
+
+    r.transport.push(envelope({ v: 3, decision: 1, answer }));
+    r.frame(40);
+    expect(r.state.answer.pending?.attempt).toBe(7);
+    expect(busy(r)).toBe(true);
+    r.act();
+    r.frame(50);
+    expect(r.transport.answers).toHaveLength(1);
+
+    r.transport.push(envelope({ v: 4, decision: 1, answer: { ...answer, state: "applied" } }));
+    r.frame(60);
+    expect(busy(r)).toBe(false);
+  });
+
   it("queued proves nothing: the prompt stays busy", () => {
     const r = playing();
     r.reply(0, { t: "queued" });

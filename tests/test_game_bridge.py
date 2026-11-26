@@ -345,14 +345,18 @@ class AnswerStatusTest(unittest.TestCase):
             self.assertEqual(t.answer({"id": 41, "defer": True}), {"ok": True, "attempt": 2})
             self.assertEqual(eng.calls[1], {"cmd": "answer", "session": "s1", "id": 41, "defer": True, "by": "ai"})
 
-    def test_the_same_question_asked_again_is_another_decision(self):
+    def test_a_new_decision_waits_for_the_outstanding_answer_reply(self):
         t, eng = table(), Engine("block", "ok")
         with mock.patch.object(engine, "request", eng.request):
             t.answer({"id": 41, "answer": [1]})
-            show(t, PLAY_AGAIN)   # the engine asked again before its reply to the first reached us
-            self.assertEqual(t.answer({"key": game.key(PLAY), "id": 43, "answer": [1]}), {"ok": True, "attempt": 2})
-            self.assertEqual([c["id"] for c in eng.calls], [41, 43])
+            show(t, PLAY_AGAIN)
+            body = {"key": game.key(PLAY), "id": 43, "answer": [1]}
+            self.assertEqual(t.answer(body), {"ok": False, "error": "an answer is already being worked on"})
+            self.assertEqual([c["id"] for c in eng.calls], [41])
             eng.release()
+            settle(t, "applied")
+            self.assertEqual(t.answer(body), {"ok": True, "attempt": 2})
+            self.assertEqual([c["id"] for c in eng.calls], [41, 43])
 
     def test_answers_that_cannot_be_forwarded_leave_the_status_alone(self):
         t, eng = table(), Engine()
@@ -370,12 +374,13 @@ class AnswerStatusTest(unittest.TestCase):
         t, eng = table(), Engine("block", engine.EngineError("pick exactly 1"))
         with mock.patch.object(engine, "request", eng.request):
             t.answer({"id": 41, "answer": [2]})
-            show(t, CONFIRM)   # the engine moved on before its reply reached us
-            t.answer({"id": 42, "answer": [1, 2]})
+            gen = t.begin()
+            show(t, CONFIRM, gen=gen, session="s2")
+            t.answer({"id": 42, "gen": gen, "answer": [1, 2]})
             self.assertEqual(t.snapshot["answer"]["id"], 42)
             eng.release()
             time.sleep(0.1)
-        self.assertEqual(t.snapshot["answer"], status(CONFIRM, "refused", attempt=2, error="pick exactly 1"))
+        self.assertEqual(t.snapshot["answer"], status(CONFIRM, "refused", attempt=3, error="pick exactly 1"))
 
     def test_each_forwarded_answer_is_a_new_attempt(self):
         # a refusal that comes and goes between two polls still shows: the next status has a later attempt
@@ -453,6 +458,25 @@ class GameReplacementTest(unittest.TestCase):
                              {"ok": False, "error": "nothing to answer"})
         self.assertEqual(eng.calls, [])
         self.assertEqual((t.snapshot["state"], t.snapshot["gen"]), ("starting", 2))
+
+    def test_http_reserves_generations_before_workers_run(self):
+        t = game.Table()
+        handler = mock.Mock(path="/api/new")
+        handler.length.return_value = 1
+        handler.body.side_effect = [{"deck": "first"}, {"deck": "second"}]
+        handler.send.side_effect = lambda code, body: acknowledged.append((code, body, t.generation))
+        queued, acknowledged = [], []
+        factory = mock.Mock(side_effect=lambda target, args, daemon: mock.Mock(
+            **{"start.side_effect": lambda: queued.append((target, args))}))
+        with mock.patch.multiple(game, TABLE=t, ARGS=mock.Mock(deck="default", opponents="opponent"),
+                                 threading=mock.Mock(Thread=factory)), mock.patch.object(t, "open") as opened:
+            game.Handler.do_POST(handler)
+            game.Handler.do_POST(handler)
+            for target, args in reversed(queued):
+                target(*args)
+        self.assertEqual(acknowledged, [(200, {"ok": True}, 1), (200, {"ok": True}, 2)])
+        opened.assert_called_once_with(2, "second", ["opponent"], None, "creatures")
+        self.assertEqual(t.snapshot["gen"], 2)
 
     def test_a_view_from_the_last_game_is_not_shown(self):
         t = table(MULLIGAN)
@@ -556,6 +580,35 @@ class WatcherTest(unittest.TestCase):
         self.assertEqual(t.snapshot["state"], "over")
         self.assertEqual(t.snapshot["gen"], gen)
         self.assertIsNone(t.error)
+
+
+    def test_reconnect_keeps_the_same_answer_outstanding_until_it_settles(self):
+        t, eng = table(), Engine("block")
+        before = []
+        body = {"id": PLAY["id"], "gen": 1, "answer": [2]}
+        view = {"view": {"me": "You"}, "decision": PLAY}
+
+        def request(req, start=True):
+            if req["cmd"] == "answer":
+                return eng.request(req)
+            before.append((t.snapshot["state"], t.snapshot["answer"], t.answer(body)))
+            if len(before) == 1:
+                raise engine.EngineTimeout("view stalled")
+            if len(before) == 2:
+                return view
+            eng.release()
+            settle(t, "applied")
+            return {"view": view["view"], "over": "over: a draw"}
+
+        with mock.patch.object(engine, "engine_pid", return_value=None), mock.patch.object(engine, "request", side_effect=request):
+            t.watch(1, "s1")
+        self.assertEqual(before, [
+            ("playing", None, {"ok": True, "attempt": 1}),
+            ("reconnecting", status(PLAY, "working"), {"ok": False, "error": "nothing to answer"}),
+            ("playing", status(PLAY, "working"), {"ok": False, "error": "an answer is already being worked on"}),
+        ])
+        self.assertEqual(t.snapshot["answer"], status(PLAY, "applied"))
+        self.assertEqual(len(eng.calls), 1)
 
 
 class EnvelopeTest(unittest.TestCase):
@@ -927,9 +980,9 @@ class GameStartTest(unittest.TestCase):
             raise engine.EngineError(failure)
 
         with mock.patch.multiple(game, TABLE=t, ARGS=mock.Mock(table_port=18000)), \
-                mock.patch("deckmaster.game.decks.get"), mock.patch("deckmaster.game.model.key"), \
+                mock.patch.object(game, "close_table"), mock.patch("deckmaster.game.decks.get"), mock.patch("deckmaster.game.model.key"), \
                 mock.patch("deckmaster.game.engine.request", side_effect=request), mock.patch("deckmaster.game.traceback.print_exc"):
-            game.safe_open("test", [], None, "creatures")
+            game.safe_open(t.begin(), "test", [], None, "creatures")
         version, snap = t.wait(1, timeout=0)
         self.assertEqual(version, 2)
         self.assertEqual(snap, {"state": "error", "gen": 1, "error": failure, "answer": None})
@@ -995,7 +1048,7 @@ class GameStartTest(unittest.TestCase):
                 mock.patch.object(engine, "SOCKET", mock.Mock(**{"exists.return_value": True})), \
                 mock.patch("deckmaster.game.decks.get"), mock.patch("deckmaster.game.model.key"), \
                 mock.patch.object(engine, "request", side_effect=request), mock.patch.object(game.traceback, "print_exc"):
-            game.safe_open("test", [], None, "creatures")
+            game.safe_open(t.begin(), "test", [], None, "creatures")
         self.assertEqual(commands, ["table_end", "table_state", "table", "table_end", "table_state"])
         self.assertEqual(t.snapshot["error"], "creation timed out")
         self.assertFalse(t.start_lock.locked())
@@ -1039,6 +1092,23 @@ class GameStartTest(unittest.TestCase):
         self.assertEqual(t.snapshot["state"], "error")
         self.assertEqual(t.snapshot["startFailure"], "engine")
         self.assertEqual(t.snapshot["error"], message)
+
+    def test_stale_pid_does_not_remove_a_live_listener(self):
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp, socket.socket(socket.AF_UNIX) as peer:
+            root = pathlib.Path(tmp)
+            path = root / "engine.sock"
+            peer.bind(str(path))
+            peer.listen()
+            pid_file = path.with_suffix(".pid")
+            pid_file.write_text(str(os.getpid()))  # This process owns the listener, but it is not the JVM.
+            with mock.patch.multiple(engine, HOME=root, SOCKET=path, STOP_GRACE_SECONDS=0), \
+                    mock.patch.object(engine, "request", side_effect=engine.EngineTimeout("shutdown timed out")), \
+                    mock.patch.object(engine.os, "kill") as kill:
+                with self.assertRaisesRegex(engine.EngineError, "cannot confirm engine shutdown"):
+                    engine.stop()
+                kill.assert_not_called()
+            self.assertTrue(path.is_socket())
+            self.assertTrue(pid_file.exists())
 
     def test_long_socket_path_fails_before_starting_java(self):
         with mock.patch.object(engine, "SOCKET", pathlib.Path("/tmp") / ("a" * 108)):

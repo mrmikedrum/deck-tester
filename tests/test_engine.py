@@ -1,5 +1,6 @@
 """End-to-end check against the real engine. Skipped when Forge isn't installed (as in CI)."""
 
+from contextlib import ExitStack
 import os
 import signal
 import socket
@@ -18,10 +19,13 @@ DECK = Path(__file__).resolve().parent / "fixtures" / "decks" / "marath-tokens.t
 @unittest.skipUnless(engine.RES.is_dir() and engine.FORGE_BUILD.exists(), "requires installed Forge")
 class EngineShutdownTest(unittest.TestCase):
     def setUp(self):
-        engine.stop()
+        stack = ExitStack()
+        self.addCleanup(stack.close)
+        original_socket = engine.SOCKET
+        stack.enter_context(table_engine(table=False))
+        self.assertNotEqual(engine.SOCKET, original_socket)
         engine.request({"cmd": "sessions"})
         self.proc = engine._started[engine.SOCKET]
-        self.addCleanup(engine.stop)
         self.addCleanup(self.reap)
 
     def reap(self):

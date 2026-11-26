@@ -212,7 +212,9 @@ class Table:
                         return
                     if failed_at is None:
                         failed_at = now
-                        self.failure(gen, "reconnecting", error)
+                        self.error = str(error)
+                        self.session = None
+                        self._store({"state": "reconnecting", "gen": gen, "error": self.error, "answer": self.status})
                 time.sleep(retry)
                 retry = min(retry * 2, 5)
 
@@ -233,7 +235,7 @@ class Table:
             if (body.get("key") and body["key"] != k or "id" in body and body["id"] != did
                     or "gen" in body and body["gen"] != self.snapshot.get("gen")):
                 return {"ok": False, "error": "that decision has passed"}
-            if self.status and self.status["state"] == "working" and same(self.status, k, did):
+            if self.status and self.status["state"] == "working":
                 return {"ok": False, "error": "an answer is already being worked on"}
             self.answers += 1
             serial = self.answers
@@ -291,11 +293,6 @@ def key(decision):
     """A decision's identity: the client sends it with each answer, and an answer whose key is not the pending
     decision's is refused. game/client/src/protocol/key.ts computes the same."""
     return "|".join([decision["kind"], decision["turn"], decision.get("prompt", ""), str(len(decision.get("options", [])))] + decision.get("options", [])[:6])
-
-
-def same(status, k, did):
-    """Whether an answer status is about this decision: by the engine's id when there is one, else by key."""
-    return status["id"] == did if did is not None else status["key"] == k
 
 
 def short(commander):
@@ -874,7 +871,9 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/new":
                 me = b.get("deck", ARGS.deck)
                 others = b.get("opponents", ARGS.opponents.split(","))
-                threading.Thread(target=lambda: safe_open(me, others, b.get("seed"), b.get("mana", "creatures")), daemon=True).start()
+                gen = TABLE.begin()
+                threading.Thread(target=safe_open, args=(gen, me, others, b.get("seed"), b.get("mana", "creatures")),
+                                 daemon=True).start()
                 return self.send(200, {"ok": True})
         except Exception as error:
             traceback.print_exc()
@@ -893,8 +892,7 @@ def close_table():
     engine.stop()  # No acknowledgement: the table is gone only once its JVM has stopped.
 
 
-def safe_open(me, others, seed, mana):
-    gen = TABLE.begin()
+def safe_open(gen, me, others, seed, mana):
     with TABLE.start_lock:
         if gen != TABLE.generation:
             return
@@ -988,7 +986,9 @@ def serve(args):
     engine.use_table()
     load_cards()
     if args.start:
-        threading.Thread(target=lambda: safe_open(args.deck, args.opponents.split(","), args.seed, "creatures"), daemon=True).start()
+        gen = TABLE.begin()
+        threading.Thread(target=safe_open, args=(gen, args.deck, args.opponents.split(","), args.seed, "creatures"),
+                         daemon=True).start()
     threading.Thread(target=ensure_client, daemon=True).start()   # /next/ serves its last build until a new one is done
     server = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     server.daemon_threads = True

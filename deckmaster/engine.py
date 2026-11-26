@@ -198,6 +198,8 @@ def process_alive(pid):
 def stop() -> None:
     """Shut the engine down. Only remove its socket once its registered process is gone."""
     pid = engine_pid()
+    if pid is not None and not process_alive(pid):
+        pid = None
     try:
         inode = SOCKET.stat().st_ino
     except FileNotFoundError:

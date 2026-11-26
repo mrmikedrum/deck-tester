@@ -472,7 +472,7 @@ engine to them. The rules:
   a late view from the last game never replaces the next one's snapshot.
 - **Answer status**: every snapshot carries `answer`, null or `{key, id, attempt, state, error?}` for the last answer
   forwarded: `working` while the engine plays on to the next decision, then `applied`, or `refused` with the engine's
-  reason. A second answer to a decision (by id) whose answer is still working is refused ("an answer is already being
+  reason. A second answer in the same game while an answer is still working is refused ("an answer is already being
   worked on"). The reply itself stays `{ok: true, attempt}` after 0.6 s, or the refusal (`{ok: false, error,
   attempt?}`) if it comes sooner, for the old client. `attempt` numbers the forwarded answers, increasing for as long
   as the bridge runs (a new game advances it too, so it never repeats); the reply carries the same number, so a client

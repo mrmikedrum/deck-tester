@@ -185,8 +185,14 @@ export function observeAnswer(
   if (v === "later") next = settle(l, "unseen", null, at);
   else if (v === "ours" && a?.state === "applied") next = settle(numbered(l, p, a), "applied", null, at);
   else if (v === "ours" && a?.state === "refused") next = settle(numbered(l, p, a), "refused", a.error, at);
-  else if (stop !== p.stop) next = settle(l, "superseded", null, at);
-  else if (v === "ours") {
+  else if (stop !== p.stop) {
+    if (snap.state === "reconnecting") return l;
+    if (v === "ours" && a?.state === "working" && stop && snap.decision && names(a, snap.decision.id, snap.decision.key)) {
+      // The recovered decision has a new rendered stop. Its outstanding answer is still owned by the bridge.
+      return { ...l, pending: { ...p, token: null, stop, phase: "queued", unknownSince: null, attempt: a.attempt ?? p.attempt, since: key } };
+    }
+    next = settle(l, "superseded", null, at);
+  } else if (v === "ours") {
     const attempt = p.attempt ?? a?.attempt ?? null;
     return { ...l, pending: { ...p, phase: "queued", unknownSince: null, attempt, since: key } };
   } else if (p.phase === "unknown" && p.unknownSince !== null && asked >= p.unknownSince) next = settle(l, "lost", null, at);
