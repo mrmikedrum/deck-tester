@@ -127,7 +127,7 @@ function looksOf(s: AppState, model: TableModel | null): Map<CardId, CardLook> {
 
 /** The chrome's view. `scene` is this commit's scene report, when the scene drew first: a held card it took over in
  * this commit is let go in this same commit. */
-export function chromeView(s: AppState, scene: SceneReport | null = null): ChromeView {
+export function chromeView(s: AppState, scene: SceneReport | null = null, measure?: (text: string, font: string) => number): ChromeView {
   const model = s.model;
   const { controls, board } = play.present(s.play);
   const n = s.narrative;
@@ -167,7 +167,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null): Chrom
     recap: model ? narrative.recapView(n) : null,
     watch,
     restore: model ? restoreOf(s, model, watch !== null) : null,
-    plates: model ? platesOf(model, s.plan, board.marks.seats, s.viewport.safe.top, s.viewport.h) : [],
+    plates: model ? platesOf(model, s.plan, board.marks.seats, s.viewport, measure) : [],
     seatFocus: model && seatOpen ? seatFocusOf(model, seatOpen) : null,
   };
 }

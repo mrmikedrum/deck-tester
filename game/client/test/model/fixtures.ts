@@ -81,6 +81,7 @@ interface SeatSpec {
   readonly life?: number;
   readonly library?: number;
   readonly handCount?: number;
+  readonly commanderDamage?: Readonly<Record<number, number>>;
 }
 
 interface StackSpec {
@@ -117,6 +118,7 @@ export function snapshotOf(spec: TableSpec): Snapshot {
       graveyard: s.graveyard ?? [],
       exile: s.exile ?? [],
       command: s.command ?? [],
+      commanderDamage: s.commanderDamage,
       ...(name === "You" ? { hand: s.hand ?? [] } : { handCount: s.handCount ?? 5 }),
     };
   });
