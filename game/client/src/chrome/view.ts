@@ -81,6 +81,7 @@ export interface PlateView {
    * `placeTop`); the middle of my plate's bottom edge. */
   readonly x: number;
   readonly y: number;
+  readonly unit: number;
   readonly icons: readonly IconView[];
 }
 

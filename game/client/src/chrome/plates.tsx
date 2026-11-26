@@ -72,7 +72,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             data-fk={`plate:${p.seat}`}
             aria-label={said}
             aria-expanded={open === p.seat}
-            style={`left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px;${p.mine ? "transform:translate(-50%,-100%);" : ""}--seat:var(--seat-${p.place})`}
+            style={`left:${p.x}px;top:${p.y}px;${p.mine ? "transform:translate(-50%,-100%);" : ""}--u:${p.unit}px;--seat:var(--seat-${p.place})`}
             onClick={() => send({ a: "tap", on: { group: p.group as never, members: [] } })}
           >
             <span class="bronze">

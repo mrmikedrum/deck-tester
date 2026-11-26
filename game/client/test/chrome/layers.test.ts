@@ -186,6 +186,7 @@ describe("the nameplates", () => {
     out: false,
     x: 500,
     y: 6,
+    unit: 1,
     icons: [{ kind: "hand" as const, figure: "5" }],
   };
   const plates = () => $(".l-plates") as HTMLElement | null;
@@ -224,7 +225,7 @@ describe("the nameplates", () => {
     const layers = [{ layer: "seat" as const, restore: "plate:Dack" }];
     show({ layers, seatFocus: seatFocusOf(model, seatId("Dack")) });
     expect(texts(".commander-damage h4")).toEqual(["Commander damage"]);
-    expect(texts(".commander-damage li")).toEqual(["Marath, Will of the Wild (Human seat) · 9 · 12 to lethal"]);
+    expect(texts(".commander-damage li")).toEqual(["Marath, Will of the Wild (You) · 9 · 12 to lethal"]);
     show({ commit: 2, layers, seatFocus: seatFocusOf(model, seatId("You")) });
     expect($(".commander-damage")).toBeNull();
   });
