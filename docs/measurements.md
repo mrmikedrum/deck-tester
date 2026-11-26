@@ -530,3 +530,14 @@ median / p90 / worst ms, main then this step: at rest 7 / 11 / 14 and 9 / 12 / 1
 rows, the engine's table as the app draws it: at rest 10 / 13 / 15 (89 draw calls), in a moment's light (a fight
 between opponents, a newcomer's news) 8 / 11 / 14 (91). The light is instance data on the cards and a pool or mote
 where one was: no measurable cost. The iPad's run decides.
+
+## The first playtest's layout fixes (Round 9) — 2026-11-26
+
+`planTable` in Node (`game/tools/bench-plan.mjs`, 1210 × 834), main and this branch back to back twice on a Mac under
+heavy load (load average 47 to 59, so worst cases are scheduler spikes on both), median / p90 ms as the app plans: the
+design pass's turn 15 0.77 / 1.89 and 0.85 / 2.95 on main, 0.68 / 1.70 and 1.91 / 8.09 here; dense 0.72 / 2.14 and
+0.68 / 2.03, 0.73 / 2.02 and 0.64 / 1.91; 40 distinct names 0.51 / 1.48 and 0.51 / 1.42, 0.54 / 1.56 and 0.53 / 1.55;
+the combat of twelve 0.54 / 1.55 and 0.51 / 1.43, 0.63 / 1.98 and 0.73 / 1.91; 30 snapshots 2.34 / 6.05 and
+5.64 / 25.74, 2.99 / 8.20 and 2.75 / 10.31. On par with main within the noise; the break stage packs a lying band a
+second time only where its classes differ. The iPad's run decides.
+

@@ -166,6 +166,10 @@ export interface TableInput {
   readonly memory: ReadonlyMap<SeatId, LayoutMemory> | null;
   /** Bottom first, as the model's stack: the last entry is the top. */
   readonly stack: readonly StackEntry[];
+  /** The stack is the table's focus (held up over the table, the app's stack layer on top): it floats over the table and
+   *  needs no room, so the mats do not part for it, and its place at rest (where it eases back to) is neither audited nor
+   *  reached. Absent: the stack rests in the middle, set aside, and the mats part for it. */
+  readonly stackHeld?: boolean;
   readonly template?: TableTemplate;
   readonly layout?: SeatLayout;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
@@ -290,7 +294,7 @@ export function planTable(input: TableInput): TablePlan {
   const mineDrawn = !!(input.engine?.draw && me?.result);
   const leafSeat = (k: number, part: number): SeatPlan => {
     const l = leaves.get(input.seats[k]!.seat)!, at = part ? posed(l.input!, l.result!, partShift(part)) : l.result!;
-    return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, reach: partShift(tpl.part.most), board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
+    return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
   };
   // My row parted slides toward me (its frame's `away` points at the middle).
   const mineSeatAt = (part: number): SeatPlan => {
@@ -353,17 +357,22 @@ export function planTable(input: TableInput): TablePlan {
       }
     }
   }
-  // The stack set aside rests in the open middle, sized by the room it has: the mats part all the way for it.
-  if (input.stack.length && drawn.size) part = tpl.part.most;
+  // The stack set aside rests in the open middle, sized by the room it has: the mats part all the way for it. Held up as
+  // the focus it floats over the table and needs no room: nothing moves for it.
+  const held = !!input.stackHeld && input.stack.length > 0;
+  if (input.stack.length && drawn.size && !held) part = tpl.part.most;
   if (part) for (const k of drawn) plans[k] = leafSeat(k, part);
   if (part && mineDrawn) plans[0] = mineSeatAt(part);
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
   // open middle the pages leave (so it moves when they do), and the fight: the clash over it all, or at home.
   const compose = () => {
-    const stack = stackAtRest(input, tpl, projector, plans, reserve.safe);
     const gathered = combat && fight.size ? gatherIn(plans, form, form === "table" ? duels : undefined) : null;
+    // (the duels' row is the fight's, in the middle too: the stack rests beside it, never over it)
+    const stack = stackAtRest(input, tpl, projector, plans, reserve.safe, gathered && !gathered.focus ? gathered.duels : null);
     const placed = gathered ? gathered.plans : plans;
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
+    // (held up as the focus, the stack's place at rest is only where it eases back to: not on the table, so not audited)
+    const audited = (xs: readonly Shape[]): Shape[] => (held ? xs.filter((x) => x.kind !== "stack") : [...xs]);
     let shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
     let v: Violation[];
     // The clash's units: what the gathering placed (a fighter past its columns waits on its page, audited there).
@@ -372,10 +381,10 @@ export function planTable(input: TableInput): TablePlan {
       // A focus is audited apart: the table under it with it set aside, and its own cards among themselves. It is drawn
       // and reached over the whole table, and never over my field row's faces or the chrome (`clash-covers`).
       const fighting = (x: Shape) => row.has(x.group);
-      v = [...audit(shapes.filter((x) => !fighting(x)), vp, { area, only }), ...audit(shapes.filter(fighting), vp, { area })];
+      v = [...audit(audited(shapes.filter((x) => !fighting(x))), vp, { area, only }), ...audit(shapes.filter(fighting), vp, { area })];
       v = [...v, ...clashCovers(shapes.filter(fighting), shapes.filter((x) => !fighting(x) && x.seat === input.seats[0]!.seat && x.kind !== "plate"), reserve)];
       shapes = shapes.map((x) => (fighting(x) ? { ...x, order: x.order + FOCUS_ORDER } : x));
-    } else v = audit(shapes, vp, { area, only });
+    } else v = audit(audited(shapes), vp, { area, only });
     return { stack, gathered, shapes, v, placed, row };
   };
   // Where seats collide, or the stack covers a seat's cards, fold the offending seats harder; down to the last resort,
@@ -404,7 +413,7 @@ export function planTable(input: TableInput): TablePlan {
   // has no hit group: a sheet offers it.
   const broken = new Set(v.filter((x) => x.rule === "tap-patch").map((x) => x.group));
   const stack: StackAtRest[] = c.stack.map((s) => ({ key: s.key, card: s.card, quad: s.shape.face, reachable: s.onScreen && !s.spilled && !broken.has(s.shape.group) }));
-  for (const s of c.stack)
+  for (const s of held ? [] : c.stack)
     if (s.spilled) v = [...v, { rule: "no-room", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
   const focus = stackFocus(input, projector, final, shapes, reserve, reserve.safe), stackUp = focus.up;
@@ -522,13 +531,27 @@ interface StackCard {
 // is cut short, and what has no room left at the right lies under the last card that fitted, offered in a sheet (the
 // top always stands). The input is bottom first; what comes out is top first, so the top is drawn nearest. The stack
 // as the table's focus is `stackFocus`, below; the combat row stands clear of the stack at rest (combat.ts).
-function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], safe: Rect): StackCard[] {
+/**
+ * The stack at rest in the open middle, top first. `keep` (screen px): what else rests there (the duels' row), which it
+ * never covers: it takes the part of the middle beside or above it that gives its cards the most room, and a card that
+ * still meets it spills (no room: a sheet offers it).
+ */
+function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, plans: readonly SeatPlan[], safe: Rect, keep: { l: number; r: number; t: number; b: number } | null = null): StackCard[] {
   const items = [...input.stack].reverse();
   if (!items.length) return [];
   const u = designUnit(input.viewport);
-  const M = openMiddle(tpl, proj, plans, u);
   const step = items.some((s) => s.answers) ? 1.12 : 0.9;
-  const fitW = (M.r - M.l - 16) / (CW * (step * items.length + 0.1));
+  const fitOf = (m: { l: number; r: number }) => (m.r - m.l - 16) / (CW * (step * items.length + 0.1));
+  const M0 = openMiddle(tpl, proj, plans, u);
+  let M = M0;
+  if (keep) {
+    const k = { l: keep.l / u - 8, r: keep.r / u + 8, t: keep.t / u - 8 };
+    const parts = [{ ...M0, b: Math.min(M0.b, k.t) }, { ...M0, r: Math.min(M0.r, k.l) }, { ...M0, l: Math.max(M0.l, k.r) }].filter((m) => m.r > m.l && m.b > m.t);
+    const room = (m: typeof M0) => Math.min(240, m.b - m.t, fitOf(m));
+    M = parts.sort((a, b) => room(b) - room(a))[0] ?? M0;
+  }
+  const meetsKeep = (b: { l: number; r: number; t: number; b: number }): boolean => !!keep && Math.min(b.r, keep.r) - Math.max(b.l, keep.l) > 0.5 && Math.min(b.b, keep.b) - Math.max(b.t, keep.t) > 0.5;
+  const fitW = fitOf(M);
   const mid = Math.max((FLOOR.any * 1.1) / CW, Math.min(240, M.b - M.t, fitW));
   const hPx = Math.max((FLOOR.any * 1.1) / CW, mid * 0.75), cy = (M.t + M.b) / 2, x0 = M.l + 16 + (hPx * CW) / 2, raise = STACK_POSE.raise;
   const at0 = proj.onTable(x0 * u, cy * u, raise);
@@ -571,9 +594,9 @@ function stackAtRest(input: TableInput, tpl: TableTemplate, proj: Projector, pla
       rise = lo;
     }
     const quad = quadOf(centre(off, i, rise), sc), b = bounds(quad);
-    if (prev && (b.r > right || b.b > foot)) {
+    if ((prev && (b.r > right || b.b > foot)) || meetsKeep(b)) {
       spill = true;
-      return card(prev.quad, true);
+      return card(prev?.quad ?? quad, true);
     }
     prev = { off, sc, quad };
     return card(quad, false);

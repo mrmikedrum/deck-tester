@@ -26,7 +26,16 @@ export interface Box {
 type Measure = (text: string, font: string) => number;
 const estimate: Measure = (text, style) => text.length * (style.startsWith("400") ? 10 : 9);
 
-/** A plate's width in design units, including the life box's padding and the name's letter spacing (chrome.css). */
+/** A waiting commander's portrait against its plate (chrome.css `.l-plate .cmd`): its width in design units, at least
+ *  a finger's 44 CSS px past the bronze that tucks over its last 6 design units. */
+export const PORTRAIT = { w: 52, tuck: 6, tap: 44 } as const;
+
+/** How wide `n` portraits make a plate at `unit` (CSS px): each its width, a finger's at least where it shows, the last
+ *  tucked under the bronze. */
+export const portraitsPx = (n: number, unit: number): number => (n ? n * Math.max(PORTRAIT.tap + PORTRAIT.tuck * unit, PORTRAIT.w * unit) - PORTRAIT.tuck * unit : 0);
+
+/** A plate's width in design units, including the life box's padding and the name's letter spacing (chrome.css); its
+ *  portraits are `portraitsPx`'s. */
 export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate, out = false): number {
   const title = measure(name, `400 19px ${font.serif}`) + name.length * 19 * 0.02;
   // Out of the game: the sigil, the name and "Out", nothing else.
@@ -224,11 +233,11 @@ export function summaryOf(model: TableModel, seat: SeatId): Tally {
   return t;
 }
 
-/** My nameplate's icons: my graveyard and exile once anything is there, a commander waiting in the command zone. */
+/** My nameplate's icons: my graveyard and exile once anything is there (a commander waiting in the command zone is a
+ *  portrait against the plate, as every seat's is). */
 function myIcons(model: TableModel, seat: SeatId): IconView[] {
-  const n = (zone: "graveyard" | "exile" | "command") => model.zone(seat, zone).length;
+  const n = (zone: "graveyard" | "exile") => model.zone(seat, zone).length;
   return [
-    ...(n("command") ? [{ kind: "command" as const, figure: String(n("command")) }] : []),
     ...(n("graveyard") ? [{ kind: "graveyard" as const, figure: String(n("graveyard")) }] : []),
     ...(n("exile") ? [{ kind: "exile" as const, figure: String(n("exile")) }] : []),
   ];
@@ -252,20 +261,22 @@ const centre = (plan: TablePlan, seat: SeatId): { x: number; bottom: number } | 
   return { x: (Math.min(...xs) + Math.max(...xs)) / 2, bottom: Math.max(...ys) };
 };
 
+const NONE: ReadonlySet<number> = new Set();
+
 /** Every seat's nameplate: opponents' along the top over their leaves, bent round the cards there (`placeTop`), in
  * their order around the table; mine at the bottom where my plate stands. */
 let lastPlates: { readonly key: readonly unknown[]; readonly plates: PlateView[] } | null = null;
-export function platesOf(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, viewport: ViewportState, measure: Measure = estimate): PlateView[] {
+export function platesOf(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, viewport: ViewportState, measure: Measure = estimate, cast: ReadonlySet<number> = NONE): PlateView[] {
   // The same inputs, the same plates: drawn every frame, made once per model, plan and marks.
   // (Marks by what they say: play presents a new map each frame.)
-  const key = [model, plan, [...marks].map(([k, m]) => `${k}:${m}`).join(","), viewport, measure];
+  const key = [model, plan, [...marks].map(([k, m]) => `${k}:${m}`).join(","), viewport, measure, [...cast].join(",")];
   if (lastPlates && lastPlates.key.every((k, i) => k === key[i])) return lastPlates.plates;
-  const plates = makePlates(model, plan, marks, viewport, measure);
+  const plates = makePlates(model, plan, marks, viewport, measure, cast);
   lastPlates = { key, plates };
   return plates;
 }
 
-function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, viewport: ViewportState, measure: Measure): PlateView[] {
+function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, viewport: ViewportState, measure: Measure, cast: ReadonlySet<number>): PlateView[] {
   const me = model.viewer.perspective;
   const { w, h, safe } = viewport;
   const u = designUnit(viewport);
@@ -278,6 +289,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
     // Mine says what of my game is off the table (my own table is in front of me): my graveyard and exile by count, and
     // a commander waiting in the command zone; the nameplate's focus holds them.
     const icons = s.out ? [] : mine ? myIcons(model, s.id) : restIcons(model, s.id, summaryOf(model, s.id));
+    const commanders = s.out ? [] : picked(model, model.zone(s.id, "command"));
     return {
       seat: String(s.id),
       group: `plate:${s.id}`,
@@ -291,6 +303,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       mid: at?.x ?? (mine ? w / 2 : ((i + 1) * w) / (others.length + 1)),
       bottom: at?.bottom ?? null,
       icons,
+      commanders,
       width: plateWidth(String(s.name), s.life, icons, measure, s.out),
     };
   });
@@ -303,15 +316,27 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
     });
   const opponents = rows.filter((r) => !r.mine);
   const left = safe.left + PLATE.clearLeft * u, right = w - safe.right - PLATE.edge * u;
-  const rowWidth = opponents.reduce((sum, r) => sum + r.width, Math.max(0, opponents.length - 1) * PLATE.gap);
-  const fullUnit = rowWidth ? Math.min(u, Math.max(0, right - left) / rowWidth) : u;
+  /** A plate's width at `unit`, CSS px, its portraits included. */
+  const px = (r: (typeof rows)[number], unit: number): number => r.width * unit + portraitsPx(r.commanders.length, unit);
+  // The largest unit up to the design unit at which the row fits across, its portraits at a finger's width at least.
+  const rowPx = (unit: number) => opponents.reduce((sum, r) => sum + px(r, unit), Math.max(0, opponents.length - 1) * PLATE.gap * unit);
+  let fullUnit = u;
+  if (opponents.length && rowPx(u) > right - left) {
+    let lo = 0, hi = u;
+    for (let k = 0; k < 20; k++) {
+      const m = (lo + hi) / 2;
+      if (rowPx(m) <= right - left) lo = m;
+      else hi = m;
+    }
+    fullUnit = lo;
+  }
   let unit = fullUnit;
   let lefts: Map<string, number>;
   // If the cards split the available space into narrow gaps, compact the whole row while retaining its tap height.
   for (const scale of [1, 0.95, 0.9, 0.85]) {
     unit = fullUnit * scale;
     const b = top + Math.max(PLATE.height, PLATE.height * unit);
-    const widths = opponents.map((r) => ({ seat: r.seat, place: r.place, w: r.width * unit, pref: r.mid - r.width * unit / 2 }));
+    const widths = opponents.map((r) => ({ seat: r.seat, place: r.place, w: px(r, unit), pref: r.mid - px(r, unit) / 2 }));
     lefts = placeTop(widths, under, { t: top, b, l: left, r: right }, PLATE.gap * unit);
     if (widths.every((p) => {
       const l = lefts.get(p.seat)!;
@@ -319,8 +344,8 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
     })) break;
   }
   return rows.map((r) => {
-    const plateUnit = r.mine ? Math.min(u, (w - safe.left - safe.right) / r.width) : unit;
-    const half = r.width * plateUnit / 2;
+    const plateUnit = r.mine ? Math.min(u, (w - safe.left - safe.right) / (r.width + r.commanders.length * PORTRAIT.w)) : unit;
+    const half = px(r, plateUnit) / 2;
     return {
       seat: r.seat,
       group: r.group,
@@ -332,6 +357,8 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       ring: r.ring,
       out: r.out,
       icons: r.icons,
+      // (each of mine wears the ember only when a play offered now casts that card)
+      ...(r.commanders.length ? { commanders: r.commanders.map((c) => (r.mine && c.id !== null && cast.has(c.id) ? { ...c, cast: true } : c)) } : {}),
       unit: plateUnit,
       // (mine: centred on its place, but never over the hand, however wide its icons make it)
       x: r.mine ? Math.min(w - safe.right - half, Math.max(safe.left + half, safe.left + (HAND_UNITS.right + PLATE.gap * 2) * u + half, r.mid)) : lefts!.get(r.seat)!,
@@ -344,7 +371,7 @@ const picked = (model: TableModel, ids: readonly number[]): PickedCard[] =>
   ids
     .map((id) => model.cards.get(id as never))
     .filter((c): c is Card => !!c)
-    .map((c) => ({ id: c.id, name: c.face.name, image: c.faceDown ? null : c.face.img }));
+    .map((c) => ({ id: c.id, name: c.face.name, image: c.faceDown ? null : c.face.img, art: c.faceDown ? null : c.face.art }));
 
 /** "9 Beast 4/4, 8 Elemental 3/3 and 10 others": the biggest groups of like creatures. */
 function groupsLine(t: Tally): string | null {

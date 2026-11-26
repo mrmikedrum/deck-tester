@@ -1433,6 +1433,18 @@
     padding: calc(3 * var(--u)) calc(5 * var(--u));
     border-bottom: 1px solid var(--stackinfo-rule);
   }
+  .l-stackinfo .l-stackrow {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+  }
   .l-order {
     color: var(--ink-2);
     font: 700 calc(11 * var(--u)) var(--ui);
@@ -1486,6 +1498,52 @@
     box-shadow: var(--plaque-shadow), var(--btn-edge);
     color: var(--btn-act-ink);
     text-shadow: var(--btn-act-ink-shadow);
+  }
+  /* A commander waiting in the command zone: a small framed portrait of its art, tucked under the plate's left end
+     (every seat alike), a crown in its corner. Mine casts by a tap or a drag onto the table; it wears the ember then. */
+  .l-plate .cmd {
+    position: relative;
+    z-index: 0;
+    flex: none;
+    /* (at least a finger's 44 px where it shows, past the bronze that tucks over the last one: app/seats.ts PORTRAIT) */
+    width: max(calc(44px + 6 * var(--u)), calc(52 * var(--u)));
+    border-radius: 5px 0 0 5px;
+    background: #1a110a center 32% / cover no-repeat;
+    box-shadow: inset 0 0 0 calc(2 * var(--u)) #9a7440, inset 0 0 0 calc(3 * var(--u)) #1a0f05, var(--plaque-shadow);
+    touch-action: none;
+  }
+  .l-plate .cmd:has(+ .bronze) {
+    margin-right: calc(-6 * var(--u));
+  }
+  .l-plate .bronze {
+    position: relative;
+    z-index: 1;
+  }
+  .l-plate .cmd .l-icon {
+    position: absolute;
+    left: calc(4 * var(--u));
+    bottom: calc(4 * var(--u));
+    width: calc(14 * var(--u));
+    height: calc(14 * var(--u));
+    color: #f1c86a;
+    stroke-width: 2.4;
+    filter: drop-shadow(0 0 1.5px #1a0f05) drop-shadow(0 0 1px #1a0f05);
+  }
+  .l-plate .cmd .cmd-name {
+    position: absolute;
+    inset: calc(4 * var(--u)) calc(9 * var(--u)) auto calc(4 * var(--u));
+    color: #fff4dc;
+    font: 600 calc(9 * var(--u)) / 1.1 var(--ui);
+    font-style: normal;
+    overflow: hidden;
+    text-align: left;
+  }
+  .l-plate .cmd.option {
+    box-shadow: inset 0 0 0 calc(2 * var(--u)) #9a7440, var(--ring-ask);
+  }
+  .l-plate .cmd.dragging {
+    z-index: 5;
+    box-shadow: inset 0 0 0 calc(2 * var(--u)) #9a7440, 0 10px 22px rgba(0, 0, 0, 0.6);
   }
   .l-plate .sigil {
     width: calc(18 * var(--u));

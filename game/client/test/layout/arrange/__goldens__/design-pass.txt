@@ -1,17 +1,17 @@
 == Marath, turn 4 (8 permanents)
-policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places · row 2 lie v7.5 4 places
   ready  0.0.0 u-0.9 card    Evolution Sage                 stand 
   ready  0.0.1 u0.9 card    Incubation Druid               stand 
-  works  0.0.0 u-0.9 card    Felidar Retreat                lie 
-  lands  0.0.1 u0.9 stack   Forest                         lie well 4 lands 5 open · die 5
+  works  0.0.0 u0 card    Felidar Retreat                lie 
+  lands  1.0.0 u0 stack   Forest                         lie well 4 lands 5 open · die 5
   seat {"creatures":2,"power":3,"flyingPower":0,"keywords":[],"lands":4,"open":5,"works":1}
 
 == Atraxa, turn 4 (8 permanents)
-policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places · row 2 lie v7.5 4 places
   ready  0.0.0 u-0.9 card    Glissa, Herald of Predation    stand 
   ready  0.0.1 u0.9 card    Steel Overseer                 stand 
-  works  0.0.0 u-0.9 card    Throne of Geth                 lie 
-  lands  0.0.1 u0.9 stack   Swamp                          lie well 4 lands 5 open · die 5
+  works  0.0.0 u0 card    Throne of Geth                 lie 
+  lands  1.0.0 u0 stack   Swamp                          lie well 4 lands 5 open · die 5
   seat {"creatures":2,"power":6,"flyingPower":0,"keywords":[],"lands":4,"open":5,"works":1}
 
 == Dack, turn 4 (9 permanents)

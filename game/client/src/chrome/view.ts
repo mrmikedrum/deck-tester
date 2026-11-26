@@ -86,6 +86,9 @@ export interface PlateView {
   /** In a combat: the unblocked power coming at this seat ("−3"), in its tone; and whether this seat attacks. */
   readonly tally?: PlateTally | null;
   readonly attacking?: boolean;
+  /** Its commanders waiting in the command zone: a portrait each, against the plate, every seat alike. A tap reads it
+   *  (mine: a tap or a drag onto the table casts it); `cast`: mine, one I may cast now (the ember on its portrait). */
+  readonly commanders?: readonly (PickedCard & { readonly cast?: boolean })[];
 }
 
 /** A plate's tally: red at me, gold when my attack is at it, the attacker's ink between opponents. */
@@ -127,6 +130,8 @@ export interface PickedCard {
   readonly id: CardId | null;
   readonly name: string;
   readonly image: string | null;
+  /** Its art alone (a portrait shows it); null when it has none or is face down. */
+  readonly art?: string | null;
 }
 
 /** The nameplate focus: the seat in words, one line per icon, and its zones picked up. */

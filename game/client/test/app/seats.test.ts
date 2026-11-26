@@ -2,7 +2,7 @@
 // The seats as the chrome tells them (app/seats.ts): the top row of nameplates bends round the table's cards, and a
 // seat's summary counts what the data supports, once per model.
 import { describe, expect, it } from "vitest";
-import { feedWidthOf, placeTop, plateWidth, platesOf, seatFocusOf, summaryOf } from "../../src/app/seats";
+import { feedWidthOf, placeTop, plateWidth, platesOf, portraitsPx, seatFocusOf, summaryOf } from "../../src/app/seats";
 import type { Box } from "../../src/app/seats";
 import { NO_INSETS, planTable, tableInputOf } from "../../src/layout";
 import type { TablePlan } from "../../src/layout";
@@ -10,6 +10,7 @@ import { modelOf, seatId } from "../../src/model";
 import { card, catalog, corpusNames, corpusSnapshot, creature, land, snapshotOf, tableOf, viewerOf } from "../model/fixtures";
 import { SUPPORTED } from "../layout/boards";
 import { designModels } from "../../src/scene/workbench/bench-inputs";
+import { castable } from "../../src/app/views";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -18,7 +19,7 @@ const TABLE = { w: 1180, h: 820, safe: NO_INSETS };
 const intersects = (a: Box, b: Box): boolean => Math.min(a.r, b.r) > Math.max(a.l, b.l) && Math.min(a.b, b.b) > Math.max(a.t, b.t);
 
 function boxOf(p: ReturnType<typeof platesOf>[number]): Box {
-  const width = plateWidth(p.name, p.life, p.icons, undefined, p.out) * p.unit, height = Math.max(44, 44 * p.unit);
+  const width = plateWidth(p.name, p.life, p.icons, undefined, p.out) * p.unit + portraitsPx(p.commanders?.length ?? 0, p.unit), height = Math.max(44, 44 * p.unit);
   const l = p.mine ? p.x - width / 2 : p.x, t = p.mine ? p.y - height : p.y;
   return { l, t, r: l + width, b: t + height };
 }
@@ -113,12 +114,17 @@ describe("the nameplates over the protocol corpus at 1180x820", () => {
       if (!model) continue;
       let plan: TablePlan;
       try {
-        plan = planTable(tableInputOf(model, { viewport: vp }));
+        // (as the app plans: every leaf and my side on the arrangement engine)
+        plan = planTable(tableInputOf(model, { viewport: vp, engine: { draw: true } }));
       } catch {
         continue;
       }
       planned++;
-      const plates = platesOf(model, plan, new Map(), vp).filter((p) => !p.mine);
+      const all = platesOf(model, plan, new Map(), vp), plates = all.filter((p) => !p.mine);
+      // A commander waiting in the command zone is a portrait against its seat's plate, every seat alike (mine too), and
+      // never on the table (playtest item 10: at the back of a leaf it read as a permanent).
+      for (const p of all) expect((p.commanders ?? []).map((c) => c.id), `${name}: ${p.seat}`).toEqual(p.out ? [] : [...model.zone(p.seat as never, "command")]);
+      expect(plan.hits.groups.filter((g) => g.id.startsWith("command:")), name).toEqual([]);
       for (const p of plates) {
         const box = boxOf(p);
         for (const g of plan.hits.groups.filter((x) => x.kind !== "plate")) {
@@ -230,3 +236,18 @@ describe("commander damage taken by a seat", () => {
     ]);
   });
 });
+
+describe("my waiting commanders' ember", () => {
+  // Partners in my command zone: only the one a play offered now casts wears it (review: both glowed).
+  const model = { viewer: { perspective: "You" }, zone: (_: unknown, z: string) => (z === "command" ? [77, 78] : []) } as unknown as Parameters<typeof castable>[0];
+  const play = (refs: readonly object[]) => ({ kind: "play", refs }) as unknown as Parameters<typeof castable>[1];
+  it("is each card's own, from the plays offered", () => {
+    expect([...castable(model, play([{}, { card: 77, spell: true }, { card: 12, spell: true }]))]).toEqual([77]);
+    expect([...castable(model, play([{}, { card: 77, spell: true }, { card: 78, spell: true }]))].sort()).toEqual([77, 78]);
+    // an ability activated from the command zone (Derevi's) is no cast: no ember (review)
+    expect([...castable(model, play([{}, { card: 77, spell: false }, { card: 78 }]))]).toEqual([]);
+    expect([...castable(model, { kind: "targets", refs: [{ card: 77 }] } as unknown as Parameters<typeof castable>[1])]).toEqual([]);
+    expect([...castable(model, null)]).toEqual([]);
+  });
+});
+

@@ -14,9 +14,9 @@ and today's layout code it replaces in steps (`layout/seat.ts`, `layout/plan.ts`
 
 **Status:** the first slice's steps 1 to 6 are built (§6.1), and steps 8 to 10 (§6.2): every opponent's leaf and my
 side are drawn, tapped and audited through the engine on the no-middle template (two to four seats), the mats part for
-duels and the stack, a fight is gathered as the clash or as duels (the combat part of step 11, brought forward), and
+duels and the stack set aside, a fight is gathered as the clash or as duels (the combat part of step 11, brought forward), and
 moments light the table in place. The focuses are still the old layout's. What building changed from this design, and
-why, is in "Round 3" to "Round 8" below; where they differ, the code and those rounds win.
+why, is in "Round 3" to "Round 9" below; where they differ, the code and those rounds win.
 
 ## Changes after review
 
@@ -162,6 +162,20 @@ The combat spec's section 4 (the parting, computed) and its duels are built with
 | **Highlight mode** | Dims: the stack 0.16 (was 0.3), choosing targets 0.12 (was 0.22). Not used for priority, payments or combat: those are light on the physical table. | The owner: much lighter than the render study's. |
 | **The spill holds** | A demote into a standing tier takes first what sat there last plan. | My equal-weight lands swapped their spill places on every plan (step 9). |
 | **Not built** | Offered cards on an opponent's leaf step out (they stay in their pile, lit); cues for what matters only at rest. | |
+
+### Round 9: the first playtest's layout and motion (Nov 26)
+
+The owner's first real game: mats grew, shrank and shifted as cards were played; waiting commanders read as permanents.
+
+| What | Built | Why |
+|---|---|---|
+| **The stack held up parts nothing** | The mats part for the stack only while it rests in the middle at table size (set aside, or under a sift or a lean-in); held up as the focus it floats over the table (`TableInput.stackHeld`, the app's `stackHeldOf`: the stack layer on top, or a new item about to bring it up). Held, its place at rest is not audited. | Every cast parted the mats and every resolution closed them: about twenty cards moved 8 to 16 px twice a spell. |
+| **What lies keeps its place** | Between re-sorts a lying run keeps its units where they lay (`SlotRef.u`) and a newcomer takes a free place beside them (where a unit left first, then the run's right end, then its left); the run is packed from its anchor only where that cannot be done, and centred at a re-sort. A block newcomer with no free place on its side takes the nearest one, and nothing seated moves (the next re-sort deals the block in order). A leaf's mat runs from the template's front line, never its first row. | Each arrival re-centred its row (half-place shifts), and a land arriving re-dealt my block: eleven cards moved for one Insight Engine. Now an arrival moves only what must fold. |
+| **Row breaks** (`breaks.ts`) | A stage after ordering: whatever orders a band hands its sequence over, and rules by class on current types split it into runs, each starting a row of its own while the space has one (`lay` takes another row for a break where `planner.next` gives one; otherwise the unbroken sequence). The one rule: non-creature lands apart (a well of lands and a rock or two is land). A demote into a standing row the rules keep a unit out of does not run: my lands never spill among my creatures, and pile in my mana row instead. | The owner: lands on their own row when there is room for one, kept when a trained model replaces ordering. At turn 4 their lands lie behind their works; at 9 and 15 a leaf holds only one back row, so they share it. |
+| **Waiting commanders** | Off the leaves (no `fixtures.commander` on an engine seat): every seat's nameplate carries a framed portrait of its waiting commander's art, with a crown. A tap reads it; mine casts by a tap or a drag onto the table (a hand card's release) and wears the ember when it can. A cast flies from the plate. | At the back of a leaf it read as a permanent, and mine, a crown icon, was harder to find than theirs. |
+| **Flights and faces** | A card joining a pile comes in from the side it came from, never past where it rests (it came from the table's middle). A face's side margins are equal (27 px each, the content's width kept). | The first card played overshot my row and came back; the face's blank left tenth beside a narrower right margin read as a fat left edge. |
+| **Review** | A lying band laid as it lay last plan: each unit back in its remembered row and interval, where it lay, before newcomers fill holes (a departure moved a work from the second row to the first). The stack set aside is placed after the gathering, beside or above the duels' row, and a card that still meets the row spills. A portrait's drag acts under the stop it was pressed on; each glows only when a play casts that card; each shows at least 44 px. | The code review of the first build. |
+| **Not built** | A standing band still takes its rows before the lands' break (a second standing row of one work keeps lands sharing the back row); rocks share my mana row with my lands. | Ordering's, not the break stage's. |
 
 ## 0. Shape of the thing
 

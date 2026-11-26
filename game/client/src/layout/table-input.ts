@@ -35,6 +35,8 @@ export interface TableInputOptions {
   readonly order?: readonly CardId[];
   /** Lay every opponent's leaf out with the arrangement engine (`TablePlan.leaves`); drawn when `draw` (the app). */
   readonly engine?: EngineOptions;
+  /** The stack is held up as the table's focus (`TableInput.stackHeld`): the mats do not part for it. */
+  readonly stackHeld?: boolean;
 }
 
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput {
@@ -78,6 +80,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     settling: o.settling ?? false,
     memory: o.memory ?? null,
     stack,
+    ...(o.stackHeld && stack.length ? { stackHeld: true } : {}),
     combat,
     ...(o.combatForm ? { combatForm: o.combatForm } : {}),
     // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.

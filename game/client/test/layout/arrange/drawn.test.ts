@@ -3,8 +3,7 @@ import { underClash } from "../reach";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { boards, hitTest, planTable, tableInputOf, topChrome } from "../../../src/layout";
-import { S_TABLE } from "../../../src/layout/arrange/scale";
+import { boards, hitTest, planTable, tableInputOf } from "../../../src/layout";
 import { pickDrawn } from "../../../src/scene/stage/pick";
 import type { TablePlan } from "../../../src/layout";
 import { bounds, inQuad } from "../../../src/layout/shape";
@@ -117,25 +116,38 @@ describe("every opponent's leaf, drawn by the engine", () => {
     }
   });
 
-  it("a waiting commander stands at table size, wholly clear of the top chrome, at rest and parted (review: turn 4, a spell up)", () => {
+  it("a waiting commander is never on a leaf, at rest or parted: its nameplate holds it (playtest item 10)", () => {
     const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
     const st = structuredClone(raw.stages.find((x) => x.turn === 4)!);
     const spell = { id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [] };
     for (const stack of [[], [spell]]) {
       st.envelope.view = { ...st.envelope.view, stack };
       const m = designModels({ stages: [st], catalog: raw.catalog }).get(4)!;
-      for (const vp of [VP, { w: 1210, h: 834 }]) {
-        const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true } }));
-        if (stack.length) expect(plan.part).toBeGreaterThan(0);
-        const band = topChrome(vp);
-        for (const st2 of m.seats.slice(1)) {
-          const c = plan.seats.get(st2.id)!.fixtures.commander;
-          if (!c) continue;
-          expect(c.placement.scale).toBe(S_TABLE);
-          const g = plan.hits.groups.find((x) => x.id === `command:${st2.id}`)!, b = bounds(g.quad);
-          for (const r of band) expect(b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom, `${vp.w} ${st2.id} ${stack.length} clear of ${JSON.stringify(r)}: ${JSON.stringify(b)}`).toBe(true);
-        }
-      }
+      expect(m.seats.slice(1).every((s2) => m.zone(s2.id, "command").length > 0)).toBe(true);
+      const plan = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+      if (stack.length) expect(plan.part).toBeGreaterThan(0);
+      for (const sp of plan.seats.values()) expect(sp.fixtures.commander, String(sp.seat)).toBeUndefined();
+      expect(plan.hits.groups.filter((g) => g.id.startsWith("command:"))).toEqual([]);
+    }
+  });
+
+  it("the stack held up as the focus moves nothing; set aside it parts the mats (playtest: the mats shifted at every cast)", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
+    const spell = { id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [] };
+    const modelWith = (turn: number, stack: unknown[]) => {
+      const st = structuredClone(raw.stages.find((x) => x.turn === turn)!);
+      st.envelope.view = { ...st.envelope.view, stack };
+      return designModels({ stages: [st], catalog: raw.catalog }).get(turn)!;
+    };
+    const places = (p: TablePlan) => [...p.seats.values()].flatMap((sp) => [`${sp.seat}:${JSON.stringify(sp.fixtures.page)}`, ...sp.units.map((u) => `${u.id}@${JSON.stringify(u.placement.pos)}`)]);
+    for (const turn of [4, 9, 15]) {
+      const rest = planTable(tableInputOf(modelWith(turn, []), { viewport: VP, engine: { draw: true } }));
+      const held = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: { draw: true }, stackHeld: true }));
+      const aside = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: { draw: true } }));
+      expect(held.part, `turn ${turn}`).toBe(0);
+      expect(places(held), `turn ${turn}`).toEqual(places(rest));
+      expect(held.violations.filter((v) => v.group.startsWith("stack:")), `turn ${turn}`).toEqual([]);
+      expect(aside.part, `turn ${turn}`).toBeGreaterThan(0);
     }
   });
 

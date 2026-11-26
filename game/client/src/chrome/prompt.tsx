@@ -146,7 +146,7 @@ export function Prompt(props: PromptProps): JSX.Element {
           <Pips text={headline} />
         </div>
       ) : null}
-      <StackSummary rows={summary} />
+      <StackSummary rows={summary} send={send} />
       {ctx ? (
         <div class="l-ctx">
           <Pips text={ctx} />

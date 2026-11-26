@@ -193,8 +193,19 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
     recap: model ? narrative.recapView(n) : null,
     watch,
     restore: model ? restoreOf(s, model, watch !== null) : null,
-    plates: model ? withTallies(platesOf(model, s.plan, board.marks.seats, s.viewport, measure), model, s.plan) : [],
+    plates: model ? withTallies(platesOf(model, s.plan, board.marks.seats, s.viewport, measure, castable(model, s.session.decision)), model, s.plan) : [],
     clash: model ? clashViewOf(model, s.plan) : null,
     seatFocus: model && seatOpen ? seatFocusOf(model, seatOpen) : null,
   };
 }
+
+/** My cards waiting in the command zone that a play offered now casts (a spell, not an ability activated from there):
+ *  each one's portrait wears the ember, and only its. */
+export function castable(model: TableModel, d: AppState["session"]["decision"]): ReadonlySet<number> {
+  if (d?.kind !== "play") return new Set();
+  const waiting = new Set<number>(model.zone(model.viewer.perspective, "command"));
+  const out = new Set<number>();
+  for (const r of d.refs as readonly { readonly card?: number | null; readonly spell?: boolean }[]) if (r.card != null && r.spell && waiting.has(r.card)) out.add(r.card);
+  return out;
+}
+

@@ -2,7 +2,7 @@
 // about (`context`), what each item on the stack will do (`stackRows`), and how a play is labelled in a sheet
 // (`playLabel`), in the inspector (`actionLabel`) and what it costs (`costOf`). Presentation only: none of it decides
 // what may be answered.
-import type { Decision, StackId } from "../protocol";
+import type { CardId, Decision, StackId } from "../protocol";
 import type { SeatId, Target } from "../model";
 import { abilityTargetNames, phaseName, stackValues } from "../model";
 import type { Facts, ItemFact } from "./facts";
@@ -154,6 +154,8 @@ const itemTargets = (f: Facts, st: ItemFact): string[] => [
 /** One row of the stack summary: "1 Arcane Denial → Swords to Plowshares", "2 Swords to Plowshares → your Meloku". */
 export interface StackSummaryRow {
   readonly item: StackId;
+  /** The card it came from (a spell's own card, an ability's source): a tap on its row opens it. */
+  readonly card: CardId | null;
   /** Its place, top first, from 1. */
   readonly n: number;
   /** The spell's name, or "Marath ability". */
@@ -172,6 +174,7 @@ export function stackRows(f: Facts): StackSummaryRow[] {
     const name = cardOf(f, st.source)?.display ?? "";
     return {
       item: st.id,
+      card: st.source,
       n: i + 1,
       title: [st.spell ? name : `${shortCard(name)} ability`, ...stackValues(st)].join(" · "),
       at: listNames(itemTargets(f, st)),

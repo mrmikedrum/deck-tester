@@ -11,6 +11,7 @@ import type { BoardCues } from "../play";
 import type { CardId, Decision } from "../protocol";
 import type { AppState } from "./state";
 import { blockedOf } from "./clash";
+import { stackKeyOf, tableTop } from "./focus";
 
 /** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sift too. */
 export function chromeMode(s: AppState, cues: BoardCues): ChromeMode {
@@ -34,7 +35,7 @@ function pairsKey(cues: BoardCues): string {
 
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean, d: DecisionFacts): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${blockedOf(model).join(",")}|${d.kind ?? ""}:${d.options.join(",")}:${d.draft.join(",")}|${settling ? "settling" : ""}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${stackHeldOf(s, model) ? "held" : ""}|${blockedOf(model).join(",")}|${d.kind ?? ""}:${d.options.join(",")}:${d.draft.join(",")}|${settling ? "settling" : ""}`;
 }
 
 /**
@@ -63,6 +64,17 @@ function ordered(s: AppState): AppState {
 
 /** The clash set aside: the combat takes the table form until it ends. */
 const asideOf = (s: AppState): boolean => s.focus.aside.some((e) => e.layer === "clash");
+
+/**
+ * The stack held up as the table's focus: its layer is the topmost table layer, or a new item is about to bring it up
+ * (focus.ts `sync` opens it for every new stack, after the plan is made). Held, it floats over the table and the mats
+ * do not part for it; set aside (or under a sift or a lean-in) it rests in the middle at table size, and they do.
+ */
+export function stackHeldOf(s: AppState, model: TableModel): boolean {
+  if (!model.stack.length) return false;
+  if (stackKeyOf(model) !== s.focus.stackKey) return true;
+  return tableTop(s.focus)?.layer === "stack";
+}
 
 export interface Replanned {
   readonly state: AppState;
@@ -102,6 +114,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         // Every opponent's leaf is the arrangement engine's (docs/game-arrangement-engine.md, steps 6 and 8): its
         // memory rides in the layout memory like any seat's.
         engine: { draw: true, decision },
+        stackHeld: stackHeldOf(s, model),
       }),
     );
     return { state: ordered({ ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }), error: null };

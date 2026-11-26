@@ -302,12 +302,17 @@ export class Flights {
         return { k: "cast", via: mine ? (stacked ? "under" : "line") : "middle", arc: mine ? PATH.castArc : PATH.castArcTheirs, up: proj.up };
       }
       case "join": {
+        // It comes in from the side it came from (a card played from my hand from my edge, theirs from their plate),
+        // so it never flies past where it rests and back (playtest: the first card played overshot my mat's edge); a
+        // card that came from where it lands comes in from the table's middle.
         const to = this.destSample(f);
         const mid = proj.onTable(proj.viewport.w / 2, proj.viewport.h / 2, 0);
-        const dx = mid.x - to.pos.x,
-          dz = mid.z - to.pos.z,
+        const back = Math.hypot(from.pos.x - to.pos.x, from.pos.z - to.pos.z) > 1e-3;
+        const dx = (back ? from.pos.x : mid.x) - to.pos.x,
+          dz = (back ? from.pos.z : mid.z) - to.pos.z,
           l = Math.hypot(dx, dz) || 1;
-        const via: V3 = { x: to.pos.x + (dx / l) * PATH.joinVia * to.s, y: to.pos.y + PATH.joinViaUp, z: to.pos.z + (dz / l) * PATH.joinVia * to.s };
+        const k = back ? Math.min(PATH.joinVia * to.s, l / 2) : PATH.joinVia * to.s;
+        const via: V3 = { x: to.pos.x + (dx / l) * k, y: to.pos.y + PATH.joinViaUp, z: to.pos.z + (dz / l) * k };
         return { k: "join", via };
       }
       case "burn": {

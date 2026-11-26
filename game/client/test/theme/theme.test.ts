@@ -20,6 +20,7 @@ import {
   tokens,
 } from "../../src/theme";
 import type { FaceEnv, FaceSpec } from "../../src/theme";
+import { FACE_W } from "../../src/theme/grimoire/face-size";
 
 /** A recording 2D context: every call and assignment is logged, so a painting is comparable as data. */
 function recorder(): { ctx: CanvasRenderingContext2D; log: string[] } {
@@ -66,6 +67,29 @@ it.each([[350, 488], [672, 936]])("paints a lifted card at its decoded size of %
   paintPrinted(canvas, image);
   expect([canvas.width, canvas.height]).toEqual([width, height]);
   expect(log.find((call) => call.startsWith("drawImage("))).toMatch(/,0\.00,0\.00\)$/);
+});
+
+describe("a face reads as symmetrical (playtest item 9)", () => {
+  // Pips (radius ≥ 30 canvas px) of a whole land face: their middle is the face's middle, between equal margins.
+  const pipsMid = (spec: FaceSpec): number => {
+    const xs = paint(spec)
+      .filter((l) => l.startsWith("arc("))
+      .map((l) => l.slice(4, -1).split(",").map(Number))
+      .filter((a) => a[2]! >= 30)
+      .map((a) => a[0]!);
+    expect(xs.length).toBeGreaterThan(0);
+    return xs.reduce((t, v) => t + v, 0) / xs.length;
+  };
+  it.each([
+    ["a basic", { whole: "basic", mana: ["G"] }],
+    ["a dual", { whole: "dual", mana: ["W", "U"] }],
+    ["a tri", { whole: "dual", mana: ["W", "U", "B"] }],
+    ["any colour", { whole: "any", mana: ["W", "U", "B", "R", "G"] }],
+    ["a small dual", { whole: "dual", mana: ["W", "U"], small: true }],
+    ["a small any", { whole: "any", mana: [], small: true }],
+  ] as const)("%s land's symbols centre on the face", (_, over) => {
+    expect(pipsMid(faceSpec({ name: "Land", frame: "L", ...over } as Parameters<typeof faceSpec>[0]))).toBeCloseTo(FACE_W / 2, 1);
+  });
 });
 
 describe("tokens and css", () => {

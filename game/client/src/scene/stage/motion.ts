@@ -96,7 +96,8 @@ export const PATH = {
   castArcTheirs: 0.3,
   /** Mine onto spells already standing comes up into its place from under it (`to - up * CH * sc * 1.3`). */
   castUnder: 1.3,
-  /** Joining a pile: from in front of it toward the table's middle (`2.2 * s`), 0.6 up, from 0.8 of its size. */
+  /** Joining a pile: from in front of it on the side it came from (`2.2 * s`, at most half the way), 0.6 up, from 0.8 of
+   *  its size. */
   joinVia: 2.2,
   joinViaUp: 0.6,
   joinFrom: 0.8,
