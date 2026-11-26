@@ -480,6 +480,22 @@ function walk(
     }
     return band ? l.over.has(band.index) : l.over.size > 0;
   };
+  // A demote into a tier of its own band frees no place by itself: what it frees is the room the fan a later step makes of
+  // that tier saves (my field's muster). It is judged with that tier fanned, so it runs only until the fan would fit.
+  const fannedLater = (to: TierId, from: number): boolean => policy.ladder.some((x, i) => i > from && x.op === "fan" && "tier" in x.where && x.where.tier === to);
+  const overFanned = (band: Band, slack: boolean, to: TierId): boolean => {
+    const hold = slack ? band.index : null;
+    const key = `${String(hold)}|fan:${to}`;
+    let l = laid.get(key);
+    if (!l) {
+      estimates++;
+      const fan = new Map(st.fan);
+      for (const g of groups) if (st.tier.get(g.key) === to && !st.summary.has(g.key) && !fan.has(g.key)) fan.set(g.key, to);
+      l = lay(bands, planner, draftUnits(policy, groups, { ...st, fan }, tierOf, s), tight, hold);
+      laid.set(key, l);
+    }
+    return l.over.has(band.index);
+  };
   for (const e of edits) {
     const step = e.step;
     let target: Band | null = null, groupsHit: string[];
@@ -510,7 +526,12 @@ function walk(
     const dest = (k: string): Band | undefined => (step.op === "split-spent" ? bandOf.get(step.to) : step.op === "demote" ? bandOf.get(typeof step.to === "string" ? step.to : gByKey.get(k)!.creature ? step.to.creature : step.to.other) : undefined);
     const ownUnits = (k: string) => (st.stacked.has(k) ? 1 : gByKey.get(k)!.members.length);
     let need: boolean;
-    if (BATCHING.on && batch && moves && g && batch.step === e.index && target === batch.band && wasHeld === batch.held && batch.filled.has(dest(g.key)?.index ?? -1)) {
+    const into = step.op === "demote" && g ? dest(g.key) : undefined;
+    const inner = step.op === "demote" && g && into === target && target !== null && fannedLater(st.tier.get(g.key) === undefined ? "" : (typeof step.to === "string" ? step.to : g.creature ? step.to.creature : step.to.other), e.index);
+    if (inner && target) {
+      batch = null;
+      need = forceSummary ? false : settling && wasHeld ? true : overFanned(target, wasHeld, typeof step.to === "string" ? step.to : g!.creature ? step.to.creature : step.to.other);
+    } else if (BATCHING.on && batch && moves && g && batch.step === e.index && target === batch.band && wasHeld === batch.held && batch.filled.has(dest(g.key)?.index ?? -1)) {
       need = true;
       batch.budget -= ownUnits(g.key);
       if (batch.budget <= 0) batch = null;
@@ -787,7 +808,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     const here = all.filter((x) => b.tiers.some((t) => t.id === x.tier));
     if (!here.length) continue;
     if (b.posture === "stand") {
-      const placed = gridPlace(rows, here, pm, tidy);
+      const placed = gridPlace(rows, here, pm, tidy, tierOf);
       for (const [k, v] of placed.at) slots.set(k, { band: b, ...v });
       for (const x of placed.left) (x.pinned ? actors : other).push(...x.members, ...x.dressing);
     } else {
@@ -976,10 +997,10 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
 
 /**
  * Places in a standing band, its nearest row first, each row's intervals nearest the middle first, each interval's
- * places centre-out. A re-sort deals the band by rank (the commander first); otherwise a unit keeps its place while it
+ * places centre-out (or from the end its tier fills from). A re-sort deals the band by rank (the commander first); otherwise a unit keeps its place while it
  * lasts, a retyped card takes its old place where free, and a newcomer the first free place.
  */
-function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemory | null, tidy: boolean): { at: Map<string, { row: RowGeo; ref: SlotRef; u: number; w: number }>; left: U[] } {
+function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemory | null, tidy: boolean, tierOf: ReadonlyMap<TierId, Policy["tiers"][number]>): { at: Map<string, { row: RowGeo; ref: SlotRef; u: number; w: number }>; left: U[] } {
   const at = new Map<string, { row: RowGeo; ref: SlotRef; u: number; w: number }>();
   const mid = (r: RowGeo, i: number) => Math.abs((r.intervals[i]!.lo + r.intervals[i]!.hi) / 2);
   const free = rows.flatMap((row, k) =>
@@ -1004,11 +1025,16 @@ function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemor
     if (p) give(x, p);
     else fresh.push(x);
   }
-  const newcomers = tidy ? [...units].sort(rank) : fresh.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.arrival - b.arrival || cmp(a.key, b.key));
+  // A tier that fills from an end takes the free place nearest it (my mana at the right, my works at the left) before
+  // the tiers that deal from the middle take theirs, nearest the middle first, so a full row keeps its ends.
+  const fromOf = (x: U) => tierOf.get(x.tier)?.from ?? "centre";
+  const ends = { left: [...free].sort((a, b) => a.k - b.k || a.u - b.u), right: [...free].sort((a, b) => a.k - b.k || b.u - a.u), centre: free };
+  const byFrom = (a: U, b: U) => Number(fromOf(a) === "centre") - Number(fromOf(b) === "centre");
+  const newcomers = (tidy ? [...units].sort(rank) : fresh.sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.arrival - b.arrival || cmp(a.key, b.key))).sort(byFrom);
   // when the band is short, the heaviest keep places (the walk folded the rest; pinned cards come first)
   const keep = new Set([...newcomers].sort(rank).slice(0, free.length - taken.size).map((x) => x.key));
   for (const x of newcomers) {
-    const p = keep.has(x.key) ? free.find((f) => !taken.has(key(f))) : undefined;
+    const p = keep.has(x.key) ? ends[fromOf(x)].find((f) => !taken.has(key(f))) : undefined;
     if (p) give(x, p);
     else left.push(x);
   }

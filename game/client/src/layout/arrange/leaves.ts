@@ -36,6 +36,8 @@ export interface LeafInput {
 /** The opponents' leaves for `planTable`: every one arranged, and drawn as its seat's plan when `draw`. */
 export interface EngineInput {
   readonly leaves: readonly LeafInput[];
+  /** My side (step 9), laid out by `mine`. */
+  readonly mine?: LeafInput;
   readonly draw: boolean;
 }
 
@@ -58,6 +60,8 @@ export interface EngineOptions {
   readonly auditPoses?: boolean;
   /** Draw the leaves (each the seat's plan), not only record them. */
   readonly draw?: boolean;
+  /** Lay my side out with the engine too (the default); false keeps `mat`'s. */
+  readonly mine?: boolean;
 }
 
 /** A seat's leaf input from the model: its battlefield as `boardOf` draws it, read from current types. */

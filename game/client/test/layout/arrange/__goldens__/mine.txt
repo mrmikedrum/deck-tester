@@ -1,0 +1,65 @@
+== mine, turn 4 (8 permanents)
+policy mine · row 0 stand (quarter) v0.8 11 places
+  field  0.0.0 u0 card    Faerie Mastermind              stand 
+  field  0.0.1 u1.9 card    Phantasmal Image               stand 
+  mana   0.0.3 u3.7 stack   Island                         lie well 3 lands 3 open · die 3
+  mana   0.0.5 u5.6 card    Springleaf Drum                lie 
+  mana   0.0.7 u7.4 card    Mystic Sanctuary               lie 
+  mana   0.0.9 u9.3 card    Sol Ring                       lie 
+  seat {"creatures":2,"power":2,"flyingPower":0,"keywords":[],"lands":4,"open":6,"works":0}
+
+== mine, turn 9 (25 permanents)
+policy mine · row 0 stand (quarter) v0.8 11 places
+  works  0.0.10 u-9.2 card    Insight Engine                 lie 
+  muster 0.0.8 u-7.4 fan     Illusion                       lie fan 2 · 1 power
+  field  0.0.6 u-5.6 card    Thopter                        stand 
+  field  0.0.4 u-3.7 card    Whirler Rogue                  stand 
+  field  0.0.2 u-1.8 card    Master of Waves                stand 
+  field  0.0.0 u0 card    Princess Yue                   stand 
+  field  0.0.1 u1.9 card    Faerie Mastermind              stand 
+  field  0.0.3 u3.7 card    Meloku the Clouded Mirror      stand 
+  field  0.0.5 u4.6 card    Illusion                       lie quarter 
+  field  0.0.7 u6.5 card    Thopter                        lie quarter 
+  mana   0.0.9 u9.1 fan     Island                         lie well 9 lands 10 open
+  seat {"creatures":10,"power":15,"flyingPower":0,"keywords":[],"lands":9,"open":10,"works":1}
+
+== mine, turn 15 (44 permanents)
+policy mine · row 0 stand (quarter) v0.8 11 places
+  works  0.0.10 u-9.3 fan     Insight Engine                 lie fan 2 · 0 power
+  field  0.0.8 u-8.3 stack   Illusion                       lie quarter ×2 · die 2
+  field  0.0.6 u-5.6 card    Mulldrifter                    stand 
+  field  0.0.4 u-3.7 card    Meloku the Clouded Mirror      stand 
+  field  0.0.2 u-1.8 stack   Elemental                      stand ×4 · die 4
+  field  0.0.0 u0 card    Princess Yue                   stand 
+  field  0.0.1 u1.9 stack   Illusion                       stand ×5 · die 5
+  field  0.0.3 u3.7 card    Master of Waves                stand 
+  field  0.0.5 u5.6 card    Whirler Rogue                  stand 
+  muster 0.0.7 u7.2 fan     Faerie Mastermind              lie fan 6 · 6 power
+  mana   0.0.9 u9.1 fan     Island                         lie well 14 lands 14 open
+  seat {"creatures":22,"power":28,"flyingPower":0,"keywords":[],"lands":14,"open":14,"works":2}
+
+== mine, crowded (70 permanents)
+policy mine · row 0 stand (quarter) v0.8 11 places
+  field  0.0.6 u-5.6 card    Creature 5                     stand 
+  field  0.0.4 u-4.6 stack   Saproling                      lie quarter ×8 · die 8
+  field  0.0.2 u-1.8 card    Creature 8                     stand 
+  field  0.0.0 u0 stack   Saproling                      stand ×20 · die 20
+  field  0.0.1 u1.9 card    Creature 9                     stand 
+  field  0.0.3 u3.7 card    Creature 7                     stand 
+  field  0.0.5 u5.6 card    Creature 6                     stand 
+  muster 0.0.7 u7.3 fan     Creature 4                     lie fan 5 · 15 power · proud Creature 3 (threat)
+  mana   0.0.9 u9.1 fan     Forest                         lie well 26 lands 28 open
+  attention threat: Creature 3
+  seat {"creatures":38,"power":83,"flyingPower":0,"keywords":[],"lands":26,"open":28,"works":0}
+
+== mine, creature-light (14 permanents)
+policy mine · row 0 stand (quarter) v0.8 11 places
+  works  0.0.10 u-9.2 card    Coat of Arms                   lie 
+  field  0.0.2 u-1.8 card    The One Ring                   stand 
+  field  0.0.0 u0 card    Rhystic Study                  stand 
+  field  0.0.1 u1.9 card    Propaganda                     stand 
+  field  0.0.3 u3.7 card    Thopter                        stand 
+  mana   0.0.5 u5.6 stack   Island                         lie well 7 lands 7 open · die 7
+  mana   0.0.7 u7.4 card    Command Tower                  lie 
+  mana   0.0.9 u9.3 card    Mind Stone                     lie 
+  seat {"creatures":1,"power":1,"flyingPower":0,"keywords":[],"lands":8,"open":9,"works":4}

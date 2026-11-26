@@ -313,10 +313,11 @@ describe("duels in the parted middle (a fight between opponents)", () => {
     for (const c of [1015, 1024]) expect(unitOf(plan, c).fighting, String(c)).toBe(true);
     for (const c of [1064, 1153, 1204]) expect(unitOf(plan, c).fighting, String(c)).toBeFalsy();
     expect(box(plan, 1015).r).toBeLessThan(box(plan, 1024).l);
-    // its feet just over my field row's tops, its top clear under every opponent's feet: the mats parted for it
+    // its feet just over my field row's tops, its top clear under every opponent's feet: the mats part for it only as far
+    // as it needs (my field on the engine leaves this one room at rest)
     expect(g.duels!.b).toBeLessThanOrEqual(plan.fieldTop);
     expect(lowest(plan, g.duels!.l, g.duels!.r)).toBeLessThanOrEqual(g.duels!.t);
-    expect(plan.part).toBeGreaterThan(0);
+    expect(plan.part).toBeGreaterThanOrEqual(0);
     expect(plan.part).toBeLessThanOrEqual(0.35);
     // the clasp between them
     const col = g.wings[0]!.columns.find((c) => c.attackers.includes(id(1015)))!;
@@ -327,7 +328,10 @@ describe("duels in the parted middle (a fight between opponents)", () => {
   });
 
   it("a parting moves no unit: every leaf keeps its units, members and places", () => {
-    const rest = drawn(turn15(MARATH, [], "Marath")), parted = drawn(turn15(MARATH, [[1024, 1015]], "Marath"));
+    // (the stack set aside takes the whole parting)
+    const withStack = (m: TableModel): TableModel => ({ ...m, stack: [{ id: 9001 as never, source: 1015 as never, controller: "Marath" as never, spell: true, targets: [] } as never] });
+    const rest = drawn(turn15([], [], "Marath")), parted = drawn(withStack(turn15([], [], "Marath")));
+    expect(parted.part).toBeGreaterThan(0);
     for (const seat of ["Atraxa"]) {
       const a = rest.seats.get(seat as never)!.units, b = parted.seats.get(seat as never)!.units;
       expect(b.map((u) => [u.id, u.members])).toEqual(a.map((u) => [u.id, u.members]));
@@ -350,7 +354,11 @@ describe("duels in the parted middle (a fight between opponents)", () => {
   });
 
   it("all or nothing: duels that do not fit the middle raise the clash; set aside, everyone stays home", () => {
-    const many = turn15(MARATH, [[1024, 1015], [1129, 1064], [1048, 1153], [1080, 1204]], "Marath");
+    // seven blocked fights: six fit the middle, seven do not
+    const attackers = [...MARATH, [1035, "Dack"], [1101, "Dack"], [1066, "Dack"]] as const;
+    const blocks = [[1024, 1015], [1129, 1064], [1048, 1153], [1080, 1204], [1049, 1035], [1130, 1101], [1181, 1066]] as const;
+    expect(drawn(turn15(attackers, blocks.slice(0, 6), "Marath")).crowded).toBe(false);
+    const many = turn15(attackers, blocks, "Marath");
     const plan = drawn(many);
     expect(plan.crowded).toBe(true);
     expect(plan.gathering!.form).toBe("clash");
@@ -360,10 +368,11 @@ describe("duels in the parted middle (a fight between opponents)", () => {
     for (const c of [1015, 1024]) expect(unitOf(aside, c).fighting, String(c)).toBeFalsy();
   });
 
-  it("set aside (the app's combatForm), a fight at me stays home", () => {
+  it("set aside (the app's combatForm), a fight at me stays home: my cards in the middle would be under my floor", () => {
     const m = turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4);
     const plan = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", engine: { draw: true } }));
     expect(plan.gathering!.form).toBe("table");
     for (const a of ATRAXA6) expect(unitOf(plan, a).fighting).toBeFalsy();
+    expect(plan.violations).toEqual([]);
   });
 });

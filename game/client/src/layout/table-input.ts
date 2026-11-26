@@ -83,12 +83,13 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
   };
 }
 
-/** Every opponent's leaf (every seat but the perspective's), each with its own memory: given, or carried in the layout
- *  memory. */
+/** Every opponent's leaf (every seat but the perspective's) and my side, each with its own memory: given, or carried in
+ *  the layout memory. */
 function engineInputOf(model: TableModel, seats: TableInput["seats"], involved: ReadonlySet<CardId>, settling: boolean, o: EngineOptions, memory: ReadonlyMap<SeatId, LayoutMemory> | null) {
-  const leaves = seats.slice(1).map(({ seat, board }) => {
+  const inputOf = ({ seat, board }: TableInput["seats"][number]) => {
     const m = o.memory?.has(seat) ? (o.memory.get(seat) ?? null) : arrangedMemory(memory?.get(seat));
     return leafInputOf(model, seat, involved, settling, { ...o, memory: m }, board);
-  });
-  return { leaves, draw: !!o.draw };
+  };
+  // My side too, unless asked to keep `mat`'s (the comparisons and the bench's "mat alone").
+  return { leaves: seats.slice(1).map(inputOf), ...(seats[0] && o.mine !== false ? { mine: inputOf(seats[0]) } : {}), draw: !!o.draw };
 }

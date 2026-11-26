@@ -30,6 +30,8 @@ export interface TableTemplate {
   readonly leaf: LeafGeometry;
   /** How far the leaves may part for what rests on the middle at table size (duels, the stack). */
   readonly part: Parting;
+  /** My side when the arrangement engine lays it out: where my field's feet stand (world z, at its middle). */
+  readonly mine: { readonly field: number };
 }
 
 /**
@@ -79,6 +81,9 @@ const LANDSCAPE_4: readonly SeatSlot[] = [
 // and the side leaves, turned the same as their slots, meet it there.
 const LEAF_4: LeafGeometry = { front: -3.9, d: 13, far: 0 };
 const PART_4: Parting = { most: 0.15, step: 0.05 };
+// My field faces theirs across the open middle: as near the middle as keeps my standing faces over their floor (72
+// design px) and leaves my lying band its rows between the hand's top and the screen's foot.
+const MINE_4 = { field: 2.0 } as const;
 
 /**
  * Fewer opponents share the same width (a seat that leaves gives its room back): the span from the left leaf's outer
@@ -100,7 +105,7 @@ function fewer(opponents: number): SeatSlot[] {
 export function tableTemplate(seats: number, form: Form = "landscape"): TableTemplate {
   if (form === "landscape" && seats >= 1 && seats <= 4) {
     const slots = seats === 4 ? LANDSCAPE_4 : [LANDSCAPE_4[0]!, ...(seats > 1 ? fewer(seats - 1) : [])];
-    return { form, seats, camera: CAMERA, slots, growOnTurn: 1.1, leaf: LEAF_4, part: PART_4 };
+    return { form, seats, camera: CAMERA, slots, growOnTurn: 1.1, leaf: LEAF_4, part: PART_4, mine: MINE_4 };
   }
   throw new NotTunedError(seats, form);
 }

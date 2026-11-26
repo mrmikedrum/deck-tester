@@ -413,6 +413,8 @@ export interface TierSpec {
   readonly markers?: boolean;
   /** Its fans may push a notable member proud: reserve that strip behind the row. */
   readonly proud?: boolean;
+  /** Where its units take a standing row's free places: nearest the middle first (the default), or from an end. */
+  readonly from?: "centre" | "left" | "right";
 }
 
 /** Which groups a fold step takes. */

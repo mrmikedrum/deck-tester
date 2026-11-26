@@ -249,11 +249,13 @@ describe("a chooser for a gesture", () => {
     expect(groups(r).some((x) => x.id === g.id)).toBe(true);
   });
 
-  /** Two Grizzly Bears of mine, one owned by Atraxa (not twins), in one pile; they may attack Atraxa or Dack. */
+  /** Two Grizzly Bears of mine, one owned by Atraxa (not twins), in one pile (eleven other creatures fill my row, so the
+   *  copies stack); they may attack Atraxa or Dack. */
   function bears(v: number, ids = [20, 21]): Json {
     const e = board({ v, islands: 0 }) as { view: { players: Json[] }; decision: Json };
     const bear = (id: number, owner: string): Json => ({ id, name: "Grizzly Bears", owner, controller: "You", type: "Creature - Bear", power: 2, toughness: 2 });
-    e.view.players[0]!["battlefield"] = ids.map((id) => bear(id, id === 21 ? "Atraxa" : "You"));
+    const others = Array.from({ length: 11 }, (_, i): Json => ({ id: 40 + i, name: `Wall ${i}`, owner: "You", controller: "You", type: "Creature - Wall", power: 3, toughness: 3 }));
+    e.view.players[0]!["battlefield"] = [...ids.map((id) => bear(id, id === 21 ? "Atraxa" : "You")), ...others];
     const refs = [20, 21].flatMap((card) => ["Atraxa", "Dack"].map((to) => ({ card, to })));
     e.decision = { id: 1, kind: "attack", turn: "T1 main1", prompt: "attackers", repeat: false, options: refs.map(() => "attack"), refs, min: 0, max: 4 };
     return e;
@@ -261,7 +263,7 @@ describe("a chooser for a gesture", () => {
 
   it("a tap on a card in the chooser, let go after a snapshot removed that card, is refused: nothing attacks", () => {
     const r = started(bears(1));
-    const g = groups(r).find((x) => x.members.length > 1)!;
+    const g = groups(r).find((x) => x.members.includes(20 as CardId))!;
     r.send({ a: "drag", from: { group: g.id, members: g.members }, onto: { seat: seatId("Dack") } });
     r.frame((r.now += 10));
     // the tap on Bear 21 goes down in the sift: its stop and chooser are those on screen now
@@ -282,7 +284,7 @@ describe("a chooser for a gesture", () => {
 
   it("put away (Escape), it lets the gesture go: a later tap on one of its cards is that tap alone", () => {
     const r = started(bears(1));
-    const g = groups(r).find((x) => x.members.length > 1)!;
+    const g = groups(r).find((x) => x.members.includes(20 as CardId))!;
     expect(g.members).toEqual([20, 21]);
     r.send({ a: "drag", from: { group: g.id, members: g.members }, onto: { seat: seatId("Dack") } });
     r.frame((r.now += 10));

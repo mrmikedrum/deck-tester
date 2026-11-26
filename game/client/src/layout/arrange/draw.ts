@@ -62,7 +62,14 @@ export function regionOf(proj: Projector, f: SurfaceFrame, lo: number, hi: numbe
   let bl = P(lo, v0, 0), br = P(hi, v0, 0);
   // A grid row's places abut: each region runs up its slot's own edges (feet to the standing top), so neighbours meet
   // along a shared line and never overlap, however perspective skews the row (a side leaf's). What lies turned in the
-  // place stays inside those edges but for a sliver at a far corner, where the edge already is the neighbour's.
+  // place stays inside those edges but for a sliver at a far corner, where the edge already is the neighbour's. The
+  // count strip in front extends each edge down its own line (a turned stack keeps all of its place).
+  if (standing && front > 0) {
+    const fl = P(lo, v, 0), fr = P(hi, v, 0);
+    const down = (a: { x: number; y: number }, t: { x: number; y: number }, y: number) => ({ x: a.x + ((t.x - a.x) * (y - a.y)) / (t.y - a.y || 1e-9), y });
+    bl = down(fl, tl, bl.y);
+    br = down(fr, tr, br.y);
+  }
   if (standing) return [{ x: bl.x - 0.5, y: bl.y + 0.5 }, { x: br.x + 0.5, y: br.y + 0.5 }, { x: tr.x + 0.5, y: tr.y - 0.5 }, { x: tl.x - 0.5, y: tl.y - 0.5 }];
   // Widen each side to hold every corner (perspective spreads a raised corner past the feet's line).
   const sideX = (a: { x: number; y: number }, b: { x: number; y: number }, y: number) => (b.y === a.y ? a.x : a.x + ((b.x - a.x) * (y - a.y)) / (b.y - a.y));
