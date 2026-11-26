@@ -8,21 +8,23 @@ described in [architecture](architecture.md).
 Importing a person's deck at a table from the game client (a pasted list or a `.dck`), into the deck database, with
 multiplayer.
 
-## The game client on TypeScript
+## The game client: the whole table on the engine, then polish
 
-Strict TypeScript and Vite, three.js from npm, split by concern out of `h.js` and `live.js`, with the seat layout
-as a pure module of its own. Each step keeps recordings equivalent. Its own plan comes first; the
-[handoff](game-client-migration.md) holds what is decided, what is open, and how to check a step.
+The direction is settled: focus first and by relevance, a fully physical table with highlight mode for the stack
+and targets, nameplates at the top. The build follows the [arrangement engine](game-arrangement-engine.md#62-after-the-slice)'s
+steps. Today only the seat across is laid out by the engine; the side seats, my side and the focuses (stack, hand,
+pile, nameplate) still run on the old layout.
 
-## The game's protocol
+1. Combat that reads from one still: the gathering as a focus.
+2. Sharpness: full device resolution and text contrast on the iPad.
+3. The side seats without a reserved middle (step 8), my side (9), moments (10).
+4. The focuses on the engine (11), then the old layout deleted (12).
+5. The look loop resumes on the whole table.
 
-Types for the engine's view and decisions as the client's contract, checked against views a real engine game
-saves as fixtures, so a shape change breaks the client build.
-
-## Opponents' boards, then the look loop again
-
-A design exploration of how big opponent boards read (several real-world paradigms side by side, judged blind),
-then the look loop resumes on the new modules, its lanes on branches with pull requests.
+Done when every board and focus runs on the engine, and stills of an early, a mid, a combat and a late game read
+cleanly at full sharpness on the iPad. The policy stage (grouping, ranking, order) stays swappable: a trained
+layout model, built in a separate repository, is expected to replace the heuristic policies behind the same
+contract.
 
 ## Browser target handoff
 
