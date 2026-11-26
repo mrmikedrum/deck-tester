@@ -26,6 +26,24 @@ test("a deck rejected by the lobby explains the failed start", async ({ table })
   await expect(table.button("New game")).toBeVisible();
 });
 
+test("a generic lobby refusal gives a generic start failure", async ({ table }) => {
+  await table.open({ state: "starting" });
+  await table.push({ state: "error", gen: table.snapshot.gen, startFailure: "engine", error: "table couldn't start" });
+  await expect(table.page.getByText("Game couldn't start", { exact: true })).toBeVisible();
+});
+
+test("reconnecting disables play until the same game returns", async ({ table }) => {
+  const s = snapshot("main");
+  await table.open(s);
+  const gen = table.snapshot.gen;
+  await table.push({ state: "reconnecting", gen, error: "view stalled" });
+  await expect(table.page.getByText("Reconnecting…", { exact: true })).toBeVisible();
+  await expect(table.page.locator('.l-prompt [data-button="pass"]')).toHaveCount(0);
+  await table.push({ ...s, gen });
+  await expect(table.page.locator('.l-prompt [data-button="pass"]')).toBeVisible();
+  expect(table.answers()).toEqual([]);
+});
+
 test("an interrupted game clears the old decision and offers recovery", async ({ table }) => {
   await table.open("main");
   await expect(table.page.locator('.l-prompt [data-button="pass"]')).toBeVisible();

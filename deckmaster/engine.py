@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -15,7 +16,8 @@ HOME = ROOT / ".deckmaster"
 SOCKET = HOME / "engine.sock"
 LOG = HOME / "engine.log"
 # Browser table RPCs do not wait for a game decision. Leave decision/fork requests on Forge's own deadline.
-REQUEST_TIMEOUTS = {"table": 30, "table_end": 10, "view": 3, "shutdown": 3}
+REQUEST_TIMEOUTS = {"table": 120, "table_end": 120, "table_state": 30, "view": 30, "shutdown": 3}
+STOP_GRACE_SECONDS = 10
 MODE = []  # extra arguments for the engine: ["table"] for the table engine (see use_table)
 _started = {}  # socket to the detached process this interpreter started, for reaping on stop
 
@@ -51,6 +53,10 @@ def local_cards() -> list:
 
 
 class EngineError(Exception):
+    pass
+
+
+class EngineTimeout(EngineError):
     pass
 
 
@@ -155,7 +161,7 @@ def request(payload: dict, start: bool = True) -> dict:
                     break
                 data += chunk
         except socket.timeout as error:
-            raise EngineError(f"engine timed out on {payload['cmd']}; see {LOG}") from error
+            raise EngineTimeout(f"engine timed out on {payload['cmd']}; see {LOG}") from error
     if not data:
         raise EngineError(f"engine closed the connection; see {LOG}")
     reply = json.loads(data)
@@ -164,24 +170,76 @@ def request(payload: dict, start: bool = True) -> dict:
     return reply
 
 
+def _pid_file():
+    return SOCKET.with_suffix(".pid")
+
+
+def engine_pid():
+    """The PID registered by the server that bound this socket, if known."""
+    proc = _started.get(SOCKET)
+    if proc is not None and proc.poll() is None:
+        return proc.pid
+    try:
+        return int(_pid_file().read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def process_alive(pid):
+    proc = _started.get(SOCKET)
+    if proc is not None and proc.pid == pid:
+        return proc.poll() is None
+    # A stale PID file can outlive its JVM. Match the engine and its exact checkout before signaling a PID.
+    result = subprocess.run(["ps", "-ww", "-p", str(pid), "-o", "command="], capture_output=True, text=True, check=False)
+    suffix = f"deckmaster.engine.Server {RES} {HOME}" + (" table" if MODE else "")
+    return result.returncode == 0 and result.stdout.strip().endswith(suffix)
+
+
 def stop() -> None:
-    """Shut the engine down and wait until it has gone. Ending it ends every session."""
+    """Shut the engine down. Only remove its socket once its registered process is gone."""
+    pid = engine_pid()
+    try:
+        inode = SOCKET.stat().st_ino
+    except FileNotFoundError:
+        inode = None
     try:
         request({"cmd": "shutdown"}, start=False)
     except (EngineError, OSError):
         pass
-    deadline = time.time() + 10
-    while time.time() < deadline:
-        try:
-            _connect(0.2).close()
+    deadline = time.monotonic() + STOP_GRACE_SECONDS
+    if pid is None:
+        while SOCKET.exists():
+            try:
+                _connect(0.2).close()
+            except (FileNotFoundError, ConnectionRefusedError):
+                return  # An older engine left a stale socket. The next JVM can reclaim it.
+            except OSError:
+                pass
+            if time.monotonic() >= deadline:
+                raise EngineError("cannot confirm engine shutdown without its PID")
             time.sleep(0.2)
-        except OSError:
-            break
-    if SOCKET.exists():
-        SOCKET.unlink()
-    proc = _started.get(SOCKET)
-    if proc is not None and proc.poll() is not None:
-        del _started[SOCKET]
+        return
+    while process_alive(pid) and time.monotonic() < deadline:
+        time.sleep(0.2)
+    if process_alive(pid):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        deadline = time.monotonic() + 5
+        while process_alive(pid) and time.monotonic() < deadline:
+            time.sleep(0.1)
+    if process_alive(pid):
+        raise EngineError(f"engine process {pid} did not stop")
+    if _pid_file().exists() and _pid_file().read_text().strip() != str(pid):
+        return  # A replacement already owns the socket.
+    try:
+        if inode is not None and SOCKET.stat().st_ino == inode:
+            SOCKET.unlink()
+    except FileNotFoundError:
+        pass
+    _pid_file().unlink(missing_ok=True)
+    _started.pop(SOCKET, None)
 
 
 def refresh() -> None:

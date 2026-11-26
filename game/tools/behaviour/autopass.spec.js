@@ -45,6 +45,27 @@ test.describe("it does not pass", () => {
     await open(table, theirSpell(PASS, s => [find(s, "You", "Meloku the Clouded Mirror").id]));
     await table.quiet(10000);
   });
+  test("a counter aimed at one of two activations holds priority", async ({ table }) => {
+    const s = snapshot("main");
+    const source = find(s, "You", "Meloku the Clouded Mirror");
+    await open(table, withDecision(s, PASS, v => {
+      v.active = "Dack";
+      const counter = opponentSpell(v, "Swords to Plowshares", [source.id]);
+      counter.source.name = "Stifle";
+      counter.text = "Stifle";
+      counter.abilityTargets = [2];
+      v.stack.push(
+        { id: 3, source, controller: "You", spell: false, text: "Second activation" },
+        { id: 2, source, controller: "You", spell: false, text: "First activation" },
+      );
+    }));
+    await table.quiet(10000);
+    if (process.env.BEHAVIOUR_CLIENT === "new") {
+      const headline = await table.page.locator(".l-what").innerText();
+      expect(headline).toContain("ability (stack 3)");
+      expect(headline).not.toContain("your Meloku");
+    }
+  });
   test("a real play on offer (a response)", async ({ table }) => {
     const base = snapshot("main"), snap = inHand(base, "Snap").id;
     await open(table, theirSpell({ kind: "play", prompt: "", options: ["Pass", "Snap"], refs: [{}, { card: snap }], min: 1, max: 1 }));

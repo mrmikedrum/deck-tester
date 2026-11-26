@@ -13,6 +13,7 @@ export const WAITING: Record<AppState["session"]["bridge"], string> = {
   playing: "No game yet",
   over: "No game yet",
   error: "Game couldn't start",
+  reconnecting: "Reconnecting…",
   interrupted: "Game interrupted",
 };
 
@@ -26,7 +27,7 @@ export function waitingLine(s: AppState): string {
  * starting), or the game is over (live.js `status`). */
 export function offersNewGame(s: AppState): boolean {
   const b = s.session.bridge;
-  if (!s.model) return b !== "connecting" && b !== "starting";
+  if (!s.model) return b !== "connecting" && b !== "starting" && b !== "reconnecting";
   return s.model.over || b === "over" || s.session.over !== null;
 }
 

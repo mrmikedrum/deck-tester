@@ -426,7 +426,7 @@ schemas with the rules in comments); `tests/fixtures/protocol/` holds real envel
 engine to them. The rules:
 
 - **The envelope** (`GET /api/view?v=N`, a long poll that answers when the version passes `N`, or at once when `N` is
-  ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`, `interrupted`), `gen`
+  ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`, `reconnecting`, `interrupted`), `gen`
   (a new game, a new gen, retained on a failed start), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view
   of my seat, `{}` or null before the game), `decision` (the pending one, or null), `over` (the result line), `pilots` (seat to pilot), plus
   `answer` and `build` below. The view is facts by card id and player name: players from mine in turn order, gone once
@@ -442,7 +442,10 @@ engine to them. The rules:
   thread as they happen, publishes them for the view, and saves and restores them with a session snapshot; a hit
   stays counted when its source or target leaves, and nothing comes from the game log.
   Responsive empty views keep the bridge in `starting`. An opening failure can include `startFailure` (`deck` or
-  `engine`). A persistent read failure after the opening publishes `interrupted` and clears the decision.
+  `engine`). Read failures clear the decision and publish `reconnecting` while the bridge retries the same session.
+  A dead engine or an exhausted recovery window publishes `interrupted` for an opened game.
+  Keep the engine connection open while creating a table. The server discards creation if its requester disconnects.
+  Before opening a replacement or reporting a creation timeout, the bridge closes the table and confirms closure.
 - **Decisions** carry `id`, `kind`, `turn`, `prompt`, `options` (labels, which can repeat), `details`, `min`, `max`,
   `repeat`, `mine` (asked in my turn; every decision is mine to answer), and `refs` aligned with the options for what
   they point at: `play` (`{card, spell, mana?}`; pass is `{}`), `pay` (`{card, repeats?}`: `repeats` when the mana

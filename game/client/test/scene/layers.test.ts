@@ -105,7 +105,7 @@ group("the stack as the table's focus", () => {
       stack: [
         { id: 31, source, spell: false },
         { id: 32, source, spell: false },
-        { id: 33, source: spell(302, "Stifle", "Atraxa", "Counter target activated or triggered ability."), abilityTargets: [31] },
+        { id: 33, source: spell(302, "Stifle", "Atraxa", "Counter target activated or triggered ability."), targets: [301], abilityTargets: [31] },
       ],
     });
     const plan = planTable(tableInputOf(model, { viewport: { w: 1180, h: 820 } }));

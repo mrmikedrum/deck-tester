@@ -40,6 +40,7 @@ CLIENTLOG = engine.HOME / "clientlog.jsonl"
 BENCH = engine.HOME / "bench"   # the workbench's timing results (game/client/src/scene/workbench/bench.ts)
 UA = {"User-Agent": "deckmaster-game/0.1", "Accept": "application/json"}
 ARGS = None
+RECOVERY_SECONDS = 180
 
 # ---- The table -----------------------------------------------------------------------------------------------------
 
@@ -69,6 +70,8 @@ class Table:
             if gen != self.generation:
                 return False
             self.session = session
+            if self.snapshot["state"] == "reconnecting":
+                self.error = None
             self._store(dict(snap, answer=self.status))
             return True
 
@@ -85,7 +88,7 @@ class Table:
 
     def fail_start(self, gen, error, reason=None):
         with self.lock:
-            if gen == self.generation and self.snapshot["state"] == "starting":
+            if gen == self.generation and self.snapshot["state"] in ("starting", "reconnecting"):
                 self.failure(gen, "error", error, **({"startFailure": reason} if reason else {}))
 
     def failure(self, gen, state, error, **fields):
@@ -124,10 +127,8 @@ class Table:
         mine = decks.get(me[:-4] if me.endswith(".txt") else me)
         agents = [configured_seat(slug) for slug in others]
         model.key()  # check configured Jev access; never expose the key in a response or log
-        try:
-            engine.request({"cmd": "table_end"}, start=False)
-        except engine.EngineError:
-            pass
+        if engine.SOCKET.exists():
+            close_table()
         seats = []
         self.usage, self.outcomes, self.pilots = model.Usage(), {}, {"You": "human"}
         names = {"You"}
@@ -153,7 +154,11 @@ class Table:
                 seat["watch"] = True  # stop on what the others put on the stack, so you see it
             seats.append(seat)
         # Forge's lobby can hold the last table's port for a while after it ends: each table takes the next one.
-        reply = engine.request({"cmd": "table", "seats": seats, "people": 0, "port": ARGS.table_port + gen % 20})
+        try:
+            reply = engine.request({"cmd": "table", "seats": seats, "people": 0, "port": ARGS.table_port + gen % 20})
+        except engine.EngineTimeout:
+            close_table()
+            raise
         self.seats = reply["seats"]
         self.mine = self.seats["You"]
         for agent in agents:
@@ -173,35 +178,43 @@ class Table:
     def watch(self, gen, session):
         """Game `gen`'s watcher: polls its own seat's view until a newer game begins. A view that comes back after that
         is dropped (`show` checks the gen under the lock), so it never overwrites the newer game's snapshot."""
-        last_ok = time.monotonic()
+        pid = engine.engine_pid()
+        retry = 0.5
+        failed_at = None
+        opening = True
         while gen == self.generation:
             try:
                 reply = engine.request({"cmd": "view", "session": session}, start=False)
-                last_ok = time.monotonic()
-                if self.snapshot["state"] == "starting":
+                failed_at, retry = None, 0.5
+                if opening:
                     reason = reply.get("startFailure")
                     if reason or (reply.get("over") or "").startswith("error:"):
                         self.fail_start(gen, reply.get("over") or "engine could not start", reason)
                         return
                     if not (reply.get("view") or reply.get("decision") or reply.get("over")):
+                        if self.snapshot["state"] == "reconnecting":
+                            self.show({"state": "starting", "gen": gen}, gen, None)
                         time.sleep(0.25)
                         continue
+                opening = False
                 if not self.show(snapshot(reply, gen, self.pilots), gen, session):
                     return
                 if "over" in reply:
                     return
                 time.sleep(0.12 if reply.get("decision") else 0.25)
             except Exception as error:  # a read while Forge moves cards can fail: read again
-                if time.monotonic() - last_ok > 10:
-                    with self.lock:
-                        if gen != self.generation:
-                            return
-                        if self.snapshot["state"] == "starting":
-                            self.fail_start(gen, error)
-                            return
-                        self.failure(gen, "interrupted", error)
+                now = time.monotonic()
+                with self.lock:
+                    if gen != self.generation:
                         return
-                time.sleep(0.1)
+                    if (pid is not None and not engine.process_alive(pid)) or (failed_at is not None and now - failed_at >= RECOVERY_SECONDS):
+                        self.failure(gen, "error" if opening else "interrupted", error)
+                        return
+                    if failed_at is None:
+                        failed_at = now
+                        self.failure(gen, "reconnecting", error)
+                time.sleep(retry)
+                retry = min(retry * 2, 5)
 
     def answer(self, body):
         """Forward an answer to the pending decision. The reply is the engine's refusal if it comes at once, else
@@ -867,6 +880,17 @@ class Handler(BaseHTTPRequestHandler):
             traceback.print_exc()
             return self.send(500, {"ok": False, "error": str(error)})
         return self.send(404, {"error": "not found"})
+
+
+def close_table():
+    """Wait for creation/closure on the table engine before starting another table or reporting a timeout."""
+    try:
+        engine.request({"cmd": "table_end"}, start=False)
+        if engine.request({"cmd": "table_state"}, start=False)["state"] == "no table":
+            return
+    except (engine.EngineError, OSError):
+        pass
+    engine.stop()  # No acknowledgement: the table is gone only once its JVM has stopped.
 
 
 def safe_open(me, others, seed, mana):

@@ -1,14 +1,79 @@
 """End-to-end check against the real engine. Skipped when Forge isn't installed (as in CI)."""
 
+import os
+import signal
+import socket
 import threading
 import unittest
 from pathlib import Path
 
 from unittest import mock
 
-from deckmaster import batch, decklist, engine, model, records, report
+from deckmaster import batch, decklist, engine, game, model, records, report
+from tests.protocol_capture import table_engine
 
 DECK = Path(__file__).resolve().parent / "fixtures" / "decks" / "marath-tokens.txt"
+
+
+@unittest.skipUnless(engine.RES.is_dir() and engine.FORGE_BUILD.exists(), "requires installed Forge")
+class EngineShutdownTest(unittest.TestCase):
+    def setUp(self):
+        engine.stop()
+        engine.request({"cmd": "sessions"})
+        self.proc = engine._started[engine.SOCKET]
+        self.addCleanup(engine.stop)
+        self.addCleanup(self.reap)
+
+    def reap(self):
+        if self.proc.poll() is None:
+            self.proc.kill()
+            self.proc.wait(timeout=5)
+
+    def test_shutdown_exits_even_when_the_client_has_closed(self):
+        with engine._connect() as client:
+            os.kill(self.proc.pid, signal.SIGSTOP)
+            try:
+                client.sendall(b'{"cmd": "shutdown"}\n')
+            finally:
+                client.close()
+                os.kill(self.proc.pid, signal.SIGCONT)
+        self.assertEqual(self.proc.wait(timeout=10), 0)
+
+    def test_stop_kills_a_live_stalled_engine_before_unlinking_its_socket(self):
+        self.assertEqual(engine.engine_pid(), self.proc.pid)
+        os.kill(self.proc.pid, signal.SIGSTOP)
+        # A CLI in a different process has the server's PID file rather than a Popen handle.
+        with mock.patch.object(engine, "_started", {}), mock.patch.object(engine, "STOP_GRACE_SECONDS", 0.1), \
+                mock.patch.dict(engine.REQUEST_TIMEOUTS, shutdown=0.1):
+            engine.stop()
+        self.assertEqual(self.proc.wait(timeout=5), -signal.SIGKILL)
+        self.assertFalse(engine.SOCKET.exists())
+        self.assertFalse(engine._pid_file().exists())
+
+
+@unittest.skipUnless(engine.RES.is_dir() and engine.FORGE_BUILD.exists(), "requires installed Forge")
+class TableCreationTest(unittest.TestCase):
+    def test_timed_out_creation_does_not_block_a_replacement_on_the_same_port(self):
+        with table_engine():
+            engine.request({"cmd": "sessions"})
+            proc = engine._started[engine.SOCKET]
+            with socket.socket() as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = sock.getsockname()[1]
+            request = {"cmd": "table", "port": port, "people": 1, "seats": [
+                {"name": "You", "commanders": ["Marath, Will of the Wild"], "main": [[99, "Forest"]]},
+            ]}
+            os.kill(proc.pid, signal.SIGSTOP)
+            try:
+                with mock.patch.dict(engine.REQUEST_TIMEOUTS, table=0.1):
+                    with self.assertRaisesRegex(engine.EngineTimeout, "engine timed out on table"):
+                        engine.request(request)
+            finally:
+                os.kill(proc.pid, signal.SIGCONT)
+            game.close_table()
+            self.assertEqual(engine.request({"cmd": "table_state"})["state"], "no table")
+            self.assertIn("You", engine.request(request)["seats"])
+            game.close_table()
 
 
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")

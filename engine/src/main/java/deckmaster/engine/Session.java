@@ -1161,9 +1161,8 @@ final class Session {
                     choices.getTargetCards().forEach(card -> targets.add(card.getId()));
                     choices.getTargetPlayers().forEach(player -> targets.add(player.getName()));
                     for (var target : choices.getTargetSpells()) {
-                        if (target.isSpell()) {
-                            targets.add(target.getHostCard().getId());
-                        } else {
+                        targets.add(target.getHostCard().getId());
+                        if (!target.isSpell()) {
                             var instance = game.getStack().getInstanceMatchingSpellAbilityID(target);
                             if (instance != null) {
                                 abilityTargets.add(instance.getId());

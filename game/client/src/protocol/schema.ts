@@ -321,7 +321,7 @@ export const DecisionSchema = v.lazy((input) => {
 
 // ---- The envelope ------------------------------------------------------------------------------------------------
 
-export const STATES = ["no game", "starting", "playing", "over", "error", "interrupted"] as const;
+export const STATES = ["no game", "starting", "playing", "over", "error", "interrupted", "reconnecting"] as const;
 
 /** What happened to the last answer the bridge forwarded to the engine. */
 export const AnswerStatusSchema = v.object({

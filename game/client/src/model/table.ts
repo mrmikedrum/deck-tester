@@ -210,17 +210,21 @@ export function modelOf(
   for (const c of cards.values()) if (c.commander) seen.set(c.owner, [...(seen.get(c.owner) ?? []), c]);
   for (const [seat, list] of seen) commanders.set(seat, list);
 
-  const stack: StackItem[] = wireStack.map((s) => ({
-    id: s.id,
-    source: s.source?.id ?? null,
-    controller: s.controller === null ? null : seatId(s.controller),
-    spell: s.spell,
-    text: s.text,
-    targets: s.targets.map(targetOf),
-    x: s.x,
-    modes: s.modes,
-    abilityTargets: s.abilityTargets,
-  }));
+  const stack: StackItem[] = wireStack.map((s) => {
+    const targets = [...s.targets];
+    // The bridge still sends source card ids for legacy clients. Replace one such id per exact ability target.
+    for (const id of s.abilityTargets) {
+      const source = wireStack.find((item) => item.id === id)?.source?.id;
+      const at = source === undefined ? -1 : targets.lastIndexOf(source);
+      if (at >= 0) targets.splice(at, 1);
+    }
+    return {
+      id: s.id, source: s.source?.id ?? null,
+      controller: s.controller === null ? null : seatId(s.controller),
+      spell: s.spell, text: s.text, targets: targets.map(targetOf),
+      x: s.x, modes: s.modes, abilityTargets: s.abilityTargets,
+    };
+  });
 
   const defending = (d: Target | null): SeatId | null =>
     d === null ? null : "seat" in d ? d.seat : (cards.get(d.card)?.controller ?? null);

@@ -15,6 +15,7 @@ import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.net.StandardProtocolFamily;
 import java.net.UnixDomainSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -86,6 +87,7 @@ public final class Server {
         }
         try (ServerSocketChannel listener = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
             listener.bind(UnixDomainSocketAddress.of(socket));
+            Files.writeString(home.resolve(tableMode ? "table.pid" : "engine.pid"), Long.toString(ProcessHandle.current().pid()));
             System.err.println("deckmaster engine ready on " + socket);
             while (true) {
                 SocketChannel client = listener.accept();
@@ -97,6 +99,7 @@ public final class Server {
     }
 
     private void serve(SocketChannel client) {
+        boolean shutdown = false;
         try (client;
              BufferedReader in = new BufferedReader(Channels.newReader(client, StandardCharsets.UTF_8));
              Writer out = Channels.newWriter(client, StandardCharsets.UTF_8)) {
@@ -104,23 +107,71 @@ public final class Server {
             if (line == null) {
                 return; // a liveness probe: connected and closed
             }
-            Map<String, Object> reply;
+            JsonObject request;
             try {
-                reply = handle(JsonParser.parseString(line).getAsJsonObject());
-            } catch (Exception e) {
-                reply = new LinkedHashMap<>();
-                reply.put("ok", false);
-                reply.put("error", e.getMessage() == null ? e.toString() : e.getMessage());
+                request = JsonParser.parseString(line).getAsJsonObject();
+                String cmd = request.get("cmd").getAsString();
+                shutdown = cmd.equals("shutdown");
+                if (cmd.equals("table") || cmd.equals("table_end") || cmd.equals("table_state")) {
+                    serveTable(request, cmd, client, out);
+                    return;
+                }
+            } catch (RuntimeException error) {
+                writeReply(out, failure(error));
+                return;
             }
-            out.write(GSON.toJson(reply));
-            out.write('\n');
-            out.flush();
-            if ("shutdown".equals(reply.get("bye"))) {
+            writeReply(out, replyTo(request));
+        } catch (IOException error) {
+            error.printStackTrace();
+        } finally {
+            if (shutdown) {
                 System.exit(0);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+    }
+
+    private synchronized void serveTable(JsonObject request, String cmd, SocketChannel client, Writer out) throws IOException {
+        if (cmd.equals("table")) {
+            // A timed-out creator can reach the table lock after the cleanup request. Skip it if its peer already left.
+            client.configureBlocking(false);
+            try {
+                if (client.read(ByteBuffer.allocate(1)) < 0) return;
+            } finally {
+                client.configureBlocking(true);
+            }
+        }
+        Map<String, Object> reply = replyTo(request);
+        try {
+            writeReply(out, reply);
+        } catch (IOException error) {
+            // A creator that timed out may have closed its socket before this handler reached the table lock.
+            if (cmd.equals("table") && Boolean.TRUE.equals(reply.get("ok"))) {
+                try {
+                    endTable();
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            throw error;
+        }
+    }
+
+    private Map<String, Object> replyTo(JsonObject request) {
+        try {
+            return handle(request);
+        } catch (Exception error) {
+            return failure(error);
+        }
+    }
+
+    private static Map<String, Object> failure(Exception error) {
+        return Map.of("ok", false, "error", error.getMessage() == null ? error.toString() : error.getMessage());
+    }
+
+    private static void writeReply(Writer out, Map<String, Object> reply) throws IOException {
+        out.write(GSON.toJson(reply));
+        out.write('\n');
+        out.flush();
     }
 
     private Map<String, Object> handle(JsonObject request) throws Exception {
