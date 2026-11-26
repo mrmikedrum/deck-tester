@@ -196,9 +196,9 @@ export interface SheetItem {
 }
 
 export interface SheetView {
-  /** plays: one card's or every play; chooser: a choice made in a sheet; source/mana: which source, which colour;
+  /** plays: one card's or every play; chooser: a choice made in a sheet; mana: which colour;
    * number: the stepper; stack: the stack's rules (the chrome draws it from the model). */
-  readonly kind: "plays" | "chooser" | "source" | "mana" | "number" | "stack";
+  readonly kind: "plays" | "chooser" | "mana" | "number" | "stack";
   readonly title: string;
   readonly wide: boolean;
   readonly items: readonly SheetItem[];

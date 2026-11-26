@@ -36,18 +36,6 @@ export function reached(t: Target, groups: readonly Group[], f: Facts): Reached 
   return { ids: g.members, seat: null, table: true, group: g.id };
 }
 
-/**
- * The one candidate a gesture on these cards means: of `ids`, those `is` accepts; copies of one card (the same name,
- * the same tapped state) are one candidate, any of them will do. "several" when distinct candidates share the group:
- * which one is the player's to say, before anything is committed.
- */
-export function oneOf(ids: readonly CardId[], is: (id: CardId) => boolean, f: Facts): CardId | "several" | undefined {
-  const hit = ids.filter(is);
-  if (hit.length < 2) return hit[0];
-  const key = (id: CardId) => `${f.cards[id]?.name ?? id}|${f.cards[id]?.tapped ?? false}`;
-  return hit.every((id) => key(id) === key(hit[0]!)) ? hit[0] : "several";
-}
-
 /** live.js `boardChoice`: whether a targets or choose decision is answered by tapping the table. */
 export function onTable(d: TargetsDecision | ChooseDecision, f: Facts, groups: readonly Group[]): boolean {
   if (!d.refs.length) return false;

@@ -3,7 +3,7 @@
 import type { CardId, Decision, StackId } from "../protocol";
 import type { SeatId } from "../model";
 import type { Facts } from "./facts";
-import type { AnswerToken, Carried, HitGroupId, Ms, State, StopId } from "./types";
+import type { AnswerToken, Carried, HitGroupId, Ms, State, StopId, Target } from "./types";
 
 /** A hit group as play keeps it: what it holds, not where it is. */
 export interface Group {
@@ -30,9 +30,21 @@ export interface Draft {
 export type Sheet =
   | { readonly k: "plays"; readonly title: string; readonly options: readonly number[]; readonly carried: Carried | null }
   | { readonly k: "chooser" }
-  | { readonly k: "source"; readonly options: readonly number[] }
   | { readonly k: "mana"; readonly card: CardId; readonly options: readonly number[] }
   | { readonly k: "stack" };
+
+/** A tap, or a drag from one target onto another: what a gesture landed on, as drawn. */
+export type Gesture =
+  | { readonly a: "tap"; readonly at: Target }
+  | { readonly a: "drag"; readonly from: Target; readonly onto: Target };
+
+/** A gesture that meant one of a group's distinct members, waiting for the player to choose which (in its sift). */
+export interface Pending {
+  readonly gesture: Gesture;
+  /** Which end of it the group was. */
+  readonly end: "at" | "from" | "onto";
+  readonly group: HitGroupId;
+}
 
 export interface S {
   /** Increments with every stop adopted; never reset, so a stop id is never reused in a session. */
@@ -47,6 +59,8 @@ export interface S {
   readonly sheet: Sheet | null;
   /** A sheet-mode choice's chooser, set aside by the player. */
   readonly chooserClosed: boolean;
+  /** A gesture waiting for the player to choose one of a group's members; it completes with the card chosen. */
+  readonly pending: Pending | null;
   /** The answer out for this stop: play's token, or null for the bridge's own (a reload while it worked on one). */
   readonly inflight: { readonly token: AnswerToken | null; readonly stop: StopId } | null;
   readonly auto: { readonly id: string; readonly from: Ms; readonly ms: number } | null;
@@ -78,6 +92,7 @@ export const INITIAL: S = {
   draft: EMPTY_DRAFT,
   sheet: null,
   chooserClosed: false,
+  pending: null,
   inflight: null,
   auto: null,
   held: false,

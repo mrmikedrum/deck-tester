@@ -126,18 +126,32 @@ describe("attack", () => {
     expect(t.answers()).toEqual([[3]]);
   });
 
-  it("a pile of distinct attackers or planeswalkers is a choice first: its members open, nothing is picked (037 extended)", () => {
+  it("a pile of distinct attackers or planeswalkers is a choice first; the gesture completes with the card chosen (037 extended)", () => {
     const t = new Table();
     t.open(twoAttackers());
     t.pile([[871, 829], [872, 873]]);
+    // a tap: the attackers open, and the one chosen is picked
     expect(ofKind(t.tapGroupOf(829), "choose")).toEqual([{ kind: "choose", group: expect.any(String) }]);
     expect(t.p.board.combat).toBeNull();
+    t.tapCard(829);
+    expect(t.p.board.combat?.attacks.map((a) => a.attacker)).toEqual([829]);
+    t.press("Clear");
+    // a drag onto the planeswalkers: they open, and the attacker goes at the one chosen
     expect(ofKind(t.drag({ card: 829 as CardId }, groupOf(t, 873)), "choose")).toHaveLength(1);
     expect(t.p.board.combat).toBeNull();
-    t.tapCard(873); // the sifted cards themselves: Chandra, then my face-down creature at her
-    t.tapCard(829);
+    t.tapCard(873);
     t.press("Attack (1)");
     expect(t.answers()).toEqual([[10]]);
+  });
+
+  it("a drag from a pile of distinct attackers onto a player: the attackers open, and the one chosen attacks that player", () => {
+    const t = new Table();
+    t.open(twoAttackers());
+    t.pile([[871, 829]]);
+    expect(ofKind(t.drag(groupOf(t, 871), { seat: "Princess" as never }), "choose")).toHaveLength(1);
+    t.tapCard(829);
+    t.press("Attack (1)");
+    expect(t.answers()).toEqual([[11]]); // 829 at Princess
   });
 
   it("a tap on a group whose members changed since it was drawn is dropped", () => {

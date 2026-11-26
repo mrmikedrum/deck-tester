@@ -106,7 +106,8 @@ export const play: Kind<PlayDecision> = {
   },
   // live.js `tapDecision`: a tap looks; the card's plays are buttons on it. My plate means my commander.
   tap(c, at) {
-    const id = at.seat !== null ? (at.seat === c.f.me ? c.f.commander : null) : at.ids[0];
+    // (a group of copies: the first with a play)
+    const id = at.seat !== null ? (at.seat === c.f.me ? c.f.commander : null) : (at.ids.find((x) => optsFor(c.d, x).length) ?? at.ids[0]);
     if (id == null || !optsFor(c.d, id).length) return null;
     return { inspect: id };
   },

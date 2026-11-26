@@ -281,8 +281,10 @@ function sifts(s: AppState, g: HitGroup): boolean {
 /** Play asks the player to choose one of a group's members (a gesture meant one of several): its sift opens, the stack
  * set aside first; a tap on a sifted card then acts on that card alone. */
 function chooseFrom(tx: Tx, group: string): void {
-  const f = tx.s.focus, g = tx.s.plan ? groupById(tx.s.plan.hits, group) : undefined;
-  if (!g || top(f)?.layer === "sift") return;
+  const g = tx.s.plan ? groupById(tx.s.plan.hits, group) : undefined;
+  if (!g || (top(tx.s.focus)?.layer === "sift" && top(tx.s.focus)?.group === g.id)) return;
+  // (A drag's other end, after its first was chosen: that sift gives way to this one.)
+  const f = isOpen(tx.s.focus, "sift") ? close(tx.s.focus, "sift") : tx.s.focus;
   const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
   tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null, choosing: true })) };
 }

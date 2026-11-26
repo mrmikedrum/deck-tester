@@ -5,7 +5,6 @@ import type { AttackDecision, CardId } from "../../protocol";
 import { seatId } from "../../model";
 import type { Target as ModelTarget } from "../../model";
 import { cardOf, hasSeat } from "../facts";
-import { oneOf } from "../reach";
 import { shortCard } from "../text";
 import { aim, defaultDefender, everyone, retarget, toggleAttacker } from "../interactions/pair";
 import { base, btn } from "./kind";
@@ -51,24 +50,17 @@ export const attack: Kind<AttackDecision> = {
       if (at.seat === f.me || !d.refs.some((r) => (r.to as string | number) === (at.seat as string))) return null;
       return { draft: { ...draft, attackTo: at.seat, sel: retarget(draft.sel, d.refs, at.seat) } };
     }
-    // A pile holding several distinct attackers (or planeswalkers to attack) is a choice first: its members open.
-    const id = oneOf(at.ids, (x) => d.refs.some((r) => r.card === x), f);
-    if (id === "several") return at.group ? { choose: at.group } : { toast: "Tap the card itself" };
+    const id = at.ids.find((x) => d.refs.some((r) => r.card === x));
     if (id === undefined) {
-      const walker = oneOf(at.ids, (x) => d.refs.some((r) => r.to === x), f);
-      if (walker === "several") return at.group ? { choose: at.group } : { toast: "Tap the card itself" };
+      const walker = at.ids.find((x) => d.refs.some((r) => r.to === x));
       return walker === undefined ? null : { draft: { ...draft, attackTo: walker } };
     }
     return { draft: { ...draft, sel: toggleAttacker(draft.sel, d.refs, id, draft.attackTo) } };
   },
   drag(c, from, onto) {
     const { d, f, draft } = c;
-    const one = oneOf(from.ids, (x) => d.refs.some((r) => r.card === x), f);
-    if (one === "several") return from.group ? { choose: from.group } : { toast: "Drag the card itself" };
-    const id = one;
+    const id = from.ids.find((x) => d.refs.some((r) => r.card === x));
     if (id === undefined || (onto.seat === null && !onto.ids.length)) return {};
-    const walkers = oneOf(onto.ids, (x) => d.refs.some((r) => r.to === x), f);
-    if (walkers === "several") return onto.group ? { choose: onto.group } : { toast: "Drag onto the card itself" };
     const to =
       onto.seat ??
       onto.ids.map((x) => (d.refs.some((r) => r.to === x) ? x : (cardOf(f, x)?.controller ?? null))).find((x) => x !== null) ??

@@ -11,7 +11,7 @@ test.describe("attack", () => {
   test("tap creatures to toggle them; Attack (n) sends the picked options in order", async ({ table }) => {
     const s = snapshot("attack");
     await table.open(s);
-    expect(await table.buttons()).toEqual([label("Everyone attacks"), "No attack", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual([label("Everyone attacks"), "No attack", label("Let Forge decide")]);
     await table.tapCard(idOf(s, ATTACKERS[0]));
     await table.tapCard(idOf(s, ATTACKERS[1]));
     expect(await table.buttons()).toEqual([label("Everyone attacks"), "Clear", "Attack (2)", label("Let Forge decide")]);

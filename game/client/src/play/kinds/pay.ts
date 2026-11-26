@@ -1,5 +1,5 @@
-// pay: tap mana sources in the order they pay (live.js `tapDecision` for pay, `pickColor`). A pile gives its next
-// free source per tap; a pile of different cards asks "Which source?". A source with one mana option (a land, a rock)
+// pay: tap mana sources in the order they pay (live.js `tapDecision` for pay, `pickColor`). A well of one land gives its
+// next free source per tap (a pile of different sources is opened to choose one first: step.ts, resolve.ts). A source with one mana option (a land, a rock)
 // is used once it is picked: tapped again (alone in its pile) it is taken back, and a well whose sources are all used
 // gives back its last. A source with several options (a colour choice, a dual land) asks which mana on every tap and
 // adds that pick, as live.js `pickColor` did: the engine takes the same option more than once and activates it once
@@ -31,7 +31,7 @@ const takeBack = (c: Ctx<PayDecision>, x: CardId): Reaction => {
 };
 
 function tapSources(c: Ctx<PayDecision>, ids: readonly CardId[]): Reaction | null {
-  const { d, f, draft } = c, sel = draft.sel;
+  const { d, draft } = c, sel = draft.sel;
   const sources = ids.filter((x) => optsFor(d, x).length);
   const id = sources[0];
   if (id === undefined) return null;
@@ -39,7 +39,6 @@ function tapSources(c: Ctx<PayDecision>, ids: readonly CardId[]): Reaction | nul
   const single = (x: CardId) => optsFor(d, x).length === 1;
   // a land tapped again: take it back
   if (sources.length === 1 && used(id) && single(id)) return takeBack(c, id);
-  if (new Set(sources.map((x) => cardOf(f, x)?.name)).size > 1) return { sheet: { k: "source", options: sources.flatMap((x) => optsFor(d, x)) } };
   const free = sources.find((x) => !used(x)) ?? sources.find((x) => !single(x));
   if (free === undefined) {
     // a well whose sources are all picked: the last one picked comes back
@@ -72,8 +71,6 @@ export const pay: Kind<PayDecision> = {
   },
   sheet(c, open) {
     const { d, draft } = c;
-    if (open.k === "source")
-      return { kind: "source", title: "Which source?", wide: false, items: open.options.map((o) => item(o, d.options[o - 1] ?? "", times(draft.sel, o))), stepper: null, buttons: [], carried: null };
     if (open.k === "mana") {
       const items = open.options.map((o) => {
         const label = d.options[o - 1] ?? "";
@@ -87,11 +84,8 @@ export const pay: Kind<PayDecision> = {
   },
   tap: (c, at) => tapSources(c, at.ids),
   pick(c, o) {
-    const open = c.s.sheet, sel = c.draft.sel;
-    if (!open || (open.k !== "source" && open.k !== "mana") || !open.options.includes(o)) return null;
-    // "Which source?": a one-option source already picked is taken back; anything else is one more pick
-    const card = c.d.refs[o - 1]?.card;
-    if (open.k === "source" && sel.includes(o) && card != null && optsFor(c.d, card).length === 1) return takeBack(c, card);
+    const open = c.s.sheet;
+    if (!open || open.k !== "mana" || !open.options.includes(o)) return null;
     return add(c, o);
   },
 };

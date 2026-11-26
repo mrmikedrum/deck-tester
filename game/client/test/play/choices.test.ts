@@ -4,7 +4,7 @@
 // `repeat` counts them, `number` steps between min and max). Piles are given to the hit groups as layout would make them.
 import { describe, expect, it } from "vitest";
 import type { CardId } from "../../src/protocol";
-import { Table, askedAgain, raw, withDecision } from "./rig";
+import { Table, askedAgain, ofKind, raw, withDecision } from "./rig";
 
 const PAY = "011-pay-my-planeswalker.json"; // {3}{B}: Plains 805 (1), Swamp 806 (2), Mountains 807 (3) and 808 (4), ...
 
@@ -57,23 +57,15 @@ describe("pay", () => {
     expect(t.answers()).toEqual([[3]]);
   });
 
-  it("sources of different cards in one pile ask \"Which source?\"; the sheet's pick toggles that source", () => {
+  it("sources of different cards in one pile open it to choose one; a tap there toggles that source", () => {
     const t = new Table();
     t.open(PAY);
     t.pile([[805, 806]]);
-    t.tapGroupOf(805);
-    const sheet = t.p.controls.sheet!;
-    expect(sheet.kind).toBe("source");
-    expect(sheet.title).toBe("Which source?");
-    expect(sheet.items.map((i) => [i.option, i.label, i.picked])).toEqual([
-      [1, "Plains (W)", false],
-      [2, "Swamp (B)", false],
-    ]);
-    t.pick(2);
+    expect(ofKind(t.tapGroupOf(805), "choose")).toHaveLength(1);
     expect(t.p.controls.sheet).toBeNull();
+    t.tapCard(806); // the Swamp, chosen
     t.tapGroupOf(805);
-    expect(t.p.controls.sheet!.items.map((i) => i.picked)).toEqual([false, true]);
-    t.pick(2); // picked already: taken back
+    t.tapCard(806); // picked already: taken back
     t.press("Auto-pay");
     expect(t.answers()).toEqual([[]]);
   });

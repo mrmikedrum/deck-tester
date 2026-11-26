@@ -15,8 +15,9 @@ import { ctxOf, promptOf, sheetOf } from "./prompt";
 import { cardActionsOf } from "./present";
 import { offTableNames } from "./needs";
 import { groupsOf, reached } from "./reach";
+import { completed, resolve } from "./resolve";
 import { EMPTY_DRAFT, open, reset, seal } from "./state";
-import type { S } from "./state";
+import type { Gesture, S } from "./state";
 import type { AnswerToken, Carried, Effect, Event, Step, StopId } from "./types";
 
 type Out = { state: S; effects: Effect[] };
@@ -93,6 +94,7 @@ function apply(s: S, r: Reaction, before: Effect[] = []): Out {
   if (r.toast) effects.push({ kind: "toast", text: r.toast });
   if (r.inspect !== undefined) effects.push({ kind: "inspect", card: r.inspect });
   if (r.choose !== undefined) effects.push({ kind: "choose", group: r.choose });
+  if (r.pending !== undefined) next = { ...next, pending: r.pending };
   if (r.answer) {
     const sent = send(next, r.answer, r.carried ?? null);
     next = sent.state;
@@ -143,6 +145,7 @@ function onSnapshot(s: S, e: Extract<Event, { t: "snapshot" }>): Out {
     draft: d ? kindOf(d).start(d, facts) : EMPTY_DRAFT,
     sheet: null,
     chooserClosed: false,
+    pending: null,
     inflight: null,
     auto: null,
   };
@@ -160,8 +163,11 @@ function onSnapshot(s: S, e: Extract<Event, { t: "snapshot" }>): Out {
   return { state: next, effects };
 }
 
-function onAct(s: S, e: Extract<Event, { t: "act" }>): Out {
-  if (e.stop !== s.stop) return same(s); // drawn for another stop: the player acts again on what is shown now
+function onAct(was: S, e: Extract<Event, { t: "act" }>): Out {
+  if (e.stop !== was.stop) return same(was); // drawn for another stop: the player acts again on what is shown now
+  // A gesture waiting for a choice is completed by a tap on a card of its group, as the group is drawn now; any other act
+  // lets it go.
+  const s: S = was.pending ? { ...was, pending: null } : was;
   const f = s.facts, act = e.act;
   const defaultable = act.a === "tap" || act.a === "drag" || act.a === "dismiss";
   if (!f) return defaultable ? { state: s, effects: [UNCLAIMED] } : same(s);
@@ -173,27 +179,38 @@ function onAct(s: S, e: Extract<Event, { t: "act" }>): Out {
       const b = all.find((x) => x.id === act.button);
       return b && b.enabled ? apply(s, b.run()) : same(s);
     }
-    case "tap": {
-      const at = reached(act.on, s.groups, f);
-      if (!at) return same(s);
-      let cur = s;
-      const before: Effect[] = [];
-      if (cur.auto && at.table) {
-        // touching the table while auto-pass counts holds it
-        before.push(...cancelAuto(cur));
-        cur = { ...cur, auto: null };
-      }
-      const cc = ctxOf(cur);
-      const r = live && cc ? kindOf(cc.d).tap(cc, at) : null;
-      return r ? apply(cur, r, before) : { state: cur, effects: [...before, UNCLAIMED] };
-    }
+    case "tap":
     case "drag": {
       // A drag let go over nothing has no destination: nothing happens (live.js `H.drag` returned without one).
-      if ("nothing" in act.onto) return { state: s, effects: [UNCLAIMED] };
-      const from = reached(act.from, s.groups, f), onto = reached(act.onto, s.groups, f);
-      if (!from || !onto) return same(s);
-      const r = live && c ? kindOf(c.d).drag(c, from, onto) : null;
-      return r ? apply(s, r) : { state: s, effects: [UNCLAIMED] };
+      if (act.a === "drag" && "nothing" in act.onto) return { state: s, effects: [UNCLAIMED] };
+      let g: Gesture = act.a === "tap" ? { a: "tap", at: act.on } : { a: "drag", from: act.from, onto: act.onto };
+      if (was.pending && act.a === "tap" && "card" in act.on)
+        g = completed(was.pending, act.on.card, s.groups.find((x) => x.id === was.pending!.group)?.members) ?? g;
+      let cur = s;
+      const before: Effect[] = [];
+      if (act.a === "tap") {
+        const at = reached(act.on, s.groups, f);
+        if (!at) return same(s);
+        if (cur.auto && at.table) {
+          // touching the table while auto-pass counts holds it
+          before.push(...cancelAuto(cur));
+          cur = { ...cur, auto: null };
+        }
+      }
+      const cc = ctxOf(cur);
+      const reach = (t: Parameters<typeof reached>[0]) => reached(t, cur.groups, f);
+      const run = (x: Gesture): { r: ReturnType<ReturnType<typeof kindOf>["tap"]> } | null => {
+        if (x.a === "tap") {
+          const at = reach(x.at);
+          return at ? { r: live && cc ? kindOf(cc.d).tap(cc, at) : null } : null;
+        }
+        const from = reach(x.from), onto = reach(x.onto);
+        return from && onto ? { r: live && cc ? kindOf(cc.d).drag(cc, from, onto) : null } : null;
+      };
+      // The one rule for a gesture on a group (resolve.ts): it commits only what every member it could mean would.
+      const out = live && cc ? resolve(g, cc.d, f, cc.draft, reach, run) : run(g);
+      if (!out) return same(cur);
+      return out.r ? apply(cur, out.r, before) : { state: cur, effects: [...before, UNCLAIMED] };
     }
     case "release": {
       const r = live && c ? kindOf(c.d).release(c, act.card, act.dy, act.pose, act.overTable) : null;

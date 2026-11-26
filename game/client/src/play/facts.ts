@@ -3,7 +3,7 @@
 // JSON-serialisable while the model (maps, functions) does not.
 import type { CardId, StackId } from "../protocol";
 import type { SeatId, TableModel, Target, Zone } from "../model";
-import { isCreatureSweep, threatens, topOf } from "../model";
+import { isCreatureSweep, sig, threatens, topOf } from "../model";
 
 export interface CardFact {
   /** The card's identity (same-named cards are the same card): "Face-down" face down. */
@@ -14,6 +14,9 @@ export interface CardFact {
   readonly owner: SeatId;
   readonly controller: SeatId;
   readonly tapped: boolean;
+  /** What it is to the eye and the rules beyond its name: tapped, face down, sick, counters (loyalty among them), power
+   *  and toughness, keywords, what is attached to it. Two cards with the same `state` are interchangeable. */
+  readonly state: string;
   readonly commander: boolean;
   /** Braced. */
   readonly cost: string;
@@ -78,6 +81,7 @@ export function factsOf(m: TableModel): Facts {
       owner: c.owner,
       controller: c.controller,
       tapped: c.tapped,
+      state: [sig(c), [...c.keywords].sort().join(","), m.attachments(c.id).map((a) => m.cards.get(a)?.name ?? a).sort().join(",")].join("|"),
       commander: c.commander,
       cost: c.face.cost,
       text: c.face.text,

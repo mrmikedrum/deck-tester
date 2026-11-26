@@ -29,7 +29,7 @@ test.describe("the pass button", () => {
   }
   test("with plays on offer the pass button keeps its label and the plays get their own button", { tag: "@cast" }, async ({ table }) => {
     await table.open("main");
-    expect(await table.buttons()).toEqual([label("Choose a play (6)"), label("Let Forge decide"), "To combat"]);
+    await expect.poll(() => table.buttons()).toEqual([label("Choose a play (6)"), label("Let Forge decide"), "To combat"]);
     await table.press("To combat");
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
