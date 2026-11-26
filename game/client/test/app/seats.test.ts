@@ -1,7 +1,7 @@
 // The seats as the chrome tells them (app/seats.ts): the top row of nameplates bends round the table's cards, and a
 // seat's summary counts what the data supports, once per model.
 import { describe, expect, it } from "vitest";
-import { placeTop, plateWidth, platesOf, seatFocusOf, summaryOf } from "../../src/app/seats";
+import { feedWidthOf, placeTop, plateWidth, platesOf, seatFocusOf, summaryOf } from "../../src/app/seats";
 import type { Box } from "../../src/app/seats";
 import { NO_INSETS, planTable, tableInputOf } from "../../src/layout";
 import type { TablePlan } from "../../src/layout";
@@ -60,6 +60,18 @@ describe("the top row of nameplates", () => {
     expect(boxes[0]!.l).toBeGreaterThanOrEqual(row.l);
     for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.l).toBeGreaterThanOrEqual(boxes[i - 1]!.r);
     expect(boxes.at(-1)!.r).toBeLessThanOrEqual(row.r);
+  });
+});
+
+describe("the log strip under the Game button", () => {
+  it("narrows to keep clear of a card at the top of the left leaf, never under its heading", () => {
+    const quad = (l: number, t: number, r: number, b: number) => [{ x: l, y: b }, { x: r, y: b }, { x: r, y: t }, { x: l, y: t }] as const;
+    const plan = (groups: { l: number; t: number; r: number; b: number }[]) => ({ hits: { rev: 0, groups: groups.map((g, i) => ({ id: `g${i}`, kind: "pile", seat: null, members: [], quad: quad(g.l, g.t, g.r, g.b), order: 0 })) } }) as unknown as TablePlan;
+    expect(feedWidthOf(plan([]), TABLE)).toBeNull();
+    expect(feedWidthOf(plan([{ l: 250, t: 74, r: 330, b: 125 }]), TABLE)).toBe(230);
+    expect(feedWidthOf(plan([{ l: 60, t: 74, r: 120, b: 125 }]), TABLE)).toBe(128);
+    // below the strip, nothing to keep clear of
+    expect(feedWidthOf(plan([{ l: 250, t: 120, r: 330, b: 200 }]), TABLE)).toBeNull();
   });
 });
 

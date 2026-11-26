@@ -101,6 +101,26 @@ export function placeTop(
   return out;
 }
 
+/** The log strip under the Game button, CSS px at 1180 x 820 (chrome.css `.l-feed`): its left and top, its widest, and
+ *  the least it keeps (its turn heading). */
+const FEED = { left: 12, top: 62, height: 44, widest: 322, least: 128, gap: 8 } as const;
+
+/**
+ * How wide the log strip may be (CSS px): its widest, or less where a card the table shows (the plan's hit groups) would
+ * be under it, as the plates keep clear of them; never under its heading's width. Null: as wide as it likes.
+ */
+export function feedWidthOf(plan: TablePlan | null, viewport: ViewportState): number | null {
+  if (!plan) return null;
+  const u = designUnit(viewport), l = viewport.safe.left + FEED.left * u, t = viewport.safe.top + FEED.top * u, b = t + Math.max(FEED.height, FEED.height * u);
+  let w = FEED.widest * u;
+  for (const g of plan.hits.groups) {
+    if (g.kind === "plate") continue;
+    const xs = g.quad.map((p) => p.x), ys = g.quad.map((p) => p.y), gl = Math.min(...xs);
+    if (Math.min(...ys) < b && Math.max(...ys) > t && Math.max(...xs) > l && gl < l + w) w = Math.min(w, gl - l - FEED.gap * u);
+  }
+  return w >= FEED.widest * u ? null : Math.max(FEED.least * u, w);
+}
+
 /** What a seat has on the table, counted in one pass. */
 interface Tally {
   readonly creatures: number;

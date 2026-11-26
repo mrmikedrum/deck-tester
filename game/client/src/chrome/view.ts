@@ -287,6 +287,8 @@ export interface ChromeView {
   readonly stackOpen: boolean;
   /** The strip at the top left: the turn and what just happened (hidden before a turn has an active player). */
   readonly log: LogStripView;
+  /** The strip's width (CSS px) where a card at the top of a leaf would be under it at its widest; null: its own. */
+  readonly logWidth: number | null;
   /** "What happened", while its layer is open. */
   readonly logSheet: LogSheetView | null;
   /** "What you lost", while its layer is open. */
