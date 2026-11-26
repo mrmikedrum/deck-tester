@@ -203,13 +203,13 @@ describe("the nameplates", () => {
     expect(plates()?.inert).toBe(true);
   });
   it("stay live over the nameplate focus: another plate is the way to another seat", () => {
-    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], commanderDamage: [], graveyard: [], exile: [], hand: [], handCount: 4, library: 60, also: null };
+    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], commanderDamage: [], graveyard: [], exile: [], command: [], hand: [], handCount: 4, library: 60, also: null };
     show({ plates: [PLATE], layers: [{ layer: "seat", restore: "plate:Dack" }], seatFocus: focus });
     expect(plates()?.inert).toBe(false);
   });
   it("a nameplate focus's graveyard and exile open in full, from their headings or from the cards past those shown", () => {
     const yard = Array.from({ length: 8 }, (_, i) => ({ id: (400 + i) as CardId, name: `Card ${i}`, image: null }));
-    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], commanderDamage: [], graveyard: yard, exile: [], hand: [], handCount: 4, library: 60, also: null };
+    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], commanderDamage: [], graveyard: yard, exile: [], command: [], hand: [], handCount: 4, library: 60, also: null };
     show({ layers: [{ layer: "seat", restore: "plate:Dack" }], seatFocus: focus });
     expect($$(".l-seat .l-zone-open")).toHaveLength(1); // an empty exile has nothing to open
     click($(".l-seat .l-zone-open"));

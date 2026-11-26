@@ -42,7 +42,7 @@ const overlap = (a: Box, b: Box): number => Math.max(0, Math.min(a.r, b.r) - Mat
 /**
  * Where the top row's plates go (each its left edge, CSS px): each as near its leaf (`pref`, its preferred left edge)
  * as it can be without covering a card the table shows (`under`: the boxes of the plan's hit groups) or another plate,
- * in their leaves' order. Keep the whole row on screen and favor the preferred position of the plate across the table.
+ * in the order given (the seats' order). Keep the whole row on screen and favor the preferred position of the plate across the table.
  */
 export function placeTop(
   plates: readonly { readonly seat: string; readonly place: string; readonly w: number; readonly pref: number }[],
@@ -51,8 +51,6 @@ export function placeTop(
   gap = 0,
 ): Map<string, number> {
   const visible = under.filter((box) => box.t < row.b && box.b > row.t);
-  const byPref = plates.map((p, j) => ({ p, j })).sort((a, b) => a.p.pref - b.p.pref || a.j - b.j);
-  const rank = plates.map((_, j) => byPref.findIndex((x) => x.j === j));
   const count = 1 << plates.length;
   const widths = Array.from({ length: count }, (_, mask) => plates.reduce((sum, p, j) => sum + (mask & (1 << j) ? p.w + gap : 0), 0));
   const slack = Math.max(0, row.r - row.l - widths[count - 1]! + gap);
@@ -72,9 +70,9 @@ export function placeTop(
   const shifts = [...stops].sort((a, b) => a - b);
   const best: { cost: number; plate: number }[][] = [shifts.map(() => ({ cost: 0, plate: -1 }))];
   for (let mask = 1; mask < count; mask++) {
-    // Plates keep their leaves' order (opponents always sit in the same place relative to me): the rightmost of a set is
-    // the one whose leaf is furthest right.
-    const choices = plates.flatMap((p, j) => (mask & (1 << j) && !plates.some((_, k) => k !== j && mask & (1 << k) && rank[k]! > rank[j]!) ? [{ p, j, prev: mask ^ (1 << j) }] : []));
+    // Plates keep the seats' order, as given (opponents always sit in the same place relative to me, a seat out of the
+    // game included): the rightmost of a set is the last of it. Preferred positions only steer how far each drifts.
+    const choices = plates.flatMap((p, j) => (mask & (1 << j) && !(mask >> (j + 1)) ? [{ p, j, prev: mask ^ (1 << j) }] : []));
     const scores: typeof best[number] = [];
     best.push(scores);
     for (const [i, shift] of shifts.entries()) {
@@ -112,6 +110,18 @@ const FEED = FEED_UNITS;
  */
 export function feedWidthOf(plan: TablePlan | null, viewport: ViewportState): number | null {
   if (!plan) return null;
+  // (kept for the plan and viewport it was found for: views are made every commit, the plan changes far less often)
+  const key = `${viewport.w}x${viewport.h}|${viewport.safe.top},${viewport.safe.left}`;
+  const kept = FEED_WIDTHS.get(plan);
+  if (kept && kept.key === key) return kept.width;
+  const width = feedWidth(plan, viewport);
+  FEED_WIDTHS.set(plan, { key, width });
+  return width;
+}
+
+const FEED_WIDTHS = new WeakMap<TablePlan, { readonly key: string; readonly width: number | null }>();
+
+function feedWidth(plan: TablePlan, viewport: ViewportState): number | null {
   const u = designUnit(viewport), l = viewport.safe.left + FEED.left * u, t = viewport.safe.top + FEED.top * u, b = t + Math.max(FEED.height, FEED.height * u);
   let w = FEED.widest * u;
   for (const g of plan.hits.groups) {
@@ -364,6 +374,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
   ];
   const graveyard = picked(model, [...model.zone(seat, "graveyard")].reverse());
   const exile = picked(model, [...model.zone(seat, "exile")].reverse());
+  const command = picked(model, model.zone(seat, "command"));
   const handIds = model.zone(seat, "hand");
   const hand = mine || s.handVisible ? picked(model, handIds) : Array.from({ length: s.hand }, () => ({ id: null, name: "A card in hand", image: null }));
   const also = [
@@ -381,6 +392,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
     commanderDamage: t.commanderDamage,
     graveyard,
     exile,
+    command,
     hand,
     handCount: s.hand,
     library: s.library,

@@ -522,6 +522,35 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
     expect(layers(r)).toEqual([["sift", `zone:exile:${atraxa}`]]);
   });
 
+  it("a seat out of the game: no table group for its plate; its chip opens its nameplate focus (and closes it)", () => {
+    const r = started(yard(1));
+    const e = yard(2) as { view: { players: Json[] } };
+    e.view.players = e.view.players.filter((p) => p["name"] !== "Atraxa");
+    r.transport.push(e);
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(groups(r).some((g) => g.id === `plate:${atraxa}`)).toBe(false);
+    expect(r.commits.at(-1)!.view.plates.find((p) => p.seat === String(atraxa))).toMatchObject({ out: true, icons: [] });
+    r.inputs.push({ t: "seat", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([["seat", atraxa]]);
+    expect(r.commits.at(-1)!.view.seatFocus?.also).toMatch(/Out of the game/);
+    r.inputs.push({ t: "seat", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([]);
+  });
+
+  it("the nameplate's focus shows a seat's command zone", () => {
+    const r = started(yard(1));
+    const e = yard(2) as { view: { players: Json[] } };
+    e.view.players.find((p) => p["name"] === "Atraxa")!["command"] = [{ id: 600, name: "Atraxa, Praetors' Voice", owner: "Atraxa", controller: "Atraxa", type: "Legendary Creature - Phyrexian Angel Horror" }];
+    r.transport.push(e);
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    tap(r, groups(r).find((g) => g.id === `plate:${atraxa}`)!);
+    expect(r.commits.at(-1)!.view.seatFocus?.command.map((c) => c.id)).toEqual([600]);
+  });
+
   it("a choice among an opponent's graveyard is still offered (in the chooser); a spell in an opponent's exile is still castable", () => {
     const pick = { id: 9, kind: "targets", turn: "T1 main1", prompt: "Exile target card from a graveyard", repeat: false, options: ["Card 5", "Card 6"], refs: [{ card: 405 }, { card: 406 }], min: 1, max: 1 };
     const r = started(yard(1, pick, 8));

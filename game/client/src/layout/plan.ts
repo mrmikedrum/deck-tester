@@ -282,7 +282,7 @@ export function planTable(input: TableInput): TablePlan {
   const drawn = new Set(input.engine?.draw ? input.seats.flatMap((x, i) => (leaves.get(x.seat)?.result ? [i] : [])) : []);
   const leafSeat = (k: number, part: number): SeatPlan => {
     const l = leaves.get(input.seats[k]!.seat)!, at = part ? posed(l.input!, l.result!, partShift(part)) : l.result!;
-    return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
+    return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, reach: partShift(tpl.part.most), board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
   };
   const plans: SeatPlan[] = inputs.map((i, k) => (drawn.has(k) ? leafSeat(k, 0) : planSeat(layout, i, { fighting: fight })));
   const floor = inputs.map(() => 0);
@@ -386,9 +386,25 @@ export function planTable(input: TableInput): TablePlan {
   if (focus.covers && stackUp[0]) v = [...v, { rule: "focus-covers", group: `stack:${stackUp[0].key}`, seat: null, measured: 0, limit: 1 }];
   const hits = hitGroups(final, shapes, stack, stackUp, c.gathered);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
-  const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
-  const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(leaves.size ? { leaves } : {}), part, crowded };
+  // The rev covers everything drawn or reached: every unit's place, frame and turn, the fixtures, every group's quad and
+  // face, the stack at rest and as the focus, the gathering, and the parting.
+  const n = (x: number, d = 4) => x.toFixed(d);
+  const v3s = (a: V3) => `${n(a.x)},${n(a.y)},${n(a.z)}`;
+  const quads = (qs: readonly Quad[]) => qs.map((q) => q.map((p) => `${n(p.x, 1)},${n(p.y, 1)}`).join(" ")).join(";");
+  const placement = final
+    .map((p) =>
+      [
+        p.seat,
+        p.units.map((u) => [u.id, v3s(u.placement.pos), n(u.placement.scale), u.placement.posture, u.placement.frame ? `${v3s(u.placement.frame.right)}/${v3s(u.placement.frame.up)}` : "", u.turn ?? "", u.tapped ? 1 : 0].join(",")).join(";"),
+        v3s(p.fixtures.page.pos), n(p.fixtures.page.w, 3), n(p.fixtures.page.d, 3),
+        p.fixtures.commander ? `${p.fixtures.commander.card}@${v3s(p.fixtures.commander.placement.pos)}` : "",
+        p.fixtures.zones.map((z) => `${z.zone}@${v3s(z.placement.pos)}`).join(","),
+      ].join("|"),
+    )
+    .join("\n");
+  const screen = `${quads(hits.groups.map((g) => g.quad))}\n${quads(hits.groups.flatMap((g) => (g.face ? [g.face] : [])))}\n${quads(stack.map((x) => x.quad))}\n${quads(stackUp.map((x) => x.quad))}`;
+  const gathered = c.gathered ? JSON.stringify([c.gathered.form, c.gathered.step, c.gathered.extent, c.gathered.duels, c.gathered.moreAt, c.gathered.wings.map((w) => [w.plaque, w.columns.map((col) => [col.x, col.clasp, col.slot])])]) : "";
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${gathered}\n${part}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(input.engine ? { leaves } : {}), part, crowded };
 }
 
 /** A clash shape over a face of my field row or over the chrome: the clash must leave both uncovered. */

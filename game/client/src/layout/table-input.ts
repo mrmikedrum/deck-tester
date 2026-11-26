@@ -60,10 +60,11 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     seats: s.targets.flatMap((t) => ("seat" in t ? [t.seat] : [])),
     controller: s.controller,
   }));
-  // A seat out of the game gives its room back: the table is laid out for the seats still in it (its plate stays, a chip).
-  // (With every opponent out the game is over: the table stays as it was.)
-  const all = boards(model), still = all.filter((b, i) => i === 0 || !model.seat(b.seat)?.out);
-  const seats = still.length > 1 ? still : all;
+  // The near place is the camera's: the perspective's seat, whether or not it is still in the game (out, its board is
+  // empty and its plate says so). The other places are the opponents still in the game: one out gives its room back
+  // (its plate stays, a chip). With none left the game is over and the table is the near place alone.
+  // (`mat` alone, as tests and the bench plan it, keeps every seat in its four-seat template.)
+  const seats = boards(model).filter((b, i) => i === 0 || !o.engine || !model.seat(b.seat)?.out);
   return {
     viewport: o.viewport,
     ...(o.safe ? { safe: o.safe } : {}),
@@ -78,7 +79,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.
     ...(blocked.size ? { blocked } : {}),
     ...(o.order?.length ? { order: o.order } : {}),
-    ...(o.engine && seats.length >= 2 && seats.length <= 4 ? { engine: engineInputOf(model, seats, involved, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
+    ...(o.engine && seats.length <= 4 ? { engine: engineInputOf(model, seats, involved, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
   };
 }
 

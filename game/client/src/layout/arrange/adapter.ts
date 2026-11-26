@@ -5,20 +5,19 @@
 // region on screen (its place: what a tap at rest reaches); everything else (fixtures, ids, titles) is the seat plan's
 // usual shape.
 import type { SeatBoard } from "../board";
-import { FLOOR } from "../board";
 import { Ledger } from "../ledger";
 import { bounds, commanderShape } from "../shape";
 import type { Projector } from "../projector";
 import { topChrome } from "../reservations";
 import type { Reservations } from "../reservations";
 import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
-import { PLATE_S, floorScale, makeGeo } from "../seat/geometry";
+import { CW, PLATE_S } from "../seat/geometry";
 import type { CardId, SeatId, V3 } from "../types";
 import type { ArrCard, ArrUnit, ArrangeResult, CardPlace, ContainerMemory } from "./contract";
 import { CARD, LEAN, clearBehind, onFrame } from "./frame";
 import { LIE_DEPTH } from "./rows";
 import { kindOf } from "./policies/kinds";
-import { S_TABLE } from "./scale";
+import { S_TABLE, SLOT } from "./scale";
 
 /** The seat plan's memory for an arranged leaf: the engine's container memory, carried as layout memory is. */
 export const ARRANGED = "arranged";
@@ -55,6 +54,8 @@ export interface ArrangedSeatInput {
   readonly far: number;
   /** How far the arrangement was drawn slid along its `away` (a parting): the fixtures are measured at rest. */
   readonly shift: number;
+  /** How far a parting may slide it (the template's most): a fixture holds at both ends. */
+  readonly reach: number;
   readonly board: SeatBoard;
   readonly cards: readonly ArrCard[];
   readonly projector: Projector;
@@ -76,39 +77,44 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
 
   // Graveyard and exile are not on the leaf (the nameplate's focus holds them; a card bound there flies to the plate).
-  // The commander waiting in the command zone stands behind the rows in use, as deep as keeps it wholly clear of the
-  // chrome along the top (the nameplates' row, the log strip). Measured at rest, so a parting carries it with the leaf.
-  const g = makeGeo(a.projector, a.reserve, FLOOR.any);
+  // The commander waiting in the command zone stands at table size behind the rows in use, as deep as keeps its face
+  // wholly clear of the chrome along the top (the nameplates' row, the log strip) at rest and parted at the most (a
+  // parting carries it with the leaf). Where no depth does, it is not on the leaf: the nameplate's focus shows it.
   const rest = { ...f, anchor: onFrame(f, 0, -a.shift) }, edge = f.w / 2, s = fit.scale;
   const vp = a.projector.viewport, safe = a.reserve.safe;
   const top = topChrome(vp, { left: safe.left, top: safe.top, right: vp.w - safe.right, bottom: vp.h - safe.bottom });
   const commanderAt = (on: typeof f, v: number): Fixtures["commander"] => {
     if (board.fixtures.commander === undefined) return undefined;
-    const pos = onFrame(on, edge - 0.8, v);
-    return { card: board.fixtures.commander, placement: { pos, scale: Math.max(0.9, floorScale(g, pos, FLOOR.any, false, 0.9)), posture: "stand" } };
+    const pos = onFrame(on, edge - (CW * S_TABLE) / 2 - SLOT.margin, v);
+    return { card: board.fixtures.commander, placement: { pos, scale: S_TABLE, posture: "stand" } };
   };
-  const clear = (v: number): boolean => {
-    const c = commanderAt(rest, v);
-    if (!c) return true;
-    const b = bounds(commanderShape(a.projector, board.seat, c).face);
-    return b.t >= safe.top && top.every((r) => b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom);
-  };
+  const ends = [rest, { ...rest, anchor: onFrame(rest, 0, a.reach) }];
+  const clear = (v: number): boolean =>
+    ends.every((on) => {
+      const c = commanderAt(on, v);
+      if (!c) return true;
+      const b = bounds(commanderShape(a.projector, board.seat, c).face);
+      return b.t >= safe.top && b.l >= safe.left && b.r <= safe.right && top.every((r) => b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom);
+    });
   // Nearest it may come: behind the rows in use (a standing row's tops, a lying row's far edge and proud strip).
   const behind = fit.rows.reduce((t, r) => Math.max(t, r.posture === "stand" ? clearBehind(a.projector, rest, r.v, s, 2, LEAN) : r.v + LIE_DEPTH * s + 0.3 * CARD.h * s), 0) + 0.1;
-  const key = `${board.fixtures.commander ?? ""}|${a.shift}|${top.map((r) => r.bottom.toFixed(2)).join(",")}`;
-  let v = STRIP_V.get(fit)?.get(key) ?? behind;
-  if (!STRIP_V.get(fit)?.has(key) && board.fixtures.commander !== undefined && clear(behind)) {
-    let a0 = behind, b0 = f.d;
-    for (let k = 0; k < 14; k++) {
-      const m = (a0 + b0) / 2;
-      if (clear(m)) a0 = m;
-      else b0 = m;
+  const key = `${board.fixtures.commander ?? ""}|${a.shift}|${a.reach}|${top.map((r) => r.bottom.toFixed(2)).join(",")}`;
+  let v = STRIP_V.get(fit)?.get(key);
+  if (v === undefined) {
+    v = Number.NaN;
+    if (board.fixtures.commander !== undefined && clear(behind)) {
+      let a0 = behind, b0 = f.d;
+      for (let k = 0; k < 14; k++) {
+        const m = (a0 + b0) / 2;
+        if (clear(m)) a0 = m;
+        else b0 = m;
+      }
+      v = a0;
     }
-    v = a0;
+    if (!STRIP_V.has(fit)) STRIP_V.set(fit, new Map());
+    STRIP_V.get(fit)!.set(key, v);
   }
-  if (!STRIP_V.has(fit)) STRIP_V.set(fit, new Map());
-  STRIP_V.get(fit)!.set(key, v);
-  const commander = commanderAt(f, v);
+  const commander = Number.isNaN(v) ? undefined : commanderAt(f, v);
   // (The plate's own table group lies past the leaf's far edge, out of the way: the nameplate is chrome.)
   const plate = { pos: onFrame(f, 0, f.d + 0.25), scale: PLATE_S, posture: "stand" as const };
   const zones: Fixtures["zones"] = [];

@@ -169,6 +169,7 @@ function route(s: AppState, m: Msg): Step {
     case "listDecks":
     case "dismissRecap":
     case "board":
+    case "seat":
     case "zone":
     case "siftPage":
     case "hover":
@@ -649,6 +650,14 @@ function input(s: AppState, m: InputMsg): Step {
       const f = close(s.focus, "seat");
       const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
       tx.s = { ...s, focus: open(under, entry("sift", { group, restore: `plate:${m.seat}` })) };
+      return done(tx);
+    }
+    case "seat": {
+      // A seat out of the game: its chip opens its nameplate focus (a second press closes it), as a plate's tap does.
+      const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;
+      if (!seat) return done(tx);
+      const opened = s.focus.layers.find((e) => e.layer === "seat")?.seat === seat;
+      tx.s = { ...s, focus: opened ? close(s.focus, "seat") : open(close(s.focus, "seat"), entry("seat", { seat, restore: tx.origin ?? null })) };
       return done(tx);
     }
     case "board": {

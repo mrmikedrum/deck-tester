@@ -55,7 +55,7 @@ export interface Parting {
 
 export class NotTunedError extends Error {
   constructor(seats: number, form: Form) {
-    super(`No table template is tuned for ${seats} seats in ${form}: 2 to 4 seats in landscape so far.`);
+    super(`No table template is tuned for ${seats} seats in ${form}: 1 to 4 seats in landscape so far.`);
     this.name = "NotTunedError";
   }
 }
@@ -93,10 +93,13 @@ function fewer(opponents: number): SeatSlot[] {
   return positions.map((position, i) => ({ position, x: l + w / 2 + i * (w + gap), z: across.z, w, d: across.d, yaw: 0 }));
 }
 
-/** The template for `seats` seats in `form` (2 to 4 in landscape), or a `NotTunedError`: portrait is not tuned. */
+/**
+ * The template for `seats` seats in `form` (1 to 4 in landscape: one seat is the near place alone, the game over), or a
+ * `NotTunedError`: portrait is not tuned.
+ */
 export function tableTemplate(seats: number, form: Form = "landscape"): TableTemplate {
-  if (form === "landscape" && seats >= 2 && seats <= 4) {
-    const slots = seats === 4 ? LANDSCAPE_4 : [LANDSCAPE_4[0]!, ...fewer(seats - 1)];
+  if (form === "landscape" && seats >= 1 && seats <= 4) {
+    const slots = seats === 4 ? LANDSCAPE_4 : [LANDSCAPE_4[0]!, ...(seats > 1 ? fewer(seats - 1) : [])];
     return { form, seats, camera: CAMERA, slots, growOnTurn: 1.1, leaf: LEAF_4, part: PART_4 };
   }
   throw new NotTunedError(seats, form);

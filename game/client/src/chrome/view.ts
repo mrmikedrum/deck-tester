@@ -140,6 +140,8 @@ export interface SeatFocusView {
   readonly commanderDamage: readonly { readonly id: CardId; readonly source: string; readonly figure: string; readonly danger: boolean }[];
   readonly graveyard: readonly PickedCard[];
   readonly exile: readonly PickedCard[];
+  /** The command zone: a commander waiting there (on the leaf too where it fits wholly clear of the chrome). */
+  readonly command: readonly PickedCard[];
   /** An opponent's hand: backs (and any card shown face up); mine: the cards. */
   readonly hand: readonly PickedCard[];
   readonly handCount: number;
@@ -317,6 +319,8 @@ export type Order =
   | { readonly t: "dismissRecap" }
   /** From a nameplate focus: that seat's board, brought nearer. */
   | { readonly t: "board"; readonly seat: string }
+  /** A seat out of the game: its nameplate focus (its summary and zones), as a tap on its plate opens it in play. */
+  | { readonly t: "seat"; readonly seat: string }
   /** From a nameplate focus: one of that seat's zones, opened in full (its sift). */
   | { readonly t: "zone"; readonly seat: string; readonly zone: "graveyard" | "exile" }
   /** Another page of the sift up: `delta` pages on (negative: back). */

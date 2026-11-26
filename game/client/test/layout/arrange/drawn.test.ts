@@ -3,7 +3,8 @@ import { underClash } from "../reach";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { boards, hitTest, planTable, tableInputOf } from "../../../src/layout";
+import { boards, hitTest, planTable, tableInputOf, topChrome } from "../../../src/layout";
+import { S_TABLE } from "../../../src/layout/arrange/scale";
 import type { TablePlan } from "../../../src/layout";
 import { bounds, inQuad } from "../../../src/layout/shape";
 import { ARRANGED } from "../../../src/layout/arrange/adapter";
@@ -87,6 +88,90 @@ describe("every opponent's leaf, drawn by the engine", () => {
           expect(right, label).toBeCloseTo(12.58, 1);
           for (const [seat, l] of plan.leaves!) expect(l.result!.fit.report.violations, `${label} ${seat}`).toEqual([]);
         }
+  });
+
+  it("eliminations in a row: the near place stays the camera's, opponents out give their room back, none brought back", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: { players: { name: string }[] } } }[]; catalog: unknown };
+    const without = (gone: readonly string[]): TableModel => {
+      const st = structuredClone(raw.stages.find((x) => x.turn === 15)!);
+      st.envelope.view.players = st.envelope.view.players.filter((p) => !gone.includes(p.name));
+      return designModels({ stages: [st], catalog: raw.catalog }).get(15)!;
+    };
+    let memory: TablePlan["memory"] | null = null;
+    const steps: [readonly string[], readonly string[]][] = [
+      [[], ["You", "Marath", "Atraxa", "Dack"]],
+      [["Dack"], ["You", "Marath", "Atraxa"]],
+      // the viewer is out: the near place is still the camera's (its board empty), the opponents still in keep theirs
+      [["Dack", "You"], ["You", "Marath", "Atraxa"]],
+      [["Dack", "You", "Marath"], ["You", "Atraxa"]],
+      // the last opponent out: the game is over, the near place alone (no eliminated seat comes back)
+      [["Dack", "You", "Marath", "Atraxa"], ["You"]],
+    ];
+    for (const [gone, seats] of steps) {
+      const m = without(gone), label = `without ${gone.join("+") || "anyone"}`;
+      const plan: TablePlan = planTable(tableInputOf(m, { viewport: VP, memory, engine: { draw: true } }));
+      expect([...plan.seats.keys()].map(String), label).toEqual(seats);
+      expect(check(m, plan, label), label).toEqual([]);
+      if (gone.includes("You")) expect(plan.seats.get(m.viewer.perspective)!.units, label).toEqual([]);
+      memory = plan.memory;
+    }
+  });
+
+  it("a waiting commander stands at table size, wholly clear of the top chrome, at rest and parted (review: turn 4, a spell up)", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
+    const st = structuredClone(raw.stages.find((x) => x.turn === 4)!);
+    const spell = { id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [] };
+    for (const stack of [[], [spell]]) {
+      st.envelope.view = { ...st.envelope.view, stack };
+      const m = designModels({ stages: [st], catalog: raw.catalog }).get(4)!;
+      for (const vp of [VP, { w: 1210, h: 834 }]) {
+        const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true } }));
+        if (stack.length) expect(plan.part).toBeGreaterThan(0);
+        const band = topChrome(vp);
+        for (const st2 of m.seats.slice(1)) {
+          const c = plan.seats.get(st2.id)!.fixtures.commander;
+          if (!c) continue;
+          expect(c.placement.scale).toBe(S_TABLE);
+          const g = plan.hits.groups.find((x) => x.id === `command:${st2.id}`)!, b = bounds(g.quad);
+          for (const r of band) expect(b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom, `${vp.w} ${st2.id} ${stack.length} clear of ${JSON.stringify(r)}: ${JSON.stringify(b)}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("the plan's rev follows the stack as the focus (review: turn 9, the lower stack entry's controller switched)", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
+    const spell = (id: number, who: string) => ({ id, source: { id, name: "Swords to Plowshares", owner: who, controller: who, type: "Instant", zone: "stack" }, controller: who, spell: true, text: "Swords to Plowshares", targets: [] });
+    const planned = (lower: string) => {
+      const st = structuredClone(raw.stages.find((x) => x.turn === 9)!);
+      st.envelope.view = { ...st.envelope.view, stack: [spell(9002, "Atraxa"), spell(9001, lower)] };
+      return planTable(tableInputOf(designModels({ stages: [st], catalog: raw.catalog }).get(9)!, { viewport: VP, engine: { draw: true } }));
+    };
+    const a = planned("Marath"), b = planned("Dack"), again = planned("Marath");
+    expect(b.stackUp.map((x) => x.quad)).not.toEqual(a.stackUp.map((x) => x.quad));
+    expect(b.rev).not.toBe(a.rev);
+    expect(again.rev).toBe(a.rev);
+  });
+
+  it("a snapshot that changes one seat rebuilds that seat's leaf only: the others are reused as they were", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: { players: { name: string; battlefield: { id: number; tapped?: boolean }[] }[] } } }[]; catalog: unknown };
+    const at = (tapDack: boolean): TableModel => {
+      const st = structuredClone(raw.stages.find((x) => x.turn === 15)!);
+      if (tapDack) {
+        const c = st.envelope.view.players.find((p) => p.name === "Dack")!.battlefield[0]!;
+        c.tapped = !c.tapped;
+      }
+      return designModels({ stages: [st], catalog: raw.catalog }).get(15)!;
+    };
+    let memory: TablePlan["memory"] | null = null;
+    let plan: TablePlan | null = null;
+    for (let i = 0; i < 3; i++) {
+      plan = planTable(tableInputOf(at(false), { viewport: VP, memory, engine: { draw: true } }));
+      memory = plan.memory;
+    }
+    const next = planTable(tableInputOf(at(true), { viewport: VP, memory, engine: { draw: true } }));
+    for (const seat of ["Marath", "Atraxa"]) expect(next.leaves!.get(seat as never)!.result, seat).toBe(plan!.leaves!.get(seat as never)!.result);
+    expect(next.leaves!.get("Dack" as never)!.result).not.toBe(plan!.leaves!.get("Dack" as never)!.result);
   });
 
   it("a tap on a face reaches that face, never the neighbour whose wider place it is under (review: turn 9)", () => {

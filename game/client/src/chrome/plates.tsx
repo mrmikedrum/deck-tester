@@ -73,7 +73,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             aria-label={said}
             aria-expanded={open === p.seat}
             style={`left:${p.x}px;top:${p.y}px;${p.mine ? "transform:translate(-50%,-100%);" : ""}--u:${p.unit}px;--seat:var(--seat-${p.place})`}
-            onClick={() => send({ a: "tap", on: { group: p.group as never, members: [] } })}
+            onClick={() => send(p.out ? { t: "seat", seat: p.seat } : { a: "tap", on: { group: p.group as never, members: [] } })}
           >
             <span class="bronze">
               <i class="sigil" />
@@ -197,6 +197,14 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
                 <ZoneHead label="Exile" n={v.exile.length} open={v.exile.length ? openZone("exile") : undefined} />
                 <Picked cards={v.exile} max={3} empty="Empty" more={openZone("exile")} />
               </section>
+              {v.command.length ? (
+                <section>
+                  <h4>
+                    Command <b>{v.command.length}</b>
+                  </h4>
+                  <Picked cards={v.command} max={2} empty="Empty" />
+                </section>
+              ) : null}
               <section>
                 <h4>
                   Hand <b>{v.handCount}</b>

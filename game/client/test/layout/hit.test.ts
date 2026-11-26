@@ -94,7 +94,7 @@ describe("last resort", () => {
 });
 
 describe("template and reservations", () => {
-  it("two to four seats in landscape are tuned (fewer opponents share the same width); others say so", () => {
+  it("one to four seats in landscape are tuned (fewer opponents share the same width); others say so", () => {
     expect(tableTemplate(4).slots.map((s) => s.position)).toEqual(["near", "left", "across", "right"]);
     expect(tableTemplate(3).slots.map((s) => s.position)).toEqual(["near", "left", "right"]);
     expect(tableTemplate(2).slots.map((s) => s.position)).toEqual(["near", "across"]);
@@ -103,7 +103,8 @@ describe("template and reservations", () => {
       expect(span(n)[0]![0]).toBeCloseTo(span(4)[0]![0], 9);
       expect(span(n).at(-1)![1]).toBeCloseTo(span(4).at(-1)![1], 9);
     }
-    expect(() => tableTemplate(1)).toThrow(NotTunedError);
+    expect(tableTemplate(1).slots.map((s) => s.position)).toEqual(["near"]);
+    expect(() => tableTemplate(0)).toThrow(NotTunedError);
     expect(() => tableTemplate(5)).toThrow(NotTunedError);
     expect(() => tableTemplate(4, "portrait")).toThrow(/not tuned|No table template/);
   });

@@ -42,7 +42,6 @@
 046-play-watching.json: works 11 → 3 units [ls9 rc rc]
 047-play-poison.json: works 15 → 4 units [ls12 rc rc rc]
 048-play-three-players.json: ready-tapped 7 → 2 units [ls6 rc]
-050-over-one-player.json: ready-tapped 0 → 0 units []
 051-play-commander-zone.json: ready-tapped 1 → 1 units [lc]
 052-confirm-watching.json: works 11 → 3 units [wc ls9 rc]
 053-play-poison.json: works 11 → 3 units [wc ls9 rc]
