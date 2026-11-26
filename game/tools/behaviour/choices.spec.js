@@ -269,3 +269,63 @@ test.describe("sheet decisions", () => {
     expect(await table.answered(1)).toEqual([{ key: expect.any(String), answer: [3] }]);
   });
 });
+
+// 8b. A choice of cards from a hidden zone (a library search): the printed cards on a sheet of one card size, copies
+//     of one card as a pile, pages past what fits. The new entry's sheet; the current client draws its own.
+test.describe("card sheet", () => {
+  const { CARDS } = require("./harness.js");
+  let hidden = 9000;
+  const search = (s, names, d) => withDecision(s, { kind: "choose", prompt: "Choose land cards (Test)", options: names, details: names.map(n => CARDS[n].faces[0].text || n),
+    refs: names.map(() => ({ card: hidden++ })), min: 1, max: 1, ...d });
+  const cards = t => t.sheet().locator(".l-deal .l-card");
+  const LANDS = ["Hallowed Fountain", "Island", "Island", "Island", "Mountain", "Mountain"];
+
+  test("one wanted: a tap on a card sends it; a pile sends its first copy", async ({ table }) => {
+    test.skip(!NEW, "the new entry's card sheet");
+    await table.open(search(snapshot("main"), LANDS, {}));
+    expect(await cards(table).count()).toBe(3);                          // Hallowed Fountain, Island ×3, Mountain ×2
+    expect(await cards(table).locator(".count").allInnerTexts()).toEqual(["×3", "×2"]);
+    await cards(table).nth(2).click();
+    expect((await table.answered(1))[0].answer).toEqual([5]);
+  });
+  test("up to two: a pile gives a copy per tap, the rest dim when full, Done sends the copies", async ({ table }) => {
+    test.skip(!NEW, "the new entry's card sheet");
+    await table.open(search(snapshot("main"), LANDS, { min: 0, max: 2 }));
+    await cards(table).nth(1).click();
+    await cards(table).nth(1).click();
+    expect(await table.sheet().locator(".l-done").innerText()).toBe("Done (2)");
+    expect(await cards(table).nth(0).getAttribute("class")).toContain("full");
+    await cards(table).nth(0).click();                                    // full: nothing changes
+    expect(await table.sheet().locator(".l-done").innerText()).toBe("Done (2)");
+    expect(table.answers()).toEqual([]);
+    await table.sheet().locator(".l-done").click();
+    expect((await table.answered(1))[0].answer).toEqual([2, 3]);
+  });
+  test("exactly two from many: pages turn without answering, and picks on two pages are sent together", async ({ table }) => {
+    test.skip(!NEW, "the new entry's card sheet");
+    const names = Object.keys(CARDS).filter(n => !/Token|Basic/.test(CARDS[n].faces[0].type)).sort().slice(0, 40);
+    await table.open(search(snapshot("main"), names, { min: 2, max: 2 }));
+    const per = await cards(table).count();
+    expect(per).toBeLessThan(40);
+    await cards(table).nth(0).click();
+    await table.sheet().getByRole("button", { name: "Next page" }).click();
+    expect(table.answers()).toEqual([]);
+    expect(await cards(table).first().locator(".sr").innerText()).toBe(names[per]);
+    await cards(table).nth(1).click();
+    expect(await table.sheet().locator(".l-done").isDisabled()).toBe(false);
+    await table.sheet().getByRole("button", { name: "Previous page" }).click();
+    expect(await cards(table).nth(0).getAttribute("aria-pressed")).toBe("true");   // the pick is kept across pages
+    await table.sheet().locator(".l-done").click();
+    expect((await table.answered(1))[0].answer).toEqual([1, per + 2]);
+  });
+  test("closes like every pop-up: the stud, then Choose… brings it back", async ({ table }) => {
+    test.skip(!NEW, "the new entry's card sheet");
+    await table.open(search(snapshot("main"), LANDS, {}));
+    await table.sheet().getByRole("button", { name: "Close" }).click();
+    await table.step(300);
+    expect(await table.sheet().count()).toBe(0);
+    await table.press("Choose…");
+    expect(await cards(table).count()).toBe(3);
+    expect(table.answers()).toEqual([]);
+  });
+});

@@ -356,7 +356,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
           const style = layerStyle(l);
           switch (l) {
             case "sheet":
-              return sheet ? <Sheet key="sheet" sheet={sheet} looks={view.looks} named={view.named} stack={view.stack} send={send} style={style} /> : null;
+              return sheet ? <Sheet key="sheet" sheet={sheet} looks={view.looks} named={view.named} stack={view.stack} send={send} style={style} area={{ w, h, safe, u }} /> : null;
             case "inspector":
               return view.inspector ? (
                 <Inspector key="inspector" view={view.inspector} send={send} style={style} hold={hold} fill={fill} />

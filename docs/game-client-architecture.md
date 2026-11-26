@@ -735,7 +735,10 @@ badges) patch pieces without a new plan.
 
 Preact components rendered from `chromeView(state)`: the prompt and its buttons, the hand, sheets and choosers, the
 inspector, the log, the mulligan, menus, toasts, the back bar and the stack chip. Components lay out inside `reserve`
-and never measure the scene. The hand's physics live in `chrome/frame/`, stepped by the commit.
+and never measure the scene. The hand's physics live in `chrome/frame/`, stepped by the commit. A chooser of cards
+(a library search, a graveyard) is dealt by `chrome/deal.ts`: the printed cards at one size in at most two rows, copies
+off the table as one pile, and pages past what fits. Its page is the sheet's own state, and the hand slides away while
+it is up. `tools/chrome-stills.js` shoots the sheets, the nameplate focus and the plates on the iPad's screen.
 
 Acts are stamped in `chrome/renderer.tsx`. A control pressed with a pointer answers the control, option and stop it
 went down on: its act carries the stop and commit drawn at pointerdown, and if the control under the pointer has

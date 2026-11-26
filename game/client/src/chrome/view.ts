@@ -144,7 +144,7 @@ export interface SeatFocusView {
   readonly command: readonly PickedCard[];
   /** It has a board on the table to see (a seat out of the game has none). */
   readonly board: boolean;
-  /** An opponent's hand: backs (and any card shown face up); mine: the cards. */
+  /** An opponent's hand while it is shown face up; otherwise empty (its count is a line, and mine is in front of me). */
   readonly hand: readonly PickedCard[];
   readonly handCount: number;
   readonly library: number;

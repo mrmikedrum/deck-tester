@@ -44,7 +44,8 @@ export function chooserSheet(c: Ctx<Choice>): SheetView & { readonly buttons: re
       enabled: draft.sel.length >= d.min,
     }),
   );
-  return { kind: "chooser", title: promptText(d, f), wide: d.options.length > 6, items, stepper: null, buttons, carried: null };
+  const pick = { min: d.min, max: d.max, ordered: ordered(d), repeat: d.repeat };
+  return { kind: "chooser", title: promptText(d, f), wide: d.options.length > 6, items, stepper: null, buttons, carried: null, pick };
 }
 
 /** A sheet pick: picked, and sent when that completes a single-option choice. `mode` is the draft's mode to keep. */

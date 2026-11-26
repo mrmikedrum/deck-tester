@@ -50,3 +50,52 @@ export function faceKeywords(names: readonly string[]): string[] {
   const have = new Set(names);
   return KEYWORD_ORDER.filter((k) => have.has(k));
 }
+
+/** A rounded rectangle as a path, for the glyphs below. */
+const rrect = (x: number, y: number, w: number, h: number, r: number): string =>
+  `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
+
+/**
+ * One part of a seat glyph: a filled path (holes by the even-odd rule), turned `turn` degrees about a point when given;
+ * `cut` parts are set off from what lies under them by a rim of the page's colour.
+ */
+export interface GlyphPart {
+  readonly d: string;
+  readonly turn?: readonly [deg: number, cx: number, cy: number];
+  readonly cut?: boolean;
+}
+
+/**
+ * The seats' glyphs on a 24 box, as the nameplates and their focus draw them: filled silhouettes in ink, cut like the
+ * keyword icons, with nothing finer than a unit so they stay crisp at 18 px. Power is a sword; open mana a cut gem;
+ * cards in hand two cards fanned, the front one showing the back's lozenge.
+ */
+export const SEAT_GLYPHS = {
+  power: [
+    {
+      d: "M12 0.2L14.2 3.6V14.6H9.8V3.6Z" + "M6 14.4H18A1.2 1.2 0 0 1 19.2 15.6V16.6A1.2 1.2 0 0 1 18 17.8H6A1.2 1.2 0 0 1 4.8 16.6V15.6A1.2 1.2 0 0 1 6 14.4Z",
+      turn: [45, 12, 12],
+    },
+    { d: "M10.6 17.6H13.4V21H10.6ZM10.1 22.2A1.9 1.9 0 1 0 13.9 22.2A1.9 1.9 0 1 0 10.1 22.2Z", turn: [45, 12, 12] },
+  ],
+  mana: [
+    { d: "M7.2 3.6H9.7L8.3 9H2.4ZM10.8 3.6H13.2L14.6 9H9.4ZM14.3 3.6H16.8L21.6 9H15.7Z" },
+    { d: "M2.4 10.3H21.6L12 21.6Z" },
+  ],
+  hand: [
+    { d: rrect(4.2, 6.4, 9.2, 13.4, 1.6), turn: [-14, 8.8, 13.1] },
+    { d: rrect(10.4, 4.8, 9.2, 13.4, 1.6) + "M15 8.6L17.1 11.5L15 14.4L12.9 11.5Z", turn: [10, 15, 11.5], cut: true },
+  ],
+  creatures: [{ d: rrect(5, 2.5, 14, 19, 2) + rrect(7.2, 4.8, 9.6, 7.6, 0.8) + "M7.6 14.6H16.4V16.2H7.6ZM12.6 17.6H16.4V19.4H12.6Z" }],
+  wing: [{ d: "M2 15c5 0 9-3 12-10 1 3 1 6-1 9 2-1 5-1 8 0-2 2-5 3-8 3 1 1 3 1 5 2-3 1-7 1-10-1-2 0-4-1-6-3z" }],
+  shield: [{ d: "M12 2.4L19.6 5.2V11C19.6 16 16.3 19.7 12 21.6C7.7 19.7 4.4 16 4.4 11V5.2ZM12 5.1V18.9C15.2 17.3 17.2 14.5 17.2 11V6.8Z" }],
+  graveyard: [
+    { d: "M6.4 20V10A5.6 5.6 0 0 1 17.6 10V20ZM11.2 7.6V10.2H9.1V11.9H11.2V16.4H12.8V11.9H14.9V10.2H12.8V7.6Z" },
+    { d: "M3.6 20.2H20.4V22.2H3.6Z" },
+  ],
+  exile: [
+    { d: "M3 3H8.6V5.1H5.1V8.6H3ZM21 3V8.6H18.9V5.1H15.4V3ZM21 21H15.4V18.9H18.9V15.4H21ZM3 21V15.4H5.1V18.9H8.6V21Z" },
+    { d: rrect(8.4, 6.8, 7.2, 10.4, 1.2) },
+  ],
+  command: [{ d: "M2.8 7.6L8 11.6L12 4.6L16 11.6L21.2 7.6L19.7 17H4.3Z" }, { d: "M4.4 18.4H19.6V20.8H4.4Z" }],
+} as const satisfies Readonly<Record<string, readonly GlyphPart[]>>;

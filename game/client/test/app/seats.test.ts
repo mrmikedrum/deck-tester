@@ -180,6 +180,14 @@ describe("a seat's summary", () => {
     const focus = seatFocusOf(model, atraxa)!;
     expect(focus.lines.find((l) => l.icon === "mana")?.head).toBe("3 of 4 mana sources untapped");
   });
+  it("my own focus leaves out my hand (it is in front of me); an opponent's says its count in a line", () => {
+    const mine = seatFocusOf(model, model.viewer.perspective)!;
+    expect(mine.lines.map((l) => l.icon)).not.toContain("hand");
+    expect(mine.hand).toEqual([]);
+    const theirs = seatFocusOf(model, atraxa)!;
+    expect(theirs.lines.find((l) => l.icon === "hand")?.head).toMatch(/cards? in hand$/);
+    expect(theirs.hand).toEqual([]); // not shown: its count is the line
+  });
   it("is counted once per model and seat", () => {
     expect(summaryOf(model, atraxa)).toBe(summaryOf(model, atraxa));
     expect(platesOf(model, null, new Map(), TABLE)).toBe(platesOf(model, null, new Map(), TABLE));

@@ -210,6 +210,9 @@ export interface SheetView {
   readonly buttons: readonly Button[];
   /** Released hand card the sheet holds; the chrome keeps drawing it where it was let go. */
   readonly carried: Carried | null;
+  /** A chooser's bounds, for how it is drawn: how many may be picked, and whether the picks are ordered or an option
+   * may repeat (copies of one card are then never put together). */
+  readonly pick?: { readonly min: number; readonly max: number; readonly ordered: boolean; readonly repeat: boolean };
 }
 
 export interface CardAction {

@@ -265,6 +265,91 @@ describe("the sheet", () => {
   });
 });
 
+describe("a card sheet (a library search, a graveyard)", () => {
+  /** A chooser of hidden cards by name, each pictured by the catalogue. */
+  const search = (names: readonly string[], pick: { min: number; max: number }, picked: readonly number[] = []) => {
+    const items = names.map((name, i) => ({ option: i + 1, label: name, cost: null, detail: `${name} text`, card: null, name, picked: picked.includes(i + 1), badge: null }));
+    const sheet = { kind: "chooser" as const, title: "Choose a land card (Farseek)", wide: true, items, stepper: null, buttons: [], carried: null, pick: { ...pick, ordered: false, repeat: false } };
+    const named = new Map(names.map((n) => [n, { name: n, image: `${n.toLowerCase()}.jpg` }]));
+    return view({ controls: controls(MAIN, { sheet }), named });
+  };
+  const distinct = (n: number) => Array.from({ length: n }, (_, i) => `Card ${String(i + 1).padStart(2, "0")}`);
+  const shownNames = () => $$(".l-deal .l-card .sr").map((e) => e.textContent);
+  /** The page is the sheet's own state: Preact draws its change on the next microtask. */
+  const turn = async (which: "Next page" | "Previous page") => {
+    $<HTMLButtonElement>(`[aria-label="${which}"]`)?.click();
+    await Promise.resolve();
+  };
+
+  it("deals the printed cards, one size, with no words under them", () => {
+    show(search(["Hallowed Fountain", "Island", "Mountain", "Sacred Foundry", "Watery Grave"], { min: 1, max: 1 }));
+    const cards = $$(".l-deal .l-card");
+    expect(cards).toHaveLength(5);
+    expect(cards.every((c) => !c.querySelector("small"))).toBe(true); // the card says what it is
+    expect(cards.every((c) => c.style.width === "")).toBe(true); // one size: the grid's --cw, never per card
+    expect($(".l-deal")?.getAttribute("style")).toMatch(/--cw:\s*\d+px/);
+    expect($(".l-pager")).toBeNull(); // five fit on one page
+    expect($(".l-sheet.cards")).not.toBeNull();
+  });
+  it("copies off the table lie as one pile with their count; a tap takes the next copy", () => {
+    show(search(["Island", "Island", "Island", "Mountain", "Mountain", "Watery Grave"], { min: 0, max: 2 }, [1]));
+    expect(shownNames()).toEqual(["Island, 3 copies", "Mountain, 2 copies", "Watery Grave"]);
+    expect(texts(".l-deal .l-card .count")).toEqual(["×3", "×2"]);
+    const island = $$(".l-deal .l-card")[0]!;
+    expect(island.classList.contains("on")).toBe(true);
+    expect(island.getAttribute("aria-pressed")).toBe("true");
+    click(island);
+    expect(sent.at(-1)).toMatchObject({ act: { a: "pick", option: 2 } });
+  });
+  it("picked cards are lifted with a seal; when the choice is full the rest dim and a tap on them sends nothing", () => {
+    show(search(["Island", "Mountain", "Plains", "Swamp"], { min: 2, max: 2 }, [1, 3]));
+    const cards = $$(".l-deal .l-card");
+    expect(cards.map((c) => c.classList.contains("on"))).toEqual([true, false, true, false]);
+    expect(cards.map((c) => !!c.querySelector(".seal"))).toEqual([true, false, true, false]);
+    expect(cards.map((c) => c.classList.contains("full"))).toEqual([false, true, false, true]);
+    click(cards[1]!);
+    expect(sent).toEqual([]);
+    click(cards[0]!); // a picked card is put back
+    expect(sent.at(-1)).toMatchObject({ act: { a: "pick", option: 1 } });
+  });
+  it("past what fits, pages: the pager turns them and stops at either end", async () => {
+    const names = distinct(62);
+    show(search(names, { min: 1, max: 1 }));
+    const first = shownNames();
+    expect(first.length).toBeGreaterThan(4);
+    expect(first.length).toBeLessThan(62);
+    expect(first[0]).toBe("Card 01");
+    const pages = Math.ceil(62 / first.length);
+    expect($$(".l-pager .studs i")).toHaveLength(pages);
+    expect($<HTMLButtonElement>('[aria-label="Previous page"]')?.disabled).toBe(true);
+    await turn("Next page");
+    expect(shownNames()[0]).toBe(names[first.length]);
+    expect($(".l-pager")?.getAttribute("aria-label")).toBe(`Page 2 of ${pages}`);
+    expect(sent).toEqual([]); // turning a page answers nothing
+    for (let i = 0; i < pages; i++) await turn("Next page");
+    expect($<HTMLButtonElement>('[aria-label="Next page"]')?.disabled).toBe(true);
+    expect(shownNames().at(-1)).toBe("Card 62");
+  });
+  it("keeps its page while picks change; a pick on a later page sends that card's option", async () => {
+    const names = distinct(40);
+    show(search(names, { min: 0, max: 2 }));
+    const per = shownNames().length;
+    await turn("Next page");
+    click($$(".l-deal .l-card")[0]!);
+    expect(sent.at(-1)).toMatchObject({ act: { a: "pick", option: per + 1 } });
+    show(search(names, { min: 0, max: 2 }, [per + 1]));
+    expect(shownNames()[0]).toBe(names[per]);
+    expect($$(".l-deal .l-card")[0]!.classList.contains("on")).toBe(true);
+  });
+  it("its box never scrolls (the cards are sized to the screen) and has no option stripe", () => {
+    const css = readFileSync(resolve(import.meta.dirname, "../../src/chrome/chrome.css"), "utf8");
+    const rule = /\.l-sheet\.cards \.l-box \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule).toMatch(/overflow:\s*visible/);
+    expect(rule).toMatch(/max-height:\s*none/);
+    expect(css).not.toMatch(/\.l-card::before/);
+  });
+});
+
 describe("the hand", () => {
   it("draws the fan, open on the last card, playable edges lit", () => {
     show(view());
