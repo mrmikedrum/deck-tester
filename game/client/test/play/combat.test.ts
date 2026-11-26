@@ -218,9 +218,9 @@ describe("block", () => {
     t.tapCard(818);
     expect(t.buttons()).toEqual(["Clear", "No blocks", "Auto"]);
     expect(t.p.controls.prompt?.hint).toBe("Grizzly Bears: tap an attacker");
-    // holding: only the attackers it can block stay lit, in red
+    // holding: only the attackers it can block stay lit, in ember (my choices, never red)
     const m = t.p.board.marks.cards;
-    expect([m.get(872 as CardId), m.get(834 as CardId), m.get(237 as CardId)]).toEqual(["danger", "danger", undefined]);
+    expect([m.get(872 as CardId), m.get(834 as CardId), m.get(237 as CardId)]).toEqual(["option", "option", undefined]);
     expect(m.get(818 as CardId)).toBe("selected");
     t.tapCard(834);
     t.tapCard(820); // a single pairing: picked at once

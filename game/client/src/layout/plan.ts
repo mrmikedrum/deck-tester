@@ -342,7 +342,7 @@ export function planTable(input: TableInput): TablePlan {
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
   const focus = stackFocus(input, projector, final, shapes, reserve, reserve.safe), stackUp = focus.up;
   if (focus.covers && stackUp[0]) v = [...v, { rule: "focus-covers", group: `stack:${stackUp[0].key}`, seat: null, measured: 0, limit: 1 }];
-  const hits = hitGroups(final, shapes, stack, stackUp);
+  const hits = hitGroups(final, shapes, stack, stackUp, c.gathered);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
@@ -634,7 +634,7 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };
 }
 
-function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"], stackUp: TablePlan["stackUp"]): HitGroups {
+function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"], stackUp: TablePlan["stackUp"], clash: Gathering | null): HitGroups {
   const groups: HitGroup[] = [];
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
@@ -648,6 +648,14 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   for (const p of plans) {
     const c = p.fixtures.commander, id = `command:${p.seat}`;
     if (c) groups.push({ id, kind: "card", seat: p.seat, members: [c.card], quad: shape(id).face, order: shape(id).order });
+  }
+  // The clash: each unblocked attacker's empty slot is that attacker (a tap or a drop on its brand), and the "more"
+  // column holds the fighters past its columns (a tap opens them).
+  if (clash?.focus) {
+    for (const w of clash.wings)
+      for (const col of w.columns)
+        if (col.slot) groups.push({ id: `slot:${col.unit}`, kind: "card", seat: w.attacker, members: [...col.attackers], quad: col.slot, order: FOCUS_ORDER });
+    if (clash.moreAt && clash.more.length) groups.push({ id: "clash:more", kind: "pile", seat: null, members: [...clash.more], quad: clash.moreAt, order: FOCUS_ORDER });
   }
   // The stack, top first, by its depth like any card; under the plates.
   for (const s of stack) if (s.reachable) groups.push({ id: `stack:${s.key}`, kind: "stack", seat: null, members: [s.card], quad: s.quad, order: shape(`stack:${s.key}`).order });

@@ -22,13 +22,14 @@ export const block: Kind<BlockDecision> = {
     if (n || draft.holding !== null) out.unshift(btn("clear", "Clear", () => ({ draft: { ...draft, sel: [], holding: null } })));
     return out;
   },
-  // The attackers are choices here, not dangers; holding a blocker, only the attackers it can block stay lit, in red.
+  // The attackers are choices here, not dangers: ember (what I may choose); holding a blocker, only the attackers it can
+  // block keep it. Red is for what hurts me, and these are my choices.
   marks(c, m) {
     const { d, draft } = c;
     for (const r of d.refs) {
       m.card(r.card, "option");
       if (draft.holding === null) m.card(r.blocks, "option");
-      else if (r.card === draft.holding) m.card(r.blocks, "danger");
+      else if (r.card === draft.holding) m.card(r.blocks, "option");
     }
     for (const o of draft.sel) {
       const r = d.refs[o - 1];

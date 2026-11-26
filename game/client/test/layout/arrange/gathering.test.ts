@@ -85,6 +85,16 @@ describe("the clash", () => {
     expect(g.wings[0]!.columns.filter((c) => c.slot).map((c) => c.attackers)).toEqual([[id(1169)], [id(1072)]]);
   });
 
+  it("a tap on an unblocked attacker's brand (its empty slot) reaches that attacker", () => {
+    const plan = drawn(turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4));
+    for (const col of plan.gathering!.wings[0]!.columns.filter((c) => c.slot)) {
+      const b = bounds(col.slot!);
+      const hit = hitTest(plan, { x: (b.l + b.r) / 2, y: (b.t + b.b) / 2 })!;
+      expect(hit.id).toBe(`slot:${col.unit}`);
+      expect(hit.members).toEqual(col.attackers);
+    }
+  });
+
   it("attackers keep the order they stood in; blockers come to them", () => {
     const m = turn15(ATRAXA6.map((a) => [a, "You"] as const));
     // where they stood on their page in this combat (the table form: each its own unit, at home)

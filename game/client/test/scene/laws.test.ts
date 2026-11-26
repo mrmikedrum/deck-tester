@@ -10,6 +10,9 @@ import { NO_CUES, corpusSteps, frameOf, unplanned } from "./corpus";
 import type { Step } from "./corpus";
 import { NO_FOCUS } from "../../src/scene/stage";
 
+/** The clash's marks in the chrome (a brand slot, the "more" column): hit groups that are not pieces. */
+const CLASH_MARK = /^(slot:|clash:)/;
+
 const runs = corpusSteps();
 const steps = runs.flat();
 const FRAME = 16;
@@ -54,8 +57,10 @@ group("describe over the corpus", () => {
     expect(new Set(all).size, "no card twice").toBe(all.length);
     expect(all.length).toBe(s.model.cards.size);
     for (const id of s.model.cards.keys()) expect(d.home.has(id)).toBe(true);
-    // Every hit group is a piece, with the same members (the scene's targets are layout's).
+    // Every hit group is a piece, with the same members (the scene's targets are layout's); but the clash's brand slots
+    // and its "more" column, chrome marks that reach fighters drawn as their own pieces.
     for (const g of s.plan.hits.groups) {
+      if (CLASH_MARK.test(g.id)) continue;
       const p = d.pieces.get(g.id);
       expect(p, g.id).toBeDefined();
       if (g.kind !== "zone" && g.kind !== "plate" && g.kind !== "stack") expect(p!.members.slice(0, g.members.length)).toEqual(g.members);
@@ -316,6 +321,7 @@ group("the scene's targets are layout's", () => {
   it.each(steps.map((s) => [s.name, s] as const))("%s: at rest a card or a stack entry covers its hit group's quad", (_, s) => {
     const d = describe({ model: s.model, plan: s.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
     for (const g of s.plan.hits.groups) {
+      if (CLASH_MARK.test(g.id)) continue;
       const p = d.pieces.get(g.id)!;
       if (g.kind === "stack" || ((g.kind === "card" || g.kind === "pile") && p.look.tap === 0))
         expect(near(poseQuad(s.plan.projector, p.pose), g.quad), g.id).toBeLessThan(0.5);
