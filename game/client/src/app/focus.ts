@@ -42,14 +42,34 @@ export interface FocusState {
   readonly aside: readonly FocusEntry[];
   /** The stack (its items) the stack layer last came up for: a new item brings it up again, even set aside. */
   readonly stackKey: string;
+  /** The combat on the table, kept for its lifetime (`CombatMemory`); absent outside combat. */
+  readonly combat?: CombatMemory;
+}
+
+/**
+ * What the app keeps for one combat, from its first sight to its end (whatever its fighters or its form do meanwhile):
+ * the order the clash first stood its attackers in, and whether the combat raises the clash now. What happened in it
+ * (who is blocked, what damage was dealt) is the engine's, read from each snapshot.
+ */
+export interface CombatMemory {
+  /** The combat's identity: its game, turn and Forge's combat ordinal. */
+  readonly key: string;
+  readonly order: readonly CardId[];
+  readonly wanted: boolean;
+}
+
+/** The combat as `sync` hears of it each time: its identity ("" outside combat), and whether it raises the clash. */
+export interface CombatSight {
+  readonly key: string;
+  readonly wanted: boolean;
 }
 
 export const NO_FOCUS_STATE: FocusState = { layers: [], aside: [], stackKey: "" };
 
 /** The table's own layers: under every chrome layer. */
-const TABLE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "lean", "sift"]);
+const TABLE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "clash", "lean", "sift"]);
 /** Dismissed, these are set aside (a chip restores them) rather than closed. */
-const SET_ASIDE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "mulligan"]);
+const SET_ASIDE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "clash", "mulligan"]);
 
 const tier = (l: LayerId): number => (TABLE.has(l) ? 0 : 1);
 
@@ -125,7 +145,7 @@ export const stackKeyOf = (model: TableModel | null): string => (model ? model.s
  */
 export function sync(
   f: FocusState,
-  o: { sheet: boolean; mulligan: boolean; stack: string; groups?: (id: string) => boolean; pages?: (id: string) => number },
+  o: { sheet: boolean; mulligan: boolean; stack: string; combat?: CombatSight; groups?: (id: string) => boolean; pages?: (id: string) => number },
   restore: string | null,
 ): FocusState {
   let next = f;
@@ -143,6 +163,31 @@ export function sync(
   if (o.stack !== next.stackKey) {
     next = o.stack ? open({ ...next, stackKey: o.stack }, entry("stack")) : { ...close(next, "stack"), stackKey: "" };
   }
+  return combatSync(next, o.combat);
+}
+
+/**
+ * The combat's memory and the clash kept in step with it. A new combat (or none) starts the memory afresh and takes
+ * the clash and its chip down. Within one combat the clash comes up while the
+ * combat raises it and goes (not aside) while it does not; set aside, it stays aside for the rest of that combat. Under
+ * the stack, since a spell cast in combat is the focus above it.
+ */
+function combatSync(f: FocusState, c: CombatSight | undefined): FocusState {
+  const sight = c && c.key ? c : null;
+  let next = f;
+  if ((sight?.key ?? "") !== (next.combat?.key ?? "")) {
+    const { combat: _, ...rest } = close(next, "clash");
+    void _;
+    next = sight ? { ...rest, combat: { key: sight.key, order: [], wanted: false } } : rest;
+  }
+  const mem = next.combat;
+  if (!sight || !mem) return next;
+  if (sight.wanted !== mem.wanted) next = { ...next, combat: { ...mem, wanted: sight.wanted } };
+  const up = isOpen(next, "clash"), aside = isAside(next, "clash");
+  if (sight.wanted && !up && !aside) {
+    next = open(next, entry("clash"));
+    if (isOpen(next, "stack")) next = open(next, next.layers.find((e) => e.layer === "stack")!);
+  } else if (!sight.wanted && up) next = close(next, "clash");
   return next;
 }
 

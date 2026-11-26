@@ -43,7 +43,9 @@ KNOWN_OPTIONAL = {
     "view": {"active", "priority", "combat", "over"},
     "decision": {"details", "refs"},
     "log": {"card"},
-    "attacker": {"defender"},
+    "attacker": {"defender", "blocked"},
+    # the combat facts (its ordinal, the damage dealt in it) are newer than the checked-in envelopes
+    "combat": {"ordinal", "damage"},
     "ref:play": {"mana"},
 }
 

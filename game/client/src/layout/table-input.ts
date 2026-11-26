@@ -9,6 +9,7 @@ import type { LayoutMemory } from "./seat";
 import type { CardId, Insets, SeatId, Viewport } from "./types";
 import { engineCombat, fighters, mergeCombat } from "./combat";
 import type { CombatPairs } from "./combat";
+import type { CombatForm } from "./arrange/gathering";
 import type { TableModel } from "../model";
 import { shadowInputOf } from "./arrange/shadow";
 import { arrangedMemory } from "./arrange/adapter";
@@ -26,6 +27,12 @@ export interface TableInputOptions {
   readonly involved?: ReadonlySet<CardId>;
   /** A combat draft (play's `cues.combat`, as plain pairs): drawn over the engine's combat, its fighters in the row. */
   readonly combat?: CombatPairs | null;
+  /** How the combat is shown (the app's: the clash set aside is the table form); absent, the form it takes by itself. */
+  readonly combatForm?: CombatForm;
+  /** Attackers that have had a blocker this combat (the app remembers them). */
+  readonly blocked?: ReadonlySet<CardId>;
+  /** The clash's attackers in the order it first stood them (the app keeps it for the combat). */
+  readonly order?: readonly CardId[];
   /** Plan the across leaf with the arrangement engine too (debug only; `TablePlan.shadow`). */
   readonly shadow?: ShadowOptions;
 }
@@ -41,6 +48,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     blocks: merged.blocks.filter((b) => model.cards.get(b.blocker)?.zone === "battlefield"),
   };
   for (const id of fighters(combat)) involved.add(id);
+  const blocked = new Set<CardId>([...(o.blocked ?? []), ...(model.combat?.attackers.filter((a) => a.blocked === true).map((a) => a.attacker) ?? [])]);
   for (const it of model.stack) for (const t of it.targets) if ("card" in t) involved.add(t.card);
   const spells = new Set(model.stack.filter((s) => s.spell && s.source !== null).map((s) => s.source));
   const stack: StackEntry[] = model.stack.map((s) => ({
@@ -62,6 +70,10 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     memory: o.memory ?? null,
     stack,
     combat,
+    ...(o.combatForm ? { combatForm: o.combatForm } : {}),
+    // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.
+    ...(blocked.size ? { blocked } : {}),
+    ...(o.order?.length ? { order: o.order } : {}),
     ...(o.shadow && model.seats.length === 4 ? { shadow: shadowInputOf(model, model.seats[2]!.id, involved, o.settling ?? false, { ...o.shadow, memory: o.shadow.memory ?? arrangedMemory(o.memory?.get(model.seats[2]!.id)) }) } : {}),
   };
 }

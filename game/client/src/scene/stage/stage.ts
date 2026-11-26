@@ -6,7 +6,7 @@
 // Pure: no three.js, no clock; the three.js view draws what `show` returns.
 import type { TableModel } from "../../model";
 import type { CardId } from "../../protocol";
-import type { TablePlan, V3 } from "../../layout";
+import type { Rect, TablePlan, V3 } from "../../layout";
 import type { SeatId } from "../../model";
 import type { Ms } from "../../play";
 import { faceKey, materials, motion } from "../../theme";
@@ -38,6 +38,7 @@ import type {
   BoltView,
   Description,
   FlightPlan,
+  FocusGround,
   HighlightLook,
   HighlightTone,
   LaneView,
@@ -54,6 +55,7 @@ import type {
   StrikeView,
 } from "./types";
 
+const NONE: ReadonlySet<string> = new Set();
 /** How long a card takes to step out of the light, or back. */
 const HIGHLIGHT_MS = materials.highlight.ms;
 /** How long a bolt strikes (h.js: out after 500 ms). */
@@ -152,6 +154,10 @@ export class Stage {
   private readonly stackUps = new Map<string, boolean>();
   /** The stack's scrim easing toward the description's: where it set off from, when, and to what. */
   private scrimFade = { from: 0, to: 0, at: 0 as Ms };
+  /** The clash's calm ground easing in and out with its scrim (0..1), and the last rect it covered. */
+  private groundFade = { from: 0, to: 0, at: 0 as Ms };
+  private groundRect: Rect | null = null;
+  private groundView: FocusGround | null = null;
   /** Each piece stepping out of the light or back (its meaning kept while it steps back), and the look last asked for. */
   private readonly hlFade = new Map<string, { from: number; to: number; at: Ms; tone: HighlightTone }>();
   private hlLook: HighlightLook = { dim: 0, lift: 0, flat: 0, halo: 0 };
@@ -641,7 +647,9 @@ export class Stage {
       if (p.kind === "hidden") continue;
       // Stepped out of the light, a card on the table rises toward me (the stack's cards already stand up).
       const sample = hl && (p.kind === "unit" || p.kind === "zone") ? this.lifted(stepped, hl.k) : stepped;
-      if (hl) above.add(st.id);
+      // Above the scrim: what steps out of the light, and what the description raises (the clash's fighters, my choices).
+      const raised = !!hl || !!desc?.above.has(st.id);
+      if (raised) above.add(st.id);
       // A piece showing none of its cards (on their way to it, or still the chrome's) is not there to be tapped.
       const target = st.actor.target();
       // Where its hit group was measured: the plan's place for it (a lean-in draws it elsewhere), or, for the stack as the
@@ -661,7 +669,7 @@ export class Stage {
         this.stackUps.set(st.id, p.draw.up);
       }
       const sift = p.draw.t === "sift" ? { sift: { card: p.draw.card, seat: p.seat, roll: siftRoll(p.draw.tapped, sample.alpha) } } : {};
-      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...(up ? { up } : {}), ...(hl ? { above: true } : {}), ...sift });
+      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...(up ? { up } : {}), ...(raised ? { above: true } : {}), ...sift });
       const faceCard = p.kind === "zone" ? (st.shown[st.shown.length - 1] ?? null) : p.kind === "unit" ? (st.shown.includes(p.face!) ? p.face : (st.shown[0] ?? p.face)) : p.face;
       const fm = this.faceOf(st, faceCard, p.mark, p.small ?? false);
       const face = fm?.face ?? null;
@@ -719,6 +727,8 @@ export class Stage {
       aims,
       tableTone: this.desc?.tableTone ?? 1,
       scrim: this.scrimTo(this.desc?.scrim ?? 0, t),
+      ground: this.groundAt(t),
+      aloft: this.desc?.aloft ?? NONE,
       above,
       drawn,
       now: t,
@@ -730,6 +740,30 @@ export class Stage {
    * cuts). */
   private scrimAt(t: Ms): number {
     const f = this.scrimFade;
+    const ms = f.to > f.from ? SCRIM.inMs : SCRIM.outMs;
+    if (this.reduced || f.from === f.to || t - f.at >= ms) return f.to;
+    const k = Math.max(0, (t - f.at) / ms);
+    return f.from + (f.to - f.from) * (1 - (1 - k) * (1 - k));
+  }
+
+  /** The clash's ground at `t`: in and out with its scrim, at the theme's tone. */
+  private groundAt(t: Ms): FocusGround | null {
+    const r = this.desc?.ground ?? null;
+    if (r) this.groundRect = r;
+    const target = r ? 1 : 0;
+    if (target !== this.groundFade.to) this.groundFade = { from: this.groundK(t), to: target, at: t };
+    const k = this.groundK(t), g = this.groundRect, G = materials.shade.ground;
+    if (k <= 0 || !g) return null;
+    const u = this.plan ? Math.min(this.plan.viewport.w / 1180, this.plan.viewport.h / 820) : 1;
+    // The same ground object while its bounds and opacity hold: nothing is made per frame at rest.
+    const v = this.groundView, alpha = G.alpha * k, feather = G.feather * u;
+    if (v && v.l === g.left && v.t === g.top && v.r === g.right && v.b === g.bottom && v.alpha === alpha && v.feather === feather) return v;
+    return (this.groundView = { l: g.left, t: g.top, r: g.right, b: g.bottom, feather, colour: G.colour, alpha });
+  }
+
+  /** How far the ground has come in at `t` (0..1), eased as the scrim is. */
+  private groundK(t: Ms): number {
+    const f = this.groundFade;
     const ms = f.to > f.from ? SCRIM.inMs : SCRIM.outMs;
     if (this.reduced || f.from === f.to || t - f.at >= ms) return f.to;
     const k = Math.max(0, (t - f.at) / ms);

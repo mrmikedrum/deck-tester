@@ -7,7 +7,7 @@ import type { ChromeMode, Reservations } from "./reservations";
 import type { LayoutMemory, SeatInput, SeatLayout, SeatPlan, Summary, Unit } from "./seat";
 import { Ledger } from "./ledger";
 import { mat } from "./seat/mat";
-import { combatRow, fighters, rowUnits } from "./combat";
+import { fighters, rowUnits } from "./combat";
 import type { CombatPairs } from "./combat";
 import { CH, CW, EDGE, clearOfHand, floorScale, makeGeo } from "./seat/geometry";
 import { audit, bounds, depthOrder, hitQuad, inQuad, seatShapes, stackShape } from "./shape";
@@ -19,10 +19,12 @@ import { designUnit } from "./types";
 import { shadowPlan } from "./arrange/shadow";
 import { arrangedSeat } from "./arrange/adapter";
 import { leafFrame } from "./arrange/leaf";
-import { gathering } from "./arrange/gathering";
+import { combatFormOf, gathering } from "./arrange/gathering";
+import type { CombatForm, Gathering } from "./arrange/gathering";
 
-/** A focus's cards are reached over the whole table (under the plates). */
-const FOCUS_ORDER = 5e5;
+/** The clash's cards are reached over the whole table, the plates' table groups too (the plates themselves are chrome,
+ *  over the canvas, and take their own taps first). */
+const FOCUS_ORDER = 2e6;
 import type { ShadowInput, ShadowPlan } from "./arrange/shadow";
 
 // Planning a seat with the hard-limit audit and a fold-harder retry, and planning the table: four seats, plates, the
@@ -164,6 +166,13 @@ export interface TableInput {
   readonly layout?: SeatLayout;
   /** Attacks and blocks (the engine's, or a draft over them): the fighters stand in the combat row in the open middle. */
   readonly combat?: CombatPairs | null;
+  /** How the combat is shown: the clash, or the table form (the app's, when the clash is set aside). Absent: the form the
+   *  combat takes by itself (`combatFormOf`). */
+  readonly combatForm?: CombatForm;
+  /** Attackers that have had a blocker this combat (the app remembers them): one whose blockers left stays blocked. */
+  readonly blocked?: ReadonlySet<CardId>;
+  /** The clash's attackers in the order it first stood them: no column jumps during a combat. */
+  readonly order?: readonly CardId[];
   /** Arrange this seat's leaf with the arrangement engine beside `mat`, recorded in `TablePlan.shadow` (debug only). */
   readonly shadow?: ShadowInput;
 }
@@ -220,8 +229,14 @@ export interface TablePlan {
   readonly stackUp: readonly StackAtRest[];
   /** Limits still broken after every retry (a last-resort seat that still breaks one, or a stack card not reachable). */
   readonly violations: readonly Violation[];
-  /** The combat it stood in the open middle (`Unit.fighting`), or null. */
+  /** The combat shown, or null. */
   readonly combat: CombatPairs | null;
+  /** Attackers blocked at some point this combat (the app's memory): a lane never runs from one to its defender. */
+  readonly blocked: ReadonlySet<CardId>;
+  /** How it is shown: the clash's columns, wings and area, or the table form's wings (for the plates' tallies). */
+  readonly gathering: Gathering | null;
+  /** My field row's tops on screen (px): the clash stops above them. */
+  readonly fieldTop: number;
   /** The arrangement engine's plan of one leaf beside `mat`'s, when asked (`TableInput.shadow`): never drawn. */
   readonly shadow?: ShadowPlan;
 }
@@ -258,42 +273,48 @@ export function planTable(input: TableInput): TablePlan {
   const area = tapArea(reserve);
   const geo = makeGeo(projector, reserve, FLOOR.mine);
   const tapped = new Set(inputs.flatMap((i) => i.board.cards.filter((c) => c.tapped).map((c) => c.id)));
+  // My field row's tops, before anything leaves it: the clash stands above them.
+  const fieldTop = openMiddle(tpl, projector, plans, geo.u).b * geo.u + 10 * geo.u;
+  const cards = new Map(inputs.flatMap((i) => i.board.cards.map((c) => [c.id, c] as const)));
+  const seatOf = (id: CardId) => inputs.find((i) => i.board.cards.some((c) => c.id === id))?.seat;
+  const form = input.combatForm ?? combatFormOf(combat, input.seats[0]!.seat, seatOf, input.blocked);
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
-  // open middle the pages leave (so it moves when they do), and the fight in the open middle's foot, clear of both. A
-  // stack card off the safe area is drawn but not audited.
+  // open middle the pages leave (so it moves when they do), and the fight: the clash over it all, or at home.
   const compose = () => {
     const stack = stackAtRest(input, tpl, projector, plans, reserve.safe);
-    const row = rowUnits(plans, fight);
-    const staying = [...plans.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine).filter((x) => !row.has(x.group))), ...stack.map((s) => s.shape)];
-    // With the engine's table, the fight is a gathering (one placement); otherwise mat's combat row (candidates).
     const gathered =
-      combat && fight.size && drawn >= 0
-        ? gathering({ combat, plans, perspective: input.seats[0]!.seat, projector, reserve, middle: openMiddle(tpl, projector, plans, geo.u), u: geo.u, tapped: (id) => tapped.has(id) })
+      combat && fight.size
+        ? gathering({
+            combat,
+            plans,
+            perspective: input.seats[0]!.seat,
+            projector,
+            reserve,
+            u: geo.u,
+            form,
+            fieldTop,
+            power: (id) => cards.get(id)?.power ?? null,
+            twin: (id) => cards.get(id)?.sig ?? String(id),
+            ...(input.blocked ? { blocked: input.blocked } : {}),
+            ...(input.order ? { order: input.order } : {}),
+            tapped: (id) => tapped.has(id),
+          })
         : null;
-    const options = gathered
-      ? [gathered.plans]
-      : combat && row.size
-        ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u), obstacles: staying })
-        : [plans];
+    const placed = gathered ? gathered.plans : plans;
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
-    let best: { shapes: Shape[]; v: Violation[]; placed: SeatPlan[]; row: Set<string> } | null = null;
-    for (const placed of options) {
-      let shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
-      let v: Violation[];
-      // The units in the fight's container: what the gathering placed (a fighter it had no room for stays on its page,
-      // audited and reached there), or mat's combat row.
-      const inRow = gathered ? new Set(placed.flatMap((p) => p.units.filter((un) => un.fighting).map((un) => un.id))) : row;
-      if (gathered?.focus) {
-        // A focus is audited apart: the table under it with it set aside, and its own cards among themselves. It is drawn
-        // and reached over the whole table.
-        const fighting = (x: Shape) => inRow.has(x.group);
-        v = [...audit(shapes.filter((x) => !fighting(x)), vp, { area, only }), ...audit(shapes.filter(fighting), vp, { area })];
-        shapes = shapes.map((x) => (fighting(x) ? { ...x, order: x.order + FOCUS_ORDER } : x));
-      } else v = audit(shapes, vp, { area, only });
-      if (!best || v.length < best.v.length) best = { shapes, v, placed, row: inRow };
-      if (!v.length) break;
-    }
-    return { stack, ...best! };
+    let shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
+    let v: Violation[];
+    // The clash's units: what the gathering placed (a fighter past its columns waits on its page, audited there).
+    const row = new Set(placed.flatMap((p) => p.units.filter((un) => un.fighting).map((un) => un.id)));
+    if (gathered?.focus) {
+      // A focus is audited apart: the table under it with it set aside, and its own cards among themselves. It is drawn
+      // and reached over the whole table, and never over my field row's faces or the chrome (`clash-covers`).
+      const fighting = (x: Shape) => row.has(x.group);
+      v = [...audit(shapes.filter((x) => !fighting(x)), vp, { area, only }), ...audit(shapes.filter(fighting), vp, { area })];
+      v = [...v, ...clashCovers(shapes.filter(fighting), shapes.filter((x) => !fighting(x) && x.seat === input.seats[0]!.seat && x.kind !== "plate"), reserve)];
+      shapes = shapes.map((x) => (fighting(x) ? { ...x, order: x.order + FOCUS_ORDER } : x));
+    } else v = audit(shapes, vp, { area, only });
+    return { stack, gathered, shapes, v, placed, row };
   };
   // Where seats collide, or the stack covers a seat's cards, fold the offending seats harder; down to the last resort,
   // which cannot collide with a neighbour more than a single card does.
@@ -326,11 +347,24 @@ export function planTable(input: TableInput): TablePlan {
     else if (!s.onScreen) v = [...v, { rule: "off-screen", group: s.shape.group, seat: null, measured: 0, limit: 1 }];
   const focus = stackFocus(input, projector, final, shapes, reserve, reserve.safe), stackUp = focus.up;
   if (focus.covers && stackUp[0]) v = [...v, { rule: "focus-covers", group: `stack:${stackUp[0].key}`, seat: null, measured: 0, limit: 1 }];
-  const hits = hitGroups(final, shapes, stack, stackUp);
+  const hits = hitGroups(final, shapes, stack, stackUp, c.gathered);
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, ...(shadow ? { shadow } : {}) };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(shadow ? { shadow } : {}) };
+}
+
+/** A clash shape over a face of my field row or over the chrome: the clash must leave both uncovered. */
+function clashCovers(fight: readonly Shape[], mine: readonly Shape[], reserve: Reservations): Violation[] {
+  const box = (q: Quad) => bounds(q);
+  const meet = (a: ReturnType<typeof box>, b: { l: number; r: number; t: number; b: number }) => a.l < b.r - 0.5 && a.r > b.l + 0.5 && a.t < b.b - 0.5 && a.b > b.t + 0.5;
+  const chrome = reserve.items.filter((i) => i.visible).map((i) => ({ l: i.rect.left, r: i.rect.right, t: i.rect.top, b: i.rect.bottom }));
+  const out: Violation[] = [];
+  for (const f of fight) {
+    const b = box(f.face);
+    if (mine.some((m) => meet(b, box(m.face))) || chrome.some((c) => meet(b, c))) out.push({ rule: "clash-covers", group: f.group, seat: f.seat, measured: 0, limit: 0 });
+  }
+  return out;
 }
 
 /** The scene stands stack card i at rest this high over the table, on the ray through its quad's middle
@@ -605,7 +639,7 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };
 }
 
-function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"], stackUp: TablePlan["stackUp"]): HitGroups {
+function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: TablePlan["stack"], stackUp: TablePlan["stackUp"], clash: Gathering | null): HitGroups {
   const groups: HitGroup[] = [];
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
@@ -619,6 +653,17 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   for (const p of plans) {
     const c = p.fixtures.commander, id = `command:${p.seat}`;
     if (c) groups.push({ id, kind: "card", seat: p.seat, members: [c.card], quad: shape(id).face, order: shape(id).order });
+  }
+  // The clash: each unblocked attacker's empty slot is that attacker (a tap or a drop on its brand), and the "more"
+  // column holds the fighters past its columns (a tap opens them).
+  if (clash?.focus) {
+    for (const w of clash.wings)
+      for (const col of w.columns)
+        if (col.slot) groups.push({ id: `slot:${col.unit}`, kind: "card", seat: w.attacker, members: [...col.attackers], quad: col.slot, order: FOCUS_ORDER });
+    if (clash.moreAt && clash.more.length) {
+      const seat = plans.find((p) => p.home.has(clash.more[0]!))?.seat ?? null;
+      groups.push({ id: "clash:more", kind: "pile", seat, members: [...clash.more], quad: clash.moreAt, order: FOCUS_ORDER });
+    }
   }
   // The stack, top first, by its depth like any card; under the plates.
   for (const s of stack) if (s.reachable) groups.push({ id: `stack:${s.key}`, kind: "stack", seat: null, members: [s.card], quad: s.quad, order: shape(`stack:${s.key}`).order });

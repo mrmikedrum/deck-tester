@@ -59,3 +59,14 @@ export function reach(plan: TablePlan): Map<string, Reach> {
     }
   return out;
 }
+
+/**
+ * A group the clash covers while it is up (its middle under the clash's picture, and not one of its fighters): it is
+ * reached again once the clash is set aside (one tap), not through it.
+ */
+export function underClash(plan: TablePlan, g: HitGroup): boolean {
+  const e = plan.gathering?.focus ? plan.gathering.extent : null;
+  if (!e || g.order > 1e5 || g.kind === "plate") return false;
+  const b = bounds(g.quad), x = (b.l + b.r) / 2, y = (b.t + b.b) / 2;
+  return x > e.l - 14 && x < e.r + 14 && y > e.t - 14 && y < e.b + 14;
+}

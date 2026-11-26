@@ -171,13 +171,17 @@
     "attackers",
     "blockers"
    ],
-   "optional": []
+   "optional": [
+    "damage",
+    "ordinal"
+   ]
   },
   "attacker": {
    "required": [
     "id"
    ],
    "optional": [
+    "blocked",
     "defender"
    ]
   },

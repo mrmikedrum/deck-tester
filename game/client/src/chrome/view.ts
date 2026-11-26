@@ -50,7 +50,7 @@ export interface CardLook {
 }
 
 /** The focus layers (the app's focus stack): the table's own (the stack, a lean-in, a sift) and the chrome's. */
-export type ChromeLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses" | "seat";
+export type ChromeLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses" | "seat";
 
 /** A plate's icons, in a fixed order: total power on the table, open mana, cards in hand (and fliers in a focus). */
 export type IconKind = "power" | "creatures" | "wing" | "shield" | "mana" | "hand";
@@ -83,6 +83,43 @@ export interface PlateView {
   readonly y: number;
   readonly unit: number;
   readonly icons: readonly IconView[];
+  /** In a combat: the unblocked power coming at this seat ("−3"), in its tone; and whether this seat attacks. */
+  readonly tally?: PlateTally | null;
+  readonly attacking?: boolean;
+}
+
+/** A plate's tally: red at me, gold when my attack is at it, the attacker's ink between opponents. */
+export interface PlateTally {
+  readonly figure: string;
+  readonly tone: "danger" | "gold" | "ink";
+  /** Whose ink, between opponents: the attacker's place. */
+  readonly place: SeatPlace;
+}
+
+/** The clash's chrome, at the gathering's screen positions (CSS px): the plaque over each wing, the brand in each
+ * unblocked attacker's empty slot (its power; hollow at 0), the clasp between each pair. Nothing here is tapped: the
+ * table's hit test reaches what they mark. */
+export interface ClashView {
+  readonly unit: number;
+  readonly plaques: readonly { readonly key: string; readonly x: number; readonly y: number; readonly w: number; readonly words: string; readonly tone: PlateTally["tone"]; readonly place: SeatPlace }[];
+  readonly brands: readonly {
+    readonly key: string;
+    readonly x: number;
+    readonly y: number;
+    readonly size: number;
+    readonly figure: string | null;
+    /** Twins: how many attackers share the column. */
+    readonly count: number | null;
+    readonly tone: PlateTally["tone"];
+    readonly place: SeatPlace;
+    /** The defender is below (me): the chevron points down; else up. */
+    readonly down: boolean;
+  }[];
+  readonly clasps: readonly { readonly key: string; readonly x: number; readonly y: number }[];
+  /** An attacked planeswalker's tally, over its top edge. */
+  readonly tallies: readonly { readonly key: string; readonly x: number; readonly y: number; readonly figure: string; readonly tone: PlateTally["tone"] }[];
+  /** The column for the fighters past one tier ("8 more · 14 power"); a tap on it opens them. */
+  readonly more: { readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly words: string } | null;
 }
 
 /** A card picked up in a nameplate focus: its printed picture, or a back. */
@@ -264,6 +301,8 @@ export interface ChromeView {
   readonly newGame: boolean;
   /** Every seat's nameplate. */
   readonly plates: readonly PlateView[];
+  /** The clash up: its plaques, brands and clasps; null otherwise. */
+  readonly clash: ClashView | null;
   /** A nameplate opened. */
   readonly seatFocus: SeatFocusView | null;
 }

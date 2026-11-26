@@ -9,14 +9,35 @@ import type { TablePlan } from "../../src/layout";
 import { modelOf } from "../../src/model";
 import { catalog, corpusNames, corpusSnapshot, viewerOf } from "../model/fixtures";
 import { stress, SUPPORTED } from "./boards";
-import { reach } from "./reach";
+import { reach, underClash } from "./reach";
 
 /** What the picker cannot reach, or reaches with less than a 44 px patch (a plate needs only a point). */
 function shortfalls(plan: TablePlan): string[] {
   const r = reach(plan), out: string[] = [];
   for (const g of plan.hits.groups) {
+    if (underClash(plan, g)) continue;
     const side = r.get(g.id)!.side, need = g.kind === "plate" ? 1 : TAP_PX;
     if (side < need) out.push(`${g.id} ${side}px`);
+  }
+  return out;
+}
+
+/**
+ * What the clash covered, reached once it is set aside: the same board planned in the table form (as the app plans it
+ * after a tap on the shade), every group the clash covered given its patch by the picker there.
+ */
+function asideShortfalls(plan: TablePlan, again: () => TablePlan): string[] {
+  const covered = plan.hits.groups.filter((g) => underClash(plan, g));
+  if (!covered.length) return [];
+  const aside = again(), r = reach(aside), out: string[] = [];
+  for (const c of covered) {
+    // the same group, or (the table refolded) the groups now holding its cards: each must be there, and reached
+    const now = aside.hits.groups.filter((g) => g.id === c.id || (c.members.length > 0 && g.members.some((m) => c.members.includes(m))));
+    if (!now.length) out.push(`${c.id} gone (aside)`);
+    for (const g of now) {
+      const side = r.get(g.id)!.side, need = g.kind === "plate" ? 1 : TAP_PX;
+      if (side < need) out.push(`${g.id} ${side}px (aside)`);
+    }
   }
   return out;
 }
@@ -62,7 +83,7 @@ describe("the protocol corpus, planned as the app plans it", () => {
   const models = corpusNames.map((name) => ({ name, model: modelOf(corpusSnapshot(name), catalog, viewerOf()) })).filter((m) => m.model !== null);
   for (const vp of SUPPORTED)
     it(`${vp.w}x${vp.h}`, () => {
-      let planned = 0;
+      let planned = 0, asideChecked = 0;
       for (const { name, model } of models) {
         let plan: TablePlan;
         try {
@@ -73,7 +94,11 @@ describe("the protocol corpus, planned as the app plans it", () => {
         planned++;
         routed(plan);
         expect(shortfalls(plan), name).toEqual([]);
+        expect(asideShortfalls(plan, () => planTable(tableInputOf(model!, { viewport: vp, combatForm: "table" }))), name).toEqual([]);
+        if (plan.gathering?.focus && plan.hits.groups.some((g) => underClash(plan, g))) asideChecked++;
       }
       expect(planned).toBeGreaterThan(40);
+      // (the corpus's combats at me do cover part of the table: the check above ran on them)
+      expect(asideChecked).toBeGreaterThan(0);
     });
 });

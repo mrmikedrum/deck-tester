@@ -62,12 +62,12 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
   return (
     <div class="l-plates" inert={inert}>
       {plates.map((p) => {
-        const said = `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}`;
+        const said = `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}${p.tally ? `, ${p.tally.figure.slice(1)} unblocked` : ""}`;
         return (
           <button
             key={p.seat}
             type="button"
-            class={["l-plate", p.mine ? "mine" : "", p.active ? "turn" : "", p.ring ?? "", p.out ? "out" : "", open === p.seat ? "open" : ""].filter(Boolean).join(" ")}
+            class={["l-plate", p.mine ? "mine" : "", p.active ? "turn" : "", p.ring ?? "", p.out ? "out" : "", p.attacking ? "attacking" : "", open === p.seat ? "open" : ""].filter(Boolean).join(" ")}
             data-plate={p.seat}
             data-fk={`plate:${p.seat}`}
             aria-label={said}
@@ -80,6 +80,11 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
               <b class="name">{p.name}</b>
               <span class="life">{p.life}</span>
             </span>
+            {p.tally ? (
+              <span class={`tally ${p.tally.tone}`} style={`--tally-ink:var(--seat-${p.tally.place})`}>
+                {p.tally.figure}
+              </span>
+            ) : null}
             {p.icons.length ? (
               <span class="tab">
                 {p.icons.map((i) => (

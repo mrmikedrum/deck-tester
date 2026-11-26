@@ -115,6 +115,8 @@ const board: StageView = {
   aims: [],
   tableTone: 1,
   scrim: 0,
+  ground: null,
+  aloft: new Set<string>(),
   above: new Set(),
   drawn: new Map(),
   now: 0,

@@ -13,6 +13,8 @@ import { Arc, FxKit, Ribbon, strikeFx } from "./fx";
 import type { Effect } from "./fx";
 import type { Host } from "./host";
 import { ABOVE } from "./focus-pass";
+import { CARD } from "./cards";
+import type { CardState } from "./cards";
 import { COVERS, GROUND, GhostPiece, LABEL, SIGN_ALTS, artWanted, createPiece, placeGroup } from "./pieces";
 import type { LabelTag, SignAlts } from "./pieces";
 import { CW } from "../../layout/seat/geometry";
@@ -99,6 +101,8 @@ interface Entry {
   up: boolean;
   /** Drawn above the stack's scrim. */
   above: boolean;
+  /** Standing on the clash's plane (no shadow). */
+  aloft?: boolean;
 }
 
 /**
@@ -184,6 +188,18 @@ export class StageRenderer {
       const above = view.scrim > 0 && view.above.has(v.id);
       if (above || e.above) setAbove(e.view.group, above);
       e.above = above;
+      // A fighter standing on the clash's plane throws no shadow onto the table far below it.
+      const aloft = view.aloft?.has(v.id) ?? false;
+      if (aloft !== e.aloft) {
+        e.view.group.traverse((o) => {
+          const st = o.userData[CARD] as CardState | undefined;
+          if (st) {
+            st.shadow = !aloft;
+            st.aloft = aloft;
+          }
+        });
+        e.aloft = aloft;
+      }
     }
     for (const [id, e] of [...this.pieces]) if (!seen.has(id)) this.drop(id, e);
     this.settleSigns();
@@ -267,7 +283,7 @@ export class StageRenderer {
     }
     for (const [id, arc] of [...this.arcs]) if (!aimed.has(id)) this.dropArc(id, arc);
     setAbove(this.arcGroup, view.scrim > 0);
-    this.host.setScrim(view.scrim);
+    this.host.setScrim(view.scrim, view.ground ?? null);
     this.host.setTableTone(view.tableTone);
     this.arrived.clear();
   }

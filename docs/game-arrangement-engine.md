@@ -13,9 +13,9 @@ and today's layout code it replaces in steps (`layout/seat.ts`, `layout/plan.ts`
 `layout/focus.ts`, `layout/combat.ts`, `play/reach.ts`, `scene/stage/pick.ts`, `model/predicates.ts`).
 
 **Status:** the first slice's steps 1 to 6 are built (§6.1): the across leaf is drawn, tapped and audited through the
-engine, and a fight is gathered (the combat part of step 11, brought forward). The side leaves and my side are still
-`mat`'s. What the slice changed from this design, and why, is in "Round 3" and "Round 4" below; where they differ, the
-code and those rounds win.
+engine, and a fight is gathered as the clash (the combat part of step 11, brought forward). The side leaves and my side
+are still `mat`'s. What the slice changed from this design, and why, is in "Round 3" to "Round 5" below; where they
+differ, the code and those rounds win.
 
 ## Changes after review
 
@@ -101,6 +101,18 @@ asked for something different, the code does the following. Sections below keep 
 | **The far strip** | Plate, zone piles and the waiting commander stand along the far strip's near edge; further back they leave the screen's top. A zone pile meets the floor as it is drawn (propped up, not flat) and stands clear of the one before by its width. | Plates as chrome on a rail (the visual spec) belong to the no-middle template (step 8). |
 | **The gathering** (§2.8, step 11's combat part) | `layout/arrange/gathering.ts`: formations (an attacker with its blockers in front, between it and who it attacks), in the order the attackers stood on their page. When I am in the combat (fighting, or attacked: a planeswalker attacked is its controller's, so before the first block too) it is a focus on a plane carried toward the eye (the largest of steps 2 to 1.2 at which every formation fits one tier, then two; it stands at least 2.4 over the table), reached over everything but the plates, and audited apart from the table it covers, so it never triggers fold rounds. Otherwise, and between opponents, table size in the open middle, audited with the table, covering no page. One placement; what has no room fights from its page, audited and reached there: only what the gathering placed is raised. A fighter the leaf left in its entry summary comes out as its own unit when it has room. No paging yet. `mat`'s combat row stays for a table without the engine. | The iPad: `mat`'s row cost about 91 ms on the combat of twelve (14 full audits, six fold rounds). |
 | **The stack at rest** | The engine's leaf reaches nearer than `mat`'s page, so the open middle is shorter: on the dense board three of the four stack cards have no room at rest (reached as the focus and through the sheet). The leaf's page now starts at its front row's feet, which keeps the top card clear. | A regression until the mats part for the stack (step 8). |
+
+### Round 5: the clash (Nov 26)
+
+The combat design (the owner's still of Atraxa's six attacking redone) replaces Round 4's gathering. The client's
+architecture page ("layout", combat) states the result; what changed here and why:
+
+| What | Built | Why |
+|---|---|---|
+| **One picture** | The gathering serves every table (`mat`'s combat row is gone). A clash stands fighters upright, ends above my field row, puts each blocker on its controller's side of its attacker (three rows when an attack splits between me and an opponent), and one tier only (steps 1.8 to 1.1, then "more"). | A still must say who fights whom, what is unblocked and how much; lying attackers, a covered field row and blockers beside attackers did not. |
+| **The table form** | Before blocks, my attack and a fight between opponents move nothing: lanes, trunked per attacking seat and defender. A fight between opponents with a block raises the clash until duels in the parted middle are built (the pose of §5.3 is not). | The spec's build order: duels and the pose last. |
+| **The calm ground** | Under the clash a soft panel of the page's tone covers its picture, over a light shade (0.24): nothing behind the fight shows through, and the table is not darkened. | The owner found a deep shade far too dark; the sketches' fragments behind the brands competed. |
+| **Chrome marks** | Brands, clasps, plaques and tallies are HTML at the gathering's screen positions, not scene decals; no column strips. | Crisp figures at every size, and strips read as debug outlines. |
 
 ## 0. Shape of the thing
 

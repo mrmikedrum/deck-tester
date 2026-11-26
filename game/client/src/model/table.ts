@@ -55,14 +55,27 @@ export interface Attack {
   readonly defender: Target | null;
   /** The seat under attack: the defender itself, or the controller of the defending card. */
   readonly defending: SeatId | null;
+  /** Forge's verdict on whether it is blocked; null when the engine does not say. */
+  readonly blocked: boolean | null;
 }
 export interface Block {
   readonly blocker: CardId;
   readonly attacker: CardId;
 }
 export interface Combat {
+  /** Forge's ordinal of this combat in its turn; null when the engine does not say. */
+  readonly ordinal: number | null;
   readonly attackers: readonly Attack[];
   readonly blockers: readonly Block[];
+  /** The combat damage dealt in this combat so far (Forge's facts, after prevention), by source and target. */
+  readonly damage: readonly CombatDamage[];
+}
+/** Combat damage one source dealt one target in this combat, and what that source was attacking when it hit. */
+export interface CombatDamage {
+  readonly source: CardId;
+  readonly target: Target;
+  readonly defender: Target | null;
+  readonly amount: number;
 }
 
 export interface TableModel {
@@ -207,11 +220,18 @@ export function modelOf(
     d === null ? null : "seat" in d ? d.seat : (cards.get(d.card)?.controller ?? null);
   const combat: Combat | null = view.combat
     ? {
+        ordinal: view.combat.ordinal,
         attackers: view.combat.attackers.map((a) => {
-          const defender = a.defender === null ? null : targetOf(a.defender);
-          return { attacker: a.id, defender, defending: defending(defender) };
+          // A defender gone from the game (a planeswalker that died of the hit: Forge says -1) is the one its hits
+          // recorded when they landed.
+          const hit = view.combat!.damage.find((d) => d.source === a.id && d.defender !== null)?.defender ?? null;
+          const gone = typeof a.defender === "number" && !cards.has(a.defender);
+          const wire = gone && hit !== null ? hit : a.defender;
+          const defender = wire === null ? null : targetOf(wire);
+          return { attacker: a.id, defender, defending: a.defending !== null ? seatId(a.defending) : defending(defender), blocked: a.blocked };
         }),
         blockers: view.combat.blockers.map((b) => ({ blocker: b.id, attacker: b.blocking })),
+        damage: view.combat.damage.map((d) => ({ source: d.source, target: targetOf(d.target), defender: d.defender === null ? null : targetOf(d.defender), amount: d.amount })),
       }
     : null;
 

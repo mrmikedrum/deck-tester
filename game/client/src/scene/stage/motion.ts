@@ -116,9 +116,6 @@ export const DIM = {
   soft: 0.4,
   /** The table itself under a sift (`tableMesh` colour 0.42). */
   table: 0.42,
-  /** In a fight, what doesn't fight: creatures (`0.45`), everything else on the pages (`0.7`) (h.js `targets`). */
-  fightCreature: 0.45,
-  fightOther: 0.7,
   /** A chosen card lifts off its page (`t.lift = 0.1`). */
   selectedLift: 0.1,
 } as const;

@@ -4,18 +4,20 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { hitTest, planTable, tableInputOf } from "../../../src/layout";
 import type { CombatPairs, TablePlan, Unit } from "../../../src/layout";
+import { CLASH, CLASH_STEPS } from "../../../src/layout/arrange/gathering";
 import { bounds } from "../../../src/layout/shape";
 import { modelOf } from "../../../src/model";
 import type { TableModel } from "../../../src/model";
 import type { CardId } from "../../../src/protocol";
-import { benchInputs } from "../../../src/scene/workbench/bench-inputs";
-import { catalog, corpusSnapshot, creature, land, tableOf, viewerOf } from "../../model/fixtures";
+import { designModels } from "../../../src/scene/workbench/bench-inputs";
+import { card, catalog, corpusSnapshot, creature, land, tableOf, viewerOf } from "../../model/fixtures";
 import type { Name } from "../../model/fixtures";
 import { SUPPORTED } from "../boards";
 
-// The gathering (§2.8): with the engine's table, every creature in a fight stands in one container as formations, each
-// attacker with its blockers in front of it, in one placement (no candidates, no fold rounds); a focus over the table when
-// I am in the combat. Every fighter is reached where it stands, over whatever it covers.
+// The clash (docs/game-client-architecture.md, "Combat"): when I am attacked or anyone is blocked, every fighter stands
+// upright on a plane over the table, in one rank of columns between the plaques and my field row; a blocker on its
+// controller's side of its attacker, toe to toe; an unblocked attacker's slot empty for its brand. Otherwise (my attack
+// before blocks, opponents before blocks) the table form: nothing moves.
 
 const VP = { w: 1180, h: 820 };
 const id = (n: number) => n as CardId;
@@ -23,129 +25,257 @@ const unitOf = (plan: TablePlan, card: number): Unit => {
   for (const sp of plan.seats.values()) for (const u of sp.units) if (u.members.includes(id(card))) return u;
   throw new Error(`no unit for ${card}`);
 };
-const model = (name: string): TableModel => modelOf(corpusSnapshot(name), catalog, viewerOf())!;
 const drawn = (m: TableModel, o: { combat?: CombatPairs | null; viewport?: { w: number; h: number } } = {}) =>
   planTable(tableInputOf(m, { viewport: o.viewport ?? VP, ...(o.combat ? { combat: o.combat } : {}), shadow: { draw: true } }));
+const box = (plan: TablePlan, card: number) => bounds(plan.hits.groups.find((g) => g.id === unitOf(plan, card).id)!.quad);
+const midX = (plan: TablePlan, card: number) => (box(plan, card).l + box(plan, card).r) / 2;
 
-/** Every fighter in the gathering is reached in its middle, and stands as its own unit. */
-function reachable(plan: TablePlan, label: string) {
-  for (const sp of plan.seats.values())
-    for (const u of sp.units.filter((x) => x.fighting)) {
-      expect(u.members, `${label} ${u.id}`).toHaveLength(1);
-      const g = plan.hits.groups.find((x) => x.id === u.id)!, b = bounds(g.quad);
-      expect(hitTest(plan, { x: (b.l + b.r) / 2, y: (b.t + b.b) / 2 })?.id, `${label} ${u.id}`).toBe(u.id);
-    }
+const design = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
+/** The design pass's turn 15 in a fight: `attackers` [id, defender], `blockers` [blocker, attacker]. */
+function turn15(attackers: readonly (readonly [number, string | number])[], blockers: readonly (readonly [number, number])[] = [], active = "Atraxa"): TableModel {
+  const e = structuredClone(design.stages.find((s) => s.turn === 15)!.envelope);
+  e.view = { ...e.view, active, priority: active, phase: "COMBAT_DECLARE_BLOCKERS", combat: { attackers: attackers.map(([i, defender]) => ({ id: i, defender })), blockers: blockers.map(([i, blocking]) => ({ id: i, blocking })) } };
+  return designModels({ stages: [{ turn: 15, envelope: e }], catalog: design.catalog }).get(15)!;
 }
+const ATRAXA6 = [1019, 1041, 1117, 1169, 1221, 1072] as const;
+const BLOCKS4 = [[1057, 1041], [1141, 1117], [1089, 1019], [1027, 1221]] as const;
 
-/** Every fighter, gathered or left on its page, is reached somewhere a tap means it alone; a raised (focus) group is
- *  one the gathering placed, never a fighter left on its page under it. */
-function everyFighterReached(plan: TablePlan, fighters: readonly number[], label: string) {
-  const raised = Math.max(...plan.hits.groups.filter((g) => g.kind !== "plate").map((g) => g.order)) > 1e5;
-  for (const c of fighters) {
-    const u = unitOf(plan, c), g = plan.hits.groups.find((x) => x.id === u.id)!;
-    if (raised) expect(g.order > 1e5, `${label} ${c} raised only if gathered`).toBe(!!u.fighting);
-    // a sample over its hit quad: somewhere a tap reaches this unit
-    const b = bounds(g.quad);
-    let hit = false;
-    for (let i = 1; i < 12 && !hit; i++) for (let j = 1; j < 12 && !hit; j++) hit = hitTest(plan, { x: b.l + ((b.r - b.l) * i) / 12, y: b.t + ((b.b - b.t) * j) / 12 })?.id === u.id;
-    expect(hit, `${label} ${c} reached`).toBe(true);
-  }
-}
-
-const TEN = Array.from({ length: 10 }, (_, i) => 300 + i);
-/** Ten distinct creatures (300..309) for `who`, with a few lands for every seat. */
-const crowded = (who: Name, o: { active: Name; combat: { attackers: { id: number; defender: number | string }[]; blockers?: { id: number; blocking: number }[] } | null }) =>
+/** Distinct creatures `ids` for `who` (power 1 + i), a few lands each, and a guard of mine per `guards`. */
+const crowded = (who: Name, ids: readonly number[], o: { guards?: readonly number[]; twins?: readonly number[]; combat: { attackers: { id: number; defender: number | string }[]; blockers?: { id: number; blocking: number }[] } }) =>
   tableOf({
-    active: o.active,
-    phase: o.combat ? "COMBAT_DECLARE_BLOCKERS" : "MAIN1",
-    seats: Object.fromEntries((["You", "Atraxa", "Dack", "Princess"] as const).map((n, k) => [n, { battlefield: [...(n === who ? TEN.map((c, i) => creature(c, `Fighter ${String.fromCharCode(65 + i)}`, n, 1 + i, 2)) : []), ...[0, 1, 2].map((j) => land(200 + k * 10 + j, "Plains", n)), ...(n === "You" ? [creature(290, "Guard", n)] : [])] }])),
+    active: who,
+    phase: "COMBAT_DECLARE_BLOCKERS",
+    seats: Object.fromEntries(
+      (["You", "Atraxa", "Dack", "Princess"] as const).map((n, k) => [
+        n,
+        {
+          battlefield: [
+            ...(n === who ? ids.map((c, i) => creature(c, o.twins?.includes(c) ? "Spirit" : `Fighter ${i}`, n, o.twins?.includes(c) ? 1 : 1 + (i % 7), 2, o.twins?.includes(c) ? { token: true } : {})) : []),
+            ...[0, 1, 2].map((j) => land(200 + k * 10 + j, "Plains", n)),
+            ...(n === "You" ? (o.guards ?? []).map((g, i) => creature(g, `Guard ${i}`, n, 1, 3)) : []),
+          ],
+        },
+      ]),
+    ),
     combat: o.combat,
   });
 
-describe("the gathering", () => {
-  const combat12 = benchInputs(JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8"))).find((i) => i.name === "combat12")!.frames[0]!.model;
-
-  it("a combat of twelve that I am in: all twelve gathered as a focus, each blocker in front of its attacker, within the limits", () => {
-    const plan = drawn(combat12);
-    const c = combat12.combat!;
-    for (const a of c.attackers) expect(unitOf(plan, a.attacker).fighting, `attacker ${a.attacker}`).toBe(true);
-    for (const b of c.blockers) {
-      const pb = plan.projector.project(unitOf(plan, b.blocker).placement.pos), pa = plan.projector.project(unitOf(plan, b.attacker).placement.pos);
-      expect(unitOf(plan, b.blocker).fighting).toBe(true);
-      // between its attacker and me: in front of it on screen
-      expect(pb.y).toBeGreaterThan(pa.y);
+describe("the clash", () => {
+  it("six at me, four blocked (the owner's still): one tier at step 1.8, upright, blockers toe to toe under their attackers", () => {
+    const m = turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4);
+    const plan = drawn(m), g = plan.gathering!;
+    expect(g.form).toBe("clash");
+    expect(g.step).toBe(1.8);
+    expect(g.more).toEqual([]);
+    expect(g.left).toEqual([]);
+    for (const a of ATRAXA6) expect(unitOf(plan, a)).toMatchObject({ fighting: true, tapped: false });
+    // every attacker's foot on one line, every blocker's top 10 px below it, at its attacker's x
+    const feet = ATRAXA6.map((a) => box(plan, a).b);
+    for (const f of feet) expect(f).toBeCloseTo(feet[0]!, 0);
+    for (const [b, a] of BLOCKS4) {
+      expect(Math.abs(midX(plan, b) - midX(plan, a)), `${b} under ${a}`).toBeLessThan(1);
+      expect(box(plan, b).t - box(plan, a).b).toBeCloseTo(10, 0);
     }
-    expect(plan.violations).toEqual([]);
-    reachable(plan, "combat12");
-    // a focus: reached over every seat's cards
-    const top = Math.max(...plan.hits.groups.filter((g) => g.kind !== "plate" && !plan.seats.get(g.seat!)?.units.find((u) => u.id === g.id)?.fighting).map((g) => g.order));
-    for (const sp of plan.seats.values()) for (const u of sp.units.filter((x) => x.fighting)) expect(plan.hits.groups.find((g) => g.id === u.id)!.order).toBeGreaterThan(top);
+    // the clash stops above my field row, and leaves it and the chrome uncovered
+    expect(Math.max(...BLOCKS4.map(([b]) => box(plan, b).b))).toBeLessThanOrEqual(plan.fieldTop - 7);
+    expect(plan.violations.filter((v) => v.rule === "clash-covers")).toEqual([]);
+    // the wing: Tekuthal (3) and Phyrexian Metamorph (0) unblocked
+    expect(g.wings).toHaveLength(1);
+    expect(g.wings[0]!.unblocked).toBe(3);
+    expect(g.wings[0]!.columns.filter((c) => c.slot).map((c) => c.attackers)).toEqual([[id(1169)], [id(1072)]]);
   });
 
-  it("the attackers stand in the order they stood on their page", () => {
-    const plan = drawn(combat12);
-    // where each stood: its own unit on the engine's leaf (an acting card leaves its pile for a place of its own)
-    const stood = new Map(plan.shadow!.result!.fit.units.flatMap((u) => u.members.map((c) => [c, u.cards.find((p) => p.card === c)!.quad] as const)));
-    const x = (q: readonly { x: number }[]) => q.reduce((t, p) => t + p.x, 0) / q.length;
-    const attackers = combat12.combat!.attackers.map((a) => a.attacker);
-    const before = [...attackers].sort((a, b) => x(stood.get(a)!) - x(stood.get(b)!));
-    const now = [...attackers].sort((a, b) => plan.projector.project(unitOf(plan, a).placement.pos).x - plan.projector.project(unitOf(plan, b).placement.pos).x);
-    expect(now).toEqual(before);
+  it("a tap on an unblocked attacker's brand (its empty slot) reaches that attacker", () => {
+    const plan = drawn(turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4));
+    for (const col of plan.gathering!.wings[0]!.columns.filter((c) => c.slot)) {
+      const b = bounds(col.slot!);
+      const hit = hitTest(plan, { x: (b.l + b.r) / 2, y: (b.t + b.b) / 2 })!;
+      expect(hit.id).toBe(`slot:${col.unit}`);
+      expect(hit.members).toEqual(col.attackers);
+    }
   });
 
-  it("the corpus's combats and drafts, at every supported viewport: every fighter its own unit, reached where it stands", () => {
+  it("attackers keep the order they stood in; blockers come to them", () => {
+    const m = turn15(ATRAXA6.map((a) => [a, "You"] as const));
+    // where they stood on their page in this combat (the table form: each its own unit, at home)
+    const rest = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", shadow: { draw: true } }));
+    const stood = [...ATRAXA6].sort((a, b) => midX(rest, a) - midX(rest, b));
+    const plan = drawn(m);
+    expect([...ATRAXA6].sort((a, b) => midX(plan, a) - midX(plan, b))).toEqual(stood);
+    const blocked = drawn(turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4));
+    expect([...ATRAXA6].sort((a, b) => midX(blocked, a) - midX(blocked, b))).toEqual(stood);
+  });
+
+  it("one attacker: the same picture, one column in the middle at step 1.8", () => {
+    const plan = drawn(turn15([[1019, "You"]]));
+    expect(plan.gathering!.step).toBe(1.8);
+    expect(Math.abs(midX(plan, 1019) - 590)).toBeLessThan(1);
+    expect(plan.gathering!.wings[0]!.columns[0]!.slot).not.toBeNull();
+  });
+
+  it("a double block: two blockers side by side, the attacker centred over them, one clasp", () => {
+    const plan = drawn(turn15(ATRAXA6.map((a) => [a, "You"] as const), [[1057, 1019], [1141, 1019]]));
+    const col = plan.gathering!.wings[0]!.columns.find((c) => c.attackers.includes(id(1019)))!;
+    expect(col.blockers).toEqual([id(1057), id(1141)]);
+    expect(Math.abs((midX(plan, 1057) + midX(plan, 1141)) / 2 - midX(plan, 1019))).toBeLessThan(1);
+    expect(box(plan, 1057).r).toBeLessThan(box(plan, 1141).l);
+    expect(col.clasp).not.toBeNull();
+  });
+
+  it("an attack on me and on an opponent: three rows, a wing each, mine first; each blocker on its own side", () => {
+    const plan = drawn(turn15([[1019, "You"], [1041, "You"], [1169, "You"], [1117, "Dack"], [1221, "Dack"]], [[1089, 1041], [1129, 1117]]));
+    const g = plan.gathering!;
+    expect(g.wings.map((w) => String("seat" in w.defender ? w.defender.seat : w.defender.card))).toEqual(["You", "Dack"]);
+    // mine below its attacker, Dack's above
+    expect(box(plan, 1089).t).toBeGreaterThan(box(plan, 1041).b);
+    expect(box(plan, 1129).b).toBeLessThan(box(plan, 1117).t);
+    // wings contiguous: every column of the first left of every column of the second
+    const xs = g.wings.map((w) => w.columns.map((c) => c.x));
+    expect(Math.max(...xs[0]!)).toBeLessThan(Math.min(...xs[1]!));
+    expect(g.wings.map((w) => w.unblocked)).toEqual([8 + 3, 3]);
+    // wings stand apart, each at least a plaque wide, so each plaque sits over its own wing (1180 x 820: a design px is 1)
+    for (const w of g.wings) expect(w.w).toBeGreaterThanOrEqual(CLASH.wingMin - 1e-6);
+    const [left, right] = g.wings;
+    expect(right!.plaque.x - right!.w / 2 - (left!.plaque.x + left!.w / 2)).toBeCloseTo(CLASH.wingGap, 3);
+    expect([CLASH.wingMin, CLASH.wingGap]).toEqual([320, 64]);
+    expect(plan.violations.filter((v) => v.rule === "clash-covers")).toEqual([]);
+  });
+
+  it("an attacked planeswalker stands at the end of its wing, on its controller's side (033: mine)", () => {
+    const m = modelOf(corpusSnapshot("033-block-attack-on-planeswalker-they-attack.json"), catalog, viewerOf())!;
+    const plan = drawn(m), g = plan.gathering!;
+    const wing = g.wings.find((w) => "card" in w.defender)!;
+    expect(wing.walker?.card).toBe(id(819));
+    expect(unitOf(plan, 819).fighting).toBe(true);
+    expect(wing.walker!.x).toBeGreaterThan(Math.max(...wing.columns.map((c) => c.x)));
+    // on my side: below the attackers
+    expect(box(plan, 819).t).toBeGreaterThan(box(plan, 872).b);
+  });
+
+  it("a battle's defender is the player Forge says defends it (its protector), not its controller", () => {
+    const m = tableOf({
+      active: "Dack",
+      phase: "COMBAT_DECLARE_BLOCKERS",
+      seats: {
+        You: { battlefield: [land(19, "Plains", "You")] },
+        Atraxa: { battlefield: [card(60, "Invasion of Ergamon", "Atraxa", "Battle - Siege", { counters: { DEFENSE: 5 } }), land(29, "Plains", "Atraxa")] },
+        Dack: { battlefield: [creature(70, "Raider", "Dack", 3)] },
+      },
+      combat: { attackers: [{ id: 70, defender: 60, defending: "You" }] },
+    });
+    const plan = drawn(m), w = plan.gathering!.wings[0]!;
+    expect(String(w.defenderSeat)).toBe("You");
+    expect(plan.gathering!.form).toBe("clash"); // attacked through a battle I protect: I am in it
+  });
+
+  it("my attack blocked: my attackers below their blockers, my brands in the far row", () => {
+    const plan = drawn(turn15([[1089, "Marath"], [1057, "Marath"], [1027, "Marath"]], [[1064, 1089]], "You"));
+    expect(plan.gathering!.form).toBe("clash");
+    expect(box(plan, 1064).b).toBeLessThan(box(plan, 1089).t);
+    const slot = plan.gathering!.wings[0]!.columns.find((c) => c.attackers.includes(id(1057)))!.slot!;
+    expect(bounds(slot).b).toBeLessThan(box(plan, 1057).t);
+  });
+
+  it("eleven attackers, seven blocks: eleven columns at a smaller step; four of them twins: one column, a block of four", () => {
+    const ids = Array.from({ length: 11 }, (_, i) => 300 + i), guards = Array.from({ length: 7 }, (_, i) => 400 + i);
+    const combat = { attackers: ids.map((a) => ({ id: a, defender: "You" })), blockers: guards.map((g, i) => ({ id: g, blocking: ids[i]! })) };
+    const plan = drawn(crowded("Dack", ids, { guards, combat }));
+    expect(plan.gathering!.wings[0]!.columns).toHaveLength(11);
+    expect(plan.gathering!.step).toBeLessThan(1.8);
+    expect(plan.gathering!.step).toBeGreaterThanOrEqual(1.1);
+    const twins = drawn(crowded("Dack", ids, { guards, combat, twins: ids.slice(7) }));
+    const cols = twins.gathering!.wings[0]!.columns;
+    expect(cols).toHaveLength(8);
+    const block = cols.find((c) => c.attackers.length > 1)!;
+    expect(block.attackers).toHaveLength(4);
+    expect(block.power).toBe(4);
+    expect(twins.gathering!.step).toBeGreaterThanOrEqual(plan.gathering!.step);
+  });
+
+  it("twenty distinct attackers: as many columns as fit (at most twelve) and the rest in one \"more\"; floors held", () => {
+    const ids = Array.from({ length: 20 }, (_, i) => 300 + i);
+    const plan = drawn(crowded("Dack", ids, { combat: { attackers: ids.map((a) => ({ id: a, defender: "You" })) } }));
+    const g = plan.gathering!;
+    const n = g.wings.flatMap((w) => w.columns).length;
+    expect(n).toBeGreaterThanOrEqual(11);
+    expect(n).toBeLessThanOrEqual(12);
+    expect(g.more).toHaveLength(20 - n);
+    expect(g.moreAt).not.toBeNull();
+    expect(plan.violations.filter((v) => v.rule === "floor" && unitOf(plan, Number(v.group.replace(/\D/g, ""))).fighting)).toEqual([]);
+  });
+
+  it("a defender whose attackers all wait in \"more\" keeps its wing, its plaque and its total", () => {
+    const ids = Array.from({ length: 17 }, (_, i) => 300 + i);
+    const combat = { attackers: ids.map((a, i) => ({ id: a, defender: i < 14 ? "You" : "Atraxa" })) };
+    const plan = drawn(crowded("Dack", ids, { combat }));
+    const g = plan.gathering!;
+    const atraxa = g.wings.find((w) => "seat" in w.defender && String(w.defender.seat) === "Atraxa")!;
+    expect(atraxa).toBeDefined();
+    expect(atraxa.columns).toEqual([]);
+    // Fighters 14, 15, 16: powers 1 + (i % 7)
+    expect(atraxa.unblocked).toBe([14, 15, 16].reduce((t, i) => t + 1 + (i % 7), 0));
+    // mine counts every attacker at me, those in "more" too
+    const mine = g.wings.find((w) => "seat" in w.defender && String(w.defender.seat) === "You")!;
+    expect(mine.unblocked).toBe(Array.from({ length: 14 }, (_, i) => 1 + (i % 7)).reduce((t, n) => t + n, 0));
+  });
+
+  it("the step never rises while columns only grow", () => {
+    const ids = Array.from({ length: 13 }, (_, i) => 300 + i);
+    let last = Infinity;
+    for (let n = 1; n <= ids.length; n++) {
+      const plan = drawn(crowded("Dack", ids, { combat: { attackers: ids.slice(0, n).map((a) => ({ id: a, defender: "You" })) } }));
+      expect(plan.gathering!.step).toBeLessThanOrEqual(last);
+      expect(CLASH_STEPS as readonly number[]).toContain(plan.gathering!.step);
+      last = plan.gathering!.step;
+    }
+  });
+
+  it("the same input, the same picture", () => {
+    const m = turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4);
+    expect(drawn(m).rev).toBe(drawn(m).rev);
+  });
+
+  it("every fighter is reached in its middle over the table, at every supported viewport, over the corpus's combats", () => {
     const cases: [string, CombatPairs | null][] = [
       ["033-block-attack-on-planeswalker-they-attack.json", null],
       ["033-block-attack-on-planeswalker-they-attack.json", { attacks: [], blocks: [{ blocker: id(818), attacker: id(872) }, { blocker: id(870), attacker: id(872) }] }],
       ["054-play-commander-damage.json", null],
       ["034-order-blocked-poison.json", null],
-      ["044-mode-i-attack.json", null],
-      ["037-attack-poison.json", { attacks: [{ attacker: id(871), defender: { card: id(872) } }], blocks: [] }],
     ];
     for (const vp of SUPPORTED)
       for (const [name, combat] of cases) {
-        const plan = drawn(model(name), { combat, viewport: vp });
-        reachable(plan, `${name} ${vp.w}x${vp.h}`);
-        for (const sp of plan.seats.values()) for (const u of new Set(sp.home.values())) expect(plan.hits.groups.some((g) => g.id === u)).toBe(true);
+        const plan = drawn(modelOf(corpusSnapshot(name), catalog, viewerOf())!, { combat, viewport: vp });
+        for (const sp of plan.seats.values())
+          for (const u of sp.units.filter((x) => x.fighting)) {
+            const b = bounds(plan.hits.groups.find((x) => x.id === u.id)!.quad);
+            expect(hitTest(plan, { x: (b.l + b.r) / 2, y: (b.t + b.b) / 2 })?.id, `${name} ${vp.w}x${vp.h} ${u.id}`).toBe(u.id);
+          }
+        expect(plan.violations.filter((v) => v.rule === "clash-covers"), `${name} ${vp.w}x${vp.h}`).toEqual([]);
       }
   });
+});
 
-  it("an attack draft takes the attacker into the gathering; its page place is kept for it to go back to", () => {
-    const m = model("037-attack-poison.json");
-    const before = drawn(m);
-    const draft: CombatPairs = { attacks: [{ attacker: id(871), defender: { seat: m.seats[2]!.id } }], blocks: [] };
-    const after = planTable(tableInputOf(m, { viewport: VP, combat: draft, memory: before.memory, shadow: { draw: true } }));
-    expect(unitOf(after, 871).fighting).toBe(true);
-    const back = planTable(tableInputOf(m, { viewport: VP, memory: after.memory, shadow: { draw: true } }));
-    expect(unitOf(back, 871).placement).toEqual(unitOf(before, 871).placement);
+describe("the table form", () => {
+  it("my attack before blocks: nothing moves; the wing counts what is coming at its defender", () => {
+    const m = turn15([]);
+    const rest = drawn(m);
+    const draft: CombatPairs = { attacks: [1089, 1057].map((a) => ({ attacker: id(a), defender: { seat: m.seats[1]!.id } })), blocks: [] };
+    const plan = planTable(tableInputOf(m, { viewport: VP, combat: draft, memory: rest.memory, shadow: { draw: true } }));
+    expect(plan.gathering!.form).toBe("table");
+    expect(unitOf(plan, 1089).fighting).toBeFalsy();
+    expect(unitOf(plan, 1089).placement).toEqual(unitOf(rest, 1089).placement);
+    expect(plan.gathering!.wings[0]!.unblocked).toBe(4);
   });
 
-  it("more attackers of mine than a focus holds: the gathering covers no page, and those left are reached on it", () => {
-    const many = Array.from({ length: 24 }, (_, i) => 300 + i);
-    const m = tableOf({ active: "You", seats: { You: { battlefield: [...many.map((c, i) => creature(c, `Fighter ${i}`, "You", 1 + (i % 9), 2)), ...[0, 1, 2].map((j) => land(200 + j, "Plains", "You"))] }, Atraxa: { battlefield: [land(210, "Plains", "Atraxa")] } } });
-    const draft: CombatPairs = { attacks: many.map((c) => ({ attacker: id(c), defender: { seat: m.seats[1]!.id } })), blocks: [] };
-    for (const vp of SUPPORTED) everyFighterReached(drawn(m, { combat: draft, viewport: vp }), many, `${vp.w}x${vp.h}`);
+  it("between opponents before blocks: the table form; with a block, the clash", () => {
+    expect(drawn(turn15([[1015, "Dack"], [1064, "Dack"]], [], "Marath")).gathering!.form).toBe("table");
+    expect(drawn(turn15([[1015, "Dack"], [1064, "Dack"]], [[1024, 1015]], "Marath")).gathering!.form).toBe("clash");
   });
 
-  it("ten distinct attackers across, at me: each reached on its own before the first block and after", () => {
-    const attackers = TEN.map((c) => ({ id: c, defender: "You" }));
-    for (const blockers of [[], [{ id: 290, blocking: 309 }]]) {
-      const m = crowded("Dack", { active: "Dack", combat: { attackers, blockers } });
-      for (const vp of SUPPORTED) {
-        const plan = drawn(m, { viewport: vp });
-        everyFighterReached(plan, TEN, `${blockers.length} blocks ${vp.w}x${vp.h}`);
-        for (const c of TEN) expect(unitOf(plan, c).members, `${c} its own unit`).toEqual([id(c)]);
-      }
-    }
-  });
-
-  it("attacked, before any block: a focus (corpus 033, my planeswalker attacked, counts as me)", () => {
-    const m = model("033-block-attack-on-planeswalker-they-attack.json");
-    expect(m.combat?.blockers ?? []).toEqual([]);
-    const plan = drawn(m);
-    const top = Math.max(...plan.hits.groups.filter((g) => g.kind !== "plate" && !plan.seats.get(g.seat!)?.units.find((u) => u.id === g.id)?.fighting).map((g) => g.order));
-    const fighting = [...plan.seats.values()].flatMap((sp) => sp.units.filter((u) => u.fighting));
-    expect(fighting.length).toBeGreaterThan(0);
-    for (const u of fighting) expect(plan.hits.groups.find((g) => g.id === u.id)!.order, u.id).toBeGreaterThan(top);
+  it("set aside (the app's combatForm), a fight at me stays home", () => {
+    const m = turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4);
+    const plan = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", shadow: { draw: true } }));
+    expect(plan.gathering!.form).toBe("table");
+    for (const a of ATRAXA6) expect(unitOf(plan, a).fighting).toBeFalsy();
   });
 });

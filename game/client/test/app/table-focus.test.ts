@@ -297,3 +297,183 @@ describe("a chooser for a gesture", () => {
     expect(play.present(r.state.play).board.combat?.attacks).toEqual([{ attacker: 21, defender: { seat: seatId("Atraxa") } }]);
   });
 });
+
+describe("the clash, a table layer", () => {
+  const creature = (id: number, name: string, who: string, p = 2): Json => ({ id, name, owner: who, controller: who, type: "Creature - Soldier", power: p, toughness: 2 });
+  /** Atraxa's two attack `at`; Dack's two stand by; Princess's one; a pass-only decision of mine. */
+  /** Atraxa's Raider (40) and Brute (41) attack `at`; `blocks` [blocker, attacker]; Forge's verdict per attacker from
+   *  the blocks unless `blocked` says otherwise; `ordinal`, Forge's combat in the turn. */
+  function fight(o: { v: number; at: string | null; blocks?: [number, number][]; attackers?: number[]; phase?: string; guard?: boolean; blocked?: number[]; ordinal?: number }): Json {
+    const e = board({ v: o.v, islands: 2 }) as { view: Json & { players: Json[] } };
+    e.view.players[0]!["battlefield"] = [...(e.view.players[0]!["battlefield"] as Json[]), ...(o.guard === false ? [] : [creature(30, "Guard", "You")])];
+    e.view.players[1]!["battlefield"] = [creature(40, "Raider", "Atraxa", 3), creature(41, "Brute", "Atraxa", 4)];
+    e.view.players[2]!["battlefield"] = [creature(50, "Watcher", "Dack")];
+    e.view["active"] = "Atraxa";
+    e.view["phase"] = o.phase ?? "COMBAT_DECLARE_BLOCKERS";
+    const blocked = o.blocked ?? (o.blocks ?? []).map(([, a]) => a);
+    e.view["combat"] = o.at
+      ? { ordinal: o.ordinal ?? 1, attackers: (o.attackers ?? [40, 41]).map((id) => ({ id, defender: o.at, blocked: blocked.includes(id) })), blockers: (o.blocks ?? []).map(([id, blocking]) => ({ id, blocking })), damage: [] }
+      : null;
+    return e;
+  }
+  const fighterOf = (r: Rig, card: number) => groups(r).find((g) => g.members.includes(card as CardId))!;
+
+  it("comes up when I am attacked; a tap on the shade sets it aside behind a Combat chip; the chip raises it; it goes with the combat", () => {
+    const r = started(fight({ v: 1, at: "You" }));
+    expect(layers(r)).toEqual([["clash", null]]);
+    expect(r.state.plan!.gathering!.focus).toBe(true);
+    expect(r.commits.at(-1)!.view.clash!.plaques.map((p) => p.words)).toEqual(["Atraxa attacks You · 7 unblocked"]);
+    // a tap on a fighter reads it (the inspector over the clash)
+    tap(r, fighterOf(r, 40));
+    expect(layers(r).at(-1)).toEqual(["inspector", null]);
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    // a tap off the fighters (my Islands, under the shade) sets it aside: the table form, the chip
+    tap(r, islands(r));
+    expect(layers(r)).toEqual([]);
+    expect(r.state.focus.aside.map((e) => e.layer)).toEqual(["clash"]);
+    expect(r.state.plan!.gathering!.form).toBe("table");
+    expect(r.commits.at(-1)!.view.chips).toEqual([{ layer: "clash", label: "Combat" }]);
+    // blocks declared in the same combat keep it aside
+    r.transport.push(fight({ v: 2, at: "You", blocks: [[30, 40]] }));
+    r.frame((r.now += 400));
+    expect(layers(r)).toEqual([]);
+    // the chip raises it again
+    r.inputs.push({ t: "restore", layer: "clash", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([["clash", null]]);
+    expect(r.state.plan!.gathering!.form).toBe("clash");
+    // the combat ends: it goes, chip and all
+    r.transport.push(fight({ v: 3, at: null }));
+    r.frame((r.now += 400));
+    expect(layers(r)).toEqual([]);
+    expect(r.state.focus.aside).toEqual([]);
+  });
+
+  it("an attacker whose blocker left stays blocked by Forge's verdict: no brand, and its column keeps its place", () => {
+    const r = started(fight({ v: 1, at: "You", blocks: [[30, 40]] }));
+    const cols = () => r.state.plan!.gathering!.wings[0]!.columns;
+    const order = cols().map((c) => c.attackers[0]);
+    expect(cols().find((c) => c.attackers.includes(40 as CardId))!.slot).toBeNull();
+    // the Guard dies: the engine's combat no longer lists it, and Forge still says the Raider is blocked
+    const gone = fight({ v: 2, at: "You", blocked: [40] }) as { view: Json & { players: Json[] } };
+    gone.view.players[0]!["battlefield"] = (gone.view.players[0]!["battlefield"] as Json[]).filter((c) => c["id"] !== 30);
+    r.transport.push(gone);
+    r.frame((r.now += 400));
+    const raider = cols().find((c) => c.attackers.includes(40 as CardId))!;
+    expect(raider.blocked).toBe(true);
+    expect(raider.slot).toBeNull();
+    expect(cols().map((c) => c.attackers[0])).toEqual(order);
+    expect(r.commits.at(-1)!.view.clash!.plaques[0]!.words).toBe("Atraxa attacks You · 4 unblocked");
+  });
+
+  it("one combat, one memory: an attacker leaving combat as another loses its blocker leaves a clash set aside, aside", () => {
+    const r = started(fight({ v: 1, at: "You", blocks: [[30, 40]] }));
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(r.state.focus.aside.map((e) => e.layer)).toEqual(["clash"]);
+    // the Brute leaves combat and the Guard dies: the Raider attacks alone, Forge still calls it blocked
+    r.transport.push(fight({ v: 2, at: "You", attackers: [40], guard: false, blocked: [40] }));
+    r.frame((r.now += 400));
+    expect(layers(r)).toEqual([]);
+    expect(r.state.focus.aside.map((e) => e.layer)).toEqual(["clash"]);
+    // set aside: the table form, and the Raider, still blocked, draws no lane at me
+    expect(r.state.plan!.gathering!.form).toBe("table");
+    expect(r.state.plan!.gathering!.wings[0]!.columns[0]!.blocked).toBe(true);
+    const d = describeTable({ model: r.state.model!, plan: r.state.plan!, cues: play.present(r.state.play).board, focus: { layer: null, seat: null, group: null, card: null, table: [] }, hover: null });
+    expect(d.lanes).toEqual([]);
+    // raised again: no brand for it
+    r.inputs.push({ t: "restore", layer: "clash", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(r.state.plan!.gathering!.wings[0]!.columns[0]!.slot).toBeNull();
+  });
+
+  it("the combat's identity carries Forge's ordinal: a second combat in the turn starts afresh, its clash up again", () => {
+    const r = started(fight({ v: 1, at: "You", ordinal: 1 }));
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(r.state.focus.aside.map((e) => e.layer)).toEqual(["clash"]);
+    r.transport.push(fight({ v: 2, at: "You", ordinal: 2 }));
+    r.frame((r.now += 400));
+    expect(r.state.focus.combat?.key).toMatch(/\|2$/);
+    expect(layers(r)).toEqual([["clash", null]]);
+    expect(r.state.focus.aside).toEqual([]);
+  });
+
+  it("Forge's unblock: an attacker it makes unblocked after blocks takes its brand", () => {
+    const r = started(fight({ v: 1, at: "You", blocks: [[30, 40]] }));
+    const raider = () => r.state.plan!.gathering!.wings[0]!.columns.find((c) => c.attackers.includes(40 as CardId))!;
+    expect(raider().slot).toBeNull();
+    r.transport.push(fight({ v: 2, at: "You", blocked: [] }));
+    r.frame((r.now += 400));
+    expect(raider().blocked).toBe(false);
+    expect(raider().slot).not.toBeNull();
+    expect(r.commits.at(-1)!.view.clash!.plaques[0]!.words).toBe("Atraxa attacks You · 7 unblocked");
+  });
+
+  it("a reconnect after a blocker died: Forge's verdict alone keeps the attacker blocked, no brand, the clash up", () => {
+    const e = fight({ v: 1, at: "You", guard: false, blocked: [40] });
+    const r = started(e);
+    expect(layers(r)).toEqual([["clash", null]]);
+    const raider = r.state.plan!.gathering!.wings[0]!.columns.find((c) => c.attackers.includes(40 as CardId))!;
+    expect(raider.blocked).toBe(true);
+    expect(raider.slot).toBeNull();
+    expect(r.commits.at(-1)!.view.clash!.plaques[0]!.words).toBe("Atraxa attacks You · 4 unblocked");
+  });
+
+  it("a tap on the \"more\" column opens the fighters past the clash's columns, the clash still up under them", () => {
+    const e = fight({ v: 1, at: "You" }) as { view: Json & { players: Json[] } };
+    const ids = Array.from({ length: 20 }, (_, i) => 100 + i);
+    e.view.players[1]!["battlefield"] = ids.map((id, i) => creature(id, `Fighter ${i}`, "Atraxa", 2));
+    e.view["combat"] = { attackers: ids.map((id) => ({ id, defender: "You" })), blockers: [] };
+    const r = started(e);
+    const more = groups(r).find((g) => g.id === "clash:more")!;
+    expect(more.members.length).toBe(r.state.plan!.gathering!.more.length);
+    expect(more.members.length).toBeGreaterThan(0);
+    tap(r, more);
+    expect(layers(r)).toEqual([
+      ["clash", null],
+      ["sift", "clash:more"],
+    ]);
+    expect(r.commits.at(-1)!.view.sift).not.toBeNull();
+    const d = describeTable({ model: r.state.model!, plan: r.state.plan!, cues: play.present(r.state.play).board, focus: r.commits.at(-1)!.frame!.focus, hover: null });
+    const sifted = [...d.pieces.values()].flatMap((p) => (p.draw.t === "sift" ? [p.draw.card] : []));
+    expect(sifted.sort()).toEqual([...more.members].sort());
+  });
+
+  it("a jump straight to the main phase ends the combat: its memory, the clash and its chip go", () => {
+    const r = started(fight({ v: 1, at: "You", blocks: [[30, 40]] }));
+    expect(r.state.focus.combat).toBeDefined();
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    r.transport.push(fight({ v: 2, at: "You", phase: "MAIN2" }));
+    r.frame((r.now += 400));
+    expect(r.state.focus.combat).toBeUndefined();
+    expect(r.state.focus.aside).toEqual([]);
+    expect(r.commits.at(-1)!.view.chips).toEqual([]);
+  });
+
+  it("between opponents: the table form before blocks, the clash once one is blocked", () => {
+    const r = started(fight({ v: 1, at: "Dack" }));
+    expect(layers(r)).toEqual([]);
+    expect(r.state.plan!.gathering!.form).toBe("table");
+    r.transport.push(fight({ v: 2, at: "Dack", blocks: [[50, 41]] }));
+    r.frame((r.now += 400));
+    expect(layers(r)).toEqual([["clash", null]]);
+  });
+
+  it("the wire is untouched: the same answer in either form", () => {
+    const answerIn = (aside: boolean) => {
+      const r = started(fight({ v: 1, at: "You" }));
+      if (aside) {
+        r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+        r.frame((r.now += 10));
+        expect(r.state.plan!.gathering!.form).toBe("table");
+      }
+      r.act();
+      r.frame((r.now += 10));
+      return r.transport.answers.map((a) => a.body);
+    };
+    expect(answerIn(true)).toEqual(answerIn(false));
+  });
+});

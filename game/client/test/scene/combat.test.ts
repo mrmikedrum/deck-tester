@@ -1,6 +1,6 @@
-// Combat on the table, as the scene draws it: the fighters stand in the combat row (layout) and step out along the
-// middle and home again (`fight` legs, one after another per seat); what doesn't fight dims; each attack is a lane from
-// its attacker to where it lands, following the pieces as they move; unblocked damage strikes the plaque with a bolt per
+// Combat on the table, as the scene draws it: in the clash the fighters step out along the middle to its plane and home
+// again (`fight` legs, one after another per seat), over one light shade and a calm ground, with no lanes; in the table
+// form each attack is a lane from its attacker to where it lands, following the pieces as they move; unblocked damage strikes the plaque with a bolt per
 // attacker; and lanes, bolts and every other effect that moves on its own say so in the report (`ambient`).
 import { describe as suite, expect, it } from "vitest";
 import { planTable, tableInputOf } from "../../src/layout";
@@ -9,8 +9,9 @@ import { diff, modelOf, seatId } from "../../src/model";
 import type { TableModel } from "../../src/model";
 import type { BoardCues } from "../../src/play";
 import type { CardId } from "../../src/protocol";
-import { DIM, NO_FOCUS, Stage, boltPath, describe, fightPath, lanePath, sampleLeg, LOOK } from "../../src/scene/stage";
+import { NO_FOCUS, Stage, boltPath, describe, fightPath, lanePath, sampleLeg, LOOK } from "../../src/scene/stage";
 import type { SceneFrame, Sample } from "../../src/scene/stage";
+import { materials } from "../../src/theme";
 import { catalog, corpusSnapshot, viewerOf } from "../model/fixtures";
 import { NO_CUES } from "./corpus";
 
@@ -34,7 +35,7 @@ const frame = (m: TableModel, combat: CombatPairs | null, over: Partial<SceneFra
 const DRAFT: CombatPairs = { attacks: [{ attacker: id(871), defender: { seat: atraxa } }], blocks: [] };
 
 suite("describe", () => {
-  it("an attack draft is a lane from the fighter's piece to the defender's page edge; what doesn't fight dims", () => {
+  it("my attack draft is the table form: a lane from the attacker where it stands to the defender's page edge; nothing dims", () => {
     const m = model("037-attack-poison.json");
     const f = frame(m, DRAFT);
     const d = describe({ model: m, plan: f.plan, cues: f.cues, focus: NO_FOCUS, hover: null });
@@ -42,28 +43,48 @@ suite("describe", () => {
     const l = d.lanes[0]!;
     const fighter = [...d.pieces.values()].find((p) => p.members.includes(id(871)))!;
     expect(l.from).toBe(fighter.id);
-    expect(fighter.fight).toBe(true);
+    expect(fighter.fight).toBeUndefined();
     expect("at" in l.to).toBe(true);
-    expect(l.blocked).toBe(false);
-    const others = [...d.pieces.values()].filter((p) => p.kind === "unit" && !p.fight);
-    expect(others.length).toBeGreaterThan(0);
-    for (const p of others) expect(p.look.fade).toBeGreaterThanOrEqual(DIM.fightCreature);
-    // with no combat, no lane and no dim from it
+    expect(d.scrim).toBe(0);
+    // with no combat, no lane, and every piece as it was
     const calm = frame(m, null);
     const d0 = describe({ model: m, plan: calm.plan, cues: calm.cues, focus: NO_FOCUS, hover: null });
     expect(d0.lanes).toEqual([]);
-    expect([...d0.pieces.values()].some((p) => p.fight)).toBe(false);
+    for (const p of d.pieces.values()) if (d0.pieces.has(p.id)) expect(p.look.fade, p.id).toBe(d0.pieces.get(p.id)!.look.fade);
   });
 
-  it("a block draft keeps the engine's attackers: the blocked one lands on its blocker's piece (033)", () => {
+  it("attacked (033): the clash. Its fighters stand upright over one light shade on a calm ground, with no lanes; nothing else dims", () => {
     const m = model("033-block-attack-on-planeswalker-they-attack.json");
     const draft: CombatPairs = { attacks: [], blocks: [{ blocker: id(818), attacker: id(834) }] };
     const f = frame(m, draft);
     const d = describe({ model: m, plan: f.plan, cues: f.cues, focus: NO_FOCUS, hover: null });
-    expect(d.lanes.map((l) => l.attacker).sort()).toEqual([834, 872]);
-    const blocked = d.lanes.find((l) => l.attacker === 834)!;
-    expect("piece" in blocked.to && d.pieces.get(blocked.to.piece)!.members).toContain(818);
-    expect(blocked.blocked).toBe(true);
+    expect(d.lanes).toEqual([]);
+    expect(d.scrim).toBe(materials.shade.clash);
+    expect(d.ground).not.toBeNull();
+    const fighters = [...d.pieces.values()].filter((p) => p.fight);
+    // (and my planeswalker 819, which 872 attacks: at the end of its wing)
+    expect(fighters.map((p) => p.members[0]).sort()).toEqual([818, 819, 834, 872].map(id).sort());
+    for (const p of fighters) {
+      expect(d.above.has(p.id)).toBe(true);
+      expect(d.aloft?.has(p.id)).toBe(true);
+      expect(p.look.tap).toBe(0);
+      expect(d.highlight.has(p.id)).toBe(false);
+    }
+    // a non-fighter keeps its fade at rest: one shade, never a second dim per piece
+    const calm = frame(m, null, { plan: planTable(tableInputOf(m, { viewport: VP, combatForm: "table" })) });
+    const d0 = describe({ model: m, plan: calm.plan, cues: calm.cues, focus: NO_FOCUS, hover: null });
+    for (const p of d.pieces.values()) if (!p.fight && d0.pieces.has(p.id) && p.kind === "unit") expect(p.look.fade, p.id).toBe(d0.pieces.get(p.id)!.look.fade);
+  });
+
+  it("while I decide, what of mine I may choose stands above the shade; once decided it goes under", () => {
+    const m = model("033-block-attack-on-planeswalker-they-attack.json");
+    const plan = planTable(tableInputOf(m, { viewport: VP }));
+    const mine = [...plan.seats.get(seatId("You"))!.units].find((u) => !u.fighting && u.role === "creature")!;
+    const marks = { ...NO_CUES.marks, cards: new Map([[mine.members[0]!, "option" as const]]) };
+    const asking = describe({ model: m, plan, cues: { ...NO_CUES, marks }, focus: NO_FOCUS, hover: null });
+    expect(asking.above.has(mine.id)).toBe(true);
+    const done = describe({ model: m, plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
+    expect(done.above.has(mine.id)).toBe(false);
   });
 });
 
@@ -82,28 +103,26 @@ suite("the stage", () => {
     expect(sampleLeg({ k: "fight", out: true, hop: 0.5, up, wait: 0.4 }, a, b, 0.3, 500).pos).toEqual(a.pos);
   });
 
-  it("draws the lane between where its pieces are now, and the fighter on its way out by a fight leg", () => {
+  it("draws the lane from the attacker where it stands; a fighter steps out to the clash by a fight leg", () => {
     const m = model("037-attack-poison.json");
     const stage = new Stage();
     let t = 1000;
     stage.show(frame(m, null, { mode: "cut" }), t);
-    const out = stage.show(frame(m, DRAFT), (t += 16));
+    let out = stage.show(frame(m, DRAFT), (t += 16));
+    for (let i = 0; i < 200 && out.report.active; i++) out = stage.show(frame(m, DRAFT), (t += 16));
     expect(out.view.lanes).toHaveLength(1);
     const piece = stage.inspect().pieces.find((p) => p.members.includes(id(871)))!;
-    expect(piece.moving).toBe(true);
-    const lane = out.view.lanes[0]!;
-    const first = lane.points[0]!;
     const foot = (n: typeof piece.now) => ({ x: n.pos.x, z: n.pos.z - Math.sin(n.rx) * 0.5 * n.s });
-    expect(Math.hypot(first.x - foot(piece.now).x, first.z - foot(piece.now).z)).toBeLessThan(0.31);
+    const p0 = out.view.lanes[0]!.points[0]!;
+    expect(Math.hypot(p0.x - foot(piece.now).x, p0.z - foot(piece.now).z)).toBeLessThan(0.31);
     expect(out.report.ambient).toBe(true);
-    // settled: the lane starts at the fighter where it stands in the row
-    let r = out;
-    for (let i = 0; i < 200 && r.report.active; i++) r = stage.show(frame(m, DRAFT), (t += 16));
-    const now = stage.inspect().pieces.find((p) => p.members.includes(id(871)))!;
-    expect(now.moving).toBe(false);
-    expect(now.now.pos).toEqual(now.target.pos);
-    const p0 = r.view.lanes[0]!.points[0]!;
-    expect(Math.hypot(p0.x - foot(now.now).x, p0.z - foot(now.now).z)).toBeCloseTo(0.3, 5);
+    // attacked: the fighters walk out to the clash
+    const at = model("033-block-attack-on-planeswalker-they-attack.json");
+    const s2 = new Stage();
+    s2.show(frame(at, null, { mode: "cut", plan: planTable(tableInputOf(at, { viewport: VP, combatForm: "table" })) }), t);
+    s2.show(frame(at, null), (t += 16));
+    const walking = s2.inspect().pieces.find((p) => p.members.includes(id(834)))!;
+    expect(walking.moving).toBe(true);
     // reduced motion holds the effects still
     expect(stage.show(frame(m, DRAFT, { reducedMotion: true }), t + 16).view.still).toBe(true);
   });

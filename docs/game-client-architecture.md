@@ -446,7 +446,7 @@ Guarantees: a seat plan is sealed only if its units' members are disjoint and to
 permanents (`home` is derived from the units, not trusted); a board too big for its region folds into summary units
 that open a sift. Every group but a plate needs a 44×44 CSS px tappable patch, at every viewport: floors scale
 with the design unit, the target never does. `planTable` audits the composed table at rest in draw order (every seat,
-cards acting standing where they are drawn, and the stack; the combat row is not ported): floors, the tappable patch
+cards acting standing where they are drawn, and the stack; the clash apart, over it): floors, the tappable patch
 inside the safe area and off visible chrome, nothing covering a card's name, foot or most of its face. It folds harder
 where seats collide or the stack covers them, down to a last resort that is always reachable: the whole seat as one
 summary that opens a sift. The stack stands in the open middle the pages leave; an entry with no room there
@@ -456,6 +456,20 @@ fits, the cards under it overlap further (each keeping a finger's strip), then t
 While the focus is up the stack is reached through `hits.up`, so every card it shows is tappable, even one with no room
 set aside; the focus clears what the stack aims at and the chrome, or reports `focus-covers`. Portrait viewports, planned with the landscape template, still
 break limits on dense boards.
+
+**Combat** is the gathering's (`layout/arrange/gathering.ts`, every table), in one of two forms
+(`TableInput.combatForm`; absent, `combatFormOf`). **The clash**, when I am attacked or anyone is blocked: every
+fighter upright on a plane carried toward the eye, one rank of columns between the plaques and my field row's tops
+(`TablePlan.fieldTop`, which it never covers: `clash-covers`), wings by defender, a blocker on its controller's side
+of its attacker, at the largest step from 1.8 at which every column fits one tier, the rest in a "more" column. Its
+fighters, brand slots (`slot:<attacker>`, reaching the attacker) and "more" (`clash:more`) are reached over the whole
+table; what it covers is reached once it is set aside. **The table form** moves nothing: each attack is a lane, one
+trunk per attacking seat and defender. `TablePlan.gathering` carries the columns, wings, plaques and extent for the
+scene (one light shade, a calm ground of the page's tone under the picture, fighters above both, no lanes) and the
+chrome (plaques, brands, clasps, the plates' tallies, `app/clash.ts`). They count the unblocked attackers' current
+power and say "unblocked", never "damage"; once the engine reports combat damage dealt to a wing's defender (a player
+or a planeswalker) by the attackers aimed at it, the plaque says what was dealt. Who is blocked is Forge's verdict. Wings stand apart, each at least a plaque wide; a defender
+whose attackers all wait in "more" keeps its wing and tally.
 
 `hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
 by depth, so the stack's top wins where its cards meet), a later group winning a tie. It is what layout tests, the
@@ -717,17 +731,22 @@ target is what is under it at release. A mouse with no button down reports the h
 changes (null when it leaves the canvas or presses; a touch never hovers): the app keeps it and the scene lifts that
 piece a little, with no replan. Taps, drags and hover are wired; hold and the wheel are not yet.
 
-**Focus** is one stack of typed layers, top last (`app/focus.ts`): the table's own (the stack, a lean-in, a sift)
+**Focus** is one stack of typed layers, top last (`app/focus.ts`): the table's own (the stack, the clash, a lean-in, a sift)
 always under the chrome's (play's sheet, the inspector, the mulligan, the Game menu, the hand's list, the log, the loss
 report); a new layer goes on top of its tier, one of each. An entry carries its subject (the inspector's card, a
 lean-in's seat, a sift's group) and the control keyboard focus returns to when it goes (the chrome's `data-fk`). The app
 keeps it in step with what its layers stand for (`sync`): a `sheet` entry while play presents a sheet, the mulligan
 while one is asked, and the stack layer for every new stack (a new item brings it up again, even set aside) until the
-stack empties. Play keeps its choice draft and whether its sheet may close.
+stack empties; and the clash while the combat raises it. The combat itself is remembered for its lifetime, a game's
+turn and Forge's combat ordinal while the engine shows a combat in a combat step, whatever its fighters or form do
+meanwhile (`CombatMemory`: the order the clash first stood its attackers in, and whether it wants the clash); it ends with the
+combat, a jump to the main phase included, and takes the clash and its chip with it. Play keeps its choice draft
+and whether its sheet may close.
 
 One rule for every way out, Escape, a tap outside (a sheet's scrim, an unclaimed tap on the table) and the ✕: the top
-layer goes (`dismiss`). The stack layer and the mulligan are set aside rather than closed, and a chip restores them (a
-tap on the stack does too); a `sheet` on top asks play, and with nothing open play hears the dismiss. Opening is the
+layer goes (`dismiss`). The stack layer, the clash and the mulligan are set aside rather than closed, and a chip
+restores them (a tap on the stack does too; the clash stays aside for that combat, in the table form). While the clash is
+up an unclaimed tap on a fighter reads it and anywhere else sets the clash aside; a `sheet` on top asks play, and with nothing open play hears the dismiss. Opening is the
 player's own: play's `inspect`, a tap play left on a hand card or a lone card (a sifted card is the card itself: its
 hit group, `sift:<card>`, is aimed at as the card), the Game button, View hand, the log strip, and the loss notice or
 the log's losses line. A tap play left on a pile, a well or a summary of more than one card, or on a graveyard or exile

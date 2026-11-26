@@ -9,6 +9,7 @@ import type { TableModel } from "../model";
 import type { BoardCues } from "../play";
 import type { CardId } from "../protocol";
 import type { AppState } from "./state";
+import { blockedOf } from "./clash";
 
 /** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sift too. */
 export function chromeMode(s: AppState, cues: BoardCues): ChromeMode {
@@ -32,8 +33,19 @@ function pairsKey(cues: BoardCues): string {
 
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${blockedOf(model).join(",")}|${settling ? "settling" : ""}`;
 }
+
+/** The order the clash first stood its attackers in, kept for the combat (so no column jumps as the table replans). */
+function ordered(s: AppState): AppState {
+  const g = s.plan?.gathering;
+  const c = s.focus.combat;
+  if (!c || c.order.length || !g?.focus) return s;
+  return { ...s, focus: { ...s.focus, combat: { ...c, order: [...g.wings.flatMap((w) => w.columns.flatMap((col) => col.attackers)), ...g.more] } } };
+}
+
+/** The clash set aside: the combat takes the table form until it ends. */
+const asideOf = (s: AppState): boolean => s.focus.aside.some((e) => e.layer === "clash");
 
 export interface Replanned {
   readonly state: AppState;
@@ -55,7 +67,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
   }
   const involved = drafted(cues);
   const key = keyOf(model, s, mode, pairsKey(cues), settling);
-  if (key === s.planKey) return { state: s, error: null };
+  if (key === s.planKey) return { state: ordered(s), error: null };
   try {
     const plan = planTable(
       tableInputOf(model, {
@@ -66,12 +78,15 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         settling,
         involved: new Set(involved),
         combat: cues.combat,
+        ...(asideOf(s) ? { combatForm: "table" as const } : {}),
+        ...(blockedOf(model).length ? { blocked: new Set(blockedOf(model)) } : {}),
+        ...(s.focus.combat?.order.length ? { order: s.focus.combat.order } : {}),
         // The across leaf is the arrangement engine's (docs/game-arrangement-engine.md, step 6): its memory rides in
         // the layout memory like any seat's.
         shadow: { draw: true },
       }),
     );
-    return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };
+    return { state: ordered({ ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }), error: null };
   } catch (e) {
     return { state: { ...s, plan: null, planKey: key, reserve }, error: e instanceof Error ? e.message : String(e) };
   }

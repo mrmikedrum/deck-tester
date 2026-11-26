@@ -28,6 +28,7 @@ import { Inspector } from "./inspector";
 import { LogSheet, LogStrip, LossSheet } from "./log";
 import { BackBar, Chips, GameButton, HandList, Menu, Mulligan, SiftBar } from "./layers";
 import { Plates, SeatFocus } from "./plates";
+import { Clash } from "./clash";
 import { Prompt, WaitingPrompt } from "./prompt";
 import { isOrder } from "./send";
 import type { Send } from "./send";
@@ -302,6 +303,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
           losses: view.losses !== null,
           seat: view.seatFocus !== null,
           stack: false,
+          clash: false,
           lean: false,
           sift: false,
         };
@@ -418,6 +420,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
                 {drawLayer(l)}
               </div>
             ))}
+            {view.waiting === null && view.clash ? <Clash view={view.clash} /> : null}
             {view.waiting === null ? (
               <Plates plates={view.plates} open={view.seatFocus?.seat ?? null} inert={topModal !== null && topModal !== "seat"} send={send} />
             ) : null}

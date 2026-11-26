@@ -24,9 +24,9 @@ export interface MomentView {
 /** The app's focus layers (app/focus `LayerId`), the top one with its subject: `seat` for a lean-in, `group` for a sift,
  * `card` for the inspector. The table's own layers are the stack, a lean-in and a sift; the rest are the chrome's
  * (a sheet, the inspector, the mulligan, the Game menu, the hand's list), drawn over the table. */
-export type FocusLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand";
+export type FocusLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand";
 /** The table's own layers: always under the chrome's. */
-export type TableLayerId = "stack" | "lean" | "sift";
+export type TableLayerId = "stack" | "clash" | "lean" | "sift";
 /** A table layer open in the focus stack, with its subject. */
 export interface TableLayer {
   readonly layer: TableLayerId;
@@ -51,7 +51,7 @@ export interface FocusTop {
 }
 export const NO_FOCUS: FocusTop = { layer: null, seat: null, group: null, card: null };
 
-const TABLE_LAYERS: ReadonlySet<FocusLayer> = new Set<FocusLayer>(["stack", "lean", "sift"]);
+const TABLE_LAYERS: ReadonlySet<FocusLayer> = new Set<FocusLayer>(["stack", "clash", "lean", "sift"]);
 
 /** The table layer that decides how the table looks: the topmost open, or none. */
 export function tableFocus(f: FocusTop): TableLayer | null {
@@ -351,8 +351,12 @@ export interface Description {
   readonly aims: readonly Aim[];
   /** The table's light: 1, or dimmed under a sift. */
   readonly tableTone: number;
-  /** The scrim over the table while the stack is the focus (its alpha), 0 for none. */
+  /** The scrim over the table while a focus is up (the stack, the clash: its alpha), 0 for none. */
   readonly scrim: number;
+  /** The clash's calm ground on screen (CSS px), under its fighters and over the shaded table, or null. */
+  readonly ground: Rect | null;
+  /** The clash's fighters, standing on its plane: they throw no shadow on the table below. */
+  readonly aloft: ReadonlySet<string>;
   /** The pieces drawn above the scrim, in their own places: the stack's cards and what they aim at. */
   readonly above: ReadonlySet<string>;
   /** The pieces stepped out of the light (the stack's and what they aim at, or what the app asked for), and the look. */
@@ -472,6 +476,17 @@ export interface StrikeView {
   readonly seed: number;
 }
 
+/** The clash's ground as drawn: a rect on screen (CSS px), its soft edge, tone and alpha. */
+export interface FocusGround {
+  readonly l: number;
+  readonly t: number;
+  readonly r: number;
+  readonly b: number;
+  readonly feather: number;
+  readonly colour: number;
+  readonly alpha: number;
+}
+
 export interface StageView {
   readonly actors: readonly ActorView[];
   readonly ghosts: readonly GhostView[];
@@ -483,6 +498,10 @@ export interface StageView {
   readonly tableTone: number;
   /** The scrim's alpha this frame (it eases in and out), and the pieces drawn above it (with the aims). */
   readonly scrim: number;
+  /** The clash's calm ground this frame (eased with the scrim), or null. */
+  readonly ground?: FocusGround | null;
+  /** Pieces standing on the clash's plane: no shadow on the table. */
+  readonly aloft?: ReadonlySet<string>;
   readonly above: ReadonlySet<string>;
   /** The frame's time, ms (the effects' clock), and whether motion is reduced (effects hold still, particles go). */
   readonly now: Ms;

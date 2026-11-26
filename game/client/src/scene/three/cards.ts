@@ -40,6 +40,7 @@ import type { Rim, Signal } from "./materials";
 import type { Lease } from "./textures";
 
 const { card, slab, rim: rimParams, faceTone, lights } = materials;
+const FIGHTERS_LIGHT = materials.shade.fighters;
 const T = card.thickness;
 
 // ---- exposure -----------------------------------------------------------------------------------------------------
@@ -479,7 +480,10 @@ export interface CardState {
   stock: number;
   readonly transparent: boolean;
   readonly order: number;
-  readonly shadow: boolean;
+  /** Throws a shadow (off for a fighter on the clash's plane, whose shadow would land far off on the table). */
+  shadow: boolean;
+  /** Stands on the clash's plane: it takes the plane's share of the lamp (theme `shade.fighters`). */
+  aloft?: boolean;
 }
 
 export interface CardKit {
@@ -703,7 +707,7 @@ export class CardDeck {
         const c = s.signal ? this.rim.colours[s.signal] : ZERO;
         b.rim.setXYZW(i, c.r, c.g, c.b, s.signal ? WIDTH[s.signal] : rimParams.idle);
         const e = f.o.matrixWorld.elements;
-        b.more.setXY(i, s.stock, liftExposure(e[12]!, e[13]!, e[14]!, Math.hypot(e[0]!, e[1]!, e[2]!)));
+        b.more.setXY(i, s.stock, liftExposure(e[12]!, e[13]!, e[14]!, Math.hypot(e[0]!, e[1]!, e[2]!)) * (s.aloft ? FIGHTERS_LIGHT : 1));
         if (shadow === "true") for (const e of f.o.matrixWorld.elements) casters.push(e);
       });
       b.n = list.length;

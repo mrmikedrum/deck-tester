@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { underClash } from "../reach";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,6 +27,7 @@ function check(model: TableModel, plan: TablePlan, label: string) {
     if (u.fighting) continue;
     const g = plan.hits.groups.find((x) => x.id === u.id);
     expect(g, `${label} ${u.id} has a hit group`).toBeDefined();
+    if (underClash(plan, g!)) continue;
     const b = bounds(g!.quad);
     const hit = hitTest(plan, { x: (b.l + b.r) / 2, y: (b.t + b.b) / 2 });
     expect(hit?.id, `${label} ${u.id} is reached in its place`).toBe(u.id);
