@@ -78,6 +78,7 @@ interface Tally {
   readonly others: readonly string[];
   /** Like creatures by name and figures, biggest groups first: "9 Beast 4/4". */
   readonly groups: readonly { readonly name: string; readonly n: number; readonly stats: string }[];
+  readonly commanderDamage: SeatFocusView["commanderDamage"];
 }
 
 const isBody = (c: Card): boolean => c.faceDown || /\bCreature\b/.test(c.face.type);
@@ -88,6 +89,26 @@ const has = (c: Card, k: string): boolean => c.keywords.some((w) => w.toLowerCas
  * creature does). A card that only lists what it makes (a rule card that hands out Treasure) is not counted. */
 const makesMana = (c: Card): boolean =>
   isLand(c) || (c.face.produces.length > 0 && !RULE_CARDS.has(c.name) && /(^|\n|— )\{T\}[^:\n]*: Add/.test(c.face.text));
+
+function commanderDamageOf(model: TableModel, seat: SeatId): SeatFocusView["commanderDamage"] {
+  const damage = model.seat(seat)?.commanderDamage;
+  if (!damage?.size) return [];
+  const remembered = [...model.commanders.values()].flat();
+  return [...damage]
+    .filter(([, amount]) => amount > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, amount]) => {
+      const card = model.cards.get(id) ?? remembered.find((c) => c.id === id);
+      const controller = card ? (model.seat(card.controller)?.name ?? card.controller) : null;
+      const remaining = 21 - amount;
+      return {
+        id,
+        source: card ? `${card.name} (${controller === "You" ? "Human seat" : controller})` : `Unknown commander #${id}`,
+        figure: `${amount} · ${remaining > 0 ? `${remaining} to lethal` : "Lethal"}`,
+        danger: amount >= 15,
+      };
+    });
+}
 
 function tally(model: TableModel, seat: SeatId): Tally {
   let creatures = 0, power = 0, untappedPower = 0, untapped = 0, fliers = 0, reach = 0, sources = 0, lands = 0, openSources = 0;
@@ -119,7 +140,7 @@ function tally(model: TableModel, seat: SeatId): Tally {
     }
   }
   const groups = [...by.values()].filter((g) => g.n > 1).sort((a, b) => b.n - a.n);
-  return { creatures, power, untappedPower, untapped, biggest, fliers, reach, sources, lands, openSources, others, groups };
+  return { creatures, power, untappedPower, untapped, biggest, fliers, reach, sources, lands, openSources, others, groups, commanderDamage: commanderDamageOf(model, seat) };
 }
 
 /** Seat summaries, counted once per model and seat: the plates and the focus read them every frame. */
@@ -267,10 +288,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
   const exile = picked(model, [...model.zone(seat, "exile")].reverse());
   const handIds = model.zone(seat, "hand");
   const hand = mine || s.handVisible ? picked(model, handIds) : Array.from({ length: s.hand }, () => ({ id: null, name: "A card in hand", image: null }));
-  const cmd = model.commanders.get(seat)?.[0];
-  const dealt = cmd && !mine ? (model.seat(me)?.commanderDamage.get(cmd.id) ?? 0) : null;
   const also = [
-    dealt !== null ? `Commander damage to you: ${dealt}` : null,
     s.poison ? `Poison ${s.poison}` : null,
     s.monarch ? "The monarch" : null,
     s.out ? "Out of the game" : null,
@@ -282,6 +300,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
     place: placeOf(model, seat),
     mine,
     lines,
+    commanderDamage: t.commanderDamage,
     graveyard,
     exile,
     hand,

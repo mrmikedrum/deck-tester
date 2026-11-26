@@ -99,13 +99,14 @@ export interface SeatFocusView {
   readonly place: SeatPlace;
   readonly mine: boolean;
   readonly lines: readonly { readonly icon: IconKind; readonly head: string; readonly sub: string | null; readonly none?: boolean }[];
+  readonly commanderDamage: readonly { readonly id: CardId; readonly source: string; readonly figure: string; readonly danger: boolean }[];
   readonly graveyard: readonly PickedCard[];
   readonly exile: readonly PickedCard[];
   /** An opponent's hand: backs (and any card shown face up); mine: the cards. */
   readonly hand: readonly PickedCard[];
   readonly handCount: number;
   readonly library: number;
-  /** "Commander damage to you: 0 · Poison 2 · The monarch". */
+  /** "Poison 2 · The monarch". */
   readonly also: string | null;
 }
 

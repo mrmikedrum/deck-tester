@@ -4,6 +4,7 @@
 // DOM: layers in its order, everything under the top one inert, keyboard focus into a new layer and back to the control
 // that opened it, and a scrim that dismisses only a press that started on it.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { seatFocusOf } from "../../src/app/seats";
 import { chromeRenderer } from "../../src/chrome";
 import type { ChromeIntent, ChromeRenderer, ChromeView } from "../../src/chrome";
 import {
@@ -23,6 +24,8 @@ import {
   view,
 } from "../../src/chrome/workbench/samples";
 import type { CardId } from "../../src/protocol";
+import { modelOf, seatId } from "../../src/model";
+import { catalog, corpusSnapshot, viewerOf } from "../model/fixtures";
 
 let root: HTMLElement, r: ChromeRenderer, sent: ChromeIntent[];
 
@@ -199,13 +202,13 @@ describe("the nameplates", () => {
     expect(plates()?.inert).toBe(true);
   });
   it("stay live over the nameplate focus: another plate is the way to another seat", () => {
-    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], graveyard: [], exile: [], hand: [], handCount: 4, library: 60, also: null };
+    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], commanderDamage: [], graveyard: [], exile: [], hand: [], handCount: 4, library: 60, also: null };
     show({ plates: [PLATE], layers: [{ layer: "seat", restore: "plate:Dack" }], seatFocus: focus });
     expect(plates()?.inert).toBe(false);
   });
   it("a nameplate focus's graveyard and exile open in full, from their headings or from the cards past those shown", () => {
     const yard = Array.from({ length: 8 }, (_, i) => ({ id: (400 + i) as CardId, name: `Card ${i}`, image: null }));
-    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], graveyard: yard, exile: [], hand: [], handCount: 4, library: 60, also: null };
+    const focus = { seat: "Dack", name: "Dack", life: 31, place: "right" as const, mine: false, lines: [], commanderDamage: [], graveyard: yard, exile: [], hand: [], handCount: 4, library: 60, also: null };
     show({ layers: [{ layer: "seat", restore: "plate:Dack" }], seatFocus: focus });
     expect($$(".l-seat .l-zone-open")).toHaveLength(1); // an empty exile has nothing to open
     click($(".l-seat .l-zone-open"));
@@ -215,6 +218,15 @@ describe("the nameplates", () => {
       { t: "zone", seat: "Dack", zone: "graveyard" },
       { t: "zone", seat: "Dack", zone: "graveyard" },
     ]);
+  });
+  it("shows commander damage from the corpus on the recipient's plate focus", () => {
+    const model = modelOf(corpusSnapshot("054-play-commander-damage.json"), catalog, viewerOf())!;
+    const layers = [{ layer: "seat" as const, restore: "plate:Dack" }];
+    show({ layers, seatFocus: seatFocusOf(model, seatId("Dack")) });
+    expect(texts(".commander-damage h4")).toEqual(["Commander damage"]);
+    expect(texts(".commander-damage li")).toEqual(["Marath, Will of the Wild (Human seat) · 9 · 12 to lethal"]);
+    show({ commit: 2, layers, seatFocus: seatFocusOf(model, seatId("You")) });
+    expect($(".commander-damage")).toBeNull();
   });
 });
 

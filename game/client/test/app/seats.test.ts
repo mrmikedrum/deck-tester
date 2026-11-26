@@ -6,7 +6,7 @@ import type { Box } from "../../src/app/seats";
 import { planTable, tableInputOf } from "../../src/layout";
 import type { TablePlan } from "../../src/layout";
 import { modelOf, seatId } from "../../src/model";
-import { card, catalog, corpusNames, corpusSnapshot, creature, land, tableOf, viewerOf } from "../model/fixtures";
+import { card, catalog, corpusNames, corpusSnapshot, creature, land, snapshotOf, tableOf, viewerOf } from "../model/fixtures";
 
 describe("the top row of nameplates", () => {
   const row = { t: 6, b: 50, l: 112, r: 1168 };
@@ -95,5 +95,42 @@ describe("a seat's summary", () => {
   it("is counted once per model and seat", () => {
     expect(summaryOf(model, atraxa)).toBe(summaryOf(model, atraxa));
     expect(platesOf(model, null, new Map(), 0, 820)).toBe(platesOf(model, null, new Map(), 0, 820));
+  });
+});
+
+describe("commander damage taken by a seat", () => {
+  const me = seatId("You"), atraxa = seatId("Atraxa");
+  const partners = [
+    creature(1, "Tymna the Weaver", "Dack", 2, 2, { commander: true }),
+    creature(2, "Thrasios, Triton Hero", "Dack", 1, 3, { commander: true }),
+  ];
+  const commander = creature(3, "Marath, Will of the Wild", "You", 3, 3, { commander: true, controller: "Princess" });
+
+  it("ranks distinct commanders, including partners, and flags damage near or beyond lethal", () => {
+    const model = tableOf({ seats: {
+      You: { commanderDamage: { 1: 15, 2: 22, 3: 14, 99: 0 } },
+      Dack: { command: partners, commanderDamage: { 3: 4 } },
+      Princess: { battlefield: [commander] },
+    } });
+    const damage = seatFocusOf(model, me)!.commanderDamage;
+    expect(damage).toEqual([
+      { id: 2, source: "Thrasios, Triton Hero (Dack)", figure: "22 · Lethal", danger: true },
+      { id: 1, source: "Tymna the Weaver (Dack)", figure: "15 · 6 to lethal", danger: true },
+      { id: 3, source: "Marath, Will of the Wild (Princess)", figure: "14 · 7 to lethal", danger: false },
+    ]);
+    expect(seatFocusOf(model, me)!.commanderDamage).toBe(damage);
+    expect(seatFocusOf(model, seatId("Dack"))!.commanderDamage).toMatchObject([{ id: 3, figure: "4 · 17 to lethal" }]);
+    expect(seatFocusOf(model, atraxa)!.commanderDamage).toEqual([]);
+  });
+
+  it("updates on a new model and keeps damage from absent commanders readable", () => {
+    const before = tableOf({ seats: { You: { commanderDamage: { 1: 20 } }, Dack: { command: partners } } });
+    const snap = snapshotOf({ seats: { You: { commanderDamage: { 1: 21, 99: 2 } } } });
+    const after = modelOf(snap, catalog, viewerOf(), before.commanders)!;
+    expect(seatFocusOf(before, me)!.commanderDamage).toMatchObject([{ figure: "20 · 1 to lethal" }]);
+    expect(seatFocusOf(after, me)!.commanderDamage).toEqual([
+      { id: 1, source: "Tymna the Weaver (Dack)", figure: "21 · Lethal", danger: true },
+      { id: 99, source: "Unknown commander #99", figure: "2 · 19 to lethal", danger: false },
+    ]);
   });
 });

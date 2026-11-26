@@ -4,6 +4,7 @@
 // lays the summary out in words, one line led by each icon, so the page teaches the plate, with the seat's zones picked
 // up as printed cards. Pure projections; each sends an act for play or an order for the app.
 import type { JSX } from "preact";
+import { useMemo } from "preact/hooks";
 import type { Send } from "./send";
 import { Close, onScrim } from "./sheet";
 import type { IconKind, PickedCard, PlateView, SeatFocusView } from "./view";
@@ -141,6 +142,21 @@ function ZoneHead({ label, n, open }: { label: string; n: number; open?: (() => 
   );
 }
 
+function CommanderDamage({ rows }: { rows: SeatFocusView["commanderDamage"] }): JSX.Element | null {
+  return useMemo(() => rows.length ? (
+    <section class="commander-damage">
+      <h4>Commander damage</h4>
+      <ul>
+        {rows.map((row) => (
+          <li key={row.id}>
+            {row.source} · <strong class={row.danger ? "danger" : undefined}>{row.figure}</strong>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : null, [rows]);
+}
+
 /** A nameplate opened: the seat in words, a line per icon; its zones picked up; the way to its board and back. */
 export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send: Send; style?: string }): JSX.Element {
   const openZone = (zone: "graveyard" | "exile") => () => send({ t: "zone", seat: v.seat, zone });
@@ -187,6 +203,7 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
                 <div class="l-library" style={`--n:${Math.min(12, Math.ceil(v.library / 6))}`} role="img" aria-label={`${v.library} cards in the library`} />
               </section>
             </div>
+            <CommanderDamage rows={v.commanderDamage} />
             {v.also ? <p class="also">{v.also}</p> : null}
           </div>
         </div>
