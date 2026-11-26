@@ -1113,7 +1113,7 @@ class SiftView implements PieceView {
   }
   look(v: ActorView): void {
     const d = v.draw as Extract<Draw, { t: "sift" }>;
-    this.card.look(0, 0, null, 0, d.tapped);
+    this.card.look(0, 0, v.mark, v.sample.glow, d.tapped);
     // (Turned as it lies, as far as it has risen.)
     this.card.obj.body.rotation.z = siftRoll(d.tapped, v.sample.alpha);
   }

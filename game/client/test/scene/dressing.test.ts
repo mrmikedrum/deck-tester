@@ -6,7 +6,7 @@ import { diff, modelOf } from "../../src/model";
 import type { TableModel } from "../../src/model";
 import { decodeSnapshot } from "../../src/protocol";
 import type { CardId } from "../../src/protocol";
-import { Stage } from "../../src/scene/stage";
+import { NO_FOCUS, Stage, describe as describeTable } from "../../src/scene/stage";
 import type { ActorView } from "../../src/scene/stage";
 import { catalog, rawCorpus, viewerOf } from "../model/fixtures";
 import { NO_CUES } from "./corpus";
@@ -62,5 +62,18 @@ describe("dressing", () => {
     // The unit it dresses counts its own card only.
     const host = r.view.actors.find((a) => a.draw.t === "unit" && a.draw.dressed.some((d) => d.card === RANCOR))!;
     expect(host.shown).toBe(1);
+  });
+
+  it("review: a lone host says when its attachment is offered, and wears the newcomer light when its Aura is new", () => {
+    const plan = planTable(tableInputOf(after, { viewport: VP, engine: { draw: true, decision: { kind: "targets", options: [RANCOR], draft: [] } } }));
+    const host = [...plan.seats.values()].flatMap((p) => p.units).find((u) => u.dressing.includes(RANCOR))!;
+    expect(host.members.length).toBe(1);
+    expect(host.cue).toBe("act");
+    const rest = planTable(tableInputOf(after, { viewport: VP, engine: { draw: true } }));
+    const d = describeTable({ model: after, plan: rest, cues: NO_CUES, focus: NO_FOCUS, hover: null, news: [RANCOR] });
+    const piece = [...d.pieces.values()].find((p) => p.draw.t === "unit" && p.members.includes(RANCOR))!;
+    expect(piece.draw).toMatchObject({ cue: "news", light: "forward" });
+    const offered = describeTable({ model: after, plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
+    expect([...offered.pieces.values()].find((p) => p.draw.t === "unit" && p.members.includes(RANCOR))!.draw).toMatchObject({ cue: "act" });
   });
 });

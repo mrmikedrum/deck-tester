@@ -12,6 +12,8 @@ import { catalog, rawCorpus, viewerOf } from "../model/fixtures";
 import { NO_FOCUS, SCRIM, Stage, chipsOf, describe, pickDrawn, poseQuad, siftRoll } from "../../src/scene/stage";
 import type { FocusTop, StageView } from "../../src/scene/stage";
 import { NO_CUES, corpusSteps, frameOf } from "./corpus";
+import type { CardId } from "../../src/protocol";
+import type { Mark } from "../../src/play";
 import type { Step } from "./corpus";
 
 const steps = corpusSteps().flat();
@@ -124,6 +126,17 @@ group("leaning in", () => {
 
 group("a sift", () => {
   const pile = board.plan.hits.groups.filter((g) => g.members.length > 1).sort((a, b) => b.members.length - a.members.length)[0]!;
+  it("keeps what the decision says of each card: an option, one chosen, one not offered (review: all looked alike)", () => {
+    const named = (g: { members: readonly CardId[] }) => new Set(g.members.map((id) => board.model.cards.get(id)?.name)).size;
+    const mixed = board.plan.hits.groups.filter((g) => g.members.length >= 3).sort((a, b) => named(b) - named(a))[0]!;
+    const [opt, sel, none] = mixed.members as [CardId, CardId, CardId];
+    const cues = { ...NO_CUES, marks: { ...NO_CUES.marks, cards: new Map<CardId, Mark>([[opt, "option"], [sel, "selected"]]) } };
+    const d = describe({ model: board.model, plan: board.plan, cues, focus: at({ layer: "sift", group: mixed.id }), hover: null });
+    const sifted = (id: CardId) => d.pieces.get(`sift:${id}`)!;
+    expect([sifted(opt).mark, sifted(sel).mark, sifted(none).mark]).toEqual(["option", "selected", null]);
+    expect([sifted(opt).look.glow, sifted(sel).look.glow, sifted(none).look.glow]).toEqual([1, 1, 0]);
+  });
+
   it("fans the group's cards out over a shade, each its own tap; a tap off them reaches nothing", () => {
     const d = describe({ model: board.model, plan: board.plan, cues: NO_CUES, focus: at({ layer: "sift", group: pile.id }), hover: null });
     const cards = [...d.pieces.values()].filter((p) => p.draw.t === "sift");
