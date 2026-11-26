@@ -257,6 +257,7 @@ export function planTable(input: TableInput): TablePlan {
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
   const geo = makeGeo(projector, reserve, FLOOR.mine);
+  const tapped = new Set(inputs.flatMap((i) => i.board.cards.filter((c) => c.tapped).map((c) => c.id)));
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
   // open middle the pages leave (so it moves when they do), and the fight in the open middle's foot, clear of both. A
   // stack card off the safe area is drawn but not audited.
@@ -266,28 +267,33 @@ export function planTable(input: TableInput): TablePlan {
     const staying = [...plans.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine).filter((x) => !row.has(x.group))), ...stack.map((s) => s.shape)];
     // With the engine's table, the fight is a gathering (one placement); otherwise mat's combat row (candidates).
     const gathered =
-      combat && row.size && drawn >= 0 ? gathering({ combat, plans, perspective: input.seats[0]!.seat, projector, reserve, middle: openMiddle(tpl, projector, plans, geo.u), u: geo.u }) : null;
+      combat && fight.size && drawn >= 0
+        ? gathering({ combat, plans, perspective: input.seats[0]!.seat, projector, reserve, middle: openMiddle(tpl, projector, plans, geo.u), u: geo.u, tapped: (id) => tapped.has(id) })
+        : null;
     const options = gathered
       ? [gathered.plans]
       : combat && row.size
         ? combatRow({ combat, plans, perspective: input.seats[0]!.seat, projector, geo, middle: openMiddle(tpl, projector, plans, geo.u), obstacles: staying })
         : [plans];
     const only = (x: Shape): boolean => x.kind !== "stack" || stack.some((s) => s.shape === x && s.onScreen && !s.spilled);
-    let best: { shapes: Shape[]; v: Violation[]; placed: SeatPlan[] } | null = null;
+    let best: { shapes: Shape[]; v: Violation[]; placed: SeatPlan[]; row: Set<string> } | null = null;
     for (const placed of options) {
       let shapes = [...placed.flatMap((p, i) => seatShapes(projector, p, inputs[i]!.board.mine)), ...stack.map((s) => s.shape)];
       let v: Violation[];
-      if (gathered) {
-        // The gathering is audited apart, as a focus is: the table under it with it set aside, and its own cards among
-        // themselves. As a focus it is drawn and reached over the whole table.
-        const fighting = (x: Shape) => row.has(x.group);
+      // The units in the fight's container: what the gathering placed (a fighter it had no room for stays on its page,
+      // audited and reached there), or mat's combat row.
+      const inRow = gathered ? new Set(placed.flatMap((p) => p.units.filter((un) => un.fighting).map((un) => un.id))) : row;
+      if (gathered?.focus) {
+        // A focus is audited apart: the table under it with it set aside, and its own cards among themselves. It is drawn
+        // and reached over the whole table.
+        const fighting = (x: Shape) => inRow.has(x.group);
         v = [...audit(shapes.filter((x) => !fighting(x)), vp, { area, only }), ...audit(shapes.filter(fighting), vp, { area })];
-        if (gathered.focus) shapes = shapes.map((x) => (fighting(x) ? { ...x, order: x.order + FOCUS_ORDER } : x));
+        shapes = shapes.map((x) => (fighting(x) ? { ...x, order: x.order + FOCUS_ORDER } : x));
       } else v = audit(shapes, vp, { area, only });
-      if (!best || v.length < best.v.length) best = { shapes, v, placed };
+      if (!best || v.length < best.v.length) best = { shapes, v, placed, row: inRow };
       if (!v.length) break;
     }
-    return { stack, row, ...best! };
+    return { stack, ...best! };
   };
   // Where seats collide, or the stack covers a seat's cards, fold the offending seats harder; down to the last resort,
   // which cannot collide with a neighbour more than a single card does.

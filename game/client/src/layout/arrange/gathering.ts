@@ -1,14 +1,16 @@
 // The gathering (§2.8, `clash`): every creature in a fight leaves its place for one container, as formations: each
 // attacking unit with its blockers in front of it (between it and who it attacks), in the order the attackers stood.
-// When I am in the combat it is a focus: the formations stand on a plane carried toward the eye, so they read larger and
-// over the dimmed table, at the largest step at which they fit one tier, then two; between opponents it stays at table
-// size in the open middle. One placement, never a search over candidates: what cannot fit fights from its page.
+// When I am in the combat (attacking, attacked, or blocking) it is a focus: the formations stand on a plane carried toward
+// the eye, so they read larger and over the dimmed table, at the largest step at which they all fit one tier, then two;
+// otherwise, and between opponents, it stays at table size in the open middle, covering no page. One placement, never a
+// search over candidates: what cannot fit fights from its page, where it is reached (a fighter the arrangement engine
+// left in its entry summary comes out as its own unit when it has room here, and is chosen in that summary otherwise).
 import { reserved } from "../reservations";
 import type { Reservations } from "../reservations";
 import { fightUnits, fighters } from "../combat";
 import type { CombatPairs, Middle } from "../combat";
 import type { Projector } from "../projector";
-import type { SeatPlan, Unit } from "../seat";
+import type { SeatPlan, Unit, UnitId } from "../seat";
 import { CH, CW, TAP_LEAN } from "../seat/geometry";
 import type { CardId, SeatId, V3 } from "../types";
 import { S_TABLE } from "./scale";
@@ -22,6 +24,8 @@ export interface GatherInput {
   /** The open middle (design units): where the gathering stands between opponents. */
   readonly middle: Middle;
   readonly u: number;
+  /** Whether a card is tapped (a fighter taken out of a summary stands as its card does). */
+  readonly tapped: (id: CardId) => boolean;
 }
 
 export interface Gathering {
@@ -53,7 +57,18 @@ const add = (a: V3, b: V3, k: number): V3 => ({ x: a.x + b.x * k, y: a.y + b.y *
 
 export function gathering(input: GatherInput): Gathering {
   const { combat, plans, projector: proj, perspective, u } = input;
-  const units = fightUnits(plans, fighters(combat));
+  const want = fighters(combat);
+  const units = fightUnits(plans, want);
+  // A fighter held in a unit of several (the engine's entry summary, for actors past every place) stands here as its own.
+  const carved = new Map<UnitId, { readonly from: UnitId; readonly seat: SeatId }>();
+  for (const id of want)
+    for (const p of plans) {
+      const holder = units.has(id) ? undefined : p.units.find((un) => un.members.length > 1 && un.members.includes(id));
+      if (!holder) continue;
+      const unit: Unit = { id: `fight:${id}`, role: "creature", kind: "card", members: [id], dressing: [], top: id, title: null, mixed: false, acting: true, tapped: input.tapped(id), placement: holder.placement };
+      units.set(id, { unit, seat: p.seat });
+      carved.set(unit.id, { from: holder.id, seat: p.seat });
+    }
   const none: Gathering = { plans: [...plans], step: 1, tiers: 0, focus: false, left: [] };
   if (!units.size) return none;
   // Formations: one per attacking unit, its blockers' units in front of it.
@@ -73,7 +88,9 @@ export function gathering(input: GatherInput): Gathering {
   // In the order they stood: blockers come to the attackers, never the attackers trading places.
   const seenX = (un: Unit): number => proj.project(un.placement.pos).x;
   forms.sort((x, y) => seenX(x.k) - seenX(y.k) || (x.k.id < y.k.id ? -1 : 1));
-  const mine = [...units.values()].some((f) => f.seat === perspective);
+  // Mine when I fight in it or am attacked (a planeswalker attacked is its controller's).
+  const seatOf = (card: CardId) => plans.find((p) => p.units.some((un) => un.members.includes(card)))?.seat;
+  const mine = [...units.values()].some((f) => f.seat === perspective) || combat.attacks.some((a) => ("seat" in a.defender ? a.defender.seat : seatOf(a.defender.card)) === perspective);
   const mineAtk = forms[0]!.from === perspective;
   const blocked = forms.some((f) => f.bs.length > 0);
 
@@ -145,24 +162,25 @@ export function gathering(input: GatherInput): Gathering {
     return { step, h, area, bands, m };
   };
 
-  let kept = [...forms];
-  const tryAll = (fs: readonly Formation[]): Laid | null => {
-    if (mine)
-      for (const tiers of [1, 2])
-        for (const step of STEPS) {
-          const l = fit(fs, focusArea, step, tiers);
-          if (l && l.h >= FOCUS_CLEAR) return l;
-        }
-    return fit(fs, mine ? focusArea : tableArea, mine ? STEPS.at(-1)! : TABLE_STEP, 2);
+  // A focus only when every formation fits it: one it covered would leave a fighter under it, out of reach.
+  const focusFit = (fs: readonly Formation[]): Laid | null => {
+    for (const tiers of [1, 2])
+      for (const step of STEPS) {
+        const l = fit(fs, focusArea, step, tiers);
+        if (l && l.h >= FOCUS_CLEAR) return l;
+      }
+    return fit(fs, focusArea, STEPS.at(-1)!, 2);
   };
-  let laid = tryAll(kept);
+  let kept = [...forms];
+  const focus = mine ? focusFit(kept) : null;
+  let laid: Laid | null = focus ?? fit(kept, tableArea, TABLE_STEP, 2);
   // What has no room fights from its page: the widest formation first (the rest keep their order).
   while (!laid && kept.length > 1) {
     const widest = kept.reduce((a, b) => ([b.k, ...b.bs].length > [a.k, ...a.bs].length ? b : a));
     kept = kept.filter((f) => f !== widest);
-    laid = tryAll(kept);
+    laid = fit(kept, tableArea, TABLE_STEP, 2);
   }
-  if (!laid) return { ...none, left: [...units.keys()] };
+  if (!laid) return { ...none, left: [...want] };
 
   // Place each band centred across; in a band the near row stands at its foot and the far row behind it (the
   // attackers' row is the far one unless the attackers are mine).
@@ -186,11 +204,30 @@ export function gathering(input: GatherInput): Gathering {
       x += w + GAP_PX;
     }
   }
-  const moved = plans.map((p) =>
-    p.units.some((un) => placed.has(un.id))
-      ? { ...p, units: p.units.map((un) => (placed.has(un.id) ? { ...un, fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const } } : un)) }
-      : p,
-  );
+  const standing = (un: Unit): Unit => ({ ...un, fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const } });
+  const moved = plans.map((p) => {
+    const out = [...units.values()].filter((f) => f.seat === p.seat && carved.has(f.unit.id) && placed.has(f.unit.id)).map((f) => f.unit);
+    if (!out.length && !p.units.some((un) => placed.has(un.id))) return p;
+    // the carved fighters leave the units that held them (an emptied one is gone)
+    const gone = new Map<UnitId, Set<CardId>>();
+    for (const un of out) {
+      const from = carved.get(un.id)!.from;
+      gone.set(from, new Set([...(gone.get(from) ?? []), un.top]));
+    }
+    const units2: Unit[] = [];
+    for (const un of p.units) {
+      const g = gone.get(un.id);
+      if (!g) units2.push(placed.has(un.id) ? standing(un) : un);
+      else {
+        const members = un.members.filter((id) => !g.has(id));
+        if (members.length) units2.push({ ...un, members, top: g.has(un.top) ? members[0]! : un.top, title: un.kind === "summary" ? `All ${members.length}` : un.title });
+      }
+    }
+    units2.push(...out.map(standing));
+    const home = new Map(p.home);
+    for (const un of out) home.set(un.top, un.id);
+    return { ...p, units: units2, home };
+  });
   const inside = new Set(kept.flatMap((f) => [f.k, ...f.bs]).flatMap((un) => un.members));
-  return { plans: moved, step: laid.step, tiers: laid.bands.length, focus: mine, left: [...units.keys()].filter((id) => !inside.has(id)) };
+  return { plans: moved, step: laid.step, tiers: laid.bands.length, focus: focus !== null, left: [...want].filter((id) => !inside.has(id)) };
 }
