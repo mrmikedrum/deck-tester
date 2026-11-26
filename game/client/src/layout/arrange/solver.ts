@@ -247,8 +247,8 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   // The moment's cards step out of the piles they would fold into, as many as the space holds, in the acting rank: on my
   // side while I choose, what the decision offers (§2.6: a land to pay with is tapped where it lies, not found in a
   // pile); anywhere, what the stack aims at. Never at another card's cost: what rest shows (alone, on top, or in a block
-  // of its copies) stays shown where it is, so nothing sits down, shifts over or is swallowed by a pile. What does not step out folds as at
-  // rest, lit, and its pile opens with it.
+  // of its copies) stays where it is, so nothing sits down, shifts over or is swallowed by a pile. What does not step
+  // out folds as at rest, lit, and its pile opens with it.
   const aimed = input.acting.aimed ?? NONE;
   const movable = groups.filter((g) => !g.pinned && g.members.some((id) => aimed.has(id) || (ctx.mine && input.acting.choosing && input.acting.offered.has(id))));
   let cand: Candidate;
@@ -260,19 +260,27 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
       const moved = new Set(out.flatMap((g) => g.members)), now = shownIn(x);
       return [...shown].every(([id, at]) => moved.has(id) || now.get(id) === at);
     };
-    cand = attempt(new Set(movable.map((g) => g.key)));
-    if (!fits(cand, movable)) {
-      // The acting rank: what rest hides among unlike cards first (a copy in its block is already one tap), then the
-      // policy's importance, then the oldest. The longest prefix that still fits steps out (a bounded halving search).
-      const hides = new Set(rest.units.filter((y) => y.kind === "fan" || y.kind === "summary").flatMap((y) => y.members));
-      const ranked = [...movable].sort((a, b) => Number(!a.members.some((id) => hides.has(id))) - Number(!b.members.some((id) => hides.has(id))) || b.imp - a.imp || a.arrival - b.arrival || cmp(a.key, b.key));
-      let lo = 0, hi = ranked.length - 1, best = rest;
-      while (lo < hi) {
-        const k = Math.ceil((lo + hi) / 2), x = attempt(new Set(ranked.slice(0, k).map((g) => g.key)));
-        if (fits(x, ranked.slice(0, k))) [lo, best] = [k, x];
-        else hi = k - 1;
+    // The acting rank: what rest hides among unlike cards first (a copy in its block is already one tap), then the
+    // policy's importance, then the oldest. The longest prefix that still fits steps out: the first alone (where even it
+    // finds no place, as on most full boards, nothing does), then all, then a halving search between.
+    const hides = new Set(rest.units.filter((y) => y.kind === "fan" || y.kind === "summary").flatMap((y) => y.members));
+    const ranked = [...movable].sort((a, b) => Number(!a.members.some((id) => hides.has(id))) - Number(!b.members.some((id) => hides.has(id))) || b.imp - a.imp || a.arrival - b.arrival || cmp(a.key, b.key));
+    const keys = (k: number): Set<string> => new Set(ranked.slice(0, k).map((g) => g.key));
+    const first = attempt(keys(1));
+    if (!fits(first, ranked.slice(0, 1))) cand = rest;
+    else if (ranked.length === 1) cand = first;
+    else {
+      const all = attempt(keys(ranked.length));
+      if (fits(all, ranked)) cand = all;
+      else {
+        let lo = 1, hi = ranked.length - 1, best = first;
+        while (lo < hi) {
+          const k = Math.ceil((lo + hi) / 2), x = attempt(keys(k));
+          if (fits(x, ranked.slice(0, k))) [lo, best] = [k, x];
+          else hi = k - 1;
+        }
+        cand = best;
       }
-      cand = best;
     }
   }
 
