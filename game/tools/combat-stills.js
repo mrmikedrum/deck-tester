@@ -52,6 +52,8 @@ const dealt = (v, phase, combat = true) => {
   me.graveyard = [...(me.graveyard || []), me.battlefield[i]];
   me.battlefield.splice(i, 1);
   e.view.combat = combat ? { ...e.view.combat, blockers: e.view.combat.blockers.filter((b) => b.id !== 1057) } : null;
+  // Forge's log of the blow (the plaque reads what was dealt from it)
+  e.view.log = [...(e.view.log || []), { i: 100000, type: "DAMAGE", text: "Tekuthal, Inquiry Dominus (1169) deals 3 combat damage to You.", card: 1169 }];
   e.v = v;
   return e;
 };
