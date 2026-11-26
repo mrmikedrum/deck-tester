@@ -72,6 +72,21 @@ function withoutCreature(env: Record<string, unknown>): Record<string, unknown> 
   return e;
 }
 
+/** The same table in a fight between opponents: the first opponent with four creatures attacks the next with them. */
+function inFight(env: Record<string, unknown>): Record<string, unknown> {
+  type W = { id: number; type?: string; tapped?: boolean };
+  const e = structuredClone(env) as { view: { players: { name: string; battlefield?: W[] }[]; [k: string]: unknown }; v?: number };
+  const others = e.view.players.slice(1);
+  const by = others.find((p) => (p.battlefield ?? []).filter((c) => /Creature/.test(c.type ?? "")).length >= 4);
+  const at = others.find((p) => p !== by);
+  if (!by || !at) return env;
+  const attackers = (by.battlefield ?? []).filter((c) => /Creature/.test(c.type ?? "")).slice(0, 4);
+  for (const c of attackers) c.tapped = true;
+  Object.assign(e.view, { active: by.name, priority: by.name, phase: "COMBAT_DECLARE_ATTACKERS", combat: { ordinal: 1, attackers: attackers.map((c) => ({ id: c.id, defender: at.name, blocked: false })), blockers: [], damage: [] } });
+  e.v = Number(e.v ?? 0) + 2;
+  return e;
+}
+
 interface Stats {
   readonly median: number;
   readonly p90: number;
@@ -129,6 +144,14 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   const b = modelFrom(withoutCreature(t.envelope), t.catalog);
   const planA = planTable(tableInputOf(a, { viewport: VIEWPORT, memory: null }));
   const planB = planTable(tableInputOf(b, { viewport: VIEWPORT, memory: planA.memory }));
+  // The engine's table at rest, and in a moment: a fight between opponents (its attackers lit, the attacking seat's
+  // others with their light out) with one newcomer's news.
+  const engine = { draw: true } as const;
+  const planR = planTable(tableInputOf(a, { viewport: VIEWPORT, memory: null, engine }));
+  const c = modelFrom(inFight(t.envelope), t.catalog);
+  const planC = planTable(tableInputOf(c, { viewport: VIEWPORT, memory: planR.memory, engine }));
+  const news = [...c.cards.values()].filter((x) => x.zone === "battlefield" && x.controller !== c.viewer.perspective).slice(-1).map((x) => x.id);
+  let alt: { model: TableModel; plan: typeof planA; news?: readonly CardId[] } | null = null;
   const canvas = root.querySelector<HTMLCanvasElement>("#stage")!;
   const scene: SceneHandle = createScene({ canvas, viewport: VIEWPORT, dpr: globalThis.devicePixelRatio || 1 });
   await scene.ready();
@@ -155,9 +178,9 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   let pending: ChangeSet[] = [];
   let atB = false;
   const show = (hl: boolean): SceneReport => {
-    const model = atB ? b : a;
+    const model = alt ? alt.model : atB ? b : a;
     const r = scene.show(
-      { model, plan: atB ? planB : planA, changes: pending, mode, cues: NO_CUES, focus: NO_FOCUS, moments: [], hover: null, commit: ++commit, ...(hl ? { highlight } : {}) },
+      { model, plan: alt ? alt.plan : atB ? planB : planA, changes: pending, mode, cues: NO_CUES, focus: NO_FOCUS, moments: [], hover: null, commit: ++commit, ...(hl ? { highlight } : {}), ...(alt?.news ? { news: alt.news } : {}) },
       now(),
     );
     mode = "animate";
@@ -257,6 +280,20 @@ export async function renderBench(root: HTMLElement): Promise<void> {
       }),
     );
     atB = false;
+    await settle();
+    // The engine's table (as the app draws it), at rest and in a moment's light.
+    alt = { model: a, plan: planR };
+    mode = "cut";
+    await settle();
+    $("r-status").textContent = "Timing the engine's table at rest…";
+    add(await time("rest · engine", "the engine's table at rest, as the app draws it", () => (show(false), true)));
+    alt = { model: c, plan: planC, news };
+    mode = "cut";
+    await settle();
+    $("r-status").textContent = "Timing a moment's light…";
+    add(await time("moment light · engine", "a fight between opponents: four attackers lit, the attacking seat's others with their light out, a newcomer's news", () => (show(false), true)));
+    alt = null;
+    mode = "cut";
     await settle();
     // Keep the earlier 1.5×/MSAA timing scenarios alongside the native-resolution policy.
     const variants: [string, Partial<Quality>][] = [
