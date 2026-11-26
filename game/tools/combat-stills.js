@@ -255,6 +255,11 @@ const MOMENTS = {
     what: "Marath attacks Dack with four; Dack Fayden blocks Marath: one duel in the parted middle, the rest laned",
     env: fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015]], priority: "Marath" }),
   },
+  "duel-stack-aside": {
+    what: "Marath attacks Dack with four, Dack Fayden blocks Marath, three spells set aside: the stack rests beside the duel",
+    env: Object.assign(fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015]], priority: "Marath" }), { view: { ...withStack(19).view, active: "Marath", priority: "Marath", phase: "COMBAT_DECLARE_BLOCKERS", combat: fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015]], priority: "Marath" }).view.combat } }),
+    keys: ["Escape"],
+  },
   "opponents-duels": {
     what: "Marath attacks Dack with four; Dack blocks two: two duels in the parted middle",
     env: fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015], [1129, 1064]], priority: "Marath" }),
