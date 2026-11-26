@@ -479,7 +479,8 @@ export interface CardState {
   stock: number;
   readonly transparent: boolean;
   readonly order: number;
-  readonly shadow: boolean;
+  /** Throws a shadow (off for a fighter on the clash's plane, whose shadow would land far off on the table). */
+  shadow: boolean;
 }
 
 export interface CardKit {

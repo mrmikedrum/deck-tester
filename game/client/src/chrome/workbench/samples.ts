@@ -261,6 +261,7 @@ export function view(more: Partial<ChromeView> = {}, w = 1180, h = 820): ChromeV
     layers: [],
     plates: [],
     seatFocus: null,
+    clash: null,
     chips: [],
     inspector: null,
     mulligan: null,

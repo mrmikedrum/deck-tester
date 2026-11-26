@@ -1,0 +1,111 @@
+// Stills of combat moments on the design pass's turn-15 table (tests/fixtures/boards/design-pass.json), for judging the
+// clash by eye against docs/game-client-architecture.md's combat section. Each moment is one envelope on the scripted
+// transport, then the taps it names (a block draft), then a screenshot once the table is settled.
+//   npx vite build && node tools/combat-stills.js <outdir> [only,names]
+const fs = require("fs"), path = require("path");
+const { chromium } = require("playwright");
+const { serve } = require("./serve.js");
+
+const design = JSON.parse(fs.readFileSync(path.join(__dirname, "../../tests/fixtures/boards/design-pass.json"), "utf8"));
+const clone = (v) => JSON.parse(JSON.stringify(v));
+const base = () => clone(design.stages.find((s) => s.turn === 15).envelope);
+
+// Atraxa's six (Atraxa, Steel Overseer, Chrome Host Seedshark, Tekuthal, Brimaz, Phyrexian Metamorph), and my blockers.
+const ATRAXA6 = [1019, 1041, 1117, 1169, 1221, 1072];
+const BLOCKS4 = [[1057, 1041], [1141, 1117], [1089, 1019], [1027, 1221]];
+const MINE = [1010, 1027, 1057, 1089, 1090, 1141, 1142];
+
+/** The turn-15 table in a combat: `active` attacks with `attackers` ([id, defender]), `blockers` ([blocker, attacker]). */
+function fight({ active, attackers, blockers = [], phase = "COMBAT_DECLARE_BLOCKERS", priority = "You", tap = true, decision = null, edit }) {
+  const e = base();
+  e.v = 20;
+  const seat = (n) => e.view.players.find((p) => p.name === n);
+  const card = (id) => e.view.players.flatMap((p) => p.battlefield).find((c) => c.id === id);
+  if (tap) for (const [id] of attackers) if (!/Vigilance/.test(card(id).text || "")) card(id).tapped = true;
+  e.view = { ...e.view, active, priority, phase, combat: { attackers: attackers.map(([id, defender]) => ({ id, defender })), blockers: blockers.map(([id, blocking]) => ({ id, blocking })) } };
+  if (decision) e.decision = { gen: 1, turn: `T15 ${phase.toLowerCase()}`, repeat: false, mine: active === "You", ...decision };
+  if (edit) edit(e, seat, card);
+  return e;
+}
+
+/** My block decision against `attackers`: every untapped creature of mine may block each. */
+function blockDecision(attackers) {
+  const refs = [];
+  for (const m of MINE) for (const [a] of attackers) refs.push({ card: m, blocks: a });
+  return { id: 7, kind: "block", prompt: "Declare blockers", options: refs.map(() => "block"), refs, min: 0, max: refs.length };
+}
+/** My attack decision: each untapped creature of mine at each opponent. */
+function attackDecision() {
+  const refs = [];
+  for (const m of MINE) for (const to of ["Marath", "Atraxa", "Dack"]) refs.push({ card: m, to });
+  return { id: 8, kind: "attack", prompt: "Declare attackers", options: refs.map(() => "attack"), refs, min: 0, max: refs.length };
+}
+
+const atraxa6 = ATRAXA6.map((id) => [id, "You"]);
+const MOMENTS = {
+  "attacked-by-six": { what: "Atraxa attacks me with six; no blocks yet, nothing to decide", env: fight({ active: "Atraxa", attackers: atraxa6, priority: "Atraxa" }) },
+  "choosing-blocks": {
+    what: "My block decision: Master of Waves on Steel Overseer, Mulldrifter on Chrome Host Seedshark, Meloku held",
+    env: fight({ active: "Atraxa", attackers: atraxa6, decision: blockDecision(atraxa6) }),
+    taps: [1057, 1041, 1141, 1117, 1089],
+  },
+  "blocks-declared": { what: "The owner's still, redone: four of mine block, Tekuthal and Phyrexian Metamorph unblocked", env: fight({ active: "Atraxa", attackers: atraxa6, blockers: BLOCKS4, priority: "Atraxa", phase: "COMBAT_DECLARE_BLOCKERS" }) },
+  "my-attack-choosing": { what: "My attack decision: Meloku, Master of Waves and Faerie Mastermind picked at Marath", env: fight({ active: "You", attackers: [], phase: "COMBAT_DECLARE_ATTACKERS", tap: false, decision: attackDecision() }), taps: [1089, 1057, 1027] },
+  "my-attack-blocked": {
+    what: "I attack Marath with four; Marath blocks Meloku with Herd Baloth and Master of Waves with a Beast",
+    env: fight({ active: "You", attackers: [[1089, "Marath"], [1057, "Marath"], [1027, "Marath"], [1090, "Marath"]], blockers: [[1064, 1089], [1066, 1057]], priority: "You" }),
+  },
+  "opponents-fight": {
+    what: "Marath attacks Dack with four; Dack blocks two (the clash, until duels fit the middle)",
+    env: fight({ active: "Marath", attackers: [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]], blockers: [[1024, 1015], [1129, 1064]], priority: "Marath" }),
+  },
+  "opponents-attack": { what: "Marath attacks Dack with four, no blocks yet: the table form", env: fight({ active: "Marath", attackers: [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]], phase: "COMBAT_DECLARE_ATTACKERS", priority: "Marath" }) },
+  "split-attack": {
+    what: "Atraxa attacks me with three and Dack with two; I block one, Dack blocks one (three rows)",
+    env: fight({ active: "Atraxa", attackers: [[1019, "You"], [1041, "You"], [1169, "You"], [1117, "Dack"], [1221, "Dack"]], blockers: [[1089, 1041], [1129, 1117]], priority: "Atraxa" }),
+  },
+};
+
+async function settle(page, ms = 20000) {
+  for (let calm = 0, end = Date.now() + ms; Date.now() < end && calm < 6; ) {
+    calm = (await page.evaluate(() => window.__deckmaster.settled() && window.__deckmaster.art.pending() === 0)) ? calm + 1 : 0;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+/** Tap the middle of the hit group holding this card. */
+async function tapCard(page, card) {
+  const g = await page.evaluate((c) => window.__deckmaster.hits().filter((h) => h.members.includes(c)).sort((a, b) => b.order - a.order)[0], card);
+  if (!g) throw new Error(`no hit group for ${card}`);
+  const x = g.quad.reduce((t, p) => t + p.x, 0) / 4, y = g.quad.reduce((t, p) => t + p.y, 0) / 4;
+  await page.mouse.click(x, y);
+  await settle(page, 4000);
+}
+
+(async () => {
+  const [outDir = "combat-stills", onlyArg] = process.argv.slice(2);
+  const only = onlyArg ? new Set(onlyArg.split(",")) : null;
+  fs.mkdirSync(outDir, { recursive: true });
+  const { base: url, server } = await serve(0, { dist: true });
+  const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+  try {
+    for (const [name, m] of Object.entries(MOMENTS)) {
+      if (only && !only.has(name)) continue;
+      const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, baseURL: url });
+      const page = await ctx.newPage();
+      page.on("pageerror", (e) => console.error(name, String(e)));
+      await page.route("**/still-scenario.json", (r) => r.fulfill({ json: { catalog: design.catalog, envelopes: [m.env] } }));
+      await page.goto("index.html?script=still-scenario.json");
+      await page.waitForFunction(() => window.__deckmaster && window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
+      await settle(page);
+      for (const c of m.taps ?? []) await tapCard(page, c);
+      await settle(page);
+      await page.screenshot({ path: path.join(outDir, `${name}.jpg`), type: "jpeg", quality: 88 });
+      console.log(`${name}: ${m.what}`);
+      await ctx.close();
+    }
+  } finally {
+    await browser.close();
+    server.close();
+  }
+})();

@@ -351,8 +351,12 @@ export interface Description {
   readonly aims: readonly Aim[];
   /** The table's light: 1, or dimmed under a sift. */
   readonly tableTone: number;
-  /** The scrim over the table while the stack is the focus (its alpha), 0 for none. */
+  /** The scrim over the table while a focus is up (the stack, the clash: its alpha), 0 for none. */
   readonly scrim: number;
+  /** The clash's calm ground on screen (CSS px), under its fighters and over the shaded table, or null. */
+  readonly ground: Rect | null;
+  /** The clash's fighters, standing on its plane: they throw no shadow on the table below. */
+  readonly aloft: ReadonlySet<string>;
   /** The pieces drawn above the scrim, in their own places: the stack's cards and what they aim at. */
   readonly above: ReadonlySet<string>;
   /** The pieces stepped out of the light (the stack's and what they aim at, or what the app asked for), and the look. */
@@ -472,6 +476,17 @@ export interface StrikeView {
   readonly seed: number;
 }
 
+/** The clash's ground as drawn: a rect on screen (CSS px), its soft edge, tone and alpha. */
+export interface FocusGround {
+  readonly l: number;
+  readonly t: number;
+  readonly r: number;
+  readonly b: number;
+  readonly feather: number;
+  readonly colour: number;
+  readonly alpha: number;
+}
+
 export interface StageView {
   readonly actors: readonly ActorView[];
   readonly ghosts: readonly GhostView[];
@@ -483,6 +498,10 @@ export interface StageView {
   readonly tableTone: number;
   /** The scrim's alpha this frame (it eases in and out), and the pieces drawn above it (with the aims). */
   readonly scrim: number;
+  /** The clash's calm ground this frame (eased with the scrim), or null. */
+  readonly ground?: FocusGround | null;
+  /** Pieces standing on the clash's plane: no shadow on the table. */
+  readonly aloft?: ReadonlySet<string>;
   readonly above: ReadonlySet<string>;
   /** The frame's time, ms (the effects' clock), and whether motion is reduced (effects hold still, particles go). */
   readonly now: Ms;

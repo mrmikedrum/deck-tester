@@ -1419,6 +1419,143 @@
     outline-offset: 3px;
   }
 
+  /* A plate's tally in a combat: the unblocked power coming at it, red at me, gold when my attack is at it, the
+     attacker's ink between opponents. The attacking seat's plate wears a thin rule in its ink. */
+  .l-plate .tally {
+    align-self: center;
+    margin-left: calc(6 * var(--u));
+    padding: calc(2 * var(--u)) calc(7 * var(--u));
+    border-radius: 4px;
+    background: #9c1f24;
+    color: #fff4dc;
+    box-shadow: 0 0 0 1.5px #2a0a08, 0 3px 8px rgba(0, 0, 0, 0.45);
+    font: 700 calc(19 * var(--u)) var(--ui);
+    white-space: nowrap;
+  }
+  .l-plate .tally.gold {
+    background: #e0a62c;
+    color: #1a0f05;
+  }
+  .l-plate .tally.ink {
+    background: color-mix(in srgb, var(--tally-ink) 75%, #1a110a);
+  }
+  .l-plate.attacking .bronze {
+    box-shadow: var(--plaque-shadow), var(--btn-edge), inset 0 -3px 0 var(--seat);
+  }
+
+  /* ---- The clash: plaques, brands and clasps over the fight ------------------------------------------------------ */
+  /* Quiet on purpose: ink on vellum for the words, a fine ring for the brand, a small bronze clasp. Under the plates
+     and the prompt, over the table; none takes a tap. */
+  .l-clash {
+    position: absolute;
+    inset: 0;
+    z-index: 55;
+    pointer-events: none;
+  }
+  .l-clash-plaque {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    max-width: calc(100% - 32px);
+    padding: calc(3 * var(--u)) calc(16 * var(--u));
+    border-radius: 4px;
+    background: var(--sheet);
+    box-shadow: inset 0 0 0 1px rgba(60, 40, 15, 0.55), 0 2px 0 #8a7050, 0 6px 14px rgba(0, 0, 0, 0.35);
+    color: var(--ink);
+    font: 400 calc(18 * var(--u)) / 1.2 var(--serif);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: l-clash-in 250ms ease-out both;
+  }
+  .l-clash-plaque.danger {
+    box-shadow: inset 0 0 0 1px rgba(60, 40, 15, 0.55), inset 0 -2px 0 #9c1f24, 0 2px 0 #8a7050, 0 6px 14px rgba(0, 0, 0, 0.35);
+  }
+  .l-clash-plaque.gold {
+    box-shadow: inset 0 0 0 1px rgba(60, 40, 15, 0.55), inset 0 -2px 0 #e0a62c, 0 2px 0 #8a7050, 0 6px 14px rgba(0, 0, 0, 0.35);
+  }
+  .l-clash-plaque.ink {
+    box-shadow: inset 0 0 0 1px rgba(60, 40, 15, 0.55), inset 0 -2px 0 var(--seat), 0 2px 0 #8a7050, 0 6px 14px rgba(0, 0, 0, 0.35);
+  }
+  .l-clash-clasp {
+    position: absolute;
+    width: calc(13 * var(--u));
+    height: calc(13 * var(--u));
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-radius: 2px;
+    background: linear-gradient(135deg, #e3c58c, #8a6a3a 55%, #4a3216);
+    box-shadow: 0 0 0 1.5px #2a1a08, 0 2px 4px rgba(0, 0, 0, 0.5);
+    animation: l-clash-in 250ms ease-out both;
+  }
+  .l-clash-brand {
+    --tone: #b3262b;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translate(-50%, -50%);
+    color: var(--tone);
+    animation: l-clash-in 250ms ease-out both;
+  }
+  .l-clash-brand.gold {
+    --tone: #c98a14;
+  }
+  .l-clash-brand.ink {
+    --tone: color-mix(in srgb, var(--seat) 80%, #1a110a);
+  }
+  .l-clash-brand .ring {
+    display: grid;
+    place-items: center;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    border: max(2px, calc(var(--size) * 0.035)) solid var(--tone);
+    background: radial-gradient(circle, color-mix(in srgb, var(--tone) 14%, transparent) 55%, transparent 72%);
+  }
+  .l-clash-brand .ring b {
+    font: 400 calc(var(--size) * 0.62) / 1 var(--serif);
+    color: var(--tone);
+    translate: 0 4%;
+  }
+  .l-clash-brand.hollow .ring {
+    width: calc(var(--size) * 0.55);
+    height: calc(var(--size) * 0.55);
+    border-style: dashed;
+    opacity: 0.7;
+    background: none;
+  }
+  .l-clash-brand .count {
+    margin-top: calc(2 * var(--u));
+    font: 700 calc(15 * var(--u)) var(--ui);
+  }
+  .l-clash-brand .chev {
+    width: calc(var(--size) * 0.3);
+    margin-top: calc(var(--size) * 0.06);
+    fill: none;
+    stroke: var(--tone);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .l-clash-brand.up {
+    flex-direction: column-reverse;
+  }
+  .l-clash-brand.up .chev {
+    rotate: 180deg;
+    margin: 0 0 calc(var(--size) * 0.06);
+  }
+  @keyframes l-clash-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .l-clash-plaque,
+    .l-clash-clasp,
+    .l-clash-brand {
+      animation: none;
+    }
+  }
+
   /* ---- The nameplate focus: a page turned up from the plate, in the seat's ink ----------------------------------- */
   .l-seat-scrim {
     position: absolute;

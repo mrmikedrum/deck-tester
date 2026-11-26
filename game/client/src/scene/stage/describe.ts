@@ -8,8 +8,8 @@
 import { abilityText, entryText, isLand, isTreasure, sweepHarms, sweeps } from "../../model";
 import type { Card, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
-import { SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
-import type { Lean, TablePlan, Unit } from "../../layout";
+import { CLASH, SIFT_PAGE, carry, combatLanes, engineCombat, leanOf, mergeCombat, siftOf, siftPages } from "../../layout";
+import type { Lean, Rect, TablePlan, Unit } from "../../layout";
 import type { BoardCues, Mark } from "../../play";
 import { canonical, faceKey, materials, shortName } from "../../theme";
 import type { FaceSpec } from "../../theme";
@@ -22,6 +22,15 @@ import { LOOK, tableFocus } from "./types";
 import type { Aim, Description, Draw, FocusTop, HighlightLook, HighlightRequest, HighlightTone, Lane, Look, Piece, Pose, WellLook } from "./types";
 
 const HIGHLIGHT = materials.highlight;
+const SHADE = materials.shade;
+
+/** The clash's calm ground: the picture's extent, padded, from under the plates (behind the plaques) down to my field
+ *  row, its soft edge spent before it reaches my cards' names. */
+function groundOf(e: { l: number; t: number; r: number; b: number }, plan: TablePlan): Rect {
+  const u = Math.min(plan.viewport.w / 1180, plan.viewport.h / 820), pad = SHADE.ground.pad * u, soft = SHADE.ground.feather * u;
+  const top = Math.min(e.t - pad, plan.reserve.safe.top + CLASH.plaqueTop * u);
+  return { left: e.l - pad, top, right: e.r + pad, bottom: Math.min(e.b + pad, plan.fieldTop - soft) };
+}
 
 export interface DescribeInput {
   readonly model: TableModel;
@@ -87,9 +96,8 @@ export function describe(input: DescribeInput): Description {
     if (softSeat && seat !== softSeat && seat !== me) return DIM.soft;
     return 0;
   };
-  // In a fight, what doesn't fight steps back: dimmer, the creatures less than the rest (h.js `targets`), while the
-  // fighters stand in the open middle. (Never the plaques or the pages.)
-  const fighting = [...plan.seats.values()].some((sp) => sp.units.some((u) => u.fighting));
+  // The clash: its fighters stand on a plane over one light shade, on a calm ground; nothing else dims per piece.
+  const clash = plan.gathering?.focus ? plan.gathering : null;
   // `tapped`: turned for tapped (a quarter), or by how much (an arranged unit's turn: a quarter, a notch).
   const lookOf = (fade: number, mark: Mark | null, hovered: boolean, tapped: boolean | number): Look => ({
     ...LOOK,
@@ -124,9 +132,8 @@ export function describe(input: DescribeInput): Description {
 
     const rows = mine ? wellRows(sp.units) : new Map<string, { alt: boolean; small: boolean }>();
     for (const u of sp.units) {
-      const dim = dimOf(seat);
-      const off = fighting && !u.fighting ? (u.role === "creature" ? DIM.fightCreature : DIM.fightOther) : 0;
-      const piece = unitPiece(input, seat, u, mine, Math.max(dim, off), lookOf, markOf, rows.get(u.id));
+      // (A fighter in the clash is in full light, whoever's turn it is.)
+      const piece = unitPiece(input, seat, u, mine, clash && u.fighting ? 0 : dimOf(seat), lookOf, markOf, rows.get(u.id));
       // Leaned in, a card grows where it stands (about its foot) as well as with its page; taps are still measured from
       // where the plan put it.
       const grow = lean && lean.seat === seat && !u.fighting && lean.grow !== 1 ? lean.grow : 1;
@@ -170,7 +177,7 @@ export function describe(input: DescribeInput): Description {
         members: [cmd.card],
         face: cmd.card,
         ...placed(seat, cmdPose),
-        look: lookOf(Math.max(dimOf(seat), fighting ? DIM.fightOther : 0), mark, input.hover === id, false),
+        look: lookOf(dimOf(seat), mark, input.hover === id, false),
         form: `command|${cmd.card}`,
         mods: faceKey(face) + (mark ?? ""),
         mark,
@@ -304,14 +311,20 @@ export function describe(input: DescribeInput): Description {
   // A highlight lays one scrim over the table and steps what it holds out of the light, each in its own place (one dim,
   // never a second one per piece): the stack as the focus, its cards and what they aim at; else what the app asked for.
   const { highlight, look } = highlightOf(input, pieces, home, aims, stackUp, me);
+  // Above the clash's shade: its fighters, and while I decide, what of mine I may choose or have chosen.
+  const aloft = new Set<string>();
+  if (clash) for (const p of pieces.values()) if (p.fight) aloft.add(p.id);
+  const mineLit = clash ? [...pieces.values()].filter((p) => p.seat === me && p.kind === "unit" && (p.mark === "option" || p.mark === "selected")).map((p) => p.id) : [];
   return {
     pieces,
     home,
-    lanes: lean ? [] : lanesOf(model, plan, cues, pieces),
+    lanes: lean || clash ? [] : lanesOf(model, plan, cues, pieces),
     aims,
     tableTone: sifting ? DIM.table : 1,
-    scrim: look ? look.dim : 0,
-    above: new Set(highlight.keys()),
+    scrim: Math.max(look ? look.dim : 0, clash ? SHADE.clash : 0),
+    ground: clash?.extent ? groundOf(clash.extent, plan) : null,
+    aloft,
+    above: new Set([...highlight.keys(), ...aloft, ...mineLit]),
     highlight,
     highlightLook: look,
     perspective: me,

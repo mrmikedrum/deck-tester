@@ -1,17 +1,10 @@
-// Combat on the table (old h.js `targets`, its combat part, and `drawLanes`): every creature in a fight leaves its place
-// and stands in the open middle, where it covers no page: the attackers in one row across, in the order they stood, each
-// blocker straight in front of the attacker it blocks (between it and its defender), so who blocks whom reads without a
-// lane. Their places stay empty on their pages, for them to go back to when combat ends. And the lanes: each attack a
-// stroke from its attacker to where it lands, the front edge of the defender's page, the planeswalker it attacks, or the
-// foot of the blocker that stopped it. Pure, in the plan's terms: units, placements, the projector.
+// Combat as layout takes it: the engine's attacks and blocks with play's draft over them, the fighters, and the lanes:
+// each attack a stroke from its attacker to where it lands, the front edge of the defender's page, the planeswalker it
+// attacks, or the foot of the blocker that stopped it (the table form; the clash draws none). Where fighters stand is the
+// gathering's (arrange/gathering.ts). Pure, in the plan's terms: units, placements, the projector.
 import type { TableModel } from "../model";
-import { FLOOR } from "./board";
-import type { Projector } from "./projector";
 import type { SeatPlan, Unit } from "./seat";
-import { CH, CW, STEP, TAP_LEAN, bandSpec, floorScale } from "./seat/geometry";
-import type { Geo } from "./seat/geometry";
-import { bounds } from "./shape";
-import type { Shape } from "./shape";
+import { CH, CW } from "./seat/geometry";
 import type { CardId, SeatId, V3 } from "./types";
 
 /** Attacks and blocks as layout takes them: plain ids (play's combat draft has this shape; layout never imports play). */
@@ -45,25 +38,6 @@ export function mergeCombat(engine: CombatPairs | null, draft: CombatPairs | nul
 export const fighters = (c: CombatPairs | null): Set<CardId> =>
   new Set(c ? [...c.attacks.map((a) => a.attacker), ...c.blocks.map((b) => b.blocker)] : []);
 
-/** The open table in the middle, in design units (plan.ts `openMiddle`). */
-export interface Middle {
-  readonly l: number;
-  readonly r: number;
-  readonly t: number;
-  readonly b: number;
-}
-
-export interface RowInput {
-  readonly combat: CombatPairs;
-  readonly plans: readonly SeatPlan[];
-  readonly perspective: SeatId;
-  readonly projector: Projector;
-  readonly geo: Geo;
-  readonly middle: Middle;
-  /** What stays where it is and is drawn on screen (the seats' other things, the stack): the row keeps clear of them. */
-  readonly obstacles: readonly Shape[];
-}
-
 /** Unit ids in the fight: the attackers' and blockers' own units (mat gives each fighter a unit of its own). */
 export function fightUnits(plans: readonly SeatPlan[], want: ReadonlySet<CardId>): Map<CardId, { unit: Unit; seat: SeatId }> {
   const out = new Map<CardId, { unit: Unit; seat: SeatId }>();
@@ -76,175 +50,6 @@ export function fightUnits(plans: readonly SeatPlan[], want: ReadonlySet<CardId>
 /** The ids of the units a combat row would move: what the seats' audit leaves to the composed one. */
 export function rowUnits(plans: readonly SeatPlan[], cards: ReadonlySet<CardId>): Set<string> {
   return cards.size ? new Set([...fightUnits(plans, cards).values()].map((f) => f.unit.id)) : new Set();
-}
-
-/**
- * The seats with their fighters moved into the open middle (`fighting` set on them), as candidates in order of
- * preference: the table takes the first whose composed audit is clean. A fighter keeps its unit's id, its members and its
- * place in the seat's memory (its page place stays free for it to go back to).
- */
-export function combatRow(input: RowInput): SeatPlan[][] {
-  const { combat, plans, projector: proj, geo: g, middle: M, perspective } = input;
-  const units = fightUnits(plans, fighters(combat));
-  if (!units.size) return [[...plans]];
-  const u = g.u;
-  const project = (p: V3) => proj.project(p);
-  const unitOf = (id: CardId) => units.get(id);
-  // One group per attacking unit: its attackers, and its blockers' units.
-  interface Group {
-    readonly k: Unit;
-    readonly from: SeatId;
-    readonly bs: Unit[];
-  }
-  const groups: Group[] = [];
-  for (const a of combat.attacks) {
-    const f = unitOf(a.attacker);
-    if (!f) continue;
-    let gr = groups.find((x) => x.k.id === f.unit.id);
-    if (!gr) groups.push((gr = { k: f.unit, from: f.seat, bs: [] }));
-    for (const b of combat.blocks)
-      if (b.attacker === a.attacker) {
-        const fb = unitOf(b.blocker);
-        if (fb && fb.unit.id !== gr.k.id && !groups.some((x) => x.bs.includes(fb.unit)) && !gr.bs.includes(fb.unit)) gr.bs.push(fb.unit);
-      }
-  }
-  if (!groups.length) return [[...plans]];
-  // In the order they stood: blockers come to the attackers, never the attackers trading places as I read who blocks whom.
-  const seenX = (un: Unit): number => project(un.placement.pos).x;
-  groups.sort((x, y) => seenX(x.k) - seenX(y.k) || (x.k.id < y.k.id ? -1 : 1));
-  // Each as large as its side's creatures prefer, or the floors ask where it stands.
-  const mid = proj.onTable(((M.l + M.r) / 2) * u, M.b * u);
-  const mineOf = (un: Unit): boolean => [...units.values()].some((f) => f.unit === un && f.seat === perspective);
-  const sz = new Map<Unit, number>();
-  for (const gr of groups)
-    for (const un of [gr.k, ...gr.bs]) {
-      const me = mineOf(un);
-      sz.set(un, Math.max(bandSpec("C", me, proj.pitch, me ? FLOOR.mine : FLOOR.theirs).pref, floorScale(g, mid, me ? FLOOR.mine : FLOOR.theirs, false)));
-    }
-  const s = (un: Unit): number => sz.get(un)!;
-  // A tapped standee lies turned: as wide as it is tall.
-  const wide = (un: Unit): number => s(un) * (un.tapped ? CH : CW) * 1.06;
-  const tall = (un: Unit): number => s(un) * (un.tapped ? CW : CH);
-  // The attackers' row is the far one, unless the attackers are mine: either way the blockers stand between them and who
-  // they attack, the near row's feet at the open table's foot and the far row a row's step behind. Where the far row would
-  // reach over the page behind, it is one row instead, each blocker just beside the attacker it blocks.
-  const mineAtk = groups[0]!.from === perspective;
-  const upOf = (un: Unit): V3 => {
-    const th = proj.pitch + (un.tapped ? TAP_LEAN : 0);
-    return { x: 0, y: Math.cos(th), z: -Math.sin(th) };
-  };
-  const topY = (un: Unit, z: number): number => {
-    const up = upOf(un), h = tall(un);
-    return project({ x: mid.x, y: up.y * h, z: z + up.z * h }).y / u;
-  };
-  const sum = (us: readonly Unit[]): number => us.reduce((t, x) => t + wide(x), 0);
-  const W = proj.viewport.w / u;
-  const margin = 16;
-  const tableX = (x: number): number => proj.onTable(x * u, M.b * u).x;
-  const left = tableX(margin), right = tableX(W - margin);
-  /** Lay out these groups in the open gap, or use the full screen when the fallback can cover other pieces. */
-  const lay = (gs: readonly Group[], rows: boolean, fit: boolean): Map<string, { pos: V3; s: number }> | null => {
-    const nearUnits = gs.flatMap((gr) => (mineAtk ? [gr.k] : gr.bs));
-    const sNear = Math.max(1, ...nearUnits.map(s));
-    const Z = { near: mid.z, far: mid.z - STEP * sNear };
-    // The open stretch of table the row stands in: across the open middle's foot, between the nearest things that stay
-    // (as they stand on screen), the widest gap, so it covers none of them.
-    const all = gs.flatMap((gr) => [gr.k, ...gr.bs]);
-    const y0 = Math.min(...all.map((un) => topY(un, rows ? Z.far : Z.near))), y1 = M.b + 8;
-    const cut = input.obstacles
-      .map((sh) => {
-        const b = bounds(sh.face);
-        return b.b / u > y0 && b.t / u < y1 ? ([b.l / u - 6, b.r / u + 6] as const) : null;
-      })
-      .filter((x): x is readonly [number, number] => x !== null)
-      .sort((a, b) => a[0] - b[0]);
-    let open: [number, number] = [margin, margin], at = margin;
-    for (const [a, b] of [...cut, [W - margin, W - margin] as const]) {
-      if (a - at > open[1] - open[0]) open = [at, Math.min(a, W - margin)];
-      at = Math.max(at, b);
-    }
-    const gl = tableX(open[0]), gr0 = tableX(open[1]);
-    const span = (gr: Group): number => (rows ? Math.max(wide(gr.k), sum(gr.bs)) : wide(gr.k) + sum(gr.bs));
-    const packed = gs.reduce((t, gr) => t + span(gr), 0);
-    if (fit && packed + 0.12 * Math.max(0, gs.length - 1) > gr0 - gl) return null;
-    const gap = Math.max(0.12, Math.min(CW * 0.8, (gr0 - gl - packed) / Math.max(1, gs.length + 1)));
-    const width = packed + gap * Math.max(0, gs.length - 1);
-    if (width > right - left) return null;
-    const placed = new Map<string, { pos: V3; s: number }>();
-    const put = (un: Unit, pos: V3) => placed.set(un.id, { pos, s: s(un) });
-    const start = (gl + gr0 - width) / 2;
-    // Slide a row that spills out of its gap inside the screen edges when there is room.
-    let x = Math.max(left, Math.min(start, right - width));
-    let tail = false;
-    for (const gr of gs) {
-      // In one row, each blocker stands on the side of its attacker it comes from, so it steps up without crossing it;
-      // but never beside the last pair's blocker, where two blockers between two attackers wouldn't say whose is whose.
-      const w = span(gr), cx = project({ x: x + w / 2, y: 0, z: Z.near }).x;
-      const before: Unit[] = rows || tail ? [] : gr.bs.filter((b) => seenX(b) < cx);
-      const after: Unit[] = gr.bs.filter((b) => !before.includes(b));
-      tail = after.length > 0;
-      put(gr.k, rows ? { x: x + w / 2, y: 0, z: mineAtk ? Z.near : Z.far } : { x: x + sum(before) + wide(gr.k) / 2, y: 0, z: Z.near });
-      let bx = rows ? x + w / 2 - sum(gr.bs) / 2 : x;
-      for (const b of [...before, ...(rows ? [] : [gr.k]), ...after]) {
-        if (b !== gr.k) put(b, { x: bx + wide(b) / 2, y: 0, z: rows ? (mineAtk ? Z.far : Z.near) : Z.near });
-        bx += wide(b);
-      }
-      x += w + gap;
-    }
-    return placed;
-  };
-  const moved = (placed: Map<string, { pos: V3; s: number }>): SeatPlan[] =>
-    plans.map((p) =>
-      p.units.some((un) => placed.has(un.id))
-        ? {
-            ...p,
-            units: p.units.map((un) => {
-              const at = placed.get(un.id);
-              return at ? { ...un, fighting: true, placement: { pos: at.pos, scale: at.s, posture: "stand" as const } } : un;
-            }),
-          }
-        : p,
-    );
-  // Where the far row would reach over the page behind, it is one row instead, each blocker just beside its attacker.
-  const blocked = groups.some((gr) => gr.bs.length > 0);
-  const twoFit = (gs: readonly Group[]): boolean => {
-    const sNear = Math.max(1, ...gs.flatMap((gr) => (mineAtk ? [gr.k] : gr.bs)).map(s));
-    const far = mid.z - STEP * sNear;
-    return gs.every((gr) => [gr.k, ...gr.bs].every((un) => topY(un, far) >= M.t - 6));
-  };
-  const rows = blocked && twoFit(groups);
-  // The old client's choice first; then the other form; then, where the whole fight is wider than the open table, the
-  // groups that fit (the widest left out first) while the rest fight where they stand on their pages, each on its own.
-  const out: SeatPlan[][] = [];
-  const first = lay(groups, rows, true);
-  if (first) out.push(moved(first));
-  if (blocked && !rows) {
-    const two = lay(groups, true, true);
-    if (two) out.push(moved(two));
-  }
-  const dropWidest = (gs: Group[]): void => {
-    const widest = gs.reduce((a, b) => (sum([b.k, ...b.bs]) > sum([a.k, ...a.bs]) ? b : a));
-    gs.splice(gs.indexOf(widest), 1);
-  };
-  const useTwoRows = (gs: readonly Group[]): boolean => gs.some((gr) => gr.bs.length > 0) && twoFit(gs);
-  const some = [...groups];
-  while (some.length > 1 && !out.length) {
-    dropWidest(some);
-    const fits = lay(some, useTwoRows(some), true);
-    if (fits) out.push(moved(fits));
-  }
-  // A wider candidate can cover the gap's obstacles, with any groups beyond the screen fighting from their pages.
-  const wideRow = [...groups];
-  while (wideRow.length) {
-    const fits = lay(wideRow, useTwoRows(wideRow), false);
-    if (fits) {
-      out.push(moved(fits));
-      break;
-    }
-    dropWidest(wideRow);
-  }
-  if (!out.length) out.push([...plans]);
-  return out;
 }
 
 // ---- lanes ------------------------------------------------------------------------------------------------------------

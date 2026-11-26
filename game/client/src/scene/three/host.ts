@@ -30,6 +30,7 @@ import type { Assets } from "./assets";
 import { applyCamera, cameraParams, renderSizes } from "./camera";
 import type { CameraParams } from "./camera";
 import { DecalBatch } from "./batch";
+import type { FocusWell } from "./focus-pass";
 import { CardDeck } from "./cards";
 import type { CardKit } from "./cards";
 import { cardGeometry } from "./geometry";
@@ -255,9 +256,12 @@ export class Host {
     this.world.tone(k);
   }
 
-  /** The stack's scrim over the table (its alpha, 0 for none); what is on the ABOVE layer draws over it. */
-  setScrim(alpha: number): void {
+  /** A focus's scrim over the table (its alpha, 0 for none), and the clash's calm ground under it (or null); what is on
+   *  the ABOVE layer draws over both. */
+  setScrim(alpha: number, well: FocusWell | null = null): void {
     this.focusPass.alpha = alpha;
+    this.focusPass.well = well;
+    this.focusPass.size = this.viewport;
   }
 
   /** The viewport the host was last given. */

@@ -76,6 +76,8 @@ const frame = (above: string[] = []): StageView => ({
   aims: [],
   tableTone: 1,
   scrim: above.length ? 0.3 : 0,
+  ground: null,
+  aloft: new Set<string>(),
   above: new Set(above),
   drawn: new Map(),
   now: 0,

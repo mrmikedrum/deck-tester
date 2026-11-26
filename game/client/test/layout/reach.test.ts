@@ -9,12 +9,13 @@ import type { TablePlan } from "../../src/layout";
 import { modelOf } from "../../src/model";
 import { catalog, corpusNames, corpusSnapshot, viewerOf } from "../model/fixtures";
 import { stress, SUPPORTED } from "./boards";
-import { reach } from "./reach";
+import { reach, underClash } from "./reach";
 
 /** What the picker cannot reach, or reaches with less than a 44 px patch (a plate needs only a point). */
 function shortfalls(plan: TablePlan): string[] {
   const r = reach(plan), out: string[] = [];
   for (const g of plan.hits.groups) {
+    if (underClash(plan, g)) continue;
     const side = r.get(g.id)!.side, need = g.kind === "plate" ? 1 : TAP_PX;
     if (side < need) out.push(`${g.id} ${side}px`);
   }

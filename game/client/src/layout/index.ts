@@ -19,3 +19,5 @@ export { LEAN_LIFT, SIFT_PAGE, carry, leanOf, siftOf, siftPages, siftQuad } from
 export type { Lean } from "./focus";
 export type { ShadowInput, ShadowOptions, ShadowPlan } from "./arrange/shadow";
 export { clearArrangeCaches } from "./arrange/memo";
+export { CLASH, combatFormOf } from "./arrange/gathering";
+export type { ClashColumn, ClashWing, CombatForm, Defender, Gathering } from "./arrange/gathering";

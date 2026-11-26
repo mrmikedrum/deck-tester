@@ -124,6 +124,14 @@ export const highlight = {
 } as const;
 
 /**
+ * The clash's shade: a light scrim over the table (`clash`, the owner found a deep one far too dark), and under the
+ * fighters a calm ground of the page's own tone over the clash's area (`ground`: its colour and how much it covers,
+ * `feather` px of soft edge), so no pile or name behind the fight shows through. Tuned on stills: nothing behind the
+ * fight competes with it, and nothing reads as a hole in the table.
+ */
+export const shade = { clash: 0.24, ground: { colour: 0xc9b48a, alpha: 0.86, feather: 26, pad: 14 } } as const;
+
+/**
  * A camera move onto a card or an area, and back: never free navigation, always a composed view. It comes down lower
  * than the table's camera (`elevation` from the table, radians) and a little from the right (`yaw`), narrower (`fov`,
  * degrees), near enough that its subject fills `fill` of the screen's height, over `ms` (eased in and out; reduced
