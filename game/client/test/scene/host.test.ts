@@ -1,35 +1,27 @@
 // The host's composer teardown: the composer disposes only its own targets and copy pass, so the passes it was given
 // (bloom's targets and materials, the output pass) are disposed first, on teardown and on context recovery alike.
 import { describe, expect, it, vi } from "vitest";
-import { Mesh, Texture, Vector2, WebGLRenderTarget } from "three";
+import { Texture, Vector2, WebGLRenderTarget } from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { disposeComposer } from "../../src/scene/three/host";
-import { createCard } from "../../src/scene/three/card";
+import { CardDeck, createCard } from "../../src/scene/three/cards";
 import { cardGeometry } from "../../src/scene/three/geometry";
-import { Rim, SharedMaterials } from "../../src/scene/three/materials";
+import { Rim } from "../../src/scene/three/materials";
 import { motion } from "../../src/theme";
 
-it("draws every visible sift-card surface in the transparent pass without changing table cards", () => {
+it("draws a sift's cards in the transparent pass, in their order, without shadows; table cards as they were", () => {
   const texture = new Texture();
-  const shared = new SharedMaterials(0x302010, 0x201810, texture);
-  const geo = cardGeometry();
-  const kit = { geo, shared, rim: new Rim() };
-  const materialsOf = (card: ReturnType<typeof createCard>) => card.body.children.flatMap((object) => {
-    const material = (object as Mesh).material;
-    return (Array.isArray(material) ? material : [material]).filter((m) => m.visible);
-  });
-  const table = createCard(kit, texture);
-  const sift = createCard(kit, texture, { transparent: true });
-  const dispose = materialsOf(sift).map((m) => vi.spyOn(m, "dispose"));
-
-  expect(materialsOf(sift).map((m) => m.transparent)).toEqual([true, true, true]);
-  expect(materialsOf(table).map((m) => m.transparent)).toEqual([false, false, false]);
+  const deck = new CardDeck(1, texture, new Rim());
+  const kit = { deck, geo: cardGeometry(), rim: new Rim() };
+  const table = createCard(kit, null);
+  const sift = createCard(kit, null, { transparent: true, order: 16, shadow: false });
+  expect([sift.state.transparent, sift.state.order, sift.state.shadow]).toEqual([true, 16, false]);
+  expect([table.state.transparent, table.state.order, table.state.shadow]).toEqual([false, 0, true]);
   sift.dispose();
-  for (const material of dispose) expect(material).toHaveBeenCalledOnce();
   table.dispose();
-  shared.dispose();
+  deck.dispose();
   texture.dispose();
 });
 

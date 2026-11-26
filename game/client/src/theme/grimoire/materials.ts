@@ -2,44 +2,41 @@
 // host reads these; nothing here imports three.
 import { fx } from "../tokens";
 
-/** A card in world units: it is 1 tall. (Layout's CW, CH and TH are the same numbers; a test holds them equal.) */
-export const card = { w: 0.716, h: 1, thickness: 0.014, corner: 0.045, curveSegments: 4, faceLift: 0.0008 } as const;
+/**
+ * A card in world units: it is 1 tall (88 mm), so 0.3 mm of card stock is 0.0034. (Layout's CW, CH and TH are the same
+ * numbers; a test holds them equal.)
+ */
+export const card = { w: 0.716, h: 1, thickness: 0.0034, corner: 0.045, curveSegments: 4 } as const;
 
 /**
- * A card as a playing piece on the table (the scene's, never layout's: layout's TH stays the card's true thickness). It
- * is drawn as a slab of cream stock, far thicker than a real card, its depth running down from the face, so a card
- * lying on the vellum has a lit near edge and a stack of them is a block whose height is its count.
+ * A card as an object on the table: lit card stock at its true thickness, so a pile of 14 lands is 5 mm and a library of
+ * 67 about 2 cm. Its faces are lit paper with a faint grain; its cut edges are cream stock; a pile's walls show a fine
+ * line per card.
  */
 export const slab = {
-  /** The stock under a face, world units (about 3 px at table size). */
-  depth: 0.03,
-  /** The stock's colour: lit by the lamp, so its near edge catches the light and its sides fall into shade. */
+  /** One card's stock, world units (its true thickness). */
+  depth: card.thickness,
+  /** The stock's colour where it is cut (a token's a little greyer), and how rough the paper is. */
   stock: 0xe2d3ac,
   tokenStock: 0xcdbf98,
   roughness: 0.85,
-  /** What each card under the top one adds to a block, and the most a block rises (a quarter of a card). */
-  step: 0.018,
-  cap: 0.25,
-  /** A zone's block (a library, a graveyard): finer, so a library of 67 is the tallest thing on its leaf. */
-  zoneStep: 0.0075,
-  zoneCap: 0.4,
-  /** Strata on a block's walls: one line per card, never closer together than this (world units). */
-  strataMin: 0.016,
-  /** A mixed pile is a staircase: each card one slab higher than the one under it, turned this much past it. */
+  /** A face: how glossy the card stock is, how much of the room it reflects, and its grain (a bump, its tile per card). */
+  face: { roughness: 0.52, env: 0.5, grain: 0.0009, grainTiles: [5, 7] as const },
+  /** What each card under the top one adds to a block (its true thickness), and the most a block rises. */
+  step: card.thickness,
+  cap: 0.5,
+  /** A zone's block (a library, a graveyard): the same stock. */
+  zoneStep: card.thickness,
+  zoneCap: 0.5,
+  /** A mixed pile is a staircase: each card lies on the one under it, turned this much past it. */
   stairTurn: 0.035,
   stairShow: 5,
-  /** The contact shadow under a lying card or block: this much larger than it, this dark. */
-  contact: { grow: 1.1, opacity: 0.62 },
-  /**
-   * The cast shadow: the card's soft silhouette projected onto the vellum it rests on (planar, so it is exact for any
-   * posture), its shade, how dark, and where the lamp it is cast from stands: on my side, above and to the left, low
-   * enough that a standing card's shadow clears its own top and falls back and to the right, away from me.
-   */
-  cast: { colour: 0x1e1004, opacity: 0.5, from: { x: -8, y: 11, z: 10 } },
+  /** The contact shade under what touches the vellum: this much larger than it, this dark. */
+  contact: { grow: 1.1, opacity: 0.5 },
+  /** A standing card's foot: the soft dark where it meets the page, this deep (world units) and this dark. */
+  foot: { depth: 0.16, opacity: 0.55 },
   /** A standing card's foot rests on the vellum: its lowest corner this far off it. */
   standOff: 0.004,
-  /** The lamp's line along the near edge of a face (a share of the card), and how bright. */
-  highlight: { w: 0.012, k: 0.22 },
 } as const;
 
 /** What a card's edge burns with, by signal: the band's width in uv (a fraction of the card). */
@@ -75,16 +72,25 @@ export const pixelRatio = { renderer: 2, composer: 1.5 } as const;
 /** The camera's clip planes (its fov and place are layout's template). */
 export const camera = { near: 1, far: 120 } as const;
 
-/** One lamp over the table, warm, and a little of the room: pages shade by it, cards never do. */
+/**
+ * The light: one warm lamp up and to the left of the table, a little toward me, so standing cards face it and throw their
+ * shade back and to the right across the page; its cone and distance make a pool that falls off toward the far corners.
+ * The table's texture paints no lamplight of its own (the lamp does it). A warm fill from the room, and a faint
+ * reflection of it for the card stock's sheen. Soft shadow maps, drawn again only while something moves.
+ */
 export const lights = {
-  ambient: { colour: 0xffe6c4, intensity: 0.35 },
-  lamp: { colour: 0xffc98a, intensity: 260, distance: 70, decay: 1.7, at: { x: 0, y: 17, z: -4 } },
-  sun: {
-    colour: 0xffe9cc,
-    intensity: 0.6,
-    at: { x: -4, y: 20, z: 12 },
-    shadow: { size: 2048, half: 18, near: 1, far: 60, bias: -0.0004, normalBias: 0.02 },
+  lamp: {
+    colour: 0xffcf98,
+    intensity: 2800,
+    angle: 0.62,
+    penumbra: 1,
+    decay: 2,
+    at: { x: -11, y: 23, z: 6 },
+    aim: { x: 0.5, y: 0, z: -3 },
+    shadow: { size: 2048, radius: 4, near: 14, far: 48, bias: -0.00008, normalBias: 0.006 },
   },
+  fill: { sky: 0xffe4c0, ground: 0x2a1a0e, intensity: 0.32 },
+  room: { intensity: 0.08, blur: 0.04 },
 } as const;
 
 export const surface = {

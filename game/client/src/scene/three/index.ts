@@ -1,7 +1,8 @@
 // scene/three: the only place three.js is imported.
 export * from "./assets";
 export * from "./camera";
-export * from "./card";
+export * from "./cards";
+export * from "./batch";
 export * from "./geometry";
 export * from "./host";
 export * from "./materials";

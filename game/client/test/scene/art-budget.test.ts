@@ -8,7 +8,8 @@ import { FACE_DEFAULTS, NO_SURFACES } from "../../src/theme";
 import { ArtCache } from "../../src/scene/resources";
 import { cardGeometry } from "../../src/scene/three/geometry";
 import type { Host } from "../../src/scene/three/host";
-import { Rim, SharedMaterials } from "../../src/scene/three/materials";
+import { Rim } from "../../src/scene/three/materials";
+import { CardDeck } from "../../src/scene/three/cards";
 import { Painter } from "../../src/scene/three/painter";
 import { TextureCache } from "../../src/scene/three/textures";
 import { StageRenderer } from "../../src/scene/three/view";
@@ -54,7 +55,7 @@ function rig(budget: number) {
   const host = {
     painter,
     rim,
-    kit: { geo: cardGeometry(), shared: new SharedMaterials(0, 0, painter.back().texture), rim },
+    kit: { geo: cardGeometry(), deck: new CardDeck(1, painter.back().texture, rim), rim },
     scene: new Scene(),
     art: (u: string) => arts.get(u),
     setTableTone: () => undefined,

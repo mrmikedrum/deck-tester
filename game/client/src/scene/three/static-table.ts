@@ -5,14 +5,13 @@ import { Group, Mesh, MeshBasicMaterial, PlaneGeometry } from "three";
 import type { BufferGeometry, Material } from "three";
 import type { SeatId, SeatPlan, TablePlan, Unit } from "../../layout";
 import type { FaceSpec, PlateSpec, SeatPlace } from "../../theme";
-import { createCard } from "./card";
-import type { CardObject } from "./card";
+import { createCard } from "./cards";
+import type { CardObject } from "./cards";
 import type { Host } from "./host";
 import { buildPage, buildPlate } from "./pieces";
-import { unitPose } from "../stage/poses";
+import { PAGE_Y, unitPose } from "../stage/poses";
 import type { Lease } from "./textures";
 
-const PAGE_Y = 0.003;
 
 /** What the static table needs to draw a plan: the face of a unit's top card, and each seat's plate and place. */
 export interface StaticTableInput {
@@ -92,7 +91,7 @@ export class StaticTable {
       kit = host.kit,
       p = u.placement,
       face = this.lease(host.painter.face(spec));
-    const c: CardObject = createCard(kit, face.texture, { tapped: u.tapped, token: this.input.token(u) });
+    const c: CardObject = createCard(kit, face, { tapped: u.tapped, token: this.input.token(u) });
     this.own(c);
     const pose = unitPose(plan.projector, p, u.tapped);
     c.group.position.set(pose.pos.x, pose.pos.y, pose.pos.z);

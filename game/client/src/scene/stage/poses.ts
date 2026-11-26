@@ -5,7 +5,7 @@
 // `onPile` (where a card lands on a pile). Pure.
 import { STACK_POSE, STAND_OFF, TILT } from "../../layout";
 import type { Placement, Point, Posture, Projector, Quad, Rect, V3 } from "../../layout";
-import { CH, CW, PILE_LEAN, TAP_LEAN } from "../../layout/seat/geometry";
+import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
 import type { ScreenPose } from "../../play";
 import { materials } from "../../theme";
 import { PATH, add, scaled, v3 } from "./motion";
@@ -15,6 +15,12 @@ import type { Pose } from "./types";
 const { slab } = materials;
 /** A stack card's foot stands at least this far over the table. */
 const STACK_CLEAR = 0.02;
+/**
+ * The page lies just over the table (`PAGE_Y`, its ink a hair over it) and what lies on it rests on its top (`PAGE_TOP`):
+ * a lying card's back on the page, its face a card's thickness over it.
+ */
+export const PAGE_Y = 0.0004;
+export const PAGE_TOP = 0.0009;
 /** A zone pile's block under its top card: its height by its count (a library of 67 the tallest thing on its leaf). */
 export const pileHeight = (n: number): number => Math.min(slab.zoneCap, Math.max(0, n - 1) * slab.zoneStep);
 
@@ -30,14 +36,13 @@ export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
   const el = Math.atan2(proj.eye.y - p.pos.y, Math.max(1, proj.eye.z - p.pos.z));
   const delta = (Math.PI / 2 - el) * TILT[p.posture as Exclude<Posture, "stand">];
   const up = v3(0, Math.sin(delta), -Math.cos(delta));
-  // (Its stock runs down from its face, into the vellum: the face is where layout measured it, and the page, which
-  // writes no depth, never hides the stock.)
-  return { pos: add(p.pos, scaled(up, 0.5 * s)), rx: delta - Math.PI / 2, ry: 0, s };
+  // (It rests on the page: its middle half its thickness over the page's top, a hair over where layout measured its face.)
+  return { pos: add(add(p.pos, v3(0, PAGE_TOP + 0.5 * TH * s, 0)), scaled(up, 0.5 * s)), rx: delta - Math.PI / 2, ry: 0, s };
 }
 
 /** A zone pile: the box sits at its placement; the view props an opponent's up from its near edge. */
 export function zonePose(p: Placement): Pose {
-  return { pos: p.pos, rx: 0, ry: 0, s: p.scale };
+  return { pos: v3(p.pos.x, p.pos.y + PAGE_TOP, p.pos.z), rx: 0, ry: 0, s: p.scale };
 }
 
 /** Where a card lands on a pile of `n` cards (h.js `onPile`): on top, at the pile's size, propped as the pile is. */
@@ -58,7 +63,7 @@ export function platePose(p: Placement): Pose {
 
 /** A page lies on the table, turned by its yaw. */
 export function pagePose(page: { readonly pos: V3; readonly yaw: number }): Pose {
-  return { pos: v3(page.pos.x, 0.003, page.pos.z), rx: 0, ry: page.yaw, s: 1 };
+  return { pos: v3(page.pos.x, PAGE_Y, page.pos.z), rx: 0, ry: page.yaw, s: 1 };
 }
 
 /** Square to the camera: its right and up are the camera's (the camera never yaws, so only its pitch turns the card). */

@@ -9,7 +9,7 @@ import type { V3 } from "../types";
 
 export const CW = 0.716; // card width
 export const CH = 1; // card height
-export const TH = 0.014; // card thickness
+export const TH = 0.0034; // card thickness: 0.3 mm of an 88 mm card
 
 // Standees in rows step back further than cards lying (STEP, in scale units), so a rear row's name clears the row in front.
 export const STEP = 1.2;

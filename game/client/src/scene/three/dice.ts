@@ -4,6 +4,7 @@
 // motion).
 import { BoxGeometry, CircleGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry } from "three";
 import type { BufferGeometry, Material } from "three";
+import { batched } from "./batch";
 import type { Host } from "./host";
 import type { Lease } from "./textures";
 
@@ -64,12 +65,14 @@ class Die {
     // Seated on the vellum: a soft dark contact under it.
     const drop = host.painter.drop();
     this.leases.push(drop);
-    const shade = new Mesh(keep(new PlaneGeometry(s * 2.1, s * 2.1)), new MeshBasicMaterial({ map: drop.texture, color: 0x000000, transparent: true, opacity: DIE.shade, depthWrite: false, toneMapped: false }));
+    const shade = batched(new Mesh(keep(new PlaneGeometry(s * 2.1, s * 2.1)), new MeshBasicMaterial({ map: drop.texture, color: 0x000000, transparent: true, opacity: DIE.shade, depthWrite: false, toneMapped: false })));
     this.own.push(shade.material as Material);
     shade.rotation.x = -Math.PI / 2;
     shade.position.y = 0.002;
     shade.renderOrder = -1;
     this.group.add(shade, this.spin);
+    // A real thing on the table: it throws the lamp's shadow.
+    body.castShadow = true;
     this.spin.add(body);
     this.group.rotation.y = yaw;
   }

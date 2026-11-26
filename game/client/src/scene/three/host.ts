@@ -4,14 +4,19 @@
 // owner's `onRebuild`). It draws when told, at the time it is told: it has no loop of its own.
 import {
   ACESFilmicToneMapping,
+  Group,
   HalfFloatType,
+  InstancedMesh,
   PCFShadowMap,
+  PMREMGenerator,
   PerspectiveCamera,
   Scene,
   Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
+import type { Mesh, Texture } from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -26,16 +31,18 @@ import { loadArt } from "./assets";
 import type { Assets } from "./assets";
 import { applyCamera, cameraParams, renderSizes } from "./camera";
 import type { CameraParams } from "./camera";
+import { DecalBatch } from "./batch";
+import { CardDeck } from "./cards";
+import type { CardKit } from "./cards";
 import { cardGeometry } from "./geometry";
 import type { CardGeometry } from "./geometry";
-import { Rim, SharedMaterials } from "./materials";
+import { Rim } from "./materials";
 import { Painter } from "./painter";
 import { TextureCache } from "./textures";
 import type { Lease } from "./textures";
 import { FocusPass } from "./focus-pass";
 import { createWorld } from "./world";
 import type { World } from "./world";
-import type { CardKit } from "./card";
 
 const MB = 1024 * 1024;
 
@@ -78,6 +85,17 @@ export interface HostStats {
   readonly rebuilds: number;
   /** Frames drawn since the host was made. */
   readonly frames: number;
+  /** The last frame drawn: its draw calls and triangles (every pass: shadows, the table, the focus, bloom, output). */
+  readonly calls: number;
+  readonly triangles: number;
+  /** Cards drawn and the instanced batches they took; sprites likewise; the face atlas's pages and faces. */
+  readonly cards: number;
+  readonly cardBatches: number;
+  readonly sprites: number;
+  readonly spriteBatches: number;
+  readonly atlas: { readonly pages: number; readonly faces: number; readonly shown: number };
+  /** Frames whose shadow map was drawn again (something that throws a shadow moved). */
+  readonly shadowFrames: number;
 }
 
 /** How many frame intervals the host keeps (about ten seconds at 60 fps). */
@@ -106,7 +124,10 @@ export class Host {
   private _painter: Painter;
   private _kit: CardKit;
   private geo: CardGeometry;
-  private shared: SharedMaterials;
+  private deck: CardDeck;
+  private decals: DecalBatch;
+  private readonly batches = new Group();
+  private room: Texture | null = null;
   private backLease: Lease;
   private world: World;
   private tableLease: Lease;
@@ -116,6 +137,12 @@ export class Host {
   private lost = false;
   private rebuilds = 0;
   private frames = 0;
+  private shadowFrames = 0;
+  /** The shadow map is stale (a new world, a resize): drawn again on the next frame whatever moved. */
+  private shadowStale = true;
+  /** The shadow casters outside the deck (dice) as last drawn: a sum over their matrices. */
+  private casterSum = NaN;
+  private drawn = { calls: 0, triangles: 0 };
   /** The time of the last frame drawn, for its delta and the intervals. */
   private lastFrame: number | null = null;
   private intervals: number[] = [];
@@ -134,18 +161,27 @@ export class Host {
     this.renderer.toneMappingExposure = materials.tone.exposure;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFShadowMap;
+    // The shadow map is drawn only while what throws a shadow moves (`render`).
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.info.autoReset = false;
+    // The host updates the scene's matrices once a frame, before the deck reads them (`render`).
+    this.scene.matrixWorldAutoUpdate = false;
+    this.scene.add(this.batches);
     this.composer = this.newComposer();
     this.textures = this.newTextures();
     this.arts = this.newArts();
     this._painter = this.newPainter();
     this.geo = cardGeometry();
     this.backLease = this._painter.back();
-    this.shared = new SharedMaterials(colour.cardEdge, colour.tokenEdge, this.backLease.texture);
-    this._kit = { geo: this.geo, shared: this.shared, rim: this.rim };
+    this.deck = new CardDeck(this.renderer.capabilities.getMaxAnisotropy(), this.backLease.texture, this.rim);
+    this.decals = new DecalBatch(this.batches);
+    this.batches.add(this.deck.group);
+    this._kit = { deck: this.deck, geo: this.geo, rim: this.rim };
     this.tableLease = this._painter.table();
     this.world = createWorld(this.tableLease, opts.assets.tomeNormal);
     this.scene.background = this.world.background;
     this.scene.add(this.world.group);
+    this.environment();
     this.setViewport(this.viewport, this.dpr);
     this.listeners = {
       lost: (e) => {
@@ -180,6 +216,7 @@ export class Host {
     this.composer.setPixelRatio(s.composer);
     this.composer.setSize(s.width, s.height);
     applyCamera(this.camera, cameraParams(this.spec, viewport));
+    this.shadowStale = true;
   }
 
   setCamera(spec: CameraSpec): void {
@@ -217,9 +254,45 @@ export class Host {
     if (this.lastFrame !== null) this.interval(dt);
     this.lastFrame = nowMs;
     this.rim.update(nowMs, still);
+    this.scene.updateMatrixWorld();
+    const moved = this.deck.sync(this.scene);
+    this.decals.sync(this.scene);
+    const sum = this.casters();
+    if (moved || this.shadowStale || sum !== this.casterSum) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowFrames++;
+    }
+    this.shadowStale = false;
+    this.casterSum = sum;
+    this.deck.atlas.flush(this.renderer);
+    this.renderer.info.reset();
     this.composer.render(dt / 1000);
+    this.drawn = { calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles };
     this.frames++;
     this.arts.releaseFresh();
+  }
+
+  /** The shadow casters the deck does not draw (dice), as one number: it changes when one moves, comes or goes. */
+  private casters(): number {
+    let sum = 0,
+      k = 1;
+    this.scene.traverseVisible((o) => {
+      const m = o as Mesh;
+      if (!m.isMesh || !m.castShadow || (o as InstancedMesh).isInstancedMesh) return;
+      for (const e of o.matrixWorld.elements) sum += e * (k = (k * 31) % 1009);
+    });
+    return sum;
+  }
+
+  /** The room the card stock and the bronze reflect, faintly (a prefiltered RoomEnvironment). */
+  private environment(): void {
+    const pmrem = new PMREMGenerator(this.renderer);
+    const room = new RoomEnvironment();
+    this.room = pmrem.fromScene(room, materials.lights.room.blur).texture;
+    room.dispose();
+    pmrem.dispose();
+    this.scene.environment = this.room;
+    this.scene.environmentIntensity = materials.lights.room.intensity;
   }
 
   private interval(ms: number): void {
@@ -250,6 +323,14 @@ export class Host {
       contextLost: this.lost,
       rebuilds: this.rebuilds,
       frames: this.frames,
+      calls: this.drawn.calls,
+      triangles: this.drawn.triangles,
+      ...(() => {
+        const d = this.deck.stats(),
+          s = this.decals.stats();
+        return { cards: d.cards, cardBatches: d.batches, atlas: d.atlas, sprites: s.sprites, spriteBatches: s.batches };
+      })(),
+      shadowFrames: this.shadowFrames,
     };
   }
 
@@ -312,7 +393,11 @@ export class Host {
   private releaseAll(): void {
     this.scene.remove(this.world.group);
     this.world.dispose();
-    this.shared.dispose();
+    this.batches.remove(this.deck.group);
+    this.deck.dispose();
+    this.decals.dispose();
+    this.room?.dispose();
+    this.room = null;
     this.geo.dispose();
     this.textures.clear();
     this.arts.clear();
@@ -328,12 +413,16 @@ export class Host {
     this._painter = this.newPainter();
     this.geo = cardGeometry();
     this.backLease = this._painter.back();
-    this.shared = new SharedMaterials(colour.cardEdge, colour.tokenEdge, this.backLease.texture);
-    this._kit = { geo: this.geo, shared: this.shared, rim: this.rim };
+    this.deck = new CardDeck(this.renderer.capabilities.getMaxAnisotropy(), this.backLease.texture, this.rim);
+    this.decals = new DecalBatch(this.batches);
+    this.batches.add(this.deck.group);
+    this._kit = { deck: this.deck, geo: this.geo, rim: this.rim };
     this.tableLease = this._painter.table();
     this.world = createWorld(this.tableLease, this.opts.assets.tomeNormal);
     this.scene.background = this.world.background;
     this.scene.add(this.world.group);
+    this.environment();
+    this.casterSum = NaN;
     this.setViewport(this.viewport, this.dpr);
     this.lost = false;
     this.rebuilds++;
