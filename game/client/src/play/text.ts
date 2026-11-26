@@ -4,7 +4,7 @@
 // what may be answered.
 import type { Decision, StackId } from "../protocol";
 import type { SeatId, Target } from "../model";
-import { phaseName } from "../model";
+import { abilityTargetNames, phaseName, stackValues } from "../model";
 import type { Facts, ItemFact } from "./facts";
 import { cardOf, seatName, topItem } from "./facts";
 
@@ -29,12 +29,12 @@ export function where(f: Facts): string {
 export function itemLine(f: Facts, st: ItemFact): string {
   const name = shortCard(cardOf(f, st.source)?.display ?? "");
   const who = st.controller === f.me ? "You" : seatName(f, st.controller);
-  const mine = st.targets.filter((t) => ("seat" in t ? t.seat === f.me : cardOf(f, t.card)?.controller === f.me));
-  if (st.controller !== f.me && mine.length) {
-    const names = st.targets.map((t) => targetName(f, t)).filter(Boolean);
-    return `${whoName(f, st.controller)} ${st.spell ? name : `${name} ability`} targets ${listNames(names)}`;
-  }
-  return st.spell ? `${who} ${st.controller === f.me ? "cast" : "casts"} ${name}` : `${whoName(f, st.controller)} ${name} ability`;
+  const names = itemTargets(f, st);
+  const subject = st.spell ? name : `${name} ability`;
+  const line = names.length
+    ? `${st.controller === f.me ? subject : `${whoName(f, st.controller)} ${subject}`} targets ${listNames(names)}`
+    : st.spell ? `${who} ${st.controller === f.me ? "cast" : "casts"} ${name}` : `${whoName(f, st.controller)} ${subject}`;
+  return [line, ...stackValues(st)].join(" · ");
 }
 
 export const lists = listNames;
@@ -146,6 +146,11 @@ function targetName(f: Facts, t: Target): string {
   return c ? (c.controller === f.me ? "your " : "") + shortCard(c.display) : "";
 }
 
+const itemTargets = (f: Facts, st: ItemFact): string[] => [
+  ...st.targets.map((t) => targetName(f, t)).filter(Boolean),
+  ...abilityTargetNames(st, f.stack, (id) => cardOf(f, id)?.display),
+];
+
 /** One row of the stack summary: "1 Arcane Denial → Swords to Plowshares", "2 Swords to Plowshares → your Meloku". */
 export interface StackSummaryRow {
   readonly item: StackId;
@@ -168,8 +173,8 @@ export function stackRows(f: Facts): StackSummaryRow[] {
     return {
       item: st.id,
       n: i + 1,
-      title: st.spell ? name : `${shortCard(name)} ability`,
-      at: listNames(st.targets.map((t) => targetName(f, t)).filter(Boolean)),
+      title: [st.spell ? name : `${shortCard(name)} ability`, ...stackValues(st)].join(" · "),
+      at: listNames(itemTargets(f, st)),
       aimed: st.sweep || st.threat,
     };
   });

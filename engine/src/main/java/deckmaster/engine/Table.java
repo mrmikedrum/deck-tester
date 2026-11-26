@@ -65,19 +65,27 @@ final class Table {
     /** Waits for every seat to be taken and ready, plays the game, and ends the seats' sessions when it is over. */
     private void host() {
         try {
-            while (!allReady()) {
+            while (!stopped && !allReady()) {
                 Thread.sleep(500);
             }
+            if (stopped) return;
             state = "starting";
             Runnable start = lobby.startGame();
+            if (stopped) return;
             if (start == null) {
-                state = "could not start (a deck failed the lobby's checks)";
-                seats.values().forEach(s -> s.finishAtTable(state));
+                state = "table couldn't start";
+                seats.values().forEach(s -> {
+                    s.startFailure = "engine";
+                    s.finishAtTable(state);
+                });
                 return;
             }
             start.run();
             HostedMatch match = lobby.getHostedMatch();
             game = match == null ? null : match.getGame();
+            if (stopped && game != null && !game.isGameOver()) {
+                game.setGameOver(forge.game.GameEndReason.Draw);
+            }
             state = "playing";
             while (game != null && !game.isGameOver() && seats.values().stream().noneMatch(Session::gameThreadDied)) {
                 Thread.sleep(500);
@@ -99,7 +107,12 @@ final class Table {
         } catch (RuntimeException error) {
             state = "error: " + error;
             error.printStackTrace();
-            seats.values().forEach(s -> s.finishAtTable(state));
+            seats.values().forEach(s -> {
+                if (game == null) {
+                    s.startFailure = "engine";
+                }
+                s.finishAtTable(state);
+            });
         }
     }
 

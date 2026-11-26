@@ -212,7 +212,7 @@ test.describe("empty and startup states", () => {
     ["no game", { state: "no game" }, /No game yet/, true],
     ["starting", { state: "starting" }, /Shuffling up/, false],
     ["a playing snapshot with an empty view", { state: "playing", view: {}, decision: null, pilots: {} }, /No game yet/, true],
-    ["an error", { state: "error", error: "no such deck" }, /Couldn't start: no such deck/, true],
+    ["an error", { state: "error", error: "no such deck" }, NEW ? /Game couldn't start/ : /Couldn't start: no such deck/, true],
   ];
   for (const [name, snap, text, newGame] of states) {
     test(`${name}: waiting UI, nothing sent`, async ({ table }) => {

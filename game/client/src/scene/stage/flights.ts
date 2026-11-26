@@ -99,19 +99,19 @@ export function planFlights(set: ChangeSet, ctx: PlanContext): FlightPlan[] {
     const motion: FlightPlan["motion"] = m.to === "stack" ? "cast" : "join";
     drafts.push({ key: `c${card}`, card, departure: false, origin, dest, face: face(now), token: !!now?.token, motion });
   }
-  // An ability (no card of its own on the stack) is done: it withdraws to its controller's plate, shrinking as it goes
-  // (h.js `buildBoard`: an ability's card leaves the stack for `plateAt(owner)`), never a flare that reads as a burn.
+  // An ability preview returns to its source if that permanent is still on the field.
   for (const p of popped) {
     if (p.item.source !== null && movedFromStack.has(p.item.source)) continue;
     const piece = `stack:${p.item.id}`;
     if (!ctx.poseOf(piece)) continue;
     const src = p.item.source === null ? null : (ctx.model.cards.get(p.item.source) ?? null);
+    const home = !p.item.spell && src?.zone === "battlefield" ? ctx.desc.home.get(src.id) : undefined;
     drafts.push({
       key: `i${p.item.id}`,
       card: null,
       departure: true,
       origin: { from: "piece", piece },
-      dest: { to: "nowhere", how: "plate", seat: p.item.controller },
+      dest: home ? { to: "piece", piece: home } : { to: "nowhere", how: "plate", seat: p.item.controller },
       face: face(src),
       token: false,
       motion: "withdraw",

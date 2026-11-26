@@ -4,8 +4,10 @@ import hashlib
 import json
 import os
 import re
+import signal
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -13,7 +15,11 @@ ROOT = Path(__file__).resolve().parent.parent
 HOME = ROOT / ".deckmaster"
 SOCKET = HOME / "engine.sock"
 LOG = HOME / "engine.log"
+# Browser table RPCs do not wait for a game decision. Leave decision/fork requests on Forge's own deadline.
+REQUEST_TIMEOUTS = {"table": 120, "table_end": 120, "table_state": 30, "view": 30, "shutdown": 3}
+STOP_GRACE_SECONDS = 10
 MODE = []  # extra arguments for the engine: ["table"] for the table engine (see use_table)
+_started = {}  # socket to the detached process this interpreter started, for reaping on stop
 
 
 def use_table() -> None:
@@ -50,6 +56,10 @@ class EngineError(Exception):
     pass
 
 
+class EngineTimeout(EngineError):
+    pass
+
+
 def _stale() -> bool:
     if not CLASSPATH.exists():
         return True
@@ -66,9 +76,10 @@ def _build() -> None:
     CLASSPATH.touch()
 
 
-def _connect():
+def _connect(timeout=None):
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
+        client.settimeout(timeout)
         client.connect(str(SOCKET))
     except OSError:
         client.close()
@@ -77,6 +88,10 @@ def _connect():
 
 
 def _start() -> None:
+    # sockaddr_un.sun_path includes the terminating NUL.
+    limit = 103 if sys.platform == "darwin" else 107
+    if len(os.fsencode(SOCKET)) > limit:
+        raise EngineError(f"engine socket path too long ({limit} bytes max); use a shorter checkout path")
     if not RES.is_dir():
         raise EngineError("Forge isn't installed; run scripts/bootstrap-forge.sh")
     installed, wanted = forge_build()
@@ -91,26 +106,35 @@ def _start() -> None:
         if found.returncode == 0:
             env["JAVA_HOME"] = found.stdout.strip()
     java = str(Path(env["JAVA_HOME"]) / "bin" / "java") if "JAVA_HOME" in env else "java"
-    # Detach through a shell so the engine outlives this command and isn't our child.
-    subprocess.run(["/bin/sh", "-c", 'nohup "$@" >>"$0" 2>&1 </dev/null &', str(LOG),
-                    java, "-Ddeckmaster.forge=" + wanted, "-Ddeckmaster.localCards=" + ", ".join(local_cards()), f"-Xmx{os.environ.get('DECKMASTER_HEAP', '2g')}", "-cp", classpath, "deckmaster.engine.Server", str(RES), str(HOME), *MODE], env=env, check=True)
-    deadline = time.time() + 90
-    while time.time() < deadline:
+    with LOG.open("a") as log:
+        proc = subprocess.Popen(
+            [java, "-Ddeckmaster.forge=" + wanted, "-Ddeckmaster.localCards=" + ", ".join(local_cards()),
+             f"-Xmx{os.environ.get('DECKMASTER_HEAP', '2g')}", "-cp", classpath, "deckmaster.engine.Server",
+             str(RES), str(HOME), *MODE],
+            env=env, start_new_session=True, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+    deadline = time.monotonic() + 90
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            raise EngineError(f"engine exited during startup ({proc.returncode}); see {LOG}")
         try:
-            _connect().close()
+            _connect(0.2).close()
+            _started[SOCKET] = proc
             return
         except OSError:
             time.sleep(0.2)
+    proc.kill()
+    proc.wait()
     raise EngineError(f"engine didn't start; see {LOG}")
 
 
 def request(payload: dict, start: bool = True) -> dict:
     """Send one request; start the engine first if it isn't running. Raises EngineError on failure."""
     HOME.mkdir(exist_ok=True)
+    timeout = REQUEST_TIMEOUTS.get(payload["cmd"])
     client = None
     for attempt in range(3):  # a busy engine can refuse a connection for a moment; don't start a second one
         try:
-            client = _connect()
+            client = _connect(timeout)
             break
         except OSError:
             if not SOCKET.exists():
@@ -120,15 +144,24 @@ def request(payload: dict, start: bool = True) -> dict:
         if not start:
             raise EngineError("engine isn't running")
         _start()
-        client = _connect()
+        client = _connect(timeout)
+    deadline = None if timeout is None else time.monotonic() + timeout
     with client:
-        client.sendall((json.dumps(payload) + "\n").encode())
-        data = b""
-        while not data.endswith(b"\n"):
-            chunk = client.recv(65536)
-            if not chunk:
-                break
-            data += chunk
+        try:
+            client.sendall((json.dumps(payload) + "\n").encode())
+            data = b""
+            while not data.endswith(b"\n"):
+                if deadline is not None:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise socket.timeout()
+                    client.settimeout(remaining)
+                chunk = client.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+        except socket.timeout as error:
+            raise EngineTimeout(f"engine timed out on {payload['cmd']}; see {LOG}") from error
     if not data:
         raise EngineError(f"engine closed the connection; see {LOG}")
     reply = json.loads(data)
@@ -137,21 +170,78 @@ def request(payload: dict, start: bool = True) -> dict:
     return reply
 
 
+def _pid_file():
+    return SOCKET.with_suffix(".pid")
+
+
+def engine_pid():
+    """The PID registered by the server that bound this socket, if known."""
+    proc = _started.get(SOCKET)
+    if proc is not None and proc.poll() is None:
+        return proc.pid
+    try:
+        return int(_pid_file().read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def process_alive(pid):
+    proc = _started.get(SOCKET)
+    if proc is not None and proc.pid == pid:
+        return proc.poll() is None
+    # A stale PID file can outlive its JVM. Match the engine and its exact checkout before signaling a PID.
+    result = subprocess.run(["ps", "-ww", "-p", str(pid), "-o", "command="], capture_output=True, text=True, check=False)
+    suffix = f"deckmaster.engine.Server {RES} {HOME}" + (" table" if MODE else "")
+    return result.returncode == 0 and result.stdout.strip().endswith(suffix)
+
+
 def stop() -> None:
-    """Shut the engine down and wait until it has gone. Ending it ends every session."""
+    """Shut the engine down. Only remove its socket once its registered process is gone."""
+    pid = engine_pid()
+    if pid is not None and not process_alive(pid):
+        pid = None
+    try:
+        inode = SOCKET.stat().st_ino
+    except FileNotFoundError:
+        inode = None
     try:
         request({"cmd": "shutdown"}, start=False)
     except (EngineError, OSError):
         pass
-    deadline = time.time() + 10
-    while time.time() < deadline:
-        try:
-            _connect().close()
+    deadline = time.monotonic() + STOP_GRACE_SECONDS
+    if pid is None:
+        while SOCKET.exists():
+            try:
+                _connect(0.2).close()
+            except (FileNotFoundError, ConnectionRefusedError):
+                return  # An older engine left a stale socket. The next JVM can reclaim it.
+            except OSError:
+                pass
+            if time.monotonic() >= deadline:
+                raise EngineError("cannot confirm engine shutdown without its PID")
             time.sleep(0.2)
-        except OSError:
-            break
-    if SOCKET.exists():
-        SOCKET.unlink()
+        return
+    while process_alive(pid) and time.monotonic() < deadline:
+        time.sleep(0.2)
+    if process_alive(pid):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        deadline = time.monotonic() + 5
+        while process_alive(pid) and time.monotonic() < deadline:
+            time.sleep(0.1)
+    if process_alive(pid):
+        raise EngineError(f"engine process {pid} did not stop")
+    if _pid_file().exists() and _pid_file().read_text().strip() != str(pid):
+        return  # A replacement already owns the socket.
+    try:
+        if inode is not None and SOCKET.stat().st_ino == inode:
+            SOCKET.unlink()
+    except FileNotFoundError:
+        pass
+    _pid_file().unlink(missing_ok=True)
+    _started.pop(SOCKET, None)
 
 
 def refresh() -> None:

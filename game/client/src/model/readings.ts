@@ -9,6 +9,20 @@ import type { Role } from "./predicates";
 import { roleOf } from "./predicates";
 import type { StackItem, TableModel } from "./table";
 
+export function stackValues(item: Pick<StackItem, "x" | "modes">): string[] {
+  return [...(item.x === null ? [] : [`X = ${item.x}`]), ...item.modes.filter(Boolean)];
+}
+
+/** Name the targeted instance, including its position when several abilities share a source. */
+export function abilityTargetNames(item: StackItem, stack: readonly StackItem[], nameOf: (card: CardId) => string | undefined): string[] {
+  return item.abilityTargets.map((id) => {
+    const at = stack.findIndex((st) => st.id === id);
+    const src = stack[at]?.source;
+    const name = src == null ? undefined : nameOf(src);
+    return name ? `${name} ability (stack ${stack.length - at})` : "Stack ability";
+  });
+}
+
 // ---- Log lines (live.js) -----------------------------------------------------------------------------------------
 
 /** live.js `logText`: a log line without Forge's bracketed annotations and "(id)" suffixes. */
@@ -187,7 +201,9 @@ export function aimedAt(item: StackItem, model: TableModel, seat: SeatId): Stack
  */
 export const threatens = (item: StackItem, model: TableModel): boolean =>
   item.controller !== null && // live.js `apply` read an unnamed controller as the viewer's own
-  item.controller !== model.viewer.perspective && aimedAt(item, model, model.viewer.perspective).length > 0;
+  item.controller !== model.viewer.perspective &&
+  (aimedAt(item, model, model.viewer.perspective).length > 0 ||
+    model.stack.some((target) => target.controller === model.viewer.perspective && item.abilityTargets.includes(target.id)));
 
 /** The top of the stack (the model's stack is bottom first). */
 export const topOf = (model: TableModel): StackItem | undefined => model.stack[model.stack.length - 1];

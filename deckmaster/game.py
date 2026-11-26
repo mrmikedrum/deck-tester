@@ -40,6 +40,7 @@ CLIENTLOG = engine.HOME / "clientlog.jsonl"
 BENCH = engine.HOME / "bench"   # the workbench's timing results (game/client/src/scene/workbench/bench.ts)
 UA = {"User-Agent": "deckmaster-game/0.1", "Accept": "application/json"}
 ARGS = None
+RECOVERY_SECONDS = 180
 
 # ---- The table -----------------------------------------------------------------------------------------------------
 
@@ -47,6 +48,7 @@ ARGS = None
 class Table:
     def __init__(self):
         self.lock = threading.Condition()
+        self.start_lock = threading.Lock()
         self.version = 0
         self.snapshot = {"state": "no game", "answer": None}
         self.status = None   # the last forwarded answer: {key, id, attempt, state: working|applied|refused, error?}
@@ -62,18 +64,14 @@ class Table:
         self.usage = None
         self.outcomes = {}
 
-    def publish(self, snap):
-        """A snapshot no engine session stands behind (starting, a failed start): nothing in it can be answered."""
-        with self.lock:
-            self.session = None
-            self._store(dict(snap, answer=self.status))
-
     def show(self, snap, gen, session):
         """A view `session` sent for game `gen`, unless a newer game has begun since it was asked for. Whether shown."""
         with self.lock:
             if gen != self.generation:
                 return False
             self.session = session
+            if self.snapshot["state"] == "reconnecting":
+                self.error = None
             self._store(dict(snap, answer=self.status))
             return True
 
@@ -84,8 +82,22 @@ class Table:
             self.answers += 1
             self.status = None
             self.session = None
+            self.error = None
             self._store({"state": "starting", "gen": self.generation, "answer": None})
             return self.generation
+
+    def fail_start(self, gen, error, reason=None):
+        with self.lock:
+            if gen == self.generation and self.snapshot["state"] in ("starting", "reconnecting"):
+                self.failure(gen, "error", error, **({"startFailure": reason} if reason else {}))
+
+    def failure(self, gen, state, error, **fields):
+        """Hold the lock. End the current generation's ability to answer, including any answer still in flight."""
+        self.error = str(error)
+        self.session = None
+        self.status = None
+        self.answers += 1
+        self._store({"state": state, "gen": gen, "error": self.error, "answer": None, **fields})
 
     def _store(self, snap):
         """Hold the lock. A changed snapshot is a new version, and wakes the long polls."""
@@ -109,17 +121,14 @@ class Table:
                 self.lock.wait(timeout)
             return self.version, self.snapshot
 
-    def open(self, me, others, seed=None, mana="creatures"):
+    def open(self, gen, me, others, seed=None, mana="creatures"):
         # Resolve every real-deck opponent before replacing any existing game. Never silently
         # fall back to stock Forge-AI mode when a deck lacks a configured Jev plan/advisor.
         mine = decks.get(me[:-4] if me.endswith(".txt") else me)
         agents = [configured_seat(slug) for slug in others]
         model.key()  # check configured Jev access; never expose the key in a response or log
-        gen = self.begin()
-        try:
-            engine.request({"cmd": "table_end"})
-        except engine.EngineError:
-            pass
+        if engine.SOCKET.exists():
+            close_table()
         seats = []
         self.usage, self.outcomes, self.pilots = model.Usage(), {}, {"You": "human"}
         names = {"You"}
@@ -145,7 +154,11 @@ class Table:
                 seat["watch"] = True  # stop on what the others put on the stack, so you see it
             seats.append(seat)
         # Forge's lobby can hold the last table's port for a while after it ends: each table takes the next one.
-        reply = engine.request({"cmd": "table", "seats": seats, "people": 0, "port": ARGS.table_port + gen % 20})
+        try:
+            reply = engine.request({"cmd": "table", "seats": seats, "people": 0, "port": ARGS.table_port + gen % 20})
+        except engine.EngineTimeout:
+            close_table()
+            raise
         self.seats = reply["seats"]
         self.mine = self.seats["You"]
         for agent in agents:
@@ -165,18 +178,45 @@ class Table:
     def watch(self, gen, session):
         """Game `gen`'s watcher: polls its own seat's view until a newer game begins. A view that comes back after that
         is dropped (`show` checks the gen under the lock), so it never overwrites the newer game's snapshot."""
-        last_ok = time.time()
+        pid = engine.engine_pid()
+        retry = 0.5
+        failed_at = None
+        opening = True
         while gen == self.generation:
             try:
-                reply = engine.request({"cmd": "view", "session": session})
+                reply = engine.request({"cmd": "view", "session": session}, start=False)
+                failed_at, retry = None, 0.5
+                if opening:
+                    reason = reply.get("startFailure")
+                    if reason or (reply.get("over") or "").startswith("error:"):
+                        self.fail_start(gen, reply.get("over") or "engine could not start", reason)
+                        return
+                    if not (reply.get("view") or reply.get("decision") or reply.get("over")):
+                        if self.snapshot["state"] == "reconnecting":
+                            self.show({"state": "starting", "gen": gen}, gen, None)
+                        time.sleep(0.25)
+                        continue
+                opening = False
                 if not self.show(snapshot(reply, gen, self.pilots), gen, session):
                     return
-                last_ok = time.time()
+                if "over" in reply:
+                    return
                 time.sleep(0.12 if reply.get("decision") else 0.25)
             except Exception as error:  # a read while Forge moves cards can fail: read again
-                if time.time() - last_ok > 10:
-                    self.error = str(error)
-                time.sleep(0.1)
+                now = time.monotonic()
+                with self.lock:
+                    if gen != self.generation:
+                        return
+                    if (pid is not None and not engine.process_alive(pid)) or (failed_at is not None and now - failed_at >= RECOVERY_SECONDS):
+                        self.failure(gen, "error" if opening else "interrupted", error)
+                        return
+                    if failed_at is None:
+                        failed_at = now
+                        self.error = str(error)
+                        self.session = None
+                        self._store({"state": "reconnecting", "gen": gen, "error": self.error, "answer": self.status})
+                time.sleep(retry)
+                retry = min(retry * 2, 5)
 
     def answer(self, body):
         """Forward an answer to the pending decision. The reply is the engine's refusal if it comes at once, else
@@ -195,7 +235,7 @@ class Table:
             if (body.get("key") and body["key"] != k or "id" in body and body["id"] != did
                     or "gen" in body and body["gen"] != self.snapshot.get("gen")):
                 return {"ok": False, "error": "that decision has passed"}
-            if self.status and self.status["state"] == "working" and same(self.status, k, did):
+            if self.status and self.status["state"] == "working":
                 return {"ok": False, "error": "an answer is already being worked on"}
             self.answers += 1
             serial = self.answers
@@ -245,7 +285,7 @@ def envelope(snap, version, error, build=None):
     client build served at /next/."""
     out = {"answer": None}
     out.update(snap)
-    out.update(v=version, error=error, build=build)
+    out.update(v=version, error=snap.get("error", error), build=build)
     return out
 
 
@@ -253,11 +293,6 @@ def key(decision):
     """A decision's identity: the client sends it with each answer, and an answer whose key is not the pending
     decision's is refused. game/client/src/protocol/key.ts computes the same."""
     return "|".join([decision["kind"], decision["turn"], decision.get("prompt", ""), str(len(decision.get("options", [])))] + decision.get("options", [])[:6])
-
-
-def same(status, k, did):
-    """Whether an answer status is about this decision: by the engine's id when there is one, else by key."""
-    return status["id"] == did if did is not None else status["key"] == k
 
 
 def short(commander):
@@ -836,7 +871,9 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/new":
                 me = b.get("deck", ARGS.deck)
                 others = b.get("opponents", ARGS.opponents.split(","))
-                threading.Thread(target=lambda: safe_open(me, others, b.get("seed"), b.get("mana", "creatures")), daemon=True).start()
+                gen = TABLE.begin()
+                threading.Thread(target=safe_open, args=(gen, me, others, b.get("seed"), b.get("mana", "creatures")),
+                                 daemon=True).start()
                 return self.send(200, {"ok": True})
         except Exception as error:
             traceback.print_exc()
@@ -844,14 +881,26 @@ class Handler(BaseHTTPRequestHandler):
         return self.send(404, {"error": "not found"})
 
 
-def safe_open(me, others, seed, mana):
+def close_table():
+    """Wait for creation/closure on the table engine before starting another table or reporting a timeout."""
     try:
-        TABLE.error = None
-        TABLE.open(me, others, seed, mana)
-    except Exception as error:
-        traceback.print_exc()
-        TABLE.error = str(error)
-        TABLE.publish({"state": "error", "error": str(error)})
+        engine.request({"cmd": "table_end"}, start=False)
+        if engine.request({"cmd": "table_state"}, start=False)["state"] == "no table":
+            return
+    except (engine.EngineError, OSError):
+        pass
+    engine.stop()  # No acknowledgement: the table is gone only once its JVM has stopped.
+
+
+def safe_open(gen, me, others, seed, mana):
+    with TABLE.start_lock:
+        if gen != TABLE.generation:
+            return
+        try:
+            TABLE.open(gen, me, others, seed, mana)
+        except Exception as error:
+            traceback.print_exc()
+            TABLE.fail_start(gen, error)
 
 
 def fixture_faces():
@@ -937,7 +986,9 @@ def serve(args):
     engine.use_table()
     load_cards()
     if args.start:
-        threading.Thread(target=lambda: safe_open(args.deck, args.opponents.split(","), args.seed, "creatures"), daemon=True).start()
+        gen = TABLE.begin()
+        threading.Thread(target=safe_open, args=(gen, args.deck, args.opponents.split(","), args.seed, "creatures"),
+                         daemon=True).start()
     threading.Thread(target=ensure_client, daemon=True).start()   # /next/ serves its last build until a new one is done
     server = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     server.daemon_threads = True

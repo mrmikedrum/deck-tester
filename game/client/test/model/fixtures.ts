@@ -88,6 +88,9 @@ interface StackSpec {
   readonly id: number;
   readonly source: WireCard;
   readonly targets?: readonly (number | string)[];
+  readonly x?: number;
+  readonly modes?: readonly string[];
+  readonly abilityTargets?: readonly number[];
   readonly spell?: boolean;
   readonly text?: string;
 }
@@ -147,6 +150,9 @@ export function snapshotOf(spec: TableSpec): Snapshot {
         spell: s.spell ?? true,
         text: s.text ?? `${s.source.name} (${s.source.id})`,
         targets: s.targets ?? [],
+        x: s.x,
+        modes: s.modes,
+        abilityTargets: s.abilityTargets,
       })),
       combat: spec.combat ? { ...spec.combat, blockers: spec.combat.blockers ?? [] } : null,
       log: spec.log ?? [],

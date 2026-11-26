@@ -66,7 +66,7 @@ describe("the log strip and the stack summary on the slice", () => {
     });
     played(r, "024-targets-monarch.json");
     played(r, "025-play-stack-targets-player.json");
-    expect(strip(r)[0]).toBe("You cast Lightning Bolt");
+    expect(strip(r)[0]).toBe("You cast Lightning Bolt targeting [Princess]");
   });
 
   it("the Bolt on its way to the stack: the prompt watches it, saying the line it will ask with", () => {
@@ -83,7 +83,7 @@ describe("the log strip and the stack summary on the slice", () => {
     run(r, 4000);
     v = view(r);
     expect(v.watch).toBeNull();
-    expect(v.controls.prompt?.headline).toBe("");
+    expect(v.controls.prompt?.headline).toBe("Lightning Bolt targets Princess");
     expect(v.controls.prompt?.buttons.map((b) => b.label)).toContain("Resolve");
   });
 

@@ -30,7 +30,7 @@ describe("the stack summary, top first", () => {
     expect(lines(p)).toEqual(["1 Doom Blade → Serra Angel", "2 Doom Blade → your Grizzly Bears", "3 Thorn of the Black Rose"]);
     expect(p.stack.map((r) => r.aimed)).toEqual([false, true, false]);
     // Dack's Doom Blade on top, at Atraxa's Serra Angel: what is cast, in game terms; one response, two buttons.
-    expect(p.headline).toBe("Dack casts Doom Blade");
+    expect(p.headline).toBe("Dack's Doom Blade targets Serra Angel");
     expect(p.context).toBeNull();
   });
 
@@ -47,7 +47,7 @@ describe("the stack summary, top first", () => {
   it("a lone item has no summary: the card is held up", () => {
     const p = prompt(opened(AT_A_PLAYER));
     expect(p.stack).toEqual([]);
-    expect(p.headline).toBe("");
+    expect(p.headline).toBe("Lightning Bolt targets Princess");
   });
 
   it("triggers: each its card's ability, short names", () => {

@@ -153,6 +153,7 @@ export function installDebug(loop: Loop, renderer: PageRenderer, extras: DebugEx
     deadlines: () => [...loop.state.deadlines.items].map(([id, d]) => [id, d.due] as const),
     scene: {
       inspect: () => plain(renderer.scene?.inspect() ?? null),
+      seatAt: (x: number, y: number) => renderer.scene?.seatAt({ x, y }) ?? null,
       pick: (x: number, y: number, skip: readonly string[] = []) => plain(renderer.scene?.pick({ x, y }, new Set(skip)) ?? null),
       stats: () => plain(host()?.stats() ?? null),
       frames: (reset = false) => plain(host()?.frameIntervals(reset) ?? null),

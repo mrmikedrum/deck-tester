@@ -474,6 +474,10 @@ function aimsOf(model: TableModel, pieces: ReadonlyMap<string, Piece>, home: Rea
     if (!pieces.has(from)) continue;
     const src = it.source === null ? undefined : model.cards.get(it.source);
     const colours = src ? (src.face.colors.length ? src.face.colors : src.face.produces) : [];
+    for (const [j, target] of it.abilityTargets.entries()) {
+      const to = `stack:${target}`;
+      if (pieces.has(to)) out.push({ id: `aim:${it.id}:ability:${j}`, from, to, onto: "spell", colours, faint: it !== top || !up });
+    }
     it.targets.forEach((t, j) => {
       let to: string | undefined, onto: Aim["onto"] = "card";
       if ("seat" in t) {

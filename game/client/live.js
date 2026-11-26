@@ -1418,8 +1418,8 @@
       feed();
       promptEl.hidden = false;
       promptEl.classList.remove("asking", "moving", "threat", "restoring", "inspecting");
-      promptEl.innerHTML = `<div class="l-what">${esc(s.state === "starting" ? "Shuffling up… (the first game takes about a minute)" : s.state === "error" ? "Couldn't start: " + (s.error || "") : "No game yet")}</div><div class="l-buttons"></div>`;
-      if (s.state !== "starting") { const b = el("button", "act", "New game"); b.addEventListener("click", menu); promptEl.querySelector(".l-buttons").appendChild(b); }
+      promptEl.innerHTML = `<div class="l-what">${esc(s.state === "starting" ? "Shuffling up… (the first game takes about a minute)" : s.state === "error" ? (s.startFailure === "deck" ? "Deck failed lobby checks" : "Couldn't start: " + (s.error || "")) : s.state === "reconnecting" ? "Reconnecting…" : s.state === "interrupted" ? "Game interrupted" : "No game yet")}</div><div class="l-buttons"></div>`;
+      if (s.state !== "starting" && s.state !== "reconnecting") { const b = el("button", "act", "New game"); b.addEventListener("click", menu); promptEl.querySelector(".l-buttons").appendChild(b); }
       return;
     }
     const top = G.stack[0];

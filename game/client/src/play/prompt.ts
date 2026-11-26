@@ -24,7 +24,7 @@ export const ctxOf = (s: S): Ctx | null => (s.decision && s.facts ? { d: s.decis
 
 /** "Floating {U}{U}": the pool's symbols, a count beside any held more than four times. */
 const floatingOf = (pool: string): string | null =>
-  pool ? `Floating ${pool.replace(/(\d+) (\{\w+\})\s*/g, (_, n: string, sym: string) => (+n <= 4 ? sym.repeat(+n) : `${n}${sym}`))}` : null;
+  pool ? `${pool.replace(/(\d+) (\{\w+\})\s*/g, (_, n: string, sym: string) => (+n <= 4 ? sym.repeat(+n) : `${n}${sym}`))}` : null;
 
 export function promptOf(s: S): PromptOf | null {
   const f = s.facts;

@@ -129,6 +129,7 @@ final class Session {
     private volatile Thread thread;
     volatile Player pilot;
     volatile String over;
+    volatile String startFailure;
     /** Milliseconds building the game (decks, cards) before the first action, for measuring forks. */
     volatile long setupMillis;
     private volatile SeededRandom.Source random;
@@ -1142,16 +1143,42 @@ final class Session {
             entry.put("controller", item.getActivatingPlayer() == null ? null : item.getActivatingPlayer().getName());
             entry.put("spell", item.isSpell());
             entry.put("text", Labels.named(item.getStackDescription(), ""));
+            var ability = item.getSpellAbility();
+            if (ability.getXManaCostPaid() != null) {
+                entry.put("x", ability.getXManaCostPaid());
+            }
             List<Object> targets = new ArrayList<>();
+            List<String> modes = new ArrayList<>();
+            List<Integer> abilityTargets = new ArrayList<>();
             for (var sub = item; sub != null; sub = sub.getSubInstance()) {
+                var effect = sub.getSpellAbility();
+                // Forge chains the chosen modes as sub-abilities and gives each a CharmOrder.
+                if (sub != item && effect.hasSVar("CharmOrder")) {
+                    modes.add(Labels.named(effect.getDescription(), effect.getHostCard().getName()));
+                }
                 var choices = sub.getTargetChoices();
                 if (choices != null) {
                     choices.getTargetCards().forEach(card -> targets.add(card.getId()));
                     choices.getTargetPlayers().forEach(player -> targets.add(player.getName()));
+                    for (var target : choices.getTargetSpells()) {
+                        targets.add(target.getHostCard().getId());
+                        if (!target.isSpell()) {
+                            var instance = game.getStack().getInstanceMatchingSpellAbilityID(target);
+                            if (instance != null) {
+                                abilityTargets.add(instance.getId());
+                            }
+                        }
+                    }
                 }
             }
             if (!targets.isEmpty()) {
                 entry.put("targets", targets);
+            }
+            if (!abilityTargets.isEmpty()) {
+                entry.put("abilityTargets", abilityTargets);
+            }
+            if (!modes.isEmpty()) {
+                entry.put("modes", modes);
             }
             stack.add(entry);
         });

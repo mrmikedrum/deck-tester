@@ -426,20 +426,26 @@ schemas with the rules in comments); `tests/fixtures/protocol/` holds real envel
 engine to them. The rules:
 
 - **The envelope** (`GET /api/view?v=N`, a long poll that answers when the version passes `N`, or at once when `N` is
-  ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`), `gen` (a new game, a new
-  gen), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view of my seat; `{}` or null
-  before the game), `decision` (the pending one, or null), `over` (the result line), `pilots` (seat to pilot), plus
+  ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`, `reconnecting`, `interrupted`), `gen`
+  (a new game, a new gen, retained on a failed start), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view
+  of my seat, `{}` or null before the game), `decision` (the pending one, or null), `over` (the result line), `pilots` (seat to pilot), plus
   `answer` and `build` below. The view is facts by card id and player name: players from mine in turn order, gone once
   they lose (me included); the stack top first; `turn` global, `label` per player ("T3 Dack main1"); `cost` in Forge's
-  short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. Ids need not resolve: a stack
-  target may be a card gone from the game (a token exiled mid-resolution, still named in the item's text), and a
-  `choose` may offer hidden cards (a library search). `combat` carries Forge's facts about the combat on the table:
+  short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. A stack item carries its
+  `targets`, `abilityTargets` (stack-instance ids), chosen `x` and `modes` when present. A target may be a card gone
+  from the game (still named in the item's text), and a `choose` may offer hidden cards (a library search).
+  `combat` carries Forge's facts about the combat on the table:
   its `ordinal` in the turn, each attacker's `defender`, `defending` player (a battle's protector) and Forge's
   `blocked` verdict (it holds when the blockers leave), the `blockers`, and the combat `damage` dealt in it by `source`,
   `target` and `defender` (what the source was attacking when it hit; after prevention, summed over its damage steps;
   noncombat damage is not in it). The engine's `CombatFacts` takes them from Forge's own damage state on the game
   thread as they happen, publishes them for the view, and saves and restores them with a session snapshot; a hit
   stays counted when its source or target leaves, and nothing comes from the game log.
+  Responsive empty views keep the bridge in `starting`. An opening failure can include `startFailure` (`deck` or
+  `engine`). Read failures clear the decision and publish `reconnecting` while the bridge retries the same session.
+  A dead engine or an exhausted recovery window publishes `interrupted` for an opened game.
+  Keep the engine connection open while creating a table. The server discards creation if its requester disconnects.
+  Before opening a replacement or reporting a creation timeout, the bridge closes the table and confirms closure.
 - **Decisions** carry `id`, `kind`, `turn`, `prompt`, `options` (labels, which can repeat), `details`, `min`, `max`,
   `repeat`, `mine` (asked in my turn; every decision is mine to answer), and `refs` aligned with the options for what
   they point at: `play` (`{card, spell, mana?}`; pass is `{}`), `pay` (`{card, repeats?}`: `repeats` when the mana
@@ -466,7 +472,7 @@ engine to them. The rules:
   a late view from the last game never replaces the next one's snapshot.
 - **Answer status**: every snapshot carries `answer`, null or `{key, id, attempt, state, error?}` for the last answer
   forwarded: `working` while the engine plays on to the next decision, then `applied`, or `refused` with the engine's
-  reason. A second answer to a decision (by id) whose answer is still working is refused ("an answer is already being
+  reason. A second answer in the same game while an answer is still working is refused ("an answer is already being
   worked on"). The reply itself stays `{ok: true, attempt}` after 0.6 s, or the refusal (`{ok: false, error,
   attempt?}`) if it comes sooner, for the old client. `attempt` numbers the forwarded answers, increasing for as long
   as the bridge runs (a new game advances it too, so it never repeats); the reply carries the same number, so a client

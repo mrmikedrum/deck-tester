@@ -281,7 +281,11 @@ const locate = (page, what) => locateOn(page, what, NEW);
 // that snapshot (a name from shoot.js STATES, or a snapshot object); the clock is frozen from the first boot on.
 const test = base.extend({
   rig: [async ({ browser }, use) => {
-    const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true, deviceScaleFactor: 1, baseURL: process.env.BEHAVIOUR_BASE });
+    const stills = process.env.PLAYTEST_STILLS;
+    const ctx = await browser.newContext({
+      viewport: stills ? { width: 1210, height: 834 } : { width: 1180, height: 820 },
+      deviceScaleFactor: stills ? 2 : 1, hasTouch: true, baseURL: process.env.BEHAVIOUR_BASE,
+    });
     const page = await ctx.newPage();
     const t = new Table(page);
     await t.install();

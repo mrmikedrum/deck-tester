@@ -132,7 +132,7 @@ group("the stage over the corpus", () => {
     expect(worst).toBeGreaterThan(0);
   });
 
-  it("a resolved ability leaves from where it stood on the stack and withdraws to its controller's plate", () => {
+  it("a resolved ability leaves from where it stood on the stack without a flare", () => {
     let checked = 0;
     for (const run of runs) {
       const stage = new Stage();
@@ -149,10 +149,9 @@ group("the stage over the corpus", () => {
             const at = f.origin.from === "piece" ? before.get(f.origin.piece) : undefined;
             if (!g || !at || !waiting.has(f.id)) continue;
             waiting.delete(f.id);
-            // Its first frame: it has barely moved from the stack entry it was; it is bound for a plate, no flare.
+            // Its first frame: it has barely moved from the stack entry it was; no flare.
             const d = Math.hypot(g.sample.pos.x - at.x, g.sample.pos.z - at.z);
             expect(d, `${step.name}: ${f.key} starts ${d.toFixed(2)} from its stack entry`).toBeLessThan(0.5);
-            expect(f.dest).toMatchObject({ to: "nowhere", how: "plate" });
             expect(g.flare).toBeNull();
             checked++;
           }

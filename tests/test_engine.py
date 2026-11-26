@@ -1,14 +1,83 @@
 """End-to-end check against the real engine. Skipped when Forge isn't installed (as in CI)."""
 
+from contextlib import ExitStack
+import os
+import signal
+import socket
 import threading
 import unittest
 from pathlib import Path
 
 from unittest import mock
 
-from deckmaster import batch, decklist, engine, model, records, report
+from deckmaster import batch, decklist, engine, game, model, records, report
+from tests.protocol_capture import table_engine
 
 DECK = Path(__file__).resolve().parent / "fixtures" / "decks" / "marath-tokens.txt"
+
+
+@unittest.skipUnless(engine.RES.is_dir() and engine.FORGE_BUILD.exists(), "requires installed Forge")
+class EngineShutdownTest(unittest.TestCase):
+    def setUp(self):
+        stack = ExitStack()
+        self.addCleanup(stack.close)
+        original_socket = engine.SOCKET
+        stack.enter_context(table_engine(table=False))
+        self.assertNotEqual(engine.SOCKET, original_socket)
+        engine.request({"cmd": "sessions"})
+        self.proc = engine._started[engine.SOCKET]
+        self.addCleanup(self.reap)
+
+    def reap(self):
+        if self.proc.poll() is None:
+            self.proc.kill()
+            self.proc.wait(timeout=5)
+
+    def test_shutdown_exits_even_when_the_client_has_closed(self):
+        with engine._connect() as client:
+            os.kill(self.proc.pid, signal.SIGSTOP)
+            try:
+                client.sendall(b'{"cmd": "shutdown"}\n')
+            finally:
+                client.close()
+                os.kill(self.proc.pid, signal.SIGCONT)
+        self.assertEqual(self.proc.wait(timeout=10), 0)
+
+    def test_stop_kills_a_live_stalled_engine_before_unlinking_its_socket(self):
+        self.assertEqual(engine.engine_pid(), self.proc.pid)
+        os.kill(self.proc.pid, signal.SIGSTOP)
+        # A CLI in a different process has the server's PID file rather than a Popen handle.
+        with mock.patch.object(engine, "_started", {}), mock.patch.object(engine, "STOP_GRACE_SECONDS", 0.1), \
+                mock.patch.dict(engine.REQUEST_TIMEOUTS, shutdown=0.1):
+            engine.stop()
+        self.assertEqual(self.proc.wait(timeout=5), -signal.SIGKILL)
+        self.assertFalse(engine.SOCKET.exists())
+        self.assertFalse(engine._pid_file().exists())
+
+
+@unittest.skipUnless(engine.RES.is_dir() and engine.FORGE_BUILD.exists(), "requires installed Forge")
+class TableCreationTest(unittest.TestCase):
+    def test_timed_out_creation_does_not_block_a_replacement_on_the_same_port(self):
+        with table_engine():
+            engine.request({"cmd": "sessions"})
+            proc = engine._started[engine.SOCKET]
+            with socket.socket() as sock:
+                sock.bind(("127.0.0.1", 0))
+                port = sock.getsockname()[1]
+            request = {"cmd": "table", "port": port, "people": 1, "seats": [
+                {"name": "You", "commanders": ["Marath, Will of the Wild"], "main": [[99, "Forest"]]},
+            ]}
+            os.kill(proc.pid, signal.SIGSTOP)
+            try:
+                with mock.patch.dict(engine.REQUEST_TIMEOUTS, table=0.1):
+                    with self.assertRaisesRegex(engine.EngineTimeout, "engine timed out on table"):
+                        engine.request(request)
+            finally:
+                os.kill(proc.pid, signal.SIGCONT)
+            game.close_table()
+            self.assertEqual(engine.request({"cmd": "table_state"})["state"], "no table")
+            self.assertIn("You", engine.request(request)["seats"])
+            game.close_table()
 
 
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
@@ -48,6 +117,70 @@ class ManualGameTest(unittest.TestCase):
             self.assertTrue(field[crew]["tapped"])
             self.assertEqual(after["counters"]["Charge"], 5)
             self.assertIn("Creature", after["type"])
+        finally:
+            request("end")
+
+    def test_floating_mana_pays_for_a_targeted_spell_with_x(self):
+        start = {"cmd": "start", "commanders": ["Marath, Will of the Wild"], "main": [[99, "Mountain"]],
+                 "seed": 11, "turns": 2, "opponents": 1}
+        session = engine.request(start)["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        def choose(prefix):
+            d = request("view")["decision"]
+            option = next(i for i, label in enumerate(d["options"], 1) if label.startswith(prefix))
+            request("answer", answer=[option])
+
+        try:
+            request("answer", answer=[1])
+            for card in ("Springleaf Drum", "Ornithopter", "Mountain", "Mountain"):
+                request("override", args=["create", card])
+            for card in ("Fireball", "Lightning Bolt"):
+                request("override", args=["create", card, "hand"])
+            choose("Springleaf Drum:")
+            choose("red")
+            self.assertEqual(request("view")["view"]["players"][0]["manaPool"], {"R": 1})
+            choose("Fireball")
+            self.assertEqual(request("view")["decision"]["kind"], "number")
+            request("answer", answer=[1])
+            choose("Opp 1")
+            view = request("view")["view"]
+            [spell] = view["stack"]
+            self.assertEqual(spell["source"]["name"], "Fireball")
+            self.assertEqual(spell["targets"], ["Opp 1"])
+            self.assertEqual(spell["x"], 1)
+            self.assertEqual(view["players"][0]["manaPool"], {})
+            mountains = [c for c in view["players"][0]["battlefield"] if c["name"] == "Mountain"]
+            self.assertEqual(sum(c.get("tapped", False) for c in mountains), 1)
+        finally:
+            request("end")
+
+    def test_stack_reports_only_the_chosen_mode(self):
+        start = {"cmd": "start", "commanders": ["Marath, Will of the Wild"], "main": [[99, "Mountain"]],
+                 "seed": 11, "turns": 2}
+        session = engine.request(start)["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        try:
+            request("answer", answer=[1])
+            for card in ("Mountain", "Mountain", "Mountain", "Ornithopter"):
+                request("override", args=["create", card])
+            for card in ("Abrade", "Lightning Bolt"):
+                request("override", args=["create", card, "hand"])
+            options = request("view")["decision"]["options"]
+            reply = request("answer", answer=[options.index("Abrade") + 1])
+            self.assertEqual(reply["decision"]["kind"], "mode")
+            request("answer", answer=[1])
+            view = request("view")["view"]
+            [spell] = view["stack"]
+            [target] = [c for c in view["players"][0]["battlefield"] if c["name"] == "Ornithopter"]
+            self.assertEqual(spell["modes"], ["Abrade deals 3 damage to target creature."])
+            self.assertEqual(spell["targets"], [target["id"]])
+            self.assertNotIn("x", spell)
         finally:
             request("end")
 
