@@ -348,6 +348,36 @@ describe("targets and choices on the table", () => {
     expect(t.answers()).toEqual([[1]]);
   });
 
+  // Review: a second tap on a well of twins took the first Swamp back, so a choice of two never completed.
+  const twoSwamps = (min: number, max: number) =>
+    withDecision("021-targets-monarch.json", { kind: "targets", prompt: "target lands", options: ["Swamp", "Swamp"], refs: [{ card: 857 }, { card: 858 }], min, max });
+
+  it("two Swamps wanted, in a well beside one that is not offered: two taps on the well pick both, then Done sends them (021)", () => {
+    const t = new Table();
+    t.open(twoSwamps(2, 2), { piles: [[857, 858, 859]] });
+    t.pile([[857, 858, 859]]);
+    t.tapGroupOf(857);
+    expect(t.buttons()).toContain("Done (1)");
+    t.tapGroupOf(857);
+    expect(t.buttons()).toContain("Done (2)");
+    t.press("Done (2)");
+    expect(t.answers()).toEqual([[1, 2]]);
+  });
+
+  it("up to two Swamps: each tap on the well picks the next; with both picked a tap takes the last back (021)", () => {
+    const t = new Table();
+    t.open(twoSwamps(0, 2), { piles: [[857, 858, 859]] });
+    t.pile([[857, 858, 859]]);
+    t.tapGroupOf(857);
+    t.tapGroupOf(857);
+    expect(t.buttons()).toContain("Done (2)");
+    t.tapGroupOf(857);
+    expect(t.buttons()).toContain("Done (1)");
+    t.tapGroupOf(857);
+    t.press("Done (2)");
+    expect(t.answers()).toEqual([[1, 2]]);
+  });
+
   it("a well where every untapped card is an option is chosen on the table; a tap gives its option (021, Swamps)", () => {
     const t = new Table();
     t.open(swamp(859), { piles: [[857, 858, 859]] });
