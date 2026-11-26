@@ -14,6 +14,7 @@ import {
   materials,
   NO_SURFACES,
   paintPage,
+  paintPrinted,
   shortName,
   shortType,
   tokens,
@@ -57,6 +58,15 @@ const paint = (spec: FaceSpec): string[] => {
   drawFace(r.ctx, spec, env);
   return r.log;
 };
+
+it("paints a lifted card at its decoded image size", () => {
+  const { ctx, log } = recorder();
+  const canvas = { getContext: () => ctx } as unknown as HTMLCanvasElement;
+  const image = { width: 350, height: 488 } as HTMLImageElement;
+  paintPrinted(canvas, image);
+  expect([canvas.width, canvas.height]).toEqual([350, 488]);
+  expect(log.find((call) => call.startsWith("drawImage("))).toMatch(/,0\.00,0\.00\)$/);
+});
 
 describe("tokens and css", () => {
   it("generates the custom properties the chrome stylesheet uses", () => {
@@ -128,6 +138,16 @@ describe("painters", () => {
   it("paint differently for different specs", () => {
     expect(paint(spec)).not.toEqual(paint({ ...spec, tapped: true }));
     expect(paint(spec)).not.toEqual(paint({ ...spec, far: false }));
+  });
+  it("ends rules text cut by the window with an ellipsis", () => {
+    const text = Array.from({ length: 80 }, (_, i) => `word${i}`).join(" ");
+    const lines = paint(faceSpec({ name: "Unknown Card", frame: "C", text })).filter((l) => l.startsWith("fillText(word"));
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.at(-1)).toMatch(/^fillText\([^,]* …,/);
+  });
+  it("draws short rules text whole", () => {
+    const lines = paint(faceSpec({ name: "Unknown Card", frame: "C", text: "Draw a card." })).filter((l) => l.startsWith("fillText(Draw"));
+    expect(lines).toEqual([expect.stringMatching(/^fillText\(Draw a card\.,/)]);
   });
   it("shortens the name it draws", () => {
     expect(paint(spec).some((l) => l.startsWith("fillText(Meloku,"))).toBe(true);

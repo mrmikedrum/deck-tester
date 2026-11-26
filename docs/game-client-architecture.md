@@ -653,9 +653,9 @@ Inside, the **stage** turns frames into motion:
   and it flies from its carried pose.
 
 **Resources.** The three.js host (`scene/three/`) is the only code importing three. It owns every GPU resource and is
-given a viewport and a device pixel ratio (it never measures the page): `Host` makes the renderer (ACES, `PCFShadowMap`
-with a radius: soft, and three r187 removed the soft variant), the multisampled composer (renderer DPR at most 2, composer
-targets at most 1.5), the camera from layout's `CameraSpec` through `cameraParams`/`applyCamera` (so the camera equals
+given a viewport and a device pixel ratio (it never measures the page): `Host` makes the renderer (ACES tone mapping
+and soft `PCFShadowMap`), the composer (same DPR as the renderer up to 2×, with two samples below 2× and one at
+2×), the camera from layout's `CameraSpec` through `cameraParams`/`applyCamera` (so the camera equals
 the projector; a test holds them equal), the base world (the tome, one warm spot lamp whose shadow map falls on the tome,
 the pages and the cards, a hemisphere fill and a faint room reflection), the shared geometry, and the `Painter` facade.
 The table is physical: cards are lit card stock at their true thickness (0.3 mm; a pile's height is its count), with a
@@ -673,8 +673,8 @@ nothing go past its budget (`BUDGETS.faces`); a block of cards is the same slab 
 pools, glows, halos) marked `batched` are drawn the same way by `DecalBatch`. Magic carries its own soft falloff in the
 sprite textures and card rims. The shadow map is drawn again only when
 something that throws a shadow moved, came or went. The turn-15 table draws in about 60 calls, post-processing included
-(`workbench.html?only=render` times it: below, "Budgets"; it also times the table at rest with the composer's pixel
-ratio at 1.0 and 1.5 and with MSAA off, through the host's `setQuality`, which the game never calls).
+(`workbench.html?only=render` times it: below, "Budgets"). The bench draws at 1180 × 820 CSS px and scrolls on narrower
+screens. It also times the earlier 1.5× composer settings and other variants through the host's `setQuality`.
 Painted textures are leased by content key (`TextureCache`): reference-counted by the pieces showing them, and, once
 unreferenced, kept in an LRU bounded by an estimated byte budget (`ByteCache`, pure, in `scene/resources/`: 160 MB of
 textures, 64 MB of decoded art, `BUDGETS` in `host.ts`); evicting disposes the texture and releases the canvas pixels.

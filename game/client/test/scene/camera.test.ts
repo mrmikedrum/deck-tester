@@ -43,7 +43,8 @@ describe("camera", () => {
     expect(cameraParams(spec, { w: 600, h: 900 }).fov).toBeGreaterThan(38);
   });
   it("sizes targets by the pixel-ratio policy without measuring", () => {
-    expect(renderSizes({ w: 1180, h: 820 }, 3)).toEqual({ width: 1180, height: 820, renderer: 2, composer: 1.5 });
+    expect(renderSizes({ w: 834, h: 1210 }, 2)).toEqual({ width: 834, height: 1210, renderer: 2, composer: 2 });
+    expect(renderSizes({ w: 1180, h: 820 }, 3)).toMatchObject({ renderer: 2, composer: 2 });
     expect(renderSizes({ w: 1180, h: 820 }, 1)).toMatchObject({ renderer: 1, composer: 1 });
     expect(renderSizes({ w: 0, h: 0 }, 0)).toMatchObject({ width: 1, height: 1, renderer: 1 });
   });
