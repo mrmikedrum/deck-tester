@@ -26,7 +26,7 @@ The types below are the contract. Names may sharpen in code; shapes and rules ch
 | Language | TypeScript 6, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` | Agents' mistakes caught at compile time; TS 7 once `typescript-eslint` supports it |
 | Build | Vite 8, two entries (`index.html` the game, `workbench.html` fixtures) | Fast, standard, multi-page |
 | HTML layer | Preact 11 (TSX), rendered synchronously inside the app's commit; components are pure projections (rules under "The frame") | Type-checked templates in the idiom agents know best; React's MessageChannel scheduler escapes the virtual clock, Preact's queue can be pinned |
-| 3D | three.js r187, imperative, `WebGLRenderer` + `EffectComposer` (bloom) | The tuned scene ports directly; WebGPU post-processing is still moving. No react-three-fiber: a second reconciler and scheduler |
+| 3D | three.js r187, imperative, `WebGLRenderer` + `EffectComposer` (focus and tone mapping) | The tuned scene ports directly; WebGPU post-processing is still moving. No react-three-fiber: a second reconciler and scheduler |
 | State | Hand-rolled immutable state and typed reducers (`assertNever` on unions) | Pure, clockless, serialisable; a store or state-machine library adds a scheduler or nothing |
 | Animation | Our own animator (eases, critically damped springs, paths) on the frame clock; CSS transitions in the chrome | The only deterministic option; GSAP and Motion run their own tickers |
 | Input | Our own Pointer Events gesture recognizer | Thresholds are pinned behaviour; hold timers must run on our clock |
@@ -654,7 +654,7 @@ Inside, the **stage** turns frames into motion:
 
 **Resources.** The three.js host (`scene/three/`) is the only code importing three. It owns every GPU resource and is
 given a viewport and a device pixel ratio (it never measures the page): `Host` makes the renderer (ACES, `PCFShadowMap`
-with a radius: soft, and three r187 removed the soft variant), the bloom composer (renderer DPR at most 2, composer
+with a radius: soft, and three r187 removed the soft variant), the multisampled composer (renderer DPR at most 2, composer
 targets at most 1.5), the camera from layout's `CameraSpec` through `cameraParams`/`applyCamera` (so the camera equals
 the projector; a test holds them equal), the base world (the tome, one warm spot lamp whose shadow map falls on the tome,
 the pages and the cards, a hemisphere fill and a faint room reflection), the shared geometry, and the `Painter` facade.
@@ -670,10 +670,11 @@ face-atlas page, layer and pass, with each card's look (tapped, dim, flat, rim s
 from their painted canvases into layers of array textures (`FaceAtlas`, 32 faces a page), so cards wearing different
 faces still draw together; a new face reuses the room of one nobody shows before the atlas grows, and pages showing
 nothing go past its budget (`BUDGETS.faces`); a block of cards is the same slab stretched to its height. Flat sprites (contact shades,
-pools, glows, halos) marked `batched` are drawn the same way by `DecalBatch`. The shadow map is drawn again only when
-something that throws a shadow moved, came or went. The turn-15 table draws in about 70 calls, post-processing included
+pools, glows, halos) marked `batched` are drawn the same way by `DecalBatch`. Magic carries its own soft falloff in the
+sprite textures and card rims. The shadow map is drawn again only when
+something that throws a shadow moved, came or went. The turn-15 table draws in about 60 calls, post-processing included
 (`workbench.html?only=render` times it: below, "Budgets"; it also times the table at rest with the composer's pixel
-ratio at 1.0 and 1.5, bloom off and MSAA off, each alone, through the host's `setQuality`, which the game never calls).
+ratio at 1.0 and 1.5 and with MSAA off, through the host's `setQuality`, which the game never calls).
 Painted textures are leased by content key (`TextureCache`): reference-counted by the pieces showing them, and, once
 unreferenced, kept in an LRU bounded by an estimated byte budget (`ByteCache`, pure, in `scene/resources/`: 160 MB of
 textures, 64 MB of decoded art, `BUDGETS` in `host.ts`); evicting disposes the texture and releases the canvas pixels.

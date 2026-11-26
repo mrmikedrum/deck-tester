@@ -74,6 +74,9 @@ export class Painter {
   drop(): Lease {
     return this.cache.lease("drop", paintDrop);
   }
+  highlight(): Lease {
+    return this.cache.lease("highlight", (c) => paintDrop(c, true));
+  }
   /** One of the effects' sprites (embers, streaks, a well's light, ash, the sigil's brand, a pool of light). */
   fx(kind: FxSprite): Lease {
     return this.cache.lease("fx|" + kind, (c) => paintFxSprite(c, kind));

@@ -1,10 +1,10 @@
 // The host's composer teardown: the composer disposes only its own targets and copy pass, so the passes it was given
-// (bloom's targets and materials, the output pass) are disposed first, on teardown and on context recovery alike.
+// (the focus and output passes) are disposed first, on teardown and on context recovery alike.
 import { describe, expect, it, vi } from "vitest";
-import { Texture, Vector2, WebGLRenderTarget } from "three";
+import { PerspectiveCamera, Scene, Texture, Vector2, WebGLRenderTarget } from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { FocusPass } from "../../src/scene/three/focus-pass";
 import { disposeComposer } from "../../src/scene/three/host";
 import { CardDeck, createCard } from "../../src/scene/three/cards";
 import { cardGeometry } from "../../src/scene/three/geometry";
@@ -29,16 +29,16 @@ describe("disposeComposer", () => {
   it("disposes every pass it owns, then the composer", () => {
     const renderer = { getPixelRatio: () => 1, getSize: (v: Vector2) => v.set(8, 8) };
     const composer = new EffectComposer(renderer as never, new WebGLRenderTarget(8, 8));
-    const bloom = new UnrealBloomPass(new Vector2(8, 8), 1, 0, 1);
+    const focus = new FocusPass(new Scene(), new PerspectiveCamera(), 0);
     const output = new OutputPass();
-    composer.addPass(bloom);
+    composer.addPass(focus);
     composer.addPass(output);
     const order: string[] = [];
-    vi.spyOn(bloom, "dispose").mockImplementation(() => void order.push("bloom"));
+    vi.spyOn(focus, "dispose").mockImplementation(() => void order.push("focus"));
     vi.spyOn(output, "dispose").mockImplementation(() => void order.push("output"));
     vi.spyOn(composer, "dispose").mockImplementation(() => void order.push("composer"));
     disposeComposer(composer);
-    expect(order).toEqual(["bloom", "output", "composer"]);
+    expect(order).toEqual(["focus", "output", "composer"]);
   });
 });
 

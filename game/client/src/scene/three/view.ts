@@ -65,7 +65,7 @@ class Halo {
     const threat = tone === "threat";
     this.mat = new MeshBasicMaterial({
       map: lease.texture,
-      color: new Color(materials.highlight.tones[tone]).multiplyScalar(threat ? 1 : 2.4),
+      color: new Color(materials.highlight.tones[tone]).multiplyScalar(threat ? 1 : 0.7),
       transparent: true,
       depthWrite: false,
       opacity: 0,
@@ -78,7 +78,7 @@ class Halo {
     on.add(this.mesh);
   }
   set(k: number): void {
-    this.mat.opacity = Math.max(0, Math.min(1, k));
+    this.mat.opacity = 0.65 * Math.max(0, Math.min(1, k));
   }
   dispose(): void {
     this.mesh.removeFromParent();
@@ -283,7 +283,7 @@ export class StageRenderer {
     }
     if (!hl || hl.halo <= 0.001 || !on) return;
     if (!h) {
-      h = new Halo(this.host.painter.drop(), this.host.kit.geo.halo, hl.tone, on);
+      h = new Halo(this.host.painter.highlight(), this.host.kit.geo.halo, hl.tone, on);
       this.halos.set(id, h);
     }
     h.set(hl.halo);

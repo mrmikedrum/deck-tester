@@ -56,12 +56,11 @@ export function paintHalo(canvas: Canvas, kind: HaloKind): void {
   }
 }
 
-/** A stack card's drop shadow. */
-export function paintDrop(canvas: Canvas): void {
+/** A soft mask fitted to the card's outline, for its drop shadow or highlight. */
+export function paintDrop(canvas: Canvas, light = false): void {
   const x = begin(canvas, 160, 200);
-  x.shadowColor = "rgba(0,0,0,1)";
-  x.shadowBlur = 24;
-  x.fillStyle = "#000";
+  x.shadowColor = x.fillStyle = light ? "#fff" : "#000";
+  x.shadowBlur = light ? 20 : 24;
   rr(x, 30, 30, 100, 140, 10);
   x.fill();
 }

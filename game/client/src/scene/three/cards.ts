@@ -408,6 +408,7 @@ if (front_ > 0.5) {
   diffuseColor.rgb = mix(diffuseColor.rgb, vRim.rgb, band_ * sel_);
   diffuseColor.rgb *= 1.0 - 0.7 * sel_ * smoothstep(rimW_ + 0.009, rimW_ + 0.004, e_) * smoothstep(rimW_ - 0.003, rimW_ + 0.002, e_);
   rimGlow_ = vRim.rgb * smoothstep(mix(rimW_, 0.03, sel_), 0.0, e_) * flick_ * mix(2.2, 0.3, sel_);
+  rimGlow_ += vRim.rgb * (1.0 - sel_) * 0.18 * flick_ * (1.0 - smoothstep(0.0, 0.065, e_));
   diffuseColor.rgb *= 1.0 - 0.85 * step(0.06, rimW_) * smoothstep(0.012, 0.008, e_);
 }
 `;
