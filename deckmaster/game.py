@@ -368,9 +368,11 @@ def cards(names):
 # ---- The new client: its build, its log ----------------------------------------------------------------------------
 
 # Relative to game/, with `node --version`: what a build depends on. The same list as vite.config.mts's BUILD_INPUTS,
-# the workbench's bundled inputs (its import.meta.glob of the protocol corpus and a test catalog) included.
+# the workbench's bundled inputs (its import.meta.glob of the protocol corpus, a test catalog and the design pass's boards)
+# included.
 STAMP_INPUTS = ("client/src", "client/index.html", "client/workbench.html", "client/public", "package-lock.json",
-                "vite.config.mts", "../tests/fixtures/protocol", "client/test/model/catalog.json")
+                "vite.config.mts", "../tests/fixtures/protocol", "client/test/model/catalog.json",
+                "../tests/fixtures/boards")
 
 
 def client_stamp(node_version):

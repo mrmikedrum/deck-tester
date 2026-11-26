@@ -10,7 +10,8 @@ const proxy = { target: engine, changeOrigin: true, timeout: 0, proxyTimeout: 0 
 
 // The build id: a content hash of the client's sources (no timestamps), compiled in as __CLIENT_BUILD__ and
 // written to dist/build.json, which the bridge stamps on every snapshot so an old page can tell it is old. Everything
-// the bundle takes in counts, the workbench's import.meta.glob inputs (the protocol corpus, a test catalog) included.
+// the bundle takes in counts, the workbench's import.meta.glob inputs (the protocol corpus, a test catalog, the design
+// pass's boards) included.
 // deckmaster/game.py's STAMP_INPUTS is the same list (tests/test_game_bridge.py holds them together).
 const BUILD_INPUTS = [
   "client/src",
@@ -21,6 +22,7 @@ const BUILD_INPUTS = [
   "vite.config.mts",
   "../tests/fixtures/protocol",
   "client/test/model/catalog.json",
+  "../tests/fixtures/boards",
 ];
 
 function files(path: string): string[] {
