@@ -17,6 +17,7 @@ import type { Quad } from "../shape";
 import { CH, CW } from "../seat/geometry";
 import type { CardId, Point, SeatId, V3 } from "../types";
 import { S_TABLE } from "./scale";
+import { LEAN } from "./frame";
 
 /** How the combat is shown: the clash (a focus over the shaded table), or the table form (fighters at home). */
 export type CombatForm = "clash" | "table";
@@ -116,7 +117,10 @@ export const CLASH_STEPS = [1.8, 1.6, 1.5, 1.3, 1.2, 1.1] as const;
 export const DUEL = { inside: 6, apart: 18 } as const;
 /** The duels' row, design px: its feet this far above my field row's tops (as the clash stops: `CLASH.foot`), and its
  *  tops at least this far under every opponent's feet. */
-export const DUEL_ROW = { foot: 8, clear: 4 } as const;
+export const DUEL_ROW = { foot: 6, clear: 3 } as const;
+/** A table card standing in a duel: square across the table, leaning back from the normal as a leaf's do. */
+const TABLE_RIGHT: V3 = { x: 1, y: 0, z: 0 };
+const LEANING: V3 = { x: 0, y: Math.cos(LEAN), z: -Math.sin(LEAN) };
 /** The clash's area, design px: its top (under the plaques), and how far above my field row it stops. */
 export const CLASH = { top: 88, plaqueTop: 58, plaqueH: 22, foot: 8, gap: 10, columnGap: 14, wingGap: 64, maxColumns: 13, wingMin: 320 } as const;
 
@@ -241,20 +245,16 @@ export function gathering(input: GatherInput): Gathering {
       columns: w.fs.map((f) => ({ unit: f.ks[0]!.id, attackers: f.ks.flatMap((k) => k.members), blockers: f.bs.flatMap((b) => b.members), x: 0, w: 0, slot: null, clasp: null, power: f.ks.reduce((s, k) => s + powerOf(k), 0), blocked: f.blocked })),
     }));
   if (!clash && !input.duels) return { ...none, wings: tableWings() };
-  /** A card's width and upright height on screen with its foot at (x, y), standing at height h. */
-  const sizeAt = (x: number, y: number, h: number) => {
-    const c = proj.onTable(x, y, h), up = { x: 0, y: Math.cos(proj.pitch), z: -Math.sin(proj.pitch) };
-    return {
-      w: Math.abs(proj.project(add(c, proj.right, (CW * S_TABLE) / 2)).x - proj.project(add(c, proj.right, (-CW * S_TABLE) / 2)).x),
-      h: Math.abs(proj.project(c).y - proj.project(add(c, up, CH * S_TABLE)).y),
-    };
-  };
   /** Fighters moved to their places: they leave the units that held them, and stand there (`fighting`). */
   const settle = (placed: ReadonlyMap<UnitId, V3>, upright: boolean): SeatPlan[] => {
+    // In the clash a fighter stands upright, square to the eye; in a duel it stands from the table as every table card
+    // does (leaning back, a tapped one turned a quarter in its own plane).
     const standing = (un: Unit): Unit => {
       const { turn: _turn, ...rest } = un;
       void _turn;
-      return { ...rest, ...(upright ? { tapped: false } : {}), fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const } };
+      return upright
+        ? { ...rest, tapped: false, fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const } }
+        : { ...rest, fighting: true, placement: { pos: placed.get(un.id)!, scale: S_TABLE, posture: "stand" as const, frame: { right: TABLE_RIGHT, up: LEANING } } };
     };
     return plans.map((p) => {
       const out = [...units.values(), ...walkerUnits.values()].filter((f) => f.seat === p.seat && carved.has(f.unit.id) && placed.has(f.unit.id)).map((f) => f.unit);
@@ -286,9 +286,11 @@ export function gathering(input: GatherInput): Gathering {
     const d = input.duels!, wings0 = tableWings();
     const duels = forms.filter((f) => f.bs.length > 0);
     if (!duels.length) return { ...none, wings: wings0 };
-    // On the table posture stays fact: a tapped fighter stands turned a quarter, so its place is a card's height wide.
-    const one = sizeAt(d.mid, d.foot, 0), inside = DUEL.inside * u, apart = DUEL.apart * u;
-    const wide = (un: Unit): number => (un.tapped ? one.h : one.w);
+    // A duel's cards stand from the table, leaning back as the leaves' do. On the table posture stays fact: a tapped
+    // fighter is turned a quarter, so its place is a card's height wide.
+    const foot0 = proj.onTable(d.mid, d.foot, 0), corner = (a: number, b: number) => proj.project(add(add(foot0, TABLE_RIGHT, a * CW * S_TABLE), LEANING, b * CH * S_TABLE));
+    const one = { w: corner(0.5, 0).x - corner(-0.5, 0).x, h: corner(0, 0).y - corner(0, 1).y }, inside = DUEL.inside * u, apart = DUEL.apart * u;
+    const wide = (un: Unit): number => (un.tapped ? (one.w * CH) / CW : one.w);
     const widths = duels.map((f) => [...f.ks, ...f.bs].reduce((t, un) => t + wide(un), 0) + (f.ks.length + f.bs.length - 1) * inside);
     const total = widths.reduce((t, w) => t + w, 0) + apart * (duels.length - 1);
     let x = d.mid - total / 2;

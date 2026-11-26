@@ -1,7 +1,7 @@
 // The seats as the chrome tells them: each seat's nameplate with its summary as icons, and the nameplate focus with the
 // same summary in words and the seat's zones picked up as printed cards. Figures are facts the engine sent, never a
 // verdict. The client's words name a seat by its name, never by a pronoun. Pure.
-import { designUnit } from "../layout";
+import { FEED_UNITS, designUnit } from "../layout";
 import type { TablePlan } from "../layout";
 import { RULE_CARDS, isLand } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
@@ -27,8 +27,10 @@ type Measure = (text: string, font: string) => number;
 const estimate: Measure = (text, style) => text.length * (style.startsWith("400") ? 10 : 9);
 
 /** A plate's width in design units, including the life box's padding and the name's letter spacing (chrome.css). */
-export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate): number {
+export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate, out = false): number {
   const title = measure(name, `600 19px ${font.ui}`) + name.length * 19 * 0.02;
+  // Out of the game: the sigil, the name and "Out", nothing else.
+  if (out) return 10 + 18 + 8 + title + 8 + measure("Out", `italic 400 15px ${font.serif}`) + 4 + 6 + 2;
   const lifeBox = Math.max(34, measure(String(life), `700 19px ${font.ui}`)) + 12;
   const bronze = 10 + 18 + 8 + title + 8 + lifeBox + 6;
   const tab = icons.length ? 20 + icons.reduce((n, i) => n + 18 + 3 + measure(i.figure, `700 16px ${font.ui}`), 0) + 10 * (icons.length - 1) : 0;
@@ -101,9 +103,8 @@ export function placeTop(
   return out;
 }
 
-/** The log strip under the Game button, CSS px at 1180 x 820 (chrome.css `.l-feed`): its left and top, its widest, and
- *  the least it keeps (its turn heading). */
-const FEED = { left: 12, top: 62, height: 44, widest: 322, least: 128, gap: 8 } as const;
+/** The log strip under the Game button (chrome.css `.l-feed`): layout keeps its leaves clear of it at its least. */
+const FEED = FEED_UNITS;
 
 /**
  * How wide the log strip may be (CSS px): its widest, or less where a card the table shows (the plan's hit groups) would
@@ -254,7 +255,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
     const at = plan ? centre(plan, s.id) : null;
     const i = others.indexOf(s);
     const mark = marks.get(s.id);
-    const icons = mine ? [] : restIcons(model, s.id, summaryOf(model, s.id));
+    const icons = mine || s.out ? [] : restIcons(model, s.id, summaryOf(model, s.id));
     return {
       seat: String(s.id),
       group: `plate:${s.id}`,
@@ -269,7 +270,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       bottom: at?.bottom ?? null,
       // Mine carries no icons at rest: my own table is in front of me (my nameplate focus has the words).
       icons,
-      width: plateWidth(String(s.name), s.life, icons, measure),
+      width: plateWidth(String(s.name), s.life, icons, measure, s.out),
     };
   });
   const top = safe.top + PLATE.top * u;

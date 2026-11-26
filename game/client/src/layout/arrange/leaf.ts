@@ -7,6 +7,7 @@ import type { Projector } from "../projector";
 import { tableTemplate } from "../template";
 import type { LeafGeometry, Parting, SeatSlot } from "../template";
 import type { Rect, SeatId } from "../types";
+import { topChrome } from "../reservations";
 import type { Container, FramePose, SurfaceFrame } from "./contract";
 import { CARD, LEAN, onFrame, slotFrame } from "./frame";
 import { S_TABLE, SLOT } from "./scale";
@@ -16,8 +17,6 @@ const TEMPLATE = tableTemplate(4);
 export const FRONT_Z = TEMPLATE.leaf.front;
 /** How deep a leaf is from its anchor edge, the far strip included, and the far strip's depth (four seats). */
 export const LEAF: LeafGeometry = TEMPLATE.leaf;
-/** A plate on the top of the screen, CSS px: the seat's summary as icons (designer §6, §7.2). */
-export const PLATE = { top: 6, h: 44, w: 330 } as const;
 /** World units a parting of `cards` card heights slides a leaf along its `away`. */
 export const partShift = (cards: number): number => cards * CARD.h * S_TABLE;
 /** The parting at its most, as a pose: the leaves' rows hold their floors and patches there. */
@@ -53,10 +52,9 @@ export interface LeafOptions {
 }
 
 export function leafContainer(o: LeafOptions): Container {
-  const leaf = o.leaf ?? LEAF, frame = leafFrame(o.slot, leaf);
-  // The plate sits over the leaf's middle, at the top of the screen.
-  const x = o.projector.project(onFrame(frame, 0, frame.d)).x;
-  const plate: Rect = { left: x - PLATE.w / 2, right: x + PLATE.w / 2, top: o.safe.top + PLATE.top, bottom: o.safe.top + PLATE.top + PLATE.h };
+  const leaf = o.leaf ?? LEAF, frame = leafFrame(o.slot, leaf), vp = o.projector.viewport;
+  // Nothing of a leaf goes under the chrome along the top: the nameplates' row (and a gap under it), the log strip.
+  const top = topChrome(vp, { left: o.safe.left, top: o.safe.top, right: vp.w - o.safe.right, bottom: vp.h - o.safe.bottom });
   return {
     id: `rest:${o.seat}`,
     role: "rest",
@@ -69,8 +67,8 @@ export function leafContainer(o: LeafOptions): Container {
     stand: { lean: LEAN },
     floors: { creature: o.seat === o.viewer ? 72 : 56, any: 44, tapPx: 44 },
     keepouts: [
-      { on: "screen", rect: plate, kind: "plate" },
-      { on: "frame", u0: -frame.w / 2, u1: frame.w / 2, v0: frame.d - leaf.far, v1: frame.d, kind: "zones" },
+      ...top.map((rect, i) => ({ on: "screen" as const, rect, kind: i === 0 ? ("plate" as const) : ("other" as const) })),
+      ...(leaf.far > 0 ? [{ on: "frame" as const, u0: -frame.w / 2, u1: frame.w / 2, v0: frame.d - leaf.far, v1: frame.d, kind: "zones" as const }] : []),
       ...(o.keepouts ?? []),
     ],
     safe: o.safe,
