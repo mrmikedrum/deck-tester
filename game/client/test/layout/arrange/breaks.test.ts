@@ -68,4 +68,20 @@ describe("row breaks (breaks.ts)", () => {
     const at = (r: ArrangeResult, id: number) => r.fit.units.find((u) => u.members.includes(id as never))!.cards[0]!.foot;
     for (const c of base) expect(at(b, c.id), c.name).toEqual(at(a, c.id));
   });
+
+  it("a departure moves nothing between rows before a re-sort (review: the across leaf's six works)", () => {
+    resetIds(10);
+    const works = Array.from({ length: 6 }, (_, i) => ac({ kind: "artifact", name: `Work ${i}` }));
+    const a = run({ cards: works });
+    const where = (r: ArrangeResult, id: number) => {
+      const u = r.fit.units.find((x) => x.members.includes(id as never))!;
+      return { row: u.slot.row, interval: u.slot.interval, foot: u.cards[0]!.foot };
+    };
+    expect(new Set(a.fit.units.map((u) => u.slot.row)).size).toBe(2);
+    for (const gone of works) {
+      const b = run({ cards: works.filter((c) => c !== gone), memory: a.fit.memory });
+      for (const c of works) if (c !== gone) expect(where(b, c.id), `${gone.name} gone: ${c.name}`).toEqual(where(a, c.id));
+    }
+  });
 });
+

@@ -924,6 +924,45 @@ function packBand(rows: readonly RowGeo[], units: readonly U[], less = 0, tail =
 }
 
 /**
+ * A lying band laid as it lay last plan: each unit that lay in it (`was`, with its place across) back in its own row and
+ * interval, where it lay (`hold`); each newcomer, in order, beside them in the first span whose units it may share a row
+ * with (breaks.ts), else alone in an empty span. Null where any of that cannot be done: the band is then packed afresh.
+ */
+function holdRows(rows: readonly RowGeo[], units: readonly U[], was: (x: U) => SlotRef | null): Packed[] | null {
+  const spans = rows.flatMap((row, k) => row.intervals.map((iv, interval) => ({ row, k, interval, lo: iv.lo, hi: iv.hi })));
+  const at: { x: U; u: number }[][] = spans.map(() => []);
+  const fresh: U[] = [];
+  for (const x of units) {
+    const w = was(x), n = w && w.u !== undefined ? spans.findIndex((sp) => sp.k === w.row && sp.interval === w.interval) : -1;
+    if (n < 0) fresh.push(x);
+    else at[n]!.push({ x, u: w!.u! });
+  }
+  if (!at.some((a) => a.length)) return null;
+  for (let n = 0; n < spans.length; n++) {
+    if (!at[n]!.length) continue;
+    const u = new Map(at[n]!.map((h) => [h.x.key, h.u] as const));
+    const h = hold(at[n]!.map((h) => h.x), spans[n]!, (k) => u.get(k));
+    if (!h) return null;
+    at[n] = h;
+  }
+  for (const x of fresh) {
+    let n = spans.findIndex((sp, i) => {
+      if (!at[i]!.length || !at[i]!.every((h) => mayShare(h.x.cls, x.cls))) return false;
+      const u = new Map(at[i]!.map((h) => [h.x.key, h.u] as const));
+      const h = hold([...at[i]!.map((h) => h.x), x], sp, (k) => u.get(k));
+      if (h) at[i] = h;
+      return !!h;
+    });
+    if (n < 0) {
+      n = spans.findIndex((sp, i) => !at[i]!.length && x.width <= sp.hi - sp.lo + EPS);
+      if (n < 0) return null;
+      at[n] = [{ x, u: (spans[n]!.lo + spans[n]!.hi) / 2 }];
+    }
+  }
+  return at.flatMap((hs, n) => hs.map((h, place) => ({ key: h.x.key, row: spans[n]!.row, k: spans[n]!.k, interval: spans[n]!.interval, place, u: h.u, w: h.x.width })));
+}
+
+/**
  * A run whose units lay in this span last plan, each where it lay: what stays keeps its place exactly, and a newcomer takes
  * a place free beside what stays (where a unit left first, then the run's right end, then its left), so nothing that
  * lies moves for it. Null where that cannot be done (what stays no longer fits where it lay, or no free place beside it
@@ -1008,6 +1047,14 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
       const stayed = rest.filter((x) => was(x)).sort(before), fresh = rest.filter((x) => !was(x));
       const seq = ordered(b, [...stayed, ...fresh]);
       const anchor = tidy ? undefined : (key: string): number | undefined => (pm?.tiers[key] !== undefined && tiers.has(pm.tiers[key]!) ? pm.slots[key]?.u : undefined);
+      // What lay here last plan goes back to its own row and interval, where it lay, and newcomers take free places
+      // beside it; only where that cannot be done is the band packed afresh (review: a departure moved a work from the
+      // second row to the first).
+      const kept = !tidy && pm && !out.length ? holdRows(rows, seq, was) : null;
+      if (kept) {
+        for (const p of kept) slots.set(p.key, { row: p.row, band: b, ref: { row: p.k, interval: p.interval, place: p.place, u: p.u }, u: p.u, w: p.w });
+        continue;
+      }
       // The break rules (breaks.ts) split what rest shows into runs, each on a row of its own while the space has one.
       const cut = broke(seq);
       let n = seq.length + out.length;
