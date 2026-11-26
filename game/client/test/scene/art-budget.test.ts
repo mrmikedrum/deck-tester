@@ -31,7 +31,6 @@ vi.mock("../../src/theme", async (orig) => {
     paintChip: size,
     paintPlate: size,
     paintDrop: size,
-    paintStrata: size,
   };
 });
 

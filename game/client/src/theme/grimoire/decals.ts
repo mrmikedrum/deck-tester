@@ -99,24 +99,6 @@ export function paintPageShade(canvas: Canvas): void {
   x.fillRect(40, 40, 176, 176);
 }
 
-export const STRATA_PX = { w: 8, h: 32 } as const;
-
-/**
- * One card's height of a block's wall: cream stock with a dark line where it meets the card under it, repeated once per
- * card (or per few, on a tall block) by the material. White-balanced: the lamp and the material colour it.
- */
-export function paintStrata(canvas: Canvas): void {
-  const x = begin(canvas, STRATA_PX.w, STRATA_PX.h);
-  const g = x.createLinearGradient(0, 0, 0, STRATA_PX.h);
-  g.addColorStop(0, "#f4ead2");
-  g.addColorStop(0.7, "#e3d5b2");
-  g.addColorStop(0.78, "#8a7552");
-  g.addColorStop(0.9, "#6b5838");
-  g.addColorStop(1, "#d9caa4");
-  x.fillStyle = g;
-  x.fillRect(0, 0, STRATA_PX.w, STRATA_PX.h);
-}
-
 export const DIE_PX = 128;
 
 /**

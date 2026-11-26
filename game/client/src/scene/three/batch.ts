@@ -161,7 +161,10 @@ export class DecalBatch {
   }
 
   dispose(): void {
-    for (const b of this.batches.values()) b.dispose();
+    for (const b of this.batches.values()) {
+      this.group.remove(b.mesh);
+      b.dispose();
+    }
     this.batches.clear();
     this.plane.dispose();
   }

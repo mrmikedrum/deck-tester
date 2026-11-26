@@ -187,11 +187,11 @@ class CardPart {
     this.lease.release();
     this.lease = next;
   }
-  /** `shaded`: tapped without the turn (a spent well's card, a sifted tapped card). `flat`: how far a highlight has
-   * stepped it out of the light. */
-  look(tap: number, fade: number, mark: ActorView["mark"], glow: number, shaded = false, flat = 0): void {
-    this.obj.body.rotation.z = -tap * (Math.PI / 2);
-    setLook(this.obj, { tap: tap > 0.5 || shaded ? 1 : 0, dim: fade, flat });
+  /** `turn`: how far it is turned (a quarter at 1). `tapped`: shaded as tapped, whatever its turn (a spent well's card,
+   * a sifted tapped card, a card a tap turns only a notch). `flat`: how far a highlight has stepped it out of the light. */
+  look(turn: number, fade: number, mark: ActorView["mark"], glow: number, tapped = false, flat = 0): void {
+    this.obj.body.rotation.z = -turn * (Math.PI / 2);
+    setLook(this.obj, { tap: tapped ? 1 : 0, dim: fade, flat });
     setSignal(this.obj, glow > 0.5 ? mark : null);
   }
   dispose(): void {
@@ -605,7 +605,8 @@ class UnitView implements PieceView {
     const flat = v.hl?.flat ?? 0;
     for (const c of this.cards) {
       const own = c.obj.group.userData["tapped"] === true;
-      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own, flat);
+      // Shaded by what the card is (tapped), never by how far it has turned: a tap may turn it only a notch.
+      c.look(d.well ? 0 : own ? 1 : s.tap, s.fade, v.mark, s.glow, spent || own || (!d.well && !!v.face?.tapped), flat);
     }
     for (const c of this.dress) c.look(0, s.fade, null, 0, false, flat);
     this.sign?.tone(1 - 0.8 * s.fade);

@@ -44,8 +44,8 @@ const T = card.thickness;
 
 /** Faces per page of the atlas (one array texture): 32 faces at 336 x 468 with mipmaps is about 27 MB. */
 export const FACE_LAYERS = 32;
-/** Pages the atlas grows to before it reuses the faces nobody shows (past it, a page more rather than a face missing). */
-const MAX_PAGES = 6;
+/** One page's GPU storage, bytes (RGBA, with its mipmaps). */
+export const PAGE_BYTES = Math.round((FACE_W * FACE_H * 4 * FACE_LAYERS * 4) / 3);
 
 // ---- the face atlas -------------------------------------------------------------------------------------------------
 
@@ -66,16 +66,24 @@ interface SlotState extends FaceSlot {
 /**
  * Painted faces as layers of array textures. A lease's canvas is copied into its layer once (the canvas texture itself is
  * never uploaded); a layer nobody shows keeps its face until its room is wanted, so a face that comes back costs
- * nothing. Copies wait for `flush`, which the host calls before it draws.
+ * nothing. A new face takes a free layer, else the layer of the face least recently shown that nobody shows now, and
+ * only then a new page: the atlas grows with the faces on show, not with every face ever painted. A page that shows
+ * nothing goes once the atlas is over its byte budget (or holds nothing at all). Copies wait for `flush`, which the host
+ * calls before it draws.
  */
 export class FaceAtlas {
-  readonly pages: DataArrayTexture[] = [];
+  /** The pages, by index (a page let go is null until its room is wanted again). */
+  readonly pages: (DataArrayTexture | null)[] = [];
   private readonly slots = new Map<string, SlotState>();
   private readonly free: number[][] = [];
   private pending: { slot: SlotState; image: unknown }[] = [];
   private clock = 0;
 
-  constructor(private readonly anisotropy: number) {}
+  constructor(
+    private readonly anisotropy: number,
+    /** The GPU bytes its pages may hold while they show nothing; faces on show always have a layer. */
+    private readonly budget: number = 3 * PAGE_BYTES,
+  ) {}
 
   /** A layer for the face `lease` holds (copied on the next flush, unless the atlas has it already). */
   acquire(lease: Lease): FaceSlot {
@@ -98,27 +106,26 @@ export class FaceAtlas {
     s.used = ++this.clock;
   }
 
-  /** A free layer: a page with room, a new page, or the layer of the face least recently shown that nobody shows now. */
+  /** A layer for a new face: a free one, the least recently shown face nobody shows now, or a page more. */
   private room(): { page: number; layer: number } {
     for (let p = 0; p < this.free.length; p++) {
-      const layer = this.free[p]!.pop();
+      const layer = this.pages[p] ? this.free[p]!.pop() : undefined;
       if (layer !== undefined) return { page: p, layer };
     }
-    if (this.pages.length >= MAX_PAGES) {
-      let idle: SlotState | null = null;
-      for (const s of this.slots.values()) if (s.refs === 0 && (!idle || s.used < idle.used)) idle = s;
-      if (idle) {
-        this.slots.delete(idle.key);
-        this.pending = this.pending.filter((c) => c.slot !== idle);
-        return { page: idle.page, layer: idle.layer };
-      }
+    let idle: SlotState | null = null;
+    for (const s of this.slots.values()) if (s.refs === 0 && (!idle || s.used < idle.used)) idle = s;
+    if (idle) {
+      this.slots.delete(idle.key);
+      this.pending = this.pending.filter((c) => c.slot !== idle);
+      return { page: idle.page, layer: idle.layer };
     }
     return { page: this.addPage(), layer: 0 };
   }
 
-  /** A new page, its layers all free but the first (the caller's). */
+  /** A new page (in the room of one let go, if any), its layers all free but the first (the caller's). */
   private addPage(): number {
-    const page = this.pages.length;
+    const gone = this.pages.indexOf(null);
+    const page = gone >= 0 ? gone : this.pages.length;
     const t = new DataArrayTexture(null, FACE_W, FACE_H, FACE_LAYERS);
     t.colorSpace = SRGBColorSpace;
     t.generateMipmaps = true;
@@ -128,18 +135,46 @@ export class FaceAtlas {
     // Storage only: the faces are copied into it layer by layer.
     t.source.dataReady = false;
     t.needsUpdate = true;
-    this.pages.push(t);
-    this.free.push(Array.from({ length: FACE_LAYERS - 1 }, (_, i) => FACE_LAYERS - 1 - i));
+    this.pages[page] = t;
+    this.free[page] = Array.from({ length: FACE_LAYERS - 1 }, (_, i) => FACE_LAYERS - 1 - i);
     return page;
   }
 
   /** At least one page, so a deck with no face yet (a block alone) still has a texture to bind. */
   ensure(): void {
-    if (!this.pages.length) this.free[this.addPage()]!.push(0);
+    if (!this.pages.some((p) => p)) this.free[this.addPage()]!.push(0);
+  }
+
+  /** The GPU bytes its pages hold. */
+  get bytes(): number {
+    return this.pages.filter((p) => p).length * PAGE_BYTES;
+  }
+
+  /**
+   * Let go of the pages that show nothing while the atlas is over its budget, and of any page that holds no face at
+   * all (the first page stays, for `ensure`). Their faces, shown again, are copied again.
+   */
+  trim(): void {
+    const showing = new Set<number>(),
+      holding = new Set<number>();
+    for (const s of this.slots.values()) {
+      holding.add(s.page);
+      if (s.refs > 0) showing.add(s.page);
+    }
+    for (let p = this.pages.length - 1; p > 0; p--) {
+      const t = this.pages[p];
+      if (!t || showing.has(p) || (holding.has(p) && this.bytes <= this.budget)) continue;
+      for (const [k, s] of this.slots) if (s.page === p) this.slots.delete(k);
+      this.pending = this.pending.filter((c) => c.slot.page !== p);
+      t.dispose();
+      this.pages[p] = null;
+      this.free[p] = [];
+    }
   }
 
   /** Copy the faces waiting into their layers, and make each page's mipmaps once. */
   flush(renderer: WebGLRenderer): void {
+    this.trim();
     if (!this.pending.length) return;
     const todo = this.pending;
     this.pending = [];
@@ -160,14 +195,14 @@ export class FaceAtlas {
     });
   }
 
-  stats(): { pages: number; faces: number; shown: number } {
+  stats(): { pages: number; faces: number; shown: number; bytes: number } {
     let shown = 0;
     for (const s of this.slots.values()) if (s.refs > 0) shown++;
-    return { pages: this.pages.length, faces: this.slots.size, shown };
+    return { pages: this.pages.filter((p) => p).length, faces: this.slots.size, shown, bytes: this.bytes };
   }
 
   dispose(): void {
-    for (const p of this.pages) p.dispose();
+    for (const p of this.pages) p?.dispose();
     this.pages.length = 0;
     this.free.length = 0;
     this.slots.clear();
@@ -432,7 +467,7 @@ export function createCard(kit: CardKit, face: Lease | null, opts: CardOptions =
   const front = new Mesh(deck.geometry, deck.proxy);
   const state: CardState = {
     slot: null,
-    tap: 0,
+    tap: opts.tapped ? 1 : 0,
     dim: opts.dim ? 1 : 0,
     flat: 0,
     signal: null,
@@ -551,19 +586,24 @@ export class CardDeck {
     anisotropy: number,
     private readonly back: Texture,
     private readonly rim: Rim,
+    /** The face atlas's byte budget for pages that show nothing (`FaceAtlas`). */
+    faceBudget?: number,
   ) {
-    this.atlas = new FaceAtlas(anisotropy);
+    this.atlas = new FaceAtlas(anisotropy, faceBudget);
     this.geometry = slabGeometry();
     this.group.matrixAutoUpdate = false;
   }
 
+  /** The material for a page's cards, reading the page's texture as it is now (a page let go and made again is new). */
   private material(page: number, transparent: boolean): MeshStandardMaterial {
     const k = `${page}|${transparent}`;
+    const tex = this.atlas.pages[page]!;
     let m = this.mats.get(k);
     if (!m) {
-      m = cardMaterial(this.atlas.pages[page]!, this.back, this.grain, this.rim.time, transparent);
+      m = cardMaterial(tex, this.back, this.grain, this.rim.time, transparent);
       this.mats.set(k, m);
     }
+    (m.userData["uniforms"] as { uFaces: { value: Texture } }).uFaces.value = tex;
     return m;
   }
 
@@ -614,6 +654,7 @@ export class CardDeck {
         this.batches.set(k, b);
         this.group.add(b.mesh);
       }
+      b.mesh.material = this.material(Number(page), transparent === "true");
       list.forEach((f, i) => {
         const s = f.s;
         b.mesh.setMatrixAt(i, f.o.matrixWorld);
@@ -648,7 +689,10 @@ export class CardDeck {
   }
 
   dispose(): void {
-    for (const b of this.batches.values()) b.dispose();
+    for (const b of this.batches.values()) {
+      this.group.remove(b.mesh);
+      b.dispose();
+    }
     this.batches.clear();
     for (const m of this.mats.values()) m.dispose();
     this.mats.clear();
