@@ -228,6 +228,17 @@ public class ManualController extends PlayerControllerAi {
         return ref;
     }
 
+    /**
+     * A card found by a library search: `search` says so, so a client may show copies of one card as one pile (the
+     * searcher cannot tell copies apart by their unseen places). Scry, surveil and other looks at the top of the
+     * library keep each card its own, since there the place is the point.
+     */
+    static Map<String, Object> searchRef(Object item) {
+        Map<String, Object> ref = ref(item);
+        ref.put("search", true);
+        return ref;
+    }
+
     private int askNumber(String prompt, int min, int max, Supplier<Integer> ai) {
         Decision decision = new Decision("number", session.turnLabel(), prompt, List.of(), null, min, max, false, session.myTurn());
         return decide(decision, () -> List.of(ai.get())).get(0);
@@ -243,6 +254,12 @@ public class ManualController extends PlayerControllerAi {
      */
     <T> List<T> choose(String kind, String prompt, Iterable<T> items, Function<T, String> label, int min, int max,
                        Supplier<? extends Iterable<T>> ai, Iterable<T> preset) {
+        return choose(kind, prompt, items, label, min, max, ai, preset, ManualController::ref);
+    }
+
+    /** The same, each option's ref made by `refOf`. */
+    <T> List<T> choose(String kind, String prompt, Iterable<T> items, Function<T, String> label, int min, int max,
+                       Supplier<? extends Iterable<T>> ai, Iterable<T> preset, Function<T, Map<String, Object>> refOf) {
         List<T> list = new ArrayList<>();
         items.forEach(list::add);
         if (list.isEmpty()) {
@@ -259,7 +276,7 @@ public class ManualController extends PlayerControllerAi {
             }
         }
         List<Map<String, Object>> refs = new ArrayList<>();
-        list.forEach(item -> refs.add(ref(item)));
+        list.forEach(item -> refs.add(refOf.apply(item)));
         Decision decision = new Decision(kind, session.turnLabel(), prompt, options, details,
                 Math.min(min, list.size()), Math.min(max, list.size()), false, session.myTurn(), refs);
         List<Integer> picks = decide(decision, () -> indices(list, ai.get()), preset == null ? null : indices(list, preset));
@@ -1122,13 +1139,14 @@ public class ManualController extends PlayerControllerAi {
     @Override
     public Card chooseSingleCardForZoneChange(ZoneType destination, List<ZoneType> origin, SpellAbility sa, CardCollection fetchList,
                                               DelayedReveal delayedReveal, String selectPrompt, boolean isOptional, Player decider) {
-        if (origin.contains(ZoneType.Library)) {
+        boolean search = origin.contains(ZoneType.Library);
+        if (search) {
             session.recorder.look(fetchList, "searched" + source(sa));
         }
         List<Card> chosen = choose("choose", clean(selectPrompt) + source(sa), fetchList, this::cardLabel, isOptional ? 0 : 1, 1, () -> {
             Card card = super.chooseSingleCardForZoneChange(destination, origin, sa, new CardCollection(fetchList), delayedReveal, selectPrompt, isOptional, decider);
             return card == null ? List.<Card>of() : List.of(card);
-        });
+        }, null, search ? ManualController::searchRef : ManualController::ref);
         return chosen.isEmpty() ? null : chosen.get(0);
     }
 

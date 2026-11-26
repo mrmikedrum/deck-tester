@@ -259,19 +259,21 @@ describe("the sheet", () => {
   it("cards off the table (a library search) are pictured by name", () => {
     const items = OFFER.items.map((i, k) => ({ ...i, card: null, name: k === 0 ? "Forest" : "Swamp" }));
     show(view({ controls: controls(MAIN, { sheet: { ...OFFER, kind: "chooser", items } }), named: new Map([["Forest", { name: "Forest", image: "forest.jpg" }]]) }));
-    expect($$(".l-grid .l-card").map((c) => c.dataset["option"])).toEqual([String(items[0]!.option)]);
-    expect($(".l-grid .l-card .pic")?.getAttribute("style")).toContain("forest.jpg");
-    expect($$("button.l-opt")).toHaveLength(1); // Swamp has no picture: drawn by its label
+    expect($$(".l-grid .l-card").map((c) => c.dataset["option"])).toEqual(items.map((i) => String(i.option)));
+    expect($(".l-grid .l-card .pic .art")?.getAttribute("style")).toContain("forest.jpg");
+    expect($$("button.l-opt")).toHaveLength(0); // Swamp has no picture yet: a card-sized placeholder with its name
+    expect($$(".l-grid .l-card")[1]?.querySelector(".pic b")?.textContent).toBe("Swamp");
   });
 });
 
 describe("a card sheet (a library search, a graveyard)", () => {
   /** A chooser of hidden cards by name, each pictured by the catalogue. */
-  const search = (names: readonly string[], pick: { min: number; max: number }, picked: readonly number[] = []) => {
+  const search = (names: readonly string[], pick: { min: number; max: number }, picked: readonly number[] = [], o: { stop?: string; known?: readonly string[] } = {}) => {
     const items = names.map((name, i) => ({ option: i + 1, label: name, cost: null, detail: `${name} text`, card: null, name, picked: picked.includes(i + 1), badge: null }));
-    const sheet = { kind: "chooser" as const, title: "Choose a land card (Farseek)", wide: true, items, stepper: null, buttons: [], carried: null, pick: { ...pick, ordered: false, repeat: false } };
-    const named = new Map(names.map((n) => [n, { name: n, image: `${n.toLowerCase()}.jpg` }]));
-    return view({ controls: controls(MAIN, { sheet }), named });
+    const done = button("sheet-done", "Done", { tone: "primary", role: "done" });
+    const sheet = { kind: "chooser" as const, title: "Choose a land card (Farseek)", wide: true, items, stepper: null, buttons: [done], carried: null, pick: { ...pick, copies: true } };
+    const named = new Map((o.known ?? names).map((n) => [n, { name: n, image: `${n.toLowerCase()}.jpg` }]));
+    return view({ controls: controls(MAIN, { sheet, ...(o.stop ? { stop: o.stop as StopId } : {}) }), named });
   };
   const distinct = (n: number) => Array.from({ length: n }, (_, i) => `Card ${String(i + 1).padStart(2, "0")}`);
   const shownNames = () => $$(".l-deal .l-card .sr").map((e) => e.textContent);
@@ -340,6 +342,48 @@ describe("a card sheet (a library search, a graveyard)", () => {
     show(search(names, { min: 0, max: 2 }, [per + 1]));
     expect(shownNames()[0]).toBe(names[per]);
     expect($$(".l-deal .l-card")[0]!.classList.contains("on")).toBe(true);
+  });
+  it("a partly catalogued search pages its unpictured options with the cards, as named placeholders; Done stays", async () => {
+    const names = ["Island", ...Array.from({ length: 20 }, (_, i) => `Unknown ${String(i + 1).padStart(2, "0")}`)];
+    show(search(names, { min: 1, max: 1 }, [], { known: ["Island"] }));
+    expect($$(".l-sheet button.l-opt")).toHaveLength(0); // no full-width rows under the cards
+    const per = shownNames().length;
+    expect(per).toBeLessThan(names.length);
+    const placeholders = $$(".l-deal .l-card .pic").filter((p) => !p.querySelector(".art"));
+    expect(placeholders.map((p) => p.querySelector("b")?.textContent)).toEqual(names.slice(1, per)); // the rest of the page
+    expect($(".l-deal .l-card .pic b")?.textContent).toBe("Island"); // a pictured card keeps its name under the art
+    expect($(".l-row .l-done")).not.toBeNull(); // the foot: Done is drawn with the first page
+    await turn("Next page");
+    expect(shownNames()[0]).toBe(names[per]);
+    expect($$(".l-deal .l-card").length).toBeLessThanOrEqual(per);
+    click($$(".l-deal .l-card")[0]!);
+    expect(sent.at(-1)).toMatchObject({ act: { a: "pick", option: per + 1 } });
+  });
+  it("a new decision starts at the first page; an update to the same decision keeps its page", async () => {
+    const names = distinct(40);
+    show(search(names, { min: 0, max: 2 }, [], { stop: "g7:d42:1" }));
+    const per = shownNames().length;
+    await turn("Next page");
+    show(search(names, { min: 0, max: 2 }, [per + 1], { stop: "g7:d42:1" })); // the same decision, a pick later
+    expect(shownNames()[0]).toBe(names[per]);
+    show(search(names, { min: 0, max: 2 }, [], { stop: "g7:d43:2" })); // a replacement: same words, same count
+    expect(shownNames()[0]).toBe(names[0]);
+    expect($(".l-pager")?.getAttribute("aria-label")).toMatch(/^Page 1 of/);
+  });
+  it("sources that look alike say what sets them apart, on the tag and aloud; a tap sends that source", () => {
+    const items = [
+      { option: 1, label: "Island (U)", cost: null, detail: null, card: 31 as CardId, name: "Island", picked: false, badge: null },
+      { option: 2, label: "Island (U)", cost: null, detail: "with Wild Growth", card: 32 as CardId, name: "Island", picked: false, badge: null },
+    ];
+    const sheet = { kind: "chooser" as const, title: "Pay {2}{U} for Snap", wide: false, items, stepper: null, buttons: [], carried: null };
+    const island = { name: "Island", image: "island.jpg" };
+    show(view({ controls: controls(MAIN, { sheet }), looks: new Map([[31 as CardId, island], [32 as CardId, island]]) }));
+    const cards = $$(".l-deal .l-card");
+    expect(cards.map((c) => c.querySelector(".count small")?.textContent ?? null)).toEqual([null, "with Wild Growth"]);
+    expect(cards.map((c) => c.querySelector(".sr")?.textContent)).toEqual(["Island (U)", "Island (U), with Wild Growth"]);
+    expect(cards.map((c) => c.querySelector(".count .pip")?.getAttribute("aria-label"))).toEqual(["U", "U"]);
+    click(cards[1]!);
+    expect(sent.at(-1)).toMatchObject({ act: { a: "pick", option: 2 } });
   });
   it("its box never scrolls (the cards are sized to the screen) and has no option stripe", () => {
     const css = readFileSync(resolve(import.meta.dirname, "../../src/chrome/chrome.css"), "utf8");

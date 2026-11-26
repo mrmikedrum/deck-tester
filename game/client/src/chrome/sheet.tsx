@@ -38,20 +38,22 @@ interface SheetProps {
   readonly style?: string;
   /** Where a card sheet deals its cards (the iPad's landscape screen when not given). */
   readonly area?: SheetArea;
+  /** The decision the sheet answers (play's stop): a card sheet's page belongs to it, and a new one starts at the first. */
+  readonly stop?: string | null;
 }
 
 const IPAD: SheetArea = { w: 1210, h: 834, safe: { top: 0, right: 0, bottom: 0, left: 0 }, u: Math.min(1210 / 1180, 834 / 820) };
 
 /** What a card sheet keeps off its cards, design px: the plates above and below it, the scrim's margin, the box's
- * padding, its title and its foot (the pager and the buttons), room round the cards for a picked one's lift and ring,
- * and a row's height for each option with no card. */
-const ROOM = { plates: 58, side: 16, pad: 22, title: 54, foot: 66, lift: 14, row: 56 } as const;
+ * padding, its title and its foot (the pager and the buttons), and room round the cards for a picked one's lift and
+ * ring. Every option is a tile on a page, so nothing else takes height and the foot stays on screen. */
+const ROOM = { plates: 58, side: 16, pad: 22, title: 54, foot: 66, lift: 14 } as const;
 
 /** The grid area a card sheet has for its cards, CSS px. */
-function gridArea(a: SheetArea, rows: number): { w: number; h: number } {
+function gridArea(a: SheetArea): { w: number; h: number } {
   const u = a.u;
   const w = a.w - a.safe.left - a.safe.right - 2 * ROOM.side - 2 * (ROOM.pad * u + ROOM.lift);
-  const h = a.h - a.safe.top - a.safe.bottom - 2 * ROOM.plates * u - (2 * ROOM.pad + ROOM.title + ROOM.foot + rows * ROOM.row) * u - 2 * ROOM.lift;
+  const h = a.h - a.safe.top - a.safe.bottom - 2 * ROOM.plates * u - (2 * ROOM.pad + ROOM.title + ROOM.foot) * u - 2 * ROOM.lift;
   return { w: Math.max(0, w), h: Math.max(0, h) };
 }
 
@@ -100,13 +102,16 @@ function CardTile({ tile, picked, max, send }: { tile: Tile; picked: number; max
       aria-pressed={mine > 0}
       onClick={() => (option !== null && !full ? send({ a: "pick", option }) : undefined)}
     >
-      <span class="pic" style={tile.image ? `background-image:url("${tile.image}")` : undefined}>
-        {tile.image ? null : <b aria-hidden="true">{tile.name}</b>}
+      {/* The name lies under the printed card: shown while there is no picture, or when the picture never comes. */}
+      <span class="pic">
+        <b aria-hidden="true">{tile.name}</b>
+        {tile.image ? <i class="art" style={`background-image:url("${tile.image}")`} /> : null}
       </span>
-      <span class="sr">{copies > 1 ? `${tile.label}, ${copies} copies` : tile.label}</span>
-      {copies > 1 || tile.tag ? (
+      <span class="sr">{[tile.label, tile.aside, copies > 1 ? `${copies} copies` : null].filter(Boolean).join(", ")}</span>
+      {copies > 1 || tile.tag || tile.aside ? (
         <span class="count" aria-hidden="true">
           {tile.tag ? <Pips text={tile.tag} /> : null}
+          {tile.aside ? <small>{tile.aside}</small> : null}
           {copies > 1 ? `×${copies}` : null}
         </span>
       ) : null}
@@ -144,11 +149,12 @@ function Pager({ page, pages, turn }: { page: number; pages: number; turn: (to: 
   );
 }
 
-/** A chooser's cards as dealt: the page shown, in a grid of one card size; the rows; the pager. */
-function CardGrid({ tiles, rows, d, sheet, send }: { tiles: readonly Tile[]; rows: readonly SheetItem[]; d: Deal; sheet: SheetView; send: Send }): JSX.Element {
-  // The page is the chrome's own: the same sheet keeps it while picks change; another sheet starts at the first.
+/** A chooser's cards as dealt: the page shown, in a grid of one card size; the pager. */
+function CardGrid({ tiles, d, sheet, stop, send }: { tiles: readonly Tile[]; d: Deal; sheet: SheetView; stop: string | null; send: Send }): JSX.Element {
+  // The page is the chrome's own, and belongs to the decision: the same decision keeps it while picks or the table
+  // change; a new decision (another stop), or another sheet of it, starts at the first.
   const [at, setAt] = useState<{ key: string; page: number }>({ key: "", page: 0 });
-  const key = `${sheet.title}|${sheet.items.length}`;
+  const key = `${stop ?? ""}|${sheet.kind}|${sheet.title}`;
   const page = at.key === key ? Math.min(at.page, d.pages - 1) : 0;
   const turn = (to: number) => setAt({ key, page: Math.max(0, Math.min(d.pages - 1, to)) });
   const shown = tiles.slice(page * d.perPage, (page + 1) * d.perPage);
@@ -165,9 +171,6 @@ function CardGrid({ tiles, rows, d, sheet, send }: { tiles: readonly Tile[]; row
       >
         {shown.map((t) => (
           <CardTile key={t.key} tile={t} picked={picked} max={max} send={send} />
-        ))}
-        {rows.map((item) => (
-          <Row key={item.option} item={item} mana={false} send={send} />
         ))}
       </div>
       {d.pages > 1 ? <Pager page={page} pages={d.pages} turn={turn} /> : null}
@@ -217,23 +220,21 @@ export const onScrim =
 export function Sheet(p: SheetProps): JSX.Element {
   const { sheet: s, send } = p;
   const area = p.area ?? IPAD;
-  // A chooser with any option the table or the catalogue can picture is dealt as cards; the rest go under them as rows.
-  const dealt =
-    s.kind === "chooser"
-      ? tilesOf(s, (item) => {
-          const l = item.card !== null ? p.looks.get(item.card) : item.name !== null ? p.named.get(item.name) : undefined;
-          return l ? { name: l.name, image: l.image } : null;
-        })
-      : null;
-  const cards = dealt && dealt.tiles.length ? dealt : null;
+  // A chooser with any option the table or the catalogue can picture is dealt as cards, every option a tile (one with
+  // no picture yet a placeholder with its name), so all of them page together.
+  const look = (item: SheetItem) => {
+    const l = item.card !== null ? p.looks.get(item.card) : item.name !== null ? p.named.get(item.name) : undefined;
+    return l ? { name: l.name, image: l.image } : null;
+  };
+  const cards = s.kind === "chooser" && s.items.some((item) => look(item) !== null) ? tilesOf(s, look) : null;
   let body: JSX.Element | JSX.Element[];
   let width: string | undefined;
   if (cards) {
-    const g = gridArea(area, cards.rows.length);
-    const d = deal(cards.tiles.length, g.w, g.h, area.u);
-    const cols = Math.min(d.cols, cards.tiles.length);
+    const g = gridArea(area);
+    const d = deal(cards.length, g.w, g.h, area.u);
+    const cols = Math.min(d.cols, cards.length);
     width = `width:${Math.max(cols * d.w + (cols - 1) * CARD_GAP * area.u + 2 * (ROOM.pad * area.u + ROOM.lift), 560 * area.u)}px`;
-    body = <CardGrid tiles={cards.tiles} rows={cards.rows} d={d} sheet={s} send={send} />;
+    body = <CardGrid tiles={cards} d={d} sheet={s} stop={p.stop ?? null} send={send} />;
   } else if (s.kind === "stack") body = <StackRules rows={p.stack} />;
   else if (s.kind === "chooser")
     body = (

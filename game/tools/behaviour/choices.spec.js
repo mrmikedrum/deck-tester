@@ -276,7 +276,7 @@ test.describe("card sheet", () => {
   const { CARDS } = require("./harness.js");
   let hidden = 9000;
   const search = (s, names, d) => withDecision(s, { kind: "choose", prompt: "Choose land cards (Test)", options: names, details: names.map(n => CARDS[n].faces[0].text || n),
-    refs: names.map(() => ({ card: hidden++ })), min: 1, max: 1, ...d });
+    refs: names.map(() => ({ card: hidden++, search: true })), min: 1, max: 1, ...d });
   const cards = t => t.sheet().locator(".l-deal .l-card");
   const LANDS = ["Hallowed Fountain", "Island", "Island", "Island", "Mountain", "Mountain"];
 
@@ -317,6 +317,23 @@ test.describe("card sheet", () => {
     expect(await cards(table).nth(0).getAttribute("aria-pressed")).toBe("true");   // the pick is kept across pages
     await table.sheet().locator(".l-done").click();
     expect((await table.answered(1))[0].answer).toEqual([1, per + 2]);
+  });
+  test("one card known and twenty not: placeholders page with it, and Done stays on screen", async ({ table }) => {
+    test.skip(!NEW, "the new entry's card sheet");
+    const names = ["Island", ...Array.from({ length: 20 }, (_, i) => `Unprinted Card ${i + 1}`)];   // no card data for these
+    await table.open(withDecision(snapshot("main"), { kind: "choose", prompt: "Choose land cards (Test)", options: names,
+      refs: names.map(() => ({ card: hidden++, search: true })), min: 0, max: 2 }));
+    expect(await table.sheet().locator("button.l-opt").count()).toBe(0);
+    const per = await cards(table).count();
+    expect(per).toBeLessThan(names.length);
+    expect(await table.sheet().getByRole("button", { name: "Next page" }).isVisible()).toBe(true);
+    const done = await table.sheet().locator(".l-done").boundingBox(), screen = table.page.viewportSize();
+    expect(done.y + done.height).toBeLessThanOrEqual(screen.height);
+    expect(done.x + done.width).toBeLessThanOrEqual(screen.width);
+    await table.sheet().getByRole("button", { name: "Next page" }).click();
+    await cards(table).first().click();
+    await table.sheet().locator(".l-done").click();
+    expect((await table.answered(1))[0].answer).toEqual([per + 1]);
   });
   test("closes like every pop-up: the stud, then Choose… brings it back", async ({ table }) => {
     test.skip(!NEW, "the new entry's card sheet");

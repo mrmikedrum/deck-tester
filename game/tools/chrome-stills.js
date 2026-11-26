@@ -17,7 +17,7 @@ let hidden = 5000;
 const fromLibrary = (names, CARDS) => ({
   options: names,
   details: names.map((n) => CARDS[n].faces[0].text || n),
-  refs: names.map(() => ({ card: hidden++ })),
+  refs: names.map(() => ({ card: hidden++, search: true })),
 });
 const BASICS = (n, name) => Array.from({ length: n }, () => name);
 const FARSEEK_5 = ["Hallowed Fountain", "Island", "Mountain", "Sacred Foundry", "Watery Grave"];
@@ -59,6 +59,26 @@ const SHOTS = {
       const ring = find({ view }, "You", "Sol Ring").id, signet = find({ view }, "You", "Arcane Signet").id;
       return { kind: "pay", prompt: "Choose mana to pay {2}{U} for Snap, in order", options: ["Sol Ring (C)", "Arcane Signet (U)", "Arcane Signet (W)"], refs: [{ card: ring }, { card: signet }, { card: signet }], min: 0, max: 3, repeat: true };
     },
+  },
+  // Two Islands for {U}, one of them Atraxa's: the tag says which.
+  "pay-alike": {
+    sheet: (C, view) => {
+      const a = find({ view }, "You", "Island", 3), b = find({ view }, "You", "Island", 4), signet = find({ view }, "You", "Arcane Signet").id;
+      b.owner = "Atraxa";
+      return { kind: "pay", prompt: "Choose mana to pay {2}{U} for Snap, in order", options: ["Island (U)", "Island (U)", "Arcane Signet (U)"], refs: [{ card: a.id }, { card: b.id }, { card: signet }], min: 0, max: 3, repeat: true };
+    },
+  },
+  // A search whose card data has come for one card only: the rest are named placeholders on the same pages.
+  "search-partly-known": {
+    sheet: () => {
+      const names = ["Island", ...Array.from({ length: 20 }, (_, i) => `Unprinted Land ${i + 1}`)];
+      return { kind: "choose", prompt: "Choose a land card (Farseek)", options: names, refs: names.map(() => ({ card: hidden++, search: true })), min: 1, max: 1 };
+    },
+  },
+  // A scry of Island, Forest, Island: each card its own (Forge lists them by name, library order among equals).
+  "scry-3": {
+    sheet: (C) => ({ kind: "choose", prompt: "scry 3: cards to put on the bottom", options: ["Forest", "Island", "Island"], details: ["Forest", "Island", "Island"].map((n) => C[n].faces[0].text), refs: [0, 1, 2].map(() => ({ card: hidden++ })), min: 0, max: 3 }),
+    pickAt: [2],
   },
   "focus-mine": { state: "theirs", plate: "You" },
   "focus-opponent": { state: "theirs", plate: "Marath" },
@@ -104,8 +124,8 @@ const SHOTS = {
       await page.getByRole("button", { name: /^(Choose…|List)$/ }).first().click();
       await t.step(600);
     }
-    for (let i = 0; i < (shot.picks || 0); i++) {
-      await page.locator(".l-sheet .l-grid button").nth(i === 0 ? 1 : 3).click();
+    for (const at of shot.pickAt || [1, 3].slice(0, shot.picks || 0)) {
+      await page.locator(".l-sheet .l-grid button").nth(at).click();
       await t.step(300);
     }
     for (let i = 0; i < (shot.next || 0); i++) {

@@ -224,6 +224,42 @@ class ManualGameTest(unittest.TestCase):
         asked = [f for f in records.load(reply["records"]) if f["t"] == "decision" and "command zone" in f.get("prompt", "")]
         self.assertEqual([f["by"] for f in asked], ["ai"])
 
+    @unittest.skipUnless(engine.FORGE_BUILD.exists(), "requires installed Forge")
+    def test_a_library_search_marks_its_cards_and_a_scry_does_not(self):
+        # Copies a search finds are interchangeable, so a client may pile them; a scry's cards keep their places.
+        reply = engine.request({"cmd": "start", "commanders": ["Marath, Will of the Wild"],
+                                "main": [[99, "Forest"]], "seed": 11, "turns": 2})
+        session = reply["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        def pick(reply, prefix):
+            options = reply["decision"]["options"]
+            return request("answer", answer=[next(i for i, o in enumerate(options, 1) if o.startswith(prefix))])
+
+        try:
+            request("answer", answer=[1])
+            request("override", args=["create", "Fabled Passage"])
+            reply = pick(request("view"), "Fabled Passage:")
+            while reply["decision"]["kind"] != "choose":   # its costs, in the order Forge asks them
+                reply = request("answer", answer=[1])
+            search = reply["decision"]
+            self.assertGreater(search["options"].count("Forest"), 1)
+            self.assertTrue(all(ref.get("search") for ref in search["refs"]))
+            request("answer", answer=[1])
+
+            for args in (["create", "Island"], ["create", "Preordain", "hand"]):
+                reply = request("override", args=args)
+            reply = pick(reply, "Preordain")
+            while not reply["decision"]["prompt"].startswith("scry"):
+                reply = request("answer", answer=[1])
+            scry = reply["decision"]
+            self.assertEqual(scry["options"], ["Forest", "Forest"])
+            self.assertFalse(any(ref.get("search") for ref in scry["refs"]))
+        finally:
+            request("end")
+
     def test_a_copy_may_have_new_targets(self):
         deck = decklist.load(DECK)
         reply = engine.request({"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2})

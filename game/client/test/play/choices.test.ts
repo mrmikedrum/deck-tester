@@ -467,6 +467,26 @@ describe("sheet decisions", () => {
   const words = (d: Record<string, unknown>) =>
     withDecision("016-order-mana-pool.json", { kind: "choose", prompt: "choose words (Test)", options: ["Alpha", "Beta"], refs: [{ name: "Alpha" }, { name: "Beta" }], ...d });
 
+  it("copies are interchangeable only where the engine says a search found them; a scry's never are", () => {
+    const hidden = (search: boolean, prompt: string) =>
+      withDecision("016-order-mana-pool.json", {
+        kind: "choose",
+        prompt,
+        options: ["Forest", "Island", "Island"],
+        refs: [9001, 9002, 9003].map((card) => (search ? { card, search: true } : { card })),
+        min: 0,
+        max: search ? 1 : 3,
+      });
+    const t = new Table();
+    t.open(hidden(true, "select a card from your library (Farseek)"));
+    expect(t.p.controls.sheet?.pick).toEqual({ min: 0, max: 1, copies: true });
+    t.open(hidden(false, "scry 3: cards to put on the bottom"));
+    expect(t.p.controls.sheet?.pick).toEqual({ min: 0, max: 3, copies: false });
+    t.pick(3); // the Island under the Forest, alone
+    t.press("Done (1)");
+    expect(t.answers()).toEqual([[3]]);
+  });
+
   it("repeat: an option can be picked again and its badge counts; a pick at max takes one back (016, a repeatable choice)", () => {
     const t = new Table();
     t.open(words({ repeat: true, min: 1, max: 3 }));

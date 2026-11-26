@@ -428,14 +428,21 @@
       filter 120ms;
   }
   .l-card .pic {
+    position: relative;
     display: grid;
     place-items: center;
     aspect-ratio: 488 / 680;
     border-radius: inherit;
-    background: var(--card-art-ground) center / cover;
+    background: var(--card-art-ground);
     box-shadow: var(--card-shadow);
   }
-  /* Its picture still on its way: the name, on the card's ground. */
+  .l-card .pic .art {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: center / cover no-repeat;
+  }
+  /* Under the picture, the name on the card's ground: what shows while the picture is on its way, or if it never comes. */
   .l-card .pic b {
     padding: 0 10%;
     color: var(--btn-act-ink);
@@ -463,6 +470,17 @@
     text-shadow: var(--btn-act-ink-shadow);
     font: 700 calc(16 * var(--u)) var(--ui);
     white-space: nowrap;
+  }
+  /* What sets a source apart from one that looks the same ("with Wild Growth"): on its tag, wrapping inside the card. */
+  .l-card .count:has(small) {
+    max-width: 88%;
+    width: max-content;
+    white-space: normal;
+    text-align: center;
+  }
+  .l-card .count small {
+    margin: 0 0.3em;
+    font: 600 calc(14 * var(--u)) / 1.2 var(--ui);
   }
   /* Picked: lifted, in a ring of gold, with a gold seal on its corner (the pick's number when it has one). */
   .l-card.on {

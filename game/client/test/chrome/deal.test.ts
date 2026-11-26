@@ -1,7 +1,7 @@
-// A card sheet's deal: one card size per sheet, at most two rows, pages past what fits; copies off the table as a pile;
-// what a tap on a pile picks.
+// A card sheet's deal: one card size per sheet, at most two rows, pages past what fits; copies a search found as a pile
+// (never a scry's); every option a tile; what sets alike tiles apart; what a tap on a pile picks.
 import { describe, expect, it } from "vitest";
-import { CARD_ASPECT, CARD_MAX, CARD_MIN, deal, tagOf, tapOf, tilesOf } from "../../src/chrome/deal";
+import { CARD_ASPECT, CARD_MAX, CARD_MIN, CARD_ROWS, deal, tagOf, tapOf, tilesOf } from "../../src/chrome/deal";
 import type { Tile } from "../../src/chrome/deal";
 import type { SheetItem, SheetView } from "../../src/play";
 import type { CardId } from "../../src/protocol";
@@ -10,7 +10,7 @@ import type { CardId } from "../../src/protocol";
 const IPAD = { w: 1120, h: 520 };
 
 const item = (option: number, name: string, o: Partial<SheetItem> = {}): SheetItem => ({ option, label: name, cost: null, detail: null, card: null, name, picked: false, badge: null, ...o });
-const sheet = (items: SheetItem[], pick: SheetView["pick"] = { min: 0, max: 1, ordered: false, repeat: false }): SheetView => ({
+const sheet = (items: SheetItem[], copies = false, max = 1): SheetView => ({
   kind: "chooser",
   title: "Choose a land card (Farseek)",
   wide: items.length > 6,
@@ -18,7 +18,7 @@ const sheet = (items: SheetItem[], pick: SheetView["pick"] = { min: 0, max: 1, o
   stepper: null,
   buttons: [],
   carried: null,
-  pick,
+  pick: { min: 0, max, copies },
 });
 const looks = (i: SheetItem) => ({ name: i.name ?? i.label, image: `${i.name}.jpg` });
 
@@ -42,54 +42,79 @@ describe("dealing a card sheet", () => {
     expect(many.pages).toBe(Math.ceil(62 / many.perPage));
     expect(many.pages).toBeGreaterThan(1);
   });
-  it("cards are never shrunk to fit a page: a page holds fewer at a size that reads", () => {
-    const one = deal(12, IPAD.w, IPAD.h), paged = deal(40, IPAD.w, IPAD.h);
-    expect(paged.w).toBeGreaterThanOrEqual(CARD_MIN);
-    expect(paged.perPage).toBeLessThanOrEqual(one.cols * 2 + 2);
+  it("never more than two rows, even where the screen is tall enough for a third", () => {
+    const tall = { w: 1120, h: 1400 }; // room for three rows of the largest cards, or four of the least
+    for (const n of [3, 9, 12, 30, 62]) {
+      const d = deal(n, tall.w, tall.h);
+      expect(d.rows, `${n} cards`).toBeLessThanOrEqual(CARD_ROWS);
+      expect(d.perPage, `${n} cards`).toBeLessThanOrEqual(CARD_ROWS * d.cols);
+    }
+    expect(deal(30, tall.w, tall.h).pages).toBeGreaterThan(1);
   });
 });
 
 describe("a card sheet's tiles", () => {
-  it("copies of one card off the table lie as one pile, in the order offered", () => {
+  it("copies a library search found lie as one pile, in the order offered", () => {
     const items = [item(1, "Hallowed Fountain"), item(2, "Island"), item(3, "Island"), item(4, "Island"), item(5, "Mountain")];
-    const { tiles, rows } = tilesOf(sheet(items), looks);
-    expect(tiles.map((t) => [t.name, t.items.map((i) => i.option)])).toEqual([
+    expect(tilesOf(sheet(items, true), looks).map((t) => [t.name, t.items.map((i) => i.option)])).toEqual([
       ["Hallowed Fountain", [1]],
       ["Island", [2, 3, 4]],
       ["Mountain", [5]],
     ]);
-    expect(rows).toEqual([]);
   });
-  it("cards on the table, ordered picks and repeatable options are each their own", () => {
+  it("a scry's copies stay apart: with Island, Forest, Island on top, the second Island can go to the bottom alone", () => {
+    // Forge sorts the scry's options by name and keeps library order among equals: Forest, Island (top), Island (third).
+    const scry = { ...sheet([item(1, "Forest"), item(2, "Island"), item(3, "Island")], false, 3), title: "Scry 3: cards to put on the bottom" };
+    const tiles = tilesOf(scry, looks);
+    expect(tiles.map((t) => t.items.map((i) => i.option))).toEqual([[1], [2], [3]]);
+    expect(tapOf(tiles[2]!, 0, 3)).toBe(3); // the third card, the Island under the Forest, alone
+  });
+  it("cards on the table and choosers that do not say their copies are interchangeable keep each option its own", () => {
     const onTable = [item(1, "Beast", { card: 10 as CardId }), item(2, "Beast", { card: 11 as CardId })];
-    expect(tilesOf(sheet(onTable), looks).tiles).toHaveLength(2);
+    expect(tilesOf(sheet(onTable, true), looks)).toHaveLength(2);
     const hidden = [item(1, "Island"), item(2, "Island")];
-    expect(tilesOf(sheet(hidden, { min: 2, max: 2, ordered: true, repeat: false }), looks).tiles).toHaveLength(2);
-    expect(tilesOf(sheet(hidden, { min: 1, max: 3, ordered: false, repeat: true }), looks).tiles).toHaveLength(2);
     const unbounded: SheetView = { ...sheet(hidden) };
-    delete (unbounded as { pick?: unknown }).pick; // a chooser that does not say its bounds
-    expect(tilesOf(unbounded, looks).tiles).toHaveLength(2);
+    delete (unbounded as { pick?: unknown }).pick;
+    expect(tilesOf(unbounded, looks)).toHaveLength(2);
   });
   it("copies whose rules differ are not one pile", () => {
     const items = [item(1, "Island", { detail: "({T}: Add {U}.)" }), item(2, "Island", { detail: "Island — snow" })];
-    expect(tilesOf(sheet(items), looks).tiles).toHaveLength(2);
+    expect(tilesOf(sheet(items, true), looks)).toHaveLength(2);
   });
   it("what an option says beyond its card goes on a tag: a payment's mana as its symbol", () => {
     expect(tagOf("Arcane Signet (W)", "Arcane Signet")).toBe("{W}");
     expect(tagOf("Island", "Island")).toBeNull();
     expect(tagOf("Gemstone Caverns (exiled card)", "Gemstone Caverns")).toBe("exiled card");
     const two = [item(1, "Arcane Signet", { label: "Arcane Signet (U)" }), item(2, "Arcane Signet", { label: "Arcane Signet (W)" })];
-    expect(tilesOf(sheet(two), looks).tiles.map((t) => t.tag)).toEqual(["{U}", "{W}"]); // never one pile
+    expect(tilesOf(sheet(two), looks).map((t) => t.tag)).toEqual(["{U}", "{W}"]);
   });
-  it("an option with no card to picture is a row", () => {
-    const { tiles, rows } = tilesOf(sheet([item(1, "Island"), item(2, "None")]), (i) => (i.name === "Island" ? looks(i) : null));
-    expect(tiles).toHaveLength(1);
-    expect(rows.map((r) => r.option)).toEqual([2]);
+  it("sources that would look alike say what sets them apart: two Islands for {U}, one with Wild Growth", () => {
+    const pay = [
+      item(1, "Island", { label: "Island (U)", card: 20 as CardId }),
+      item(2, "Island", { label: "Island (U)", card: 21 as CardId, detail: "with Wild Growth" }),
+      item(3, "Sol Ring", { label: "Sol Ring (C)", card: 22 as CardId, detail: "tapped" }),
+    ];
+    const paying: SheetView = { ...sheet(pay) };
+    delete (paying as { pick?: unknown }).pick; // the payment list says no bounds
+    const tiles = tilesOf(paying, looks);
+    expect(tiles.map((t) => [t.tag, t.aside])).toEqual([
+      ["{U}", null],
+      ["{U}", "with Wild Growth"],
+      ["{C}", null], // nothing else looks like it: its own words are enough
+    ]);
+    expect(tapOf(tiles[1]!, 0, 3)).toBe(2);
+  });
+  it("every option is a tile: one with no picture yet is a placeholder with its name, paged with the rest", () => {
+    const items = [item(1, "Island"), ...Array.from({ length: 20 }, (_, i) => item(i + 2, `Unknown ${i + 1}`))];
+    const tiles = tilesOf(sheet(items, true), (i) => (i.name === "Island" ? looks(i) : null));
+    expect(tiles).toHaveLength(21);
+    expect(tiles[0]).toMatchObject({ name: "Island", image: "Island.jpg" });
+    expect(tiles[5]).toMatchObject({ name: "Unknown 5", image: null });
   });
 });
 
 describe("a tap on a pile", () => {
-  const pile = (picked: number[]): Tile => ({ key: "2", name: "Island", label: "Island", tag: null, image: null, items: [2, 3, 4].map((o) => item(o, "Island", { picked: picked.includes(o) })) });
+  const pile = (picked: number[]): Tile => ({ key: "2", name: "Island", label: "Island", tag: null, aside: null, image: null, items: [2, 3, 4].map((o) => item(o, "Island", { picked: picked.includes(o) })) });
   it("takes the next copy while there is room", () => {
     expect(tapOf(pile([]), 0, 2)).toBe(2);
     expect(tapOf(pile([2]), 1, 2)).toBe(3);
@@ -105,6 +130,6 @@ describe("a tap on a pile", () => {
     expect(tapOf(pile([]), 2, 2)).toBeNull();
   });
   it("a single card is always its own option (play decides what a pick does)", () => {
-    expect(tapOf({ key: "1", name: "Mountain", label: "Mountain", tag: null, image: null, items: [item(1, "Mountain")] }, 2, 2)).toBe(1);
+    expect(tapOf({ key: "1", name: "Mountain", label: "Mountain", tag: null, aside: null, image: null, items: [item(1, "Mountain")] }, 2, 2)).toBe(1);
   });
 });

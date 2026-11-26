@@ -193,6 +193,8 @@ export const ChoiceRefSchema = v.object({
   card: v.nullish(cardId, null),
   player: v.nullish(playerName, null),
   name: v.nullish(v.string(), null),
+  /** A card a library search found: copies of one card are interchangeable (a scry's cards never say so). */
+  search: flag,
 });
 /** pay: the mana ability's source; `repeats` when its cost does not tap it, so the same option may be picked again (one
  *  activation each: Workhorse's counters). */
@@ -273,7 +275,7 @@ export const PaySchema = finish(v.object({ kind: v.literal("pay"), ...common, re
 export const TargetsSchema = finish(
   v.object({ kind: v.literal("targets"), ...common, refs: v.array(ChoiceRefSchema) }),
 );
-const EMPTY_REF = { card: null, player: null, name: null } as const;
+const EMPTY_REF = { card: null, player: null, name: null, search: false } as const;
 /**
  * Forge asks some choices by label only (a colour, a creature type, a yes-or-no question): the engine sends no refs
  * (Gson leaves the null list out), and each option gets an empty ref. Refs that are sent must still line up.

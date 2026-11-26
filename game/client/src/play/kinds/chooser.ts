@@ -44,7 +44,10 @@ export function chooserSheet(c: Ctx<Choice>): SheetView & { readonly buttons: re
       enabled: draft.sel.length >= d.min,
     }),
   );
-  const pick = { min: d.min, max: d.max, ordered: ordered(d), repeat: d.repeat };
+  // Copies are interchangeable only where the engine says so (a library search); never where place or order counts
+  // (a scry, a surveil, an order) or an option repeats.
+  const copies = d.kind === "choose" && !d.repeat && d.refs.length > 0 && d.refs.every((r) => r.search);
+  const pick = { min: d.min, max: d.max, copies };
   return { kind: "chooser", title: promptText(d, f), wide: d.options.length > 6, items, stepper: null, buttons, carried: null, pick };
 }
 

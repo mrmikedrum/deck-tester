@@ -137,7 +137,7 @@ describe("decodeSnapshot tolerates what the architecture says it must", () => {
   });
 
   it("a choose asked by label only (a colour, a type, a yes or no: Gson leaves the null refs out) gets one empty ref per option", () => {
-    const empty = { card: null, player: null, name: null };
+    const empty = { card: null, player: null, name: null, search: false };
     for (const refs of [undefined, null]) {
       const env = decision({ kind: "choose", prompt: "a color (Thriving Grove)", options: ["white", "blue", "black", "red"], refs });
       if (refs === undefined) delete env["decision"].refs;
