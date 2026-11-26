@@ -49,7 +49,7 @@ describe("the across leaf, drawn by the engine", () => {
       const model = snap.view && modelOf(snap, catalog, viewerOf());
       if (!model || model.seats.length !== 4) continue;
       const plan: TablePlan = planTable(tableInputOf(model, { viewport: VP, memory, shadow: { draw: true } }));
-      check(model, plan, n);
+      expect(check(model, plan, n), n).toEqual([]);
       memory = plan.memory;
     }
   });

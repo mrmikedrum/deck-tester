@@ -4,12 +4,13 @@
 // region on screen (its place: what a tap at rest reaches); everything else (fixtures, ids, titles) is the seat plan's
 // usual shape.
 import type { SeatBoard } from "../board";
-import { FLOOR } from "../board";
+import { FLOOR, TAP_PX } from "../board";
 import { Ledger } from "../ledger";
+import { bounds, zoneShape } from "../shape";
 import type { Projector } from "../projector";
 import type { Reservations } from "../reservations";
 import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
-import { PLATE_S, ZONE_S, floorScale, makeGeo } from "../seat/geometry";
+import { CW, PLATE_S, ZONE_S, floorScale, makeGeo } from "../seat/geometry";
 import type { CardId, SeatId, V3 } from "../types";
 import type { ArrCard, ArrUnit, ArrangeResult, CardPlace, ContainerMemory, SurfaceFrame } from "./contract";
 import { CARD, onFrame } from "./frame";
@@ -21,6 +22,9 @@ import { LEAF } from "./leaf";
 export const ARRANGED = "arranged";
 export const arrangedMemory = (m: LayoutMemory | null | undefined): ContainerMemory | null =>
   m && m.paradigm === ARRANGED && m.v === 1 ? (m.fit as ContainerMemory) : null;
+
+/** The zone piles along the far strip: the first's left edge in from the leaf's edge, and the space between two. */
+const ZONE_EDGE = 0.45, ZONE_GAP = 0.3;
 
 const madd = (a: V3, b: V3, k: number): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k });
 
@@ -73,10 +77,19 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const plate = { pos: onFrame(f, 0.6, strip + 0.25), scale: PLATE_S, posture: "stand" as const };
   const zones: Fixtures["zones"][number][] = [];
   const present = (["graveyard", "exile"] as const).filter((z) => (z === "graveyard" ? board.fixtures.graveyard : board.fixtures.exile) > 0);
-  present.forEach((zone, i) => {
-    const pos = onFrame(f, -edge + 0.9 + i * 1.45, strip + 0.05);
-    zones.push({ zone, placement: { pos, scale: Math.max(ZONE_S, floorScale(g, pos, FLOOR.any, true, ZONE_S)), posture: "flat" } });
-  });
+  // Side by side by their widths as drawn: a pile grows past ZONE_S to meet the floor (measured as it is drawn: another's
+  // pile is propped up, so it needs far less than one lying flat would), and the next stands clear of it.
+  const scaleAt = (at: number): number => {
+    const one = zoneShape(a.projector, board.seat, "graveyard", { pos: onFrame(f, at, strip + 0.05), scale: 1, posture: "flat" }, board.mine), b = bounds(one.face);
+    return Math.max(ZONE_S, (Math.max(FLOOR.any * g.u, TAP_PX) * 1.09) / one.width, (TAP_PX * 1.09) / (b.b - b.t));
+  };
+  let u = -edge + ZONE_EDGE;
+  for (const zone of present) {
+    let scale = scaleAt(u + (CW * ZONE_S) / 2);
+    for (let k = 0; k < 2; k++) scale = scaleAt(u + (CW * scale) / 2);   // at its middle, at the scale it draws at
+    zones.push({ zone, placement: { pos: onFrame(f, u + (CW * scale) / 2, strip + 0.05), scale, posture: "flat" } });
+    u += CW * scale + ZONE_GAP;
+  }
   if (left.length) {
     const pos = onFrame(f, edge - 0.9, strip + 0.05);
     units.push({ id: `u:entry:${board.seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos, scale: S_TABLE, posture: "flat" } });
