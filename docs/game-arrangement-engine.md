@@ -13,7 +13,7 @@ and today's layout code it replaces in steps (`layout/seat.ts`, `layout/plan.ts`
 `layout/focus.ts`, `layout/combat.ts`, `play/reach.ts`, `scene/stage/pick.ts`, `model/predicates.ts`).
 
 **Status:** the first slice's steps 1 to 6 are built (§6.1), and step 8 (§6.2): every opponent's leaf is drawn, tapped
-and audited through the engine on the no-middle template, the mats part for duels and the stack, and a fight is gathered
+and audited through the engine on the no-middle template (two to four seats), the mats part for duels and the stack, and a fight is gathered
 as the clash or as duels (the combat part of step 11, brought forward). My side is still `mat`'s. What building changed
 from this design, and why, is in "Round 3" to "Round 6" below; where they differ, the code and those rounds win.
 
@@ -122,13 +122,15 @@ The combat spec's section 4 (the parting, computed) and its duels are built with
 |---|---|---|
 | **One front line** | Every leaf is square to me (`leafFrame` ignores a slot's turn) with its front row's feet at z −3.9 (`TableTemplate.leaf`), so all three fronts stand on one line across the table. | Turned as `mat`'s slots are, a side leaf's back row reaches under its plate as the mats part, and its lying band lost half its places (Marath's turn 15 folded to a summary). Square, every leaf keeps two standing rows of four and a back row at 1180×820, 1210×834, 1024×768 and 1366×1024. |
 | **Poses hold by construction** | A row exists only where its floors, its far edge on screen and its keepouts hold at rest and under every pose (`rows.ts`); `report.poses` still audits on request and is clean on the design pass. `posed` draws a decided arrangement again slid along its `away` (units, slots and memory the same). | Round 3 only reported the parted audit; guarantee 12 asks for it. |
-| **How far** | `TableTemplate.part`: at most 0.35 card heights, by 0.05. | Past 0.35 the across leaf's back row (its fans' proud strip) reaches under its plate; 0.8 (the spec's ceiling) would cost every leaf its back row. |
-| **Duels** | The table form stands each blocked fight in a row across the middle at table size: the attacker (turned a quarter when tapped, so its place is a card's height wide), a clasp, its blockers; 6 px inside a duel, 18 between. The row's feet are 8 px over my field row's tops; the mats part by the least step at which nothing on a leaf under the row (feet, a stack's dice) reaches within 4 px of its top, the row sliding across the table to where it needs least. All or nothing: duels that do not fit raise the clash (`TablePlan.crowded`; set aside, everyone stays home). | The spec's rule, computed. Its "+16" is 8 + 4: at 0.35 the dense board's front feet sit 109 px over my tops, one short of 110. Dice count, so the dense turn-15 board holds two duels, not the spec's estimate of seven; lighter boards hold more. On the table posture stays fact, so a tapped attacker is turned, not stood up as in the clash. |
+| **The top stays clear** | Every leaf keeps clear of the chrome along the top (`reservations.ts` `topChrome`: the nameplates' row and 8 px under it, the log strip at its least), at rest and parted. The parting goes at most 0.15 card heights (`TableTemplate.part`), by 0.05. | The owner's "far-back cards gunk up a table": nothing may sit half under a plate or be cut at the screen's edge. Under that band a dense leaf keeps two standing rows and its back row only up to 0.15; at 0.35 it lost its second row. |
+| **Graveyard and exile** | Off the leaves: the nameplate's focus holds them, and a card bound there flies to the plate. A waiting commander stands behind the rows in use, as deep as keeps it wholly clear of the top chrome. | The far strip sat under the plates and off the top on the dense board. |
+| **Duels** | The table form stands each blocked fight in a row across the middle at table size, leaning from the table as every table card does: the attacker (turned a quarter when tapped, so its place is a card's height wide), a clasp, its blockers; 6 px inside a duel, 18 between. The row's feet are 6 px over my field row's tops; the mats part by the least step at which nothing on a leaf under the row (feet, a stack's dice) reaches within 3 px of its top, the row sliding across the table to where it needs least. All or nothing: duels that do not fit raise the clash (`TablePlan.crowded`; set aside, everyone stays home). | The spec's rule, computed, with cards of the table (88 px tall leaning, 94 upright), which is what fits the 0.15 parting. Dice count, so the dense turn-15 board holds two duels, not the spec's estimate of seven; lighter boards hold more. On the table posture stays fact, so a tapped attacker is turned, not stood up as in the clash. |
 | **The stack** | Set aside, the stack takes the whole parting. | On main, 13 of the corpus's tables left stack cards with no room at rest (Round 4's regression); parted, none does. |
 | **Target regions** | A standing grid row's regions run up their slots' own edges (feet to the standing top) and tile; the `place` check asks that a region hold its face's middle and 85% of its area. | On a side leaf perspective skews a place, and widening each region to hold every corner made neighbours overlap by 38 px (a 40 px patch). |
-| **Far strip** | Zone piles, the plate and the waiting commander lie side by side (the plate after the piles, the commander after the plate) at the far strip's near edge, or nearer where the rows in use leave room, as deep as keeps them clear under the plates; measured at rest, so a parting carries them. | On the side leaves the strip sits under the plates at the screen's top; on an early board the waiting commander was cut off. |
 | **Unit ids, chrome** | A table unit's id carries its seat (`u:frest@Marath`) unless it is a card's own; the chrome's plates keep their leaves' order; the log strip under the Game button narrows to keep clear of the cards under it, never under its heading. | Three leaves each had a `u:frest`; the plates' packing swapped two seats to clear a card, against spatial permanence; and the left leaf now reaches the top-left, where the strip at its widest covered its back row. |
-| **Not built** | The leaves' timing (open 300 ms before the duels walk out, close 400 ms after): the scene eases a parting as any reflow. A seat that leaves keeps its empty leaf: the template is tuned for four seats. | |
+| **Seats that leave** | The template is tuned for 2, 3 and 4 seats: fewer opponents share the width the three leaves span, equal slots in their order. A seat out of the game is not laid out; its nameplate is a small grey chip ("Out"). | The owner: seats leave mid-game, and the engine assumes almost nothing about seat count. |
+| **Lanes and aims** | Only an attack I am in draws a lane. A set-aside spell's aim at a card on an opponent's leaf runs level along the open middle to the target's own column, then up it. | A line across other seats' cards read as clutter and as a false link to them; between opponents the attackers' light, a duel's clasp and the defender's tally say who fights whom. |
+| **Not built** | The leaves' timing (open 300 ms before the duels walk out, close 400 ms after): the scene eases a parting as any reflow. | |
 
 ## 0. Shape of the thing
 
@@ -983,7 +985,8 @@ No solver exists to time yet, so this is a gate, not a claim.
 - **Gate:** the slice does not pass step 5 until its numbers are recorded on the iPad, and no later step merges over
   budget.
 
-**How to run it.** Node: `node --no-warnings --experimental-transform-types game/tools/bench-plan.mjs [plans] [--json]`.
+**How to run it.** Every input is planned at the iPad held in landscape, 1210×834 (`bench-inputs.ts` `VIEWPORT`). Node:
+`node --no-warnings --experimental-transform-types game/tools/bench-plan.mjs [plans] [--json]`.
 The iPad: on the Mac, `bin/deckmaster game` (it rebuilds the client when stale), then open
 `http://<the Mac's address>:8765/next/workbench.html?only=bench`; or, without the game server, build the client
 (`npx vite build` in `game/`) and run `node game/tools/serve.js 8797 --dist --lan`, which prints the address to open.
@@ -1056,12 +1059,13 @@ nothing), results must be matched to their plan key and memory carried back, and
 plan in flight to be a pending deadline on the virtual clock. With unchanged leaves costing a key, the iPad numbers
 after these changes decide whether it is needed; `mat` (until step 12 deletes it) is the larger cost either way.
 
-**With every opponent's leaf on the engine (step 8, Nov 26)**, Node, median / p90 / worst ms, main and this step run back
-to back (load average 7): the design pass's turn 15 0.89 / 1.06 / 1.73 on main, 0.96 / 1.23 / 3.13 here; dense 1.31 /
-1.50 / 1.72, 1.42 / 1.72 / 2.22; 40 distinct names 0.73 / 0.84 / 1.26, 0.74 / 0.81 / 1.66; the combat of twelve 0.79 /
-0.93 / 1.75, 0.79 / 0.89 / 1.31; 30 snapshots in sequence 1.42 / 1.74 / 2.05, 2.16 / 2.99 / 6.64. Each of the sequence's
-snapshots changes every opponent's seat, so it now arranges three leaves a plan, not one (a real snapshot usually
-changes one); a cold leaf costs about 0.3 ms. The iPad's numbers are still to be taken by hand.
+**With every opponent's leaf on the engine (step 8, Nov 26)**, Node, planned at 1210×834, median / p90 / worst ms,
+main and this step run back to back (load average about 20, so worst cases are noisy): the design pass's turn 15
+0.89 / 1.07 / 1.65 on main, 0.91 / 1.15 / 2.50 here; dense 1.28 / 1.50 / 3.29, 1.43 / 1.74 / 3.15; 40 distinct names
+0.70 / 0.82 / 1.18, 0.72 / 0.79 / 1.45; the combat of twelve 0.74 / 0.86 / 1.37, 0.77 / 0.93 / 1.38; 30 snapshots in
+sequence 0.85 / 1.01 / 1.46, 1.64 / 2.53 / 5.24. Each of the sequence's snapshots changes every opponent's seat, so it
+now arranges three leaves a plan, not one (a real snapshot usually changes one); a cold leaf costs about 0.3 ms. The
+iPad's numbers are to be taken by hand (`?only=bench`, held in landscape).
 
 ## Settled here, for the designer to know
 

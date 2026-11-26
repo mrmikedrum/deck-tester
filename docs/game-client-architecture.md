@@ -463,8 +463,9 @@ fighter upright on a plane carried toward the eye, one rank of columns between t
 (`TablePlan.fieldTop`, which it never covers: `clash-covers`), wings by defender, a blocker on its controller's side
 of its attacker, at the largest step from 1.8 at which every column fits one tier, the rest in a "more" column. Its
 fighters, brand slots (`slot:<attacker>`, reaching the attacker) and "more" (`clash:more`) are reached over the whole
-table; what it covers is reached once it is set aside. **The table form**: each unblocked attack is a lane, one
-trunk per attacking seat and defender, its attackers at home; each blocked fight stands as a **duel** in a row across
+table; what it covers is reached once it is set aside. **The table form**: each unblocked attack I am in is a lane,
+one trunk per attacking seat and defender, its attackers at home (between opponents, no lane: the attackers' light and
+the defender's tally say it); each blocked fight stands as a **duel** in a row across
 the middle at table size (the attacker, turned when tapped, a clasp, its blockers), the mats parted for it and the row
 slid to where it needs least. A fight between opponents takes the table form by itself; duels that do not fit the
 middle raise the clash (`TablePlan.crowded`, and the app's clash layer), or, set aside, stay home. `TablePlan.gathering` carries the columns, wings, plaques and extent for the
@@ -490,9 +491,11 @@ container at a time: a container's cards and space in, units, places, pick targe
 (`tableInputOf(model, { engine: { draw: true } })`, as the app plans; `TablePlan.leaves` holds each at rest), on the
 template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row on one line); my side is still `mat`'s.
 At rest no middle is held back. **The parting** makes room when something rests on the middle at table size: every
-engine leaf slides along its own `away` by the least step (`TableTemplate.part`, at most 0.35 card heights) that opens
+engine leaf slides along its own `away` by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
 it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and
-patches parted). `TablePlan.part` says how far.
+patches parted). `TablePlan.part` says how far. No leaf goes under the chrome along the top (`topChrome`); graveyard and
+exile are in the nameplate's focus, not on the leaves. The template is tuned for two to four seats: a seat out of the
+game gives its room back (its nameplate a small "Out" chip).
 
 ## play: the decision controller
 
