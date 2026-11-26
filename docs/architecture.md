@@ -433,7 +433,11 @@ engine to them. The rules:
   they lose (me included); the stack top first; `turn` global, `label` per player ("T3 Dack main1"); `cost` in Forge's
   short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. Ids need not resolve: a stack
   target may be a card gone from the game (a token exiled mid-resolution, still named in the item's text), and a
-  `choose` may offer hidden cards (a library search).
+  `choose` may offer hidden cards (a library search). `combat` carries Forge's facts about the combat on the table:
+  its `ordinal` in the turn, each attacker's `defender` and Forge's `blocked` verdict (it holds when the blockers
+  leave), the `blockers`, and the combat `damage` dealt in it by `source` and `target` (after prevention, summed over
+  its damage steps; noncombat damage is not in it). The engine's `CombatFacts` reads them from Forge's own damage
+  state as they happen, so a hit stays counted when its source or target leaves; nothing comes from the game log.
 - **Decisions** carry `id`, `kind`, `turn`, `prompt`, `options` (labels, which can repeat), `details`, `min`, `max`,
   `repeat`, `mine` (asked in my turn; every decision is mine to answer), and `refs` aligned with the options for what
   they point at: `play` (`{card, spell, mana?}`; pass is `{}`), `pay` (`{card, repeats?}`: `repeats` when the mana

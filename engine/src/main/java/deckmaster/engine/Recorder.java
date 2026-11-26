@@ -128,6 +128,10 @@ final class Recorder {
         } else if (restoring) {
             return;
         }
+        // The combat's facts are taken as they happen (a hit stays counted when its source or target leaves).
+        if (session.game != null && session.game.getCombat() != null) {
+            session.combatFacts.observe(session.game);
+        }
         // Another player acting is what a copy fork made earlier can't reproduce (in a fork they pass).
         if (event instanceof GameEventLandPlayed land && !isPilot(land.player())
                 || event instanceof forge.game.event.GameEventSpellAbilityCast cast && cast.si() != null

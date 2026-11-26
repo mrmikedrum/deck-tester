@@ -118,6 +118,8 @@ final class Session {
     final Path recordFile;
     final Channel channel = new Channel();
     final Recorder recorder;
+    /** The combat on the table, kept for its life: its ordinal and the combat damage dealt in it. */
+    final CombatFacts combatFacts = new CombatFacts();
     /** Every decision answered so far, in order. The game thread appends; others read it only while the game is parked. */
     final List<Entry> log = new ArrayList<>();
     private final List<Entry> script;
@@ -1161,6 +1163,8 @@ final class Session {
                 Map<String, Object> a = new LinkedHashMap<>();
                 a.put("id", attacker.getId());
                 a.put("defender", defender instanceof Card walker ? (Object) walker.getId() : defender == null ? null : defender.getName());
+                // Forge's own verdict: blocked stays true when its blockers leave, and false when an effect unblocks it.
+                a.put("blocked", combat.isBlocked(attacker));
                 attackers.add(a);
             }
             List<Map<String, Object>> blockers = new ArrayList<>();
@@ -1169,7 +1173,8 @@ final class Session {
                     blockers.add(Map.of("id", blocker.getId(), "blocking", blocked.getId()));
                 }
             }
-            view.put("combat", Map.of("attackers", attackers, "blockers", blockers));
+            // Which combat this is this turn (Forge's ordinal), and the combat damage dealt in it so far by source and target.
+            view.put("combat", Map.of("ordinal", CombatFacts.ordinal(game), "attackers", attackers, "blockers", blockers, "damage", combatFacts.damage(game)));
         }
         // Forge's own game log, as its desktop app shows it: what happened, including what this seat couldn't see happen.
         List<forge.game.GameLogEntry> entries = game.getGameLog().getAllEntries();
