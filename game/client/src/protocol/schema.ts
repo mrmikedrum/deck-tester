@@ -96,6 +96,9 @@ export const StackItemSchema = v.object({
   /** Every target of the item and its sub-abilities: card ids and player names. A card may be gone from the game (a
    * token exiled while the item resolves): its id is then in no zone, and `text` still names it ("Soldier Token (868)"). */
   targets: v.optional(v.array(cardOrPlayer), () => []),
+  /** Chosen X (including zero) and the descriptions of the chosen modes, when recorded by Forge. */
+  x: v.nullish(count, null),
+  modes: v.optional(v.array(v.string()), () => []),
 });
 
 export const CombatSchema = v.object({
@@ -334,7 +337,7 @@ export const AnswerStatusSchema = v.object({
 
 const SnapshotFields = v.object({
   state: v.picklist(STATES),
-  /** The game's generation: a new game, a new gen. Null before the first game and on a failed start. */
+  /** The game's generation: a new game, a new gen. Null before the first game. */
   gen: v.nullish(count, null),
   /** The bridge's version of this snapshot: the long poll's cursor. Goes backwards when the bridge restarts. */
   v: count,

@@ -47,6 +47,8 @@ export interface StackItem {
   readonly spell: boolean;
   readonly text: string;
   readonly targets: readonly Target[];
+  readonly x: number | null;
+  readonly modes: readonly string[];
 }
 
 export interface Attack {
@@ -214,6 +216,8 @@ export function modelOf(
     spell: s.spell,
     text: s.text,
     targets: s.targets.map(targetOf),
+    x: s.x,
+    modes: s.modes,
   }));
 
   const defending = (d: Target | null): SeatId | null =>

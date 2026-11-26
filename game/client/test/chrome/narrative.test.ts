@@ -115,10 +115,10 @@ describe("the prompt", () => {
     expect(chrome()?.classList.contains("watching")).toBe(true);
   });
   it("while the table moves with the stack empty: the motion's headline, no hint or context; red while Sunfall sweeps", () => {
-    const c = withPrompt({ tone: "normal", hint: "Highlights mark available plays.", context: "Draw a card.", floating: "Floating {G}", stack: [] }, MAIN);
+    const c = withPrompt({ tone: "normal", hint: "Highlights mark available plays.", context: "Draw a card.", floating: "{G}", stack: [] }, MAIN);
     show({ controls: c, watch: { headline: "Doom Blade resolves", arriving: [], toStack: false, sweeping: true } });
     expect($(".l-what")?.textContent).toBe("Doom Blade resolves");
-    expect($(".l-ctx")?.textContent).toBe("Floating G");
+    expect($(".l-ctx")?.textContent).toBe("Floating mana G");
     expect($(".l-prompt")?.classList.contains("threat")).toBe(true);
     show({ controls: c, watch: null });
     expect($(".l-prompt")?.classList.contains("threat")).toBe(false);

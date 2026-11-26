@@ -466,7 +466,8 @@ class SlowView:
     def __init__(self):
         self.calls, self.asked, self.gate = [], threading.Event(), threading.Event()
 
-    def request(self, req):
+    def request(self, req, start=True):
+        assert not start  # A watcher only reads the engine that opened its session.
         self.calls.append(req)
         if len(self.calls) == 1:
             self.asked.set()
@@ -856,6 +857,50 @@ class BuildOnStartTest(unittest.TestCase):
         self.assertEqual(self.builds, [])
         self.assertIn("Node isn't installed", self.said[-1])
         self.assertFalse(self.dist.exists())
+
+
+class GameStartTest(unittest.TestCase):
+    def test_engine_start_failure_publishes_error_for_the_same_game(self):
+        t = game.Table()
+        failure = "engine socket path too long"
+        calls = []
+
+        def request(req, start=True):
+            calls.append((req["cmd"], start))
+            raise engine.EngineError(failure)
+
+        with mock.patch.multiple(game, TABLE=t, ARGS=mock.Mock(table_port=18000)), \
+                mock.patch("deckmaster.game.decks.get"), mock.patch("deckmaster.game.model.key"), \
+                mock.patch("deckmaster.game.engine.request", side_effect=request), mock.patch("deckmaster.game.traceback.print_exc"):
+            game.safe_open("test", [], None, "creatures")
+        version, snap = t.wait(1, timeout=0)
+        self.assertEqual(version, 2)
+        self.assertEqual(snap, {"state": "error", "gen": 1, "error": failure, "answer": None})
+        self.assertEqual(calls, [("table_end", False), ("table", True)])
+
+    def test_no_first_view_publishes_start_error(self):
+        t = game.Table()
+        gen = t.begin()
+        with mock.patch.object(game.time, "time", side_effect=[0, 11]), \
+                mock.patch.object(engine, "request", side_effect=engine.EngineError("engine closed the connection")):
+            t.watch(gen, "s1")
+        _, snap = t.wait(1, timeout=0)
+        self.assertEqual((snap["state"], snap["gen"], snap["error"]), ("error", gen, "engine closed the connection"))
+
+    def test_empty_view_does_not_hide_a_subsequent_start_failure(self):
+        t = game.Table()
+        gen = t.begin()
+        replies = [{"view": {}}, {"view": {}, "over": "error: table initialization failed"}]
+        with mock.patch.object(game.time, "sleep"), mock.patch.object(engine, "request", side_effect=replies):
+            t.watch(gen, "s1")
+        version, snap = t.wait(1, timeout=0)
+        self.assertEqual(version, 2)
+        self.assertEqual((snap["state"], snap["gen"]), ("error", gen))
+
+    def test_long_socket_path_fails_before_starting_java(self):
+        with mock.patch.object(engine, "SOCKET", pathlib.Path("/tmp") / ("a" * 108)):
+            with self.assertRaisesRegex(engine.EngineError, "socket path too long"):
+                engine._start()
 
 
 if __name__ == "__main__":

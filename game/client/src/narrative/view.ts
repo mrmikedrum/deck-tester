@@ -32,7 +32,7 @@ export function logStripView(s: State, model: TableModel | null): LogStripView {
     const e = byId.get(id);
     return e && e.wait === null ? [e] : [];
   });
-  // A spell still on the stack is told as its cast, without what it targets ("Atraxa cast Doom Blade").
+  // A cast still on the stack gets priority in the strip. Keep its targets and choices.
   const casts = [...model.stack].reverse().flatMap((st) => {
     if (!st.spell) return [];
     const name = st.source === null ? "" : (model.cards.get(st.source)?.face.name ?? "");
@@ -40,7 +40,7 @@ export function logStripView(s: State, model: TableModel | null): LogStripView {
     return [...new Set([who, ...(st.controller === me ? ["You"] : [])])].map((w) => `${w} cast ${name}`);
   });
   const castFor = (e: Entry): string | undefined =>
-    casts.find((c) => e.said === c || e.said === c + "." || e.said.startsWith(c + " targeting "));
+    casts.some((line) => e.said === line || e.said === line + "." || e.said.startsWith(line + " targeting ")) ? eventText(e) : undefined;
   const pending = [...new Set(settled.flatMap((e) => castFor(e) ?? []))];
   const distinct = pending.length ? settled.find((e) => !castFor(e)) : undefined;
   const summary = settled[0]?.summary ?? null;

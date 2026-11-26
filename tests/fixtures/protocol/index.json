@@ -141,8 +141,10 @@
    ],
    "optional": [
     "controller",
+    "modes",
     "source",
-    "targets"
+    "targets",
+    "x"
    ]
   },
   "ref:targets": {

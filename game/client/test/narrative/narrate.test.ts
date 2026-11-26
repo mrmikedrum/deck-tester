@@ -90,10 +90,10 @@ describe("the log strip and the log, over the first game", () => {
     expect(st.watch).toBeNull();
   });
 
-  it("spells still on the stack are told as their casts, without their targets, newest first", () => {
+  it("spells still on the stack are told as their casts, with their targets, newest first", () => {
     expect(through("014-play-opponent-spell-targets-me-stack-targets-card.json", { playLast: true }).lines).toEqual([
-      "Dack cast Doom Blade",
-      "Atraxa cast Doom Blade",
+      "Dack cast Doom Blade targeting [Serra Angel]",
+      "Atraxa cast Doom Blade targeting [Grizzly Bears]",
     ]);
   });
 

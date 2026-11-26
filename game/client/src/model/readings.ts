@@ -9,6 +9,10 @@ import type { Role } from "./predicates";
 import { roleOf } from "./predicates";
 import type { StackItem, TableModel } from "./table";
 
+export function stackValues(item: Pick<StackItem, "x" | "modes">): string[] {
+  return [...(item.x === null ? [] : [`X = ${item.x}`]), ...item.modes.filter(Boolean)];
+}
+
 // ---- Log lines (live.js) -----------------------------------------------------------------------------------------
 
 /** live.js `logText`: a log line without Forge's bracketed annotations and "(id)" suffixes. */

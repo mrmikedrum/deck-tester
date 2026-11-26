@@ -61,10 +61,10 @@ describe("the pass button", () => {
 });
 
 describe("the prompt's other words", () => {
-  it("mana floating is its symbols: \"Floating {W}{R}\" (corpus 017)", () => {
+  it("mana floating is its symbols: \"{W}{R}\" (corpus 017)", () => {
     const t = new Table();
     t.open("017-play-mana-pool.json");
-    expect(t.p.controls.prompt?.floating).toBe("Floating {W}{R}");
+    expect(t.p.controls.prompt?.floating).toBe("{W}{R}");
   });
 });
 

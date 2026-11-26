@@ -1,8 +1,8 @@
 // The table as play needs it, as plain data: what a TableModel says that a prompt, a mark or a tap reads, with the
 // model's readings (threat, the sweep) computed once per snapshot. Kept in play's state, so the state stays
 // JSON-serialisable while the model (maps, functions) does not.
-import type { CardId, StackId } from "../protocol";
-import type { Card, SeatId, TableModel, Target, Zone } from "../model";
+import type { CardId } from "../protocol";
+import type { Card, SeatId, StackItem, TableModel, Zone } from "../model";
 import { asides, isCreatureSweep, threatens, topOf } from "../model";
 
 export interface CardFact {
@@ -28,13 +28,7 @@ export interface CardFact {
   readonly catalogued: boolean;
 }
 
-export interface ItemFact {
-  readonly id: StackId;
-  readonly source: CardId | null;
-  readonly controller: SeatId | null;
-  readonly spell: boolean;
-  readonly text: string;
-  readonly targets: readonly Target[];
+export interface ItemFact extends StackItem {
   /** Someone else's, aimed at me or mine (readings `threatens`). */
   readonly threat: boolean;
   /** The creature sweep the old prompt turned red for (readings `isCreatureSweep`). */
@@ -144,12 +138,7 @@ export function factsOf(m: TableModel): Facts {
     hand: m.zone(me, "hand"),
     commander,
     stack: m.stack.map((s) => ({
-      id: s.id,
-      source: s.source,
-      controller: s.controller,
-      spell: s.spell,
-      text: s.text,
-      targets: s.targets,
+      ...s,
       threat: threatens(s, m),
       sweep: isCreatureSweep(s, m),
     })),

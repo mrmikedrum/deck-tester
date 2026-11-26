@@ -4,7 +4,7 @@
 // for the set's motion, which the app releases when the scene has played it. Pure, and bounded: see the *_KEPT limits.
 import type { LogEntry } from "../protocol";
 import type { Back, ChangeSet, TableModel } from "../model";
-import { logKey, logText, phaseName } from "../model";
+import { logKey, logText, phaseName, stackValues } from "../model";
 import { readSet } from "./read";
 import type { Entry, Loss, Notice, Recap, State, Toast } from "./types";
 import { destination, handArrivalHeadline, listNames, seatName, shortCard, spentFor, whoName } from "./words";
@@ -146,6 +146,18 @@ export function narrate(s: State, set: ChangeSet, model: TableModel): State {
 
   // The lines: Forge's (those that say something), the draw named ("Drew Island"), cards returned to my hand.
   const items: Draft[] = fresh.filter((e) => logText(e.text)).map((e) => draft(e, model));
+  const added = [...(r?.added ?? [...model.stack].reverse())];
+  for (let i = items.length - 1; i >= 0; i--) {
+    const d = items[i]!;
+    if (d.type !== "stack_add" || d.card === null) continue;
+    const at = added.findIndex((st) => st.source === d.card);
+    if (at < 0) continue;
+    const [st] = added.splice(at, 1);
+    const values = stackValues(st!);
+    const targets = st!.targets.map((t) => ("seat" in t ? seatName(model, t.seat) : model.cards.get(t.card)?.face.name)).filter(Boolean);
+    const targeting = targets.length && !d.said.includes(" targeting ") ? ` targeting ${targets.join(", ")}` : "";
+    if (values.length || targeting) items[i] = { ...d, display: [d.said.replace(/\.$/, "") + targeting, ...values].join(" · ") };
+  }
   const reports = new Set<LogEntry>(r?.reports ?? []);
   const handLines: Draft[] = [];
   for (let i = 0; i < items.length; i++) {

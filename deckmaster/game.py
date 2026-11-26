@@ -47,6 +47,7 @@ ARGS = None
 class Table:
     def __init__(self):
         self.lock = threading.Condition()
+        self.start_lock = threading.Lock()
         self.version = 0
         self.snapshot = {"state": "no game", "answer": None}
         self.status = None   # the last forwarded answer: {key, id, attempt, state: working|applied|refused, error?}
@@ -61,12 +62,6 @@ class Table:
         self.pilots = {}
         self.usage = None
         self.outcomes = {}
-
-    def publish(self, snap):
-        """A snapshot no engine session stands behind (starting, a failed start): nothing in it can be answered."""
-        with self.lock:
-            self.session = None
-            self._store(dict(snap, answer=self.status))
 
     def show(self, snap, gen, session):
         """A view `session` sent for game `gen`, unless a newer game has begun since it was asked for. Whether shown."""
@@ -84,8 +79,16 @@ class Table:
             self.answers += 1
             self.status = None
             self.session = None
+            self.error = None
             self._store({"state": "starting", "gen": self.generation, "answer": None})
             return self.generation
+
+    def fail_start(self, gen, error):
+        with self.lock:
+            if gen == self.generation and self.snapshot["state"] == "starting":
+                self.error = str(error)
+                self.session = None
+                self._store({"state": "error", "gen": gen, "error": self.error, "answer": None})
 
     def _store(self, snap):
         """Hold the lock. A changed snapshot is a new version, and wakes the long polls."""
@@ -109,15 +112,14 @@ class Table:
                 self.lock.wait(timeout)
             return self.version, self.snapshot
 
-    def open(self, me, others, seed=None, mana="creatures"):
+    def open(self, gen, me, others, seed=None, mana="creatures"):
         # Resolve every real-deck opponent before replacing any existing game. Never silently
         # fall back to stock Forge-AI mode when a deck lacks a configured Jev plan/advisor.
         mine = decks.get(me[:-4] if me.endswith(".txt") else me)
         agents = [configured_seat(slug) for slug in others]
         model.key()  # check configured Jev access; never expose the key in a response or log
-        gen = self.begin()
         try:
-            engine.request({"cmd": "table_end"})
+            engine.request({"cmd": "table_end"}, start=False)
         except engine.EngineError:
             pass
         seats = []
@@ -168,14 +170,30 @@ class Table:
         last_ok = time.time()
         while gen == self.generation:
             try:
-                reply = engine.request({"cmd": "view", "session": session})
+                reply = engine.request({"cmd": "view", "session": session}, start=False)
+                if self.snapshot["state"] == "starting":
+                    if (reply.get("over") or "").startswith("error:"):
+                        self.fail_start(gen, reply["over"])
+                        return
+                    if not (reply.get("view") or reply.get("decision") or reply.get("over")):
+                        if time.time() - last_ok > 60:
+                            self.fail_start(gen, "engine did not send an opening view")
+                            return
+                        time.sleep(0.25)
+                        continue
                 if not self.show(snapshot(reply, gen, self.pilots), gen, session):
                     return
                 last_ok = time.time()
                 time.sleep(0.12 if reply.get("decision") else 0.25)
             except Exception as error:  # a read while Forge moves cards can fail: read again
                 if time.time() - last_ok > 10:
-                    self.error = str(error)
+                    with self.lock:
+                        if gen != self.generation:
+                            return
+                        if self.snapshot["state"] == "starting":
+                            self.fail_start(gen, error)
+                            return
+                        self.error = str(error)
                 time.sleep(0.1)
 
     def answer(self, body):
@@ -245,7 +263,7 @@ def envelope(snap, version, error, build=None):
     client build served at /next/."""
     out = {"answer": None}
     out.update(snap)
-    out.update(v=version, error=error, build=build)
+    out.update(v=version, error=snap.get("error", error), build=build)
     return out
 
 
@@ -845,13 +863,15 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def safe_open(me, others, seed, mana):
-    try:
-        TABLE.error = None
-        TABLE.open(me, others, seed, mana)
-    except Exception as error:
-        traceback.print_exc()
-        TABLE.error = str(error)
-        TABLE.publish({"state": "error", "error": str(error)})
+    gen = TABLE.begin()
+    with TABLE.start_lock:
+        if gen != TABLE.generation:
+            return
+        try:
+            TABLE.open(gen, me, others, seed, mana)
+        except Exception as error:
+            traceback.print_exc()
+            TABLE.fail_start(gen, error)
 
 
 def fixture_faces():

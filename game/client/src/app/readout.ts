@@ -12,13 +12,12 @@ export const WAITING: Record<AppState["session"]["bridge"], string> = {
   starting: "Shuffling up… (the first game takes about a minute)",
   playing: "No game yet",
   over: "No game yet",
-  error: "Couldn't start",
+  error: "Game couldn't start",
 };
 
 /** The line the waiting prompt shows before a game has a model. */
 export function waitingLine(s: AppState): string {
-  const ss = s.session;
-  return ss.bridge === "error" ? `Couldn't start: ${ss.error ?? ""}` : WAITING[ss.bridge];
+  return WAITING[s.session.bridge];
 }
 
 /** Whether "New game" is offered beside the prompt: no game to show (once the bridge has said so, and not while one is
@@ -35,7 +34,7 @@ export function readoutLines(s: AppState): string[] {
   if (ss.stale) lines.push("This page is out of date: reload to get the current client.");
   if (faults.notice) lines.push("Something went wrong drawing the table: reload.");
   lines.push(`${model ? ss.bridge : waitingLine(s)} · gen ${ss.gen ?? "-"} · v ${ss.v ?? "-"} · link ${ss.link}`);
-  if (ss.error && ss.bridge !== "error") lines.push(`bridge error: ${ss.error}`);
+  if (ss.error) lines.push(`bridge error: ${ss.error}`);
   if (model) {
     lines.push(`${model.label} · ${model.phase} · active ${model.active ?? "-"} · priority ${model.priority ?? "-"}`);
     lines.push(model.seats.map((p) => `${p.name} ${p.life}${p.out ? " (out)" : ""}`).join(" · "));

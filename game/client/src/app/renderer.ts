@@ -72,7 +72,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
   let failure: string | null = null;
   let binding: PointerBinding | null = null;
   /** What the last commit showed: canvas gestures are stamped with it and aimed at its stop. */
-  let drawn: { commit: number; stop: StopId | null; chooser: number | null } = { commit: 0, stop: null, chooser: null };
+  let drawn: { commit: number; attack: boolean; stop: StopId | null; chooser: number | null } = { commit: 0, attack: false, stop: null, chooser: null };
   /** The last press, read by the recognizer's `pick` as the pointer goes down (each gesture keeps its own). */
   let press: Press = { commit: 0, stop: null, group: null, chooser: null };
   /** The group a mouse hovers, as last emitted. */
@@ -100,10 +100,10 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
     return scene.seatAt({ x: x - r.left, y: y - r.top });
   };
   /** The plate whose nameplate is on top at (x, y), CSS px in the page. */
-  const plateAt = (x: number, y: number): HitGroup | null => {
+  const plateAt = (x: number, y: number): SeatId | null => {
     const el = ports.canvas.ownerDocument.elementFromPoint(x, y)?.closest<HTMLElement>("[data-plate]");
     const seat = el?.dataset["plate"];
-    return seat === undefined ? null : (plates.find((g) => g.seat !== null && String(g.seat) === seat) ?? null);
+    return plates.find((g) => g.seat !== null && String(g.seat) === seat)?.seat ?? null;
   };
   const act = (act: Act, at: Ms, p: Press): void => ports.emit({ t: "act", stamp: { at, commit: p.commit }, stop: p.stop, act });
   const capture = (e: PointerEvent): void => {
@@ -126,7 +126,13 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
       case "drop":
         // The drop's target is what is under it now (a seat's nameplate, which is chrome, or the table); its source,
         // stop and commit are the press's.
-        if (g.on?.group) act({ a: "drag", from: targetOf(g.on.group), onto: targetOf(plateAt(g.x, g.y) ?? pick(g.x, g.y)) }, g.at, g.on);
+        if (g.on?.group) {
+          const plate = plateAt(g.x, g.y);
+          const hit = plate === null ? pick(g.x, g.y) : null;
+          const board = drawn.attack && !hit?.members.length && ports.canvas.ownerDocument.elementFromPoint(g.x, g.y) === ports.canvas;
+          const seat = plate ?? (board ? seatAt(g.x, g.y) : null);
+          act({ a: "drag", from: targetOf(g.on.group), onto: seat === null ? targetOf(hit) : { seat } }, g.at, g.on);
+        }
         return;
       case "hold": {
         // A long press on a card or pile, or on a seat's page: the zoom's trial composes the camera on it (the app
@@ -186,7 +192,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
       const frame = sceneFrame(state);
       const sceneReport = scene && sceneReady && frame ? scene.show(frame, now) : null;
       const c = chrome!.show(chromeView(state, sceneReport, measure), now);
-      drawn = { commit: state.commit, stop: frame?.cues.stop ?? null, chooser: state.focus.layers.find((e) => e.layer === "sift")?.choosing ?? null };
+      drawn = { commit: state.commit, attack: state.session.decision?.kind === "attack", stop: frame?.cues.stop ?? null, chooser: state.focus.layers.find((e) => e.layer === "sift")?.choosing ?? null };
       const terminal = failure;
       failure = null;
       const active = (sceneReport?.active ?? false) || c.active || (binding?.active ?? false);

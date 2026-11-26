@@ -51,6 +51,70 @@ class ManualGameTest(unittest.TestCase):
         finally:
             request("end")
 
+    def test_floating_mana_pays_for_a_targeted_spell_with_x(self):
+        start = {"cmd": "start", "commanders": ["Marath, Will of the Wild"], "main": [[99, "Mountain"]],
+                 "seed": 11, "turns": 2, "opponents": 1}
+        session = engine.request(start)["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        def choose(prefix):
+            d = request("view")["decision"]
+            option = next(i for i, label in enumerate(d["options"], 1) if label.startswith(prefix))
+            request("answer", answer=[option])
+
+        try:
+            request("answer", answer=[1])
+            for card in ("Springleaf Drum", "Ornithopter", "Mountain", "Mountain"):
+                request("override", args=["create", card])
+            for card in ("Fireball", "Lightning Bolt"):
+                request("override", args=["create", card, "hand"])
+            choose("Springleaf Drum:")
+            choose("red")
+            self.assertEqual(request("view")["view"]["players"][0]["manaPool"], {"R": 1})
+            choose("Fireball")
+            self.assertEqual(request("view")["decision"]["kind"], "number")
+            request("answer", answer=[1])
+            choose("Opp 1")
+            view = request("view")["view"]
+            [spell] = view["stack"]
+            self.assertEqual(spell["source"]["name"], "Fireball")
+            self.assertEqual(spell["targets"], ["Opp 1"])
+            self.assertEqual(spell["x"], 1)
+            self.assertEqual(view["players"][0]["manaPool"], {})
+            mountains = [c for c in view["players"][0]["battlefield"] if c["name"] == "Mountain"]
+            self.assertEqual(sum(c.get("tapped", False) for c in mountains), 1)
+        finally:
+            request("end")
+
+    def test_stack_reports_only_the_chosen_mode(self):
+        start = {"cmd": "start", "commanders": ["Marath, Will of the Wild"], "main": [[99, "Mountain"]],
+                 "seed": 11, "turns": 2}
+        session = engine.request(start)["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        try:
+            request("answer", answer=[1])
+            for card in ("Mountain", "Mountain", "Mountain", "Ornithopter"):
+                request("override", args=["create", card])
+            for card in ("Abrade", "Lightning Bolt"):
+                request("override", args=["create", card, "hand"])
+            options = request("view")["decision"]["options"]
+            reply = request("answer", answer=[options.index("Abrade") + 1])
+            self.assertEqual(reply["decision"]["kind"], "mode")
+            request("answer", answer=[1])
+            view = request("view")["view"]
+            [spell] = view["stack"]
+            [target] = [c for c in view["players"][0]["battlefield"] if c["name"] == "Ornithopter"]
+            self.assertEqual(spell["modes"], ["Abrade deals 3 damage to target creature."])
+            self.assertEqual(spell["targets"], [target["id"]])
+            self.assertNotIn("x", spell)
+        finally:
+            request("end")
+
     def test_seeded_game_keeps_lands_restores_and_records(self):
         deck = decklist.load(DECK)
         start = {"cmd": "start", "commanders": deck.commanders, "main": deck.main, "seed": 11, "turns": 2}

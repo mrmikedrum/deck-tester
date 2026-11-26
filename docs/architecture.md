@@ -427,13 +427,13 @@ engine to them. The rules:
 
 - **The envelope** (`GET /api/view?v=N`, a long poll that answers when the version passes `N`, or at once when `N` is
   ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`), `gen` (a new game, a new
-  gen), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view of my seat; `{}` or null
-  before the game), `decision` (the pending one, or null), `over` (the result line), `pilots` (seat to pilot), plus
+  gen, retained on a failed start), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view
+  of my seat, `{}` or null before the game), `decision` (the pending one, or null), `over` (the result line), `pilots` (seat to pilot), plus
   `answer` and `build` below. The view is facts by card id and player name: players from mine in turn order, gone once
   they lose (me included); the stack top first; `turn` global, `label` per player ("T3 Dack main1"); `cost` in Forge's
-  short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. Ids need not resolve: a stack
-  target may be a card gone from the game (a token exiled mid-resolution, still named in the item's text), and a
-  `choose` may offer hidden cards (a library search). `combat` carries Forge's facts about the combat on the table:
+  short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. A stack item carries its
+  `targets`, chosen `x` and `modes` when present. A target may be a card gone from the game (still named in the
+  item's text), and a `choose` may offer hidden cards (a library search). `combat` carries Forge's facts about the combat on the table:
   its `ordinal` in the turn, each attacker's `defender`, `defending` player (a battle's protector) and Forge's
   `blocked` verdict (it holds when the blockers leave), the `blockers`, and the combat `damage` dealt in it by `source`,
   `target` and `defender` (what the source was attacking when it hit; after prevention, summed over its damage steps;

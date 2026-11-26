@@ -33,7 +33,7 @@ export const DURATION = {
   joinAfterAbility: 250,
   /** A piece folding into another (`Math.max(300, ms)`). */
   into: 300,
-  /** An ability done withdraws to its controller's plate (h.js: `tween(700)`). */
+  /** An ability preview withdraws when the stack item leaves. */
   withdraw: 700,
   /** A pile's cards fanning out of it into a sift (h.js `sift`: `tween(520)`), and the shade coming up with them. */
   sift: 520,

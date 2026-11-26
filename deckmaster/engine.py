@@ -6,6 +6,7 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -14,6 +15,7 @@ HOME = ROOT / ".deckmaster"
 SOCKET = HOME / "engine.sock"
 LOG = HOME / "engine.log"
 MODE = []  # extra arguments for the engine: ["table"] for the table engine (see use_table)
+_started = {}  # socket to the detached process this interpreter started, for reaping on stop
 
 
 def use_table() -> None:
@@ -77,6 +79,10 @@ def _connect():
 
 
 def _start() -> None:
+    # sockaddr_un.sun_path includes the terminating NUL.
+    limit = 103 if sys.platform == "darwin" else 107
+    if len(os.fsencode(SOCKET)) > limit:
+        raise EngineError(f"engine socket path too long ({limit} bytes max); use a shorter checkout path")
     if not RES.is_dir():
         raise EngineError("Forge isn't installed; run scripts/bootstrap-forge.sh")
     installed, wanted = forge_build()
@@ -91,16 +97,24 @@ def _start() -> None:
         if found.returncode == 0:
             env["JAVA_HOME"] = found.stdout.strip()
     java = str(Path(env["JAVA_HOME"]) / "bin" / "java") if "JAVA_HOME" in env else "java"
-    # Detach through a shell so the engine outlives this command and isn't our child.
-    subprocess.run(["/bin/sh", "-c", 'nohup "$@" >>"$0" 2>&1 </dev/null &', str(LOG),
-                    java, "-Ddeckmaster.forge=" + wanted, "-Ddeckmaster.localCards=" + ", ".join(local_cards()), f"-Xmx{os.environ.get('DECKMASTER_HEAP', '2g')}", "-cp", classpath, "deckmaster.engine.Server", str(RES), str(HOME), *MODE], env=env, check=True)
-    deadline = time.time() + 90
-    while time.time() < deadline:
+    with LOG.open("a") as log:
+        proc = subprocess.Popen(
+            [java, "-Ddeckmaster.forge=" + wanted, "-Ddeckmaster.localCards=" + ", ".join(local_cards()),
+             f"-Xmx{os.environ.get('DECKMASTER_HEAP', '2g')}", "-cp", classpath, "deckmaster.engine.Server",
+             str(RES), str(HOME), *MODE],
+            env=env, start_new_session=True, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+    deadline = time.monotonic() + 90
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            raise EngineError(f"engine exited during startup ({proc.returncode}); see {LOG}")
         try:
             _connect().close()
+            _started[SOCKET] = proc
             return
         except OSError:
             time.sleep(0.2)
+    proc.kill()
+    proc.wait()
     raise EngineError(f"engine didn't start; see {LOG}")
 
 
@@ -152,6 +166,9 @@ def stop() -> None:
             break
     if SOCKET.exists():
         SOCKET.unlink()
+    proc = _started.get(SOCKET)
+    if proc is not None and proc.poll() is not None:
+        del _started[SOCKET]
 
 
 def refresh() -> None:

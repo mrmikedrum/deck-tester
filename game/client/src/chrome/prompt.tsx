@@ -124,7 +124,7 @@ export function Prompt(props: PromptProps): JSX.Element {
   // not change as it lands.
   const headline = watch ? (watch.toStack ? p.headline : watch.headline) : restore ? restore.headline : p.headline;
   const summary = stackOpen ? p.stack : [];
-  const ctx = [watch ? null : p.hint, watch || stackOpen ? null : p.context, p.floating].filter((s): s is string => !!s).join(" · ");
+  const ctx = [watch ? null : p.hint, watch || stackOpen ? null : p.context].filter((s): s is string => !!s).join(" · ");
   const fill = p.countdown ? progress(p.countdown, now) : null;
   return (
     <div
@@ -150,6 +150,11 @@ export function Prompt(props: PromptProps): JSX.Element {
       {ctx ? (
         <div class="l-ctx">
           <Pips text={ctx} />
+        </div>
+      ) : null}
+      {p.floating ? (
+        <div class="l-ctx">
+          <span>Floating mana</span>{" "}<Pips text={p.floating} />
         </div>
       ) : null}
       {recap ? (

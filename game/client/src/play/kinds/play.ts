@@ -56,7 +56,7 @@ export const play: Kind<PlayDecision> = {
   // What can be played is lit on the table; my own item on top is on screen.
   words(c) {
     const { f } = c, top = topItem(f);
-    if (top && top.controller !== f.me) return { headline: itemLine(f, top) };
+    if (top && (top.controller !== f.me || top.targets.length || top.x !== null || top.modes.length)) return { headline: itemLine(f, top) };
     if (top) return { headline: "" };
     if (f.attackersAtMe.length) return { headline: `${seatName(f, f.active)} attacks you with ${f.attackersAtMe.length}` };
     if (f.blockerSeats.length) return { headline: "Blockers declared" };
@@ -108,7 +108,7 @@ export const play: Kind<PlayDecision> = {
   tap(c, at) {
     // (a group of copies: the first with a play)
     const id = at.seat !== null ? (at.seat === c.f.me ? c.f.commander : null) : (at.ids.find((x) => optsFor(c.d, x).length) ?? at.ids[0]);
-    if (id == null || !optsFor(c.d, id).length) return null;
+    if (id == null || (!optsFor(c.d, id).length && !cardOf(c.f, id)?.commander)) return null;
     return { inspect: id };
   },
   // live.js `H.drag`: a permanent dragged onto something in play offers its plays (step.ts drops a drag onto nothing).

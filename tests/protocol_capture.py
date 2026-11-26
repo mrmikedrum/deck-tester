@@ -39,7 +39,7 @@ KNOWN_OPTIONAL = {
     "card": {"faceDown", "cost", "power", "toughness", "sick", "loyalty", "tapped", "token", "commander", "copy",
              "attachedTo", "counters", "keywords", "text"},
     "player": {"poison", "monarch", "lost", "commanderDamage", "hand", "handCount"},
-    "stack": {"source", "controller", "targets"},
+    "stack": {"source", "controller", "targets", "modes", "x"},
     "view": {"active", "priority", "combat", "over"},
     "decision": {"details", "refs"},
     "log": {"card"},
@@ -350,13 +350,12 @@ class Capture:
                 port = s.getsockname()[1]
             opened = engine.request({"cmd": "table", "people": 0, "port": port, "seats": seat_requests(self.seed)})
             self.sid = opened["seats"]["You"]
-            self.bridge.generation = 1
+            self.bridge.begin()
             self.bridge.mine = self.sid
             self.bridge.pilots = {name: "human" if name == "You" else "forge ai" for name, _ in SEATS}
             workers = [threading.Thread(target=self.ai, args=(sid,), daemon=True)
                        for name, sid in opened["seats"].items() if name != "You"]
             try:
-                self.bridge.publish({"state": "starting", "gen": 1})  # (kept for symmetry; the bridge's real open does)
                 for w in workers:
                     w.start()
                 for _ in range(200):   # the game may not exist yet: the engine answers with an empty view
@@ -653,7 +652,7 @@ def startup_envelopes():
     out = []
     bridge = game.Table()
     out.append(("no game", game.envelope(bridge.snapshot, bridge.version, bridge.error)))
-    bridge.publish({"state": "starting", "gen": 1})   # the literal Table.open publishes before it seats anyone
+    bridge.begin()
     out.append(("starting", game.envelope(bridge.snapshot, bridge.version, bridge.error)))
     failed, saved = game.Table(), game.TABLE
     try:
