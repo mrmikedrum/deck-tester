@@ -11,8 +11,9 @@ const SOURCE = path.join(__dirname, "../client"), DIST = path.join(SOURCE, "dist
 const BENCH = path.join(__dirname, "../../.deckmaster/bench"), KEEP = 20;
 
 const BENCH_CAP = 256 * 1024, BENCH_ROWS = 64;
-/** The bench page's fields (bench.ts `last`); anything else a request carries is not kept. */
-const BENCH_FIELDS = ["userAgent", "screen", "viewport", "clockResolutionMs", "plansPerInput", "budgetMs", "rows"];
+/** The bench pages' fields (bench.ts and render-bench.ts `last`, the latter saying `bench: "render"`); anything else a
+ * request carries is not kept. */
+const BENCH_FIELDS = ["bench", "table", "framesPerMoment", "userAgent", "screen", "viewport", "clockResolutionMs", "plansPerInput", "budgetMs", "rows"];
 
 /** The run as stored (compact JSON, the page's fields only), or why it is refused. */
 function benchRecord(body) {
