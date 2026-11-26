@@ -3,7 +3,7 @@
 import type { CardId, Decision, StackId } from "../protocol";
 import type { SeatId } from "../model";
 import type { Facts } from "./facts";
-import type { AnswerToken, Carried, HitGroupId, Ms, State, StopId } from "./types";
+import type { AnswerToken, Carried, HitGroupId, Ms, State, StopId, Target } from "./types";
 
 /** A hit group as play keeps it: what it holds, not where it is. */
 export interface Group {
@@ -30,9 +30,29 @@ export interface Draft {
 export type Sheet =
   | { readonly k: "plays"; readonly title: string; readonly options: readonly number[]; readonly carried: Carried | null }
   | { readonly k: "chooser" }
-  | { readonly k: "source"; readonly options: readonly number[] }
+  /** pay: every source's every option, to pick from a list (the keyboard's way, and the way past a crowded table). */
+  | { readonly k: "sources" }
   | { readonly k: "mana"; readonly card: CardId; readonly options: readonly number[] }
   | { readonly k: "stack" };
+
+/** A tap, or a drag from one target onto another: what a gesture landed on, as drawn. */
+export type Gesture =
+  | { readonly a: "tap"; readonly at: Target }
+  | { readonly a: "drag"; readonly from: Target; readonly onto: Target };
+
+/** A gesture that meant one of a group's distinct members, waiting for the player to choose which (in its sift). */
+export interface Pending {
+  readonly gesture: Gesture;
+  /** Which end of it the group was. */
+  readonly end: "at" | "from" | "onto";
+  readonly group: HitGroupId;
+  /** The group's members when it opened: a tap on one of them that has left it since is refused, not taken afresh. */
+  readonly members: readonly CardId[];
+  /** Where each card of the gesture was (zone and controller): a snapshot that moves one lets the gesture go. */
+  readonly where: Readonly<Record<number, string>>;
+  /** This chooser's revision (never reused in a session): input from another is refused. */
+  readonly rev: number;
+}
 
 export interface S {
   /** Increments with every stop adopted; never reset, so a stop id is never reused in a session. */
@@ -47,6 +67,10 @@ export interface S {
   readonly sheet: Sheet | null;
   /** A sheet-mode choice's chooser, set aside by the player. */
   readonly chooserClosed: boolean;
+  /** A gesture waiting for the player to choose one of a group's members; it completes with the card chosen. */
+  readonly pending: Pending | null;
+  /** Choosers opened so far: the next one's revision. */
+  readonly choosers: number;
   /** The answer out for this stop: play's token, or null for the bridge's own (a reload while it worked on one). */
   readonly inflight: { readonly token: AnswerToken | null; readonly stop: StopId } | null;
   readonly auto: { readonly id: string; readonly from: Ms; readonly ms: number } | null;
@@ -78,6 +102,8 @@ export const INITIAL: S = {
   draft: EMPTY_DRAFT,
   sheet: null,
   chooserClosed: false,
+  pending: null,
+  choosers: 0,
   inflight: null,
   auto: null,
   held: false,
@@ -89,4 +115,4 @@ export const open = (s: State): S => s as unknown as S;
 export const seal = (s: S): State => s as unknown as State;
 
 /** What a game reset keeps: the counters that make stop ids and tokens unique. */
-export const reset = (s: S): S => ({ ...INITIAL, serial: s.serial, tokens: s.tokens });
+export const reset = (s: S): S => ({ ...INITIAL, serial: s.serial, tokens: s.tokens, choosers: s.choosers });

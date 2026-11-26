@@ -3,6 +3,7 @@ import type { Projector } from "./projector";
 import type { Reservations } from "./reservations";
 import type { SeatSlot } from "./template";
 import type { CardId, SeatId, V3, Viewport } from "./types";
+import type { Quad } from "./shape";
 
 // The seam for the opponent-board exploration: one seat's board in, a plan out. `mat` (seat/mat.ts) is today's page.
 
@@ -26,6 +27,11 @@ export interface Placement {
   readonly pos: V3;
   readonly scale: number;
   readonly posture: Posture;
+  /**
+   * The card's own axes, untapped (its right and up, unit vectors): set by the arrangement engine, whose cards stand at
+   * one lean and lie squared to their leaf; absent, the posture's rule (standing back by the camera's pitch...) holds.
+   */
+  readonly frame?: { readonly right: V3; readonly up: V3 };
 }
 
 export interface Unit {
@@ -50,6 +56,11 @@ export interface Unit {
   /** Whether the card it shows lies turned, tapped (never a well's: its spent state is its stain and its sign). */
   readonly tapped: boolean;
   readonly placement: Placement;
+  /** How far its card is turned for tapped (the arrangement engine's: 1 a quarter turn, 1/6 a notch); absent, tapped is a
+   *  quarter turn. */
+  readonly turn?: number;
+  /** What a tap at rest reaches, on screen, when it is not its face (the arrangement engine's place). */
+  readonly hit?: Quad;
 }
 
 /** Everything that is not a card or pile on a page: the page itself, the plate and its zone piles. */

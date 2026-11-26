@@ -1,0 +1,104 @@
+== empty (0 permanents)
+policy ready-tapped · 
+  seat {"creatures":0,"power":0,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
+
+== the commander alone (1 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places
+  ready  0.0.0 u-0.9 card    Marath                         stand 
+  seat {"creatures":1,"power":5,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
+
+== one creature (1 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places
+  ready  0.0.0 u-0.9 card    Grizzly Bears                  stand 
+  seat {"creatures":1,"power":2,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
+
+== 30 identical Elementals with 7 spent (31 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 lie v4.2 4 places
+  ready  0.0.0 u-0.9 card    Marath                         stand 
+  ready  0.0.1 u0.9 stack   Elemental                      stand ×23 · die 23
+  rest   0.0.0 u-0.2 stack   Elemental                      lie notch ×7 · die 7
+  seat {"creatures":31,"power":95,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
+
+== a creature-light board under ready-tapped (25 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 card    Rule of Law                    stand 
+  ready  0.0.0 u-0.9 card    Dack                           stand 
+  ready  0.0.1 u0.9 stack   Spirit                         stand ×4 · die 4
+  ready  0.0.3 u2.8 card    Trinisphere                    stand 
+  ready  1.0.0 u-0.9 card    Thorn of Amethyst              stand 
+  ready  1.0.1 u0.9 card    Deafening Silence              stand 
+  works  0.0.0 u-1.8 card    Cursed Totem                   lie 
+  works  0.0.1 u0 card    Defense Grid                   lie 
+  lands  0.0.2 u1.8 stack   Plains                         lie well 8 lands 14 open · die 14
+  seat {"creatures":4,"power":4,"flyingPower":0,"keywords":[],"lands":8,"open":14,"works":6}
+
+== a creature-light board under works (25 permanents)
+policy works · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 card    Trinisphere                    stand 
+  ready  0.0.0 u-0.9 card    Dack                           stand 
+  ready  0.0.1 u0.9 card    Rule of Law                    stand 
+  ready  0.0.3 u2.8 card    Thorn of Amethyst              stand 
+  ready  1.0.0 u-0.9 card    Deafening Silence              stand 
+  ready  1.0.1 u0.9 stack   Spirit                         stand ×4 · die 4
+  works  0.0.0 u-1.8 card    Cursed Totem                   lie 
+  works  0.0.1 u0 card    Defense Grid                   lie 
+  lands  0.0.2 u1.8 stack   Plains                         lie well 8 lands 14 open · die 14
+  seat {"creatures":4,"power":4,"flyingPower":0,"keywords":[],"lands":8,"open":14,"works":6}
+
+== 40 lands (40 permanents)
+policy ready-tapped · row 0 lie v0.8 4 places
+  lands  0.0.0 u0 stack   Forest                         lie well 40 lands 30 open · die 40
+  seat {"creatures":0,"power":0,"flyingPower":0,"keywords":[],"lands":40,"open":30,"works":0}
+
+== six attachments on one creature (7 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places
+  ready  0.0.0 u-0.9 card    Voltron                        stand 
+  seat {"creatures":1,"power":3,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
+
+== a legal target inside a stack of 9 (16 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places
+  ready  0.0.2 u-2.8 card    Body 0                         stand 
+  ready  0.0.0 u-0.9 card    Marath                         stand 
+  ready  0.0.1 u0.9 stack   Beast                          stand ×9 · die 9
+  ready  0.0.3 u2.8 card    Body 1                         stand 
+  ready  1.0.2 u-2.6 card    Body 4                         stand 
+  ready  1.0.0 u-0.9 card    Body 2                         stand 
+  ready  1.0.1 u0.9 card    Body 3                         stand 
+  ready  1.0.3 u2.6 card    Body 5                         stand 
+  attention offered: Beast
+  seat {"creatures":16,"power":44,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
+
+== a deathtouch creature at the bottom of a rest fan (14 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 card    Bear 11                        stand 
+  ready  0.0.0 u-0.9 card    Marath                         stand 
+  ready  0.0.1 u0.9 card    Bear 9                         stand 
+  ready  0.0.3 u2.8 card    Bear 1                         stand 
+  ready  1.0.2 u-2.6 card    Bear 7                         stand 
+  ready  1.0.0 u-0.9 card    Bear 3                         stand 
+  ready  1.0.1 u0.9 card    Bear 5                         stand 
+  ready  1.0.3 u2.6 card    Typhoid Rats                   stand 
+  rest   0.0.0 u-0.2 fan     Bear 0                         lie fan 6 · 12 power
+  seat {"creatures":14,"power":36,"flyingPower":0,"keywords":["deathtouch"],"lands":0,"open":0,"works":0}
+
+== a sweep of 25 (the moment lights; nothing moves) (25 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places · row 1 stand (notch) v4.2 4 places · row 2 lie v8 4 places
+  ready  0.0.2 u-2.8 card    Soldier 1                      stand 
+  ready  0.0.0 u-0.9 stack   Soldier 3                      stand ×2 · die 2
+  ready  0.0.1 u0.9 stack   Soldier 2                      stand ×2 · die 2
+  ready  0.0.3 u2.8 card    Soldier 0                      stand 
+  ready  1.0.2 u-2.6 stack   Soldier 1                      stand ×2 · die 2
+  ready  1.0.0 u-0.9 card    Soldier 4                      stand 
+  ready  1.0.1 u0.9 card    Soldier 2                      stand 
+  ready  1.0.3 u2.6 card    Soldier 4                      stand 
+  rest   0.0.0 u-0.2 fan     Soldier 0                      lie fan 14 · 24 power · proud Soldier 0 (threat), Soldier 4 (threat)
+  attention in-danger: Soldier 1, Soldier 3, Soldier 0, Soldier 0, Soldier 0, Soldier 2, Soldier 3, Soldier 4, Soldier 4, Soldier 4, Soldier 1, Soldier 2, Soldier 3
+  seat {"creatures":25,"power":61,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}
+
+== two attackers acting out of their stack (10 permanents)
+policy ready-tapped · row 0 stand (quarter) v0.8 4 places
+  ready  0.0.2 u-2.8 card    Beast                          stand  · acting
+  ready  0.0.0 u-0.9 card    Marath                         stand 
+  ready  0.0.1 u0.9 card    Beast                          stand  · acting
+  ready  0.0.3 u2.8 stack   Beast                          stand ×7 · die 7
+  seat {"creatures":10,"power":32,"flyingPower":0,"keywords":[],"lands":0,"open":0,"works":0}

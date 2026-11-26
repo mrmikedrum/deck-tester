@@ -1,7 +1,7 @@
 // 4. attack and 5. block. Option numbers are 1-based positions in decision.options/refs.
 //    attack refs: one per (creature, defender), creature-major: option = 3 * creatureIndex + defenderIndex + 1, with the
 //    defenders Marath (plate "ana"), Atraxa ("bo"), Dack ("cy").
-const { test, expect, snapshot, withDecision, find } = require("./harness.js");
+const { test, expect, NEW, snapshot, withDecision, find, STATES } = require("./harness.js");
 const { label } = require("./labels.js");
 
 const ATTACKERS = ["Meloku the Clouded Mirror", "Master of Waves", "Faerie Mastermind", "Whirler Rogue"];
@@ -11,7 +11,7 @@ test.describe("attack", () => {
   test("tap creatures to toggle them; Attack (n) sends the picked options in order", async ({ table }) => {
     const s = snapshot("attack");
     await table.open(s);
-    expect(await table.buttons()).toEqual([label("Everyone attacks"), "No attack", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual([label("Everyone attacks"), "No attack", label("Let Forge decide")]);
     await table.tapCard(idOf(s, ATTACKERS[0]));
     await table.tapCard(idOf(s, ATTACKERS[1]));
     expect(await table.buttons()).toEqual([label("Everyone attacks"), "Clear", "Attack (2)", label("Let Forge decide")]);
@@ -41,6 +41,7 @@ test.describe("attack", () => {
     await table.open(s);
     await table.tapPlate("cy");                                        // Dack
     await table.press(label("Everyone attacks"));
+    await table.step(2000);                                              // the ten go to the fight
     expect(await table.buttons()).toEqual(["Clear", "Attack (4)", label("Let Forge decide")]);
     await table.press("Attack (4)");
     expect((await table.answered(1))[0].answer).toEqual([3, 6, 9, 12]);
@@ -134,5 +135,92 @@ test.describe("block", () => {
     expect(await table.buttons()).toContain("No blocks");
     await table.press("No blocks");
     expect((await table.answered(1))[0].answer).toEqual([]);
+  });
+});
+
+// A crowded fight: ten distinct creatures in one fight, gathered by the new entry, where a summary of several may stand
+// for some of them. A gesture must mean the card the player meant: a fighter keeps its own target, or the group it is
+// drawn in opens (a sift) and the card is tapped there; nothing is committed before that.
+test.describe("a crowded fight", () => {
+  test.skip(!NEW, "the gathering is the new entry's");
+  const NAMES = ["Incubation Druid", "Evolution Sage", "Hangarback Walker", "Ouroboroid", "Pollenbright Druid", "Kami of Whispered Hopes", "Evolution Witness", "Haywire Mite", "Rishkar, Peema Renegade", "Generous Patron"];
+  const IDS = NAMES.map((_, i) => 300 + i);
+  /** Ten distinct creatures (300..309) for `who`, cloned from Meloku, untapped. */
+  const ten = (view, who) => {
+    const proto = find({ view: STATES.block.view }, "You", "Meloku the Clouded Mirror");
+    const p = view.players.find(x => x.name === who);
+    p.battlefield.push(...NAMES.map((name, i) => Object.assign(JSON.parse(JSON.stringify(proto)), { id: IDS[i], name, owner: who, controller: who, tapped: false })));
+  };
+  /** Mean this card: on a sheet, its entry; on the table, its own target, or the group it is in, then the sifted card. */
+  const choose = async (table, id, name) => {
+    const sift = table.page.locator(".l-sift");
+    if (await table.sheet().count()) return table.sheet().locator(".l-grid button").filter({ hasText: name }).first().click();
+    await table.tapCard(id);
+    if (await sift.isVisible()) {
+      expect(table.answers()).toEqual([]);                               // nothing committed while the choice is open
+      await table.tap(await table.locate({ sifted: id }));
+      expect(await sift.isVisible()).toBe(false);                       // chosen: the sift goes
+      await table.step(1500);                                            // and its cards go back
+    }
+  };
+
+  test("blocking a specific one of ten distinct attackers across sends that pair", async ({ table }) => {
+    const s = snapshot("block");
+    const s2 = withDecision(s, null, v => {
+      ten(v, "Atraxa");
+      v.active = "Atraxa";
+      v.phase = "COMBAT_DECLARE_BLOCKERS";
+      v.combat = { attackers: IDS.map(id => ({ id, defender: "You" })), blockers: [] };
+    });
+    const melo = idOf(s2, "Meloku the Clouded Mirror");
+    const d = withDecision(s2, { kind: "block", prompt: "Declare blockers", options: IDS.map(() => "block"), refs: IDS.map(a => ({ card: melo, blocks: a })), min: 0, max: 10 });
+    await table.open(d);
+    await table.tapCard(melo);                                           // held: it can block any of the ten
+    await choose(table, IDS[9], NAMES[9]);
+    expect(await table.buttons()).toContain("Block (1)");
+    await table.press("Block (1)");
+    expect((await table.answered(1))[0].answer).toEqual([10]);
+  });
+
+  test("attacking a specific one of ten distinct planeswalkers across sends that attack", async ({ table }) => {
+    const s = withDecision(snapshot("attack"), null, v => {
+      const p = v.players.find(x => x.name === "Atraxa"), proto = find({ view: STATES.block.view }, "You", "Meloku the Clouded Mirror");
+      p.battlefield.push(...IDS.map((id, i) => {
+        const c = Object.assign(JSON.parse(JSON.stringify(proto)), { id, name: `Walker ${String.fromCharCode(65 + i)}`, type: "Legendary Planeswalker - Test", owner: "Atraxa", controller: "Atraxa", tapped: false, loyalty: 3 + i });
+        delete c.power; delete c.toughness;
+        return c;
+      }));
+    });
+    const melo = idOf(s, "Meloku the Clouded Mirror");
+    const to = ["Marath", "Atraxa", "Dack", ...IDS];
+    await table.open(withDecision(s, { kind: "attack", prompt: "Declare attackers", options: to.map(t => `${melo} -> ${t}`), refs: to.map(t => ({ card: melo, to: t })), min: 0, max: 1 }));
+    await choose(table, IDS[4], "Walker E");                             // the defender first
+    await table.tapCard(melo);
+    await table.press("Attack (1)");
+    expect((await table.answered(1))[0].answer).toEqual([8]);
+  });
+
+  test("taking back a specific one of ten distinct attackers sends the other nine", async ({ table }) => {
+    const s = withDecision(snapshot("attack"), null, v => { v.players[0].battlefield = v.players[0].battlefield.filter(c => !ATTACKERS.includes(c.name)); ten(v, "You"); });
+    const defenders = ["Marath", "Atraxa", "Dack"];
+    const refs = IDS.flatMap(card => defenders.map(to => ({ card, to })));
+    await table.open(withDecision(s, { kind: "attack", prompt: "Declare attackers", options: refs.map(r => `${r.card} -> ${r.to}`), refs, min: 0, max: refs.length }));
+    await table.press(label("Everyone attacks"));
+    await table.step(2000);                                              // the ten go to the fight
+    await choose(table, IDS[8], NAMES[8]);                               // Rishkar stays home
+    await table.press("Attack (9)");
+    expect((await table.answered(1))[0].answer).toEqual(IDS.flatMap((_, i) => (i === 8 ? [] : [3 * i + 1])));
+  });
+
+  test("a spell's target among ten distinct attackers is the one chosen", { tag: "@cast" }, async ({ table }) => {
+    const s = withDecision(snapshot("block"), null, v => {
+      ten(v, "Atraxa");
+      v.active = "Atraxa";
+      v.phase = "COMBAT_DECLARE_BLOCKERS";
+      v.combat = { attackers: IDS.map(id => ({ id, defender: "You" })), blockers: [] };
+    });
+    await table.open(withDecision(s, { kind: "targets", prompt: "target for Reality Shift (Reality Shift)", options: NAMES, refs: IDS.map(card => ({ card })), min: 1, max: 1 }));
+    await choose(table, IDS[9], NAMES[9]);
+    expect((await table.answered(1))[0].answer).toEqual([10]);
   });
 });

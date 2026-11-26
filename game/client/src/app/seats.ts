@@ -1,16 +1,19 @@
 // The seats as the chrome tells them: each seat's nameplate with its summary as icons, and the nameplate focus with the
 // same summary in words and the seat's zones picked up as printed cards. Figures are facts the engine sent, never a
 // verdict. The client's words name a seat by its name, never by a pronoun. Pure.
+import { designUnit } from "../layout";
 import type { TablePlan } from "../layout";
 import { RULE_CARDS, isLand } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { Mark } from "../play";
 import { placeOf } from "../scene/stage/faces";
 import type { IconView, PickedCard, PlateView, SeatFocusView } from "../chrome/view";
+import { font } from "../theme";
+import type { ViewportState } from "./state";
 
 /** Where the plates sit, CSS px at 1180 x 820 (the design unit scales them): the top row under the safe area, clear of
  * the Game button; mine at the bottom where my plaque was. */
-const PLATE = { top: 6, height: 44, bottom: 8, clearLeft: 112, edge: 12, step: 4 } as const;
+const PLATE = { top: 6, height: 44, bottom: 8, clearLeft: 112, edge: 12, gap: 4 } as const;
 
 /** A box on screen, CSS px. */
 export interface Box {
@@ -20,11 +23,16 @@ export interface Box {
   readonly b: number;
 }
 
-/** A plate's width, CSS px, from what it says (its CSS: sigil, name in the serif, the life box, the icons' tab). */
-export function plateWidth(name: string, life: number, icons: readonly IconView[], u: number): number {
-  const bronze = 10 + 18 + 8 + name.length * 9.6 + 8 + Math.max(34, String(life).length * 11 + 12) + 6;
-  const tab = icons.length ? 20 + icons.reduce((n, i) => n + 18 + 3 + i.figure.length * 9.5, 0) + 10 * (icons.length - 1) : 0;
-  return (bronze + tab) * u;
+type Measure = (text: string, font: string) => number;
+const estimate: Measure = (text, style) => text.length * (style.startsWith("400") ? 10 : 9);
+
+/** A plate's width in design units, including the life box's padding and the name's letter spacing (chrome.css). */
+export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate): number {
+  const title = measure(name, `400 19px ${font.serif}`) + name.length * 19 * 0.02;
+  const lifeBox = Math.max(34, measure(String(life), `700 19px ${font.ui}`)) + 12;
+  const bronze = 10 + 18 + 8 + title + 8 + lifeBox + 6;
+  const tab = icons.length ? 20 + icons.reduce((n, i) => n + 18 + 3 + measure(i.figure, `700 16px ${font.ui}`), 0) + 10 * (icons.length - 1) : 0;
+  return bronze + tab + 2; // Leave room for differences in canvas and CSS rounding.
 }
 
 const overlap = (a: Box, b: Box): number => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
@@ -32,31 +40,59 @@ const overlap = (a: Box, b: Box): number => Math.max(0, Math.min(a.r, b.r) - Mat
 /**
  * Where the top row's plates go (each its left edge, CSS px): each as near its leaf (`pref`, its preferred left edge)
  * as it can be without covering a card the table shows (`under`: the boxes of the plan's hit groups) or another plate.
- * The one across first, then the left and the right. The table's cards keep their place and their taps: the row bends
- * round them, never the other way.
+ * Keep the whole row on screen and favor the preferred position of the plate across the table.
  */
 export function placeTop(
   plates: readonly { readonly seat: string; readonly place: string; readonly w: number; readonly pref: number }[],
   under: readonly Box[],
   row: { readonly t: number; readonly b: number; readonly l: number; readonly r: number },
-  step = PLATE.step,
+  gap = 0,
 ): Map<string, number> {
-  // The one across first (the top of its leaf is the screen's top, where its zones stand), then the sides, which have room.
-  const rank = (p: string): number => (p === "across" ? 0 : p === "left" ? 1 : 2);
-  const placed: Box[] = [], out = new Map<string, number>();
-  for (const p of [...plates].sort((a, b) => rank(a.place) - rank(b.place))) {
-    const lo = row.l, hi = Math.max(lo, row.r - p.w);
-    let best = Math.min(hi, Math.max(lo, p.pref)), cost = Infinity;
-    for (let x = lo; x <= hi + 0.01; x += step) {
-      const box = { l: x, t: row.t, r: x + p.w, b: row.b };
-      const c = under.reduce((n, g) => n + overlap(box, g), 0) * 1000 + placed.reduce((n, g) => n + overlap(box, g), 0) * 4000 + Math.abs(x - p.pref);
-      if (c < cost) {
-        cost = c;
-        best = x;
+  const visible = under.filter((box) => box.t < row.b && box.b > row.t);
+  const count = 1 << plates.length;
+  const widths = Array.from({ length: count }, (_, mask) => plates.reduce((sum, p, j) => sum + (mask & (1 << j) ? p.w + gap : 0), 0));
+  const slack = Math.max(0, row.r - row.l - widths[count - 1]! + gap);
+  const clamp = (shift: number) => Math.max(0, Math.min(slack, shift));
+  const stops = new Set([0, slack]);
+  for (const [mask, width] of widths.entries()) {
+    for (const [j, p] of plates.entries()) {
+      if (mask & (1 << j)) continue;
+      const packed = row.l + width;
+      stops.add(clamp(p.pref - packed));
+      for (const box of visible) {
+        stops.add(clamp(box.l - packed - p.w - 0.001));
+        stops.add(clamp(box.r - packed + 0.001));
       }
     }
-    placed.push({ l: best, t: row.t, r: best + p.w, b: row.b });
-    out.set(p.seat, best);
+  }
+  const shifts = [...stops].sort((a, b) => a - b);
+  const best: { cost: number; plate: number }[][] = [shifts.map(() => ({ cost: 0, plate: -1 }))];
+  for (let mask = 1; mask < count; mask++) {
+    const choices = plates.flatMap((p, j) => mask & (1 << j) ? [{ p, j, prev: mask ^ (1 << j) }] : []);
+    const scores: typeof best[number] = [];
+    best.push(scores);
+    for (const [i, shift] of shifts.entries()) {
+      let winner = { cost: scores[i - 1]?.cost ?? Infinity, plate: -1 };
+      for (const { p, j, prev } of choices) {
+        // Each plate starts after the packed widths to its left. Only the remaining slack can move it.
+        const x = row.l + widths[prev]! + shift;
+        const box = { l: x, t: row.t, r: x + p.w, b: row.b };
+        const drift = Math.abs(x - p.pref) * (p.place === "across" ? 3 : 1);
+        const cost = best[prev]![i]!.cost + visible.reduce((n, g) => n + overlap(box, g), 0) * 1000 + drift;
+        if (cost < winner.cost) winner = { cost, plate: j };
+      }
+      scores.push(winner);
+    }
+  }
+  const out = new Map<string, number>();
+  for (let mask = count - 1, i = shifts.length - 1; mask;) {
+    const { plate } = best[mask]![i]!;
+    if (plate < 0) {
+      i--;
+      continue;
+    }
+    mask ^= 1 << plate;
+    out.set(plates[plate]!.seat, row.l + widths[mask]! + shifts[i]!);
   }
   return out;
 }
@@ -78,6 +114,7 @@ interface Tally {
   readonly others: readonly string[];
   /** Like creatures by name and figures, biggest groups first: "9 Beast 4/4". */
   readonly groups: readonly { readonly name: string; readonly n: number; readonly stats: string }[];
+  readonly commanderDamage: SeatFocusView["commanderDamage"];
 }
 
 const isBody = (c: Card): boolean => c.faceDown || /\bCreature\b/.test(c.face.type);
@@ -88,6 +125,26 @@ const has = (c: Card, k: string): boolean => c.keywords.some((w) => w.toLowerCas
  * creature does). A card that only lists what it makes (a rule card that hands out Treasure) is not counted. */
 const makesMana = (c: Card): boolean =>
   isLand(c) || (c.face.produces.length > 0 && !RULE_CARDS.has(c.name) && /(^|\n|— )\{T\}[^:\n]*: Add/.test(c.face.text));
+
+function commanderDamageOf(model: TableModel, seat: SeatId): SeatFocusView["commanderDamage"] {
+  const damage = model.seat(seat)?.commanderDamage;
+  if (!damage?.size) return [];
+  const remembered = [...model.commanders.values()].flat();
+  return [...damage]
+    .filter(([, amount]) => amount > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, amount]) => {
+      const card = model.cards.get(id) ?? remembered.find((c) => c.id === id);
+      const controller = card ? (model.seat(card.controller)?.name ?? card.controller) : null;
+      const remaining = 21 - amount;
+      return {
+        id,
+        source: card ? `${card.name} (${controller})` : `Unknown commander #${id}`,
+        figure: `${amount} · ${remaining > 0 ? `${remaining} to lethal` : "Lethal"}`,
+        danger: amount >= 15,
+      };
+    });
+}
 
 function tally(model: TableModel, seat: SeatId): Tally {
   let creatures = 0, power = 0, untappedPower = 0, untapped = 0, fliers = 0, reach = 0, sources = 0, lands = 0, openSources = 0;
@@ -119,7 +176,7 @@ function tally(model: TableModel, seat: SeatId): Tally {
     }
   }
   const groups = [...by.values()].filter((g) => g.n > 1).sort((a, b) => b.n - a.n);
-  return { creatures, power, untappedPower, untapped, biggest, fliers, reach, sources, lands, openSources, others, groups };
+  return { creatures, power, untappedPower, untapped, biggest, fliers, reach, sources, lands, openSources, others, groups, commanderDamage: commanderDamageOf(model, seat) };
 }
 
 /** Seat summaries, counted once per model and seat: the plates and the focus read them every frame. */
@@ -153,20 +210,20 @@ const centre = (plan: TablePlan, seat: SeatId): { x: number; bottom: number } | 
 /** Every seat's nameplate: opponents' along the top over their leaves, bent round the cards there (`placeTop`), in
  * their order around the table; mine at the bottom where my plate stands. */
 let lastPlates: { readonly key: readonly unknown[]; readonly plates: PlateView[] } | null = null;
-export function platesOf(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, safeTop: number, h: number): PlateView[] {
+export function platesOf(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, viewport: ViewportState, measure: Measure = estimate): PlateView[] {
   // The same inputs, the same plates: drawn every frame, made once per model, plan and marks.
   // (Marks by what they say: play presents a new map each frame.)
-  const key = [model, plan, [...marks].map(([k, m]) => `${k}:${m}`).join(","), safeTop, h];
+  const key = [model, plan, [...marks].map(([k, m]) => `${k}:${m}`).join(","), viewport, measure];
   if (lastPlates && lastPlates.key.every((k, i) => k === key[i])) return lastPlates.plates;
-  const plates = makePlates(model, plan, marks, safeTop, h);
+  const plates = makePlates(model, plan, marks, viewport, measure);
   lastPlates = { key, plates };
   return plates;
 }
 
-function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, safeTop: number, h: number): PlateView[] {
+function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMap<SeatId, Mark>, viewport: ViewportState, measure: Measure): PlateView[] {
   const me = model.viewer.perspective;
-  const w = plan?.viewport.w ?? 1180;
-  const u = Math.min(w / 1180, h / 820);
+  const { w, h, safe } = viewport;
+  const u = designUnit(viewport);
   const others = model.seats.filter((s) => s.id !== me);
   const rows = model.seats.map((s) => {
     const mine = s.id === me;
@@ -188,35 +245,52 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       bottom: at?.bottom ?? null,
       // Mine carries no icons at rest: my own table is in front of me (my nameplate focus has the words).
       icons,
-      width: plateWidth(String(s.name), s.life, icons, u),
+      width: plateWidth(String(s.name), s.life, icons, measure),
     };
   });
-  const top = safeTop + PLATE.top * u;
+  const top = safe.top + PLATE.top * u;
   const under: Box[] = (plan?.hits.groups ?? [])
     .filter((g) => g.kind !== "plate")
     .map((g) => {
       const xs = g.quad.map((p) => p.x), ys = g.quad.map((p) => p.y);
       return { l: Math.min(...xs), t: Math.min(...ys), r: Math.max(...xs), b: Math.max(...ys) };
     });
-  const lefts = placeTop(
-    rows.filter((r) => !r.mine).map((r) => ({ seat: r.seat, place: r.place, w: r.width, pref: r.mid - r.width / 2 })),
-    under,
-    { t: top, b: top + PLATE.height * u, l: PLATE.clearLeft * u, r: w - PLATE.edge * u },
-  );
-  return rows.map((r) => ({
-    seat: r.seat,
-    group: r.group,
-    name: r.name,
-    life: r.life,
-    place: r.place,
-    mine: r.mine,
-    active: r.active,
-    ring: r.ring,
-    out: r.out,
-    icons: r.icons,
-    x: r.mine ? r.mid : (lefts.get(r.seat) ?? r.mid),
-    y: r.mine ? (r.bottom ?? h - PLATE.bottom * u) : top,
-  }));
+  const opponents = rows.filter((r) => !r.mine);
+  const left = safe.left + PLATE.clearLeft * u, right = w - safe.right - PLATE.edge * u;
+  const rowWidth = opponents.reduce((sum, r) => sum + r.width, Math.max(0, opponents.length - 1) * PLATE.gap);
+  const fullUnit = rowWidth ? Math.min(u, Math.max(0, right - left) / rowWidth) : u;
+  let unit = fullUnit;
+  let lefts: Map<string, number>;
+  // If the cards split the available space into narrow gaps, compact the whole row while retaining its tap height.
+  for (const scale of [1, 0.95, 0.9, 0.85]) {
+    unit = fullUnit * scale;
+    const b = top + Math.max(PLATE.height, PLATE.height * unit);
+    const widths = opponents.map((r) => ({ seat: r.seat, place: r.place, w: r.width * unit, pref: r.mid - r.width * unit / 2 }));
+    lefts = placeTop(widths, under, { t: top, b, l: left, r: right }, PLATE.gap * unit);
+    if (widths.every((p) => {
+      const l = lefts.get(p.seat)!;
+      return under.every((g) => overlap({ l, r: l + p.w, t: top, b }, g) === 0);
+    })) break;
+  }
+  return rows.map((r) => {
+    const plateUnit = r.mine ? Math.min(u, (w - safe.left - safe.right) / r.width) : unit;
+    const half = r.width * plateUnit / 2;
+    return {
+      seat: r.seat,
+      group: r.group,
+      name: r.name,
+      life: r.life,
+      place: r.place,
+      mine: r.mine,
+      active: r.active,
+      ring: r.ring,
+      out: r.out,
+      icons: r.icons,
+      unit: plateUnit,
+      x: r.mine ? Math.min(w - safe.right - half, Math.max(safe.left + half, r.mid)) : lefts!.get(r.seat)!,
+      y: r.mine ? Math.min(r.bottom ?? h, h - safe.bottom - PLATE.bottom * u) : top,
+    };
+  });
 }
 
 const picked = (model: TableModel, ids: readonly number[]): PickedCard[] =>
@@ -267,10 +341,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
   const exile = picked(model, [...model.zone(seat, "exile")].reverse());
   const handIds = model.zone(seat, "hand");
   const hand = mine || s.handVisible ? picked(model, handIds) : Array.from({ length: s.hand }, () => ({ id: null, name: "A card in hand", image: null }));
-  const cmd = model.commanders.get(seat)?.[0];
-  const dealt = cmd && !mine ? (model.seat(me)?.commanderDamage.get(cmd.id) ?? 0) : null;
   const also = [
-    dealt !== null ? `Commander damage to you: ${dealt}` : null,
     s.poison ? `Poison ${s.poison}` : null,
     s.monarch ? "The monarch" : null,
     s.out ? "Out of the game" : null,
@@ -282,6 +353,7 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
     place: placeOf(model, seat),
     mine,
     lines,
+    commanderDamage: t.commanderDamage,
     graveyard,
     exile,
     hand,

@@ -6,7 +6,7 @@ import { initialState } from "../../src/app/state";
 import { update } from "../../src/app/update";
 import type { AppState } from "../../src/app/state";
 import type { Msg } from "../../src/app/msg";
-import type { CommitId, Stamp } from "../../src/protocol";
+import type { CardId, CommitId, Stamp } from "../../src/protocol";
 import type { Ms } from "../../src/platform";
 import { seatId } from "../../src/model";
 import type { ZoomRequest } from "../../src/scene/stage";
@@ -34,6 +34,8 @@ describe("the zoom's trial", () => {
   const acts: [string, Msg][] = [
     ["a tap on the table", { t: "act", stamp, stop: null, act: { a: "tap", on: { group: "card:9", members: [] } } }],
     ["a prompt's button", { t: "act", stamp, stop: null, act: { a: "press", button: "b1" } } as Msg],
+    ["a tap on a sifted card (its chooser's revision)", { t: "act", stamp, stop: null, act: { a: "tap", on: { card: 133 as CardId, chooser: 2 } } }],
+    ["the sift's pager", { t: "siftPage", stamp, group: "zone:graveyard:Marath", delta: 1 }],
     ["opening the inspector", { t: "open", stamp, layer: "inspector", card: null }],
     ["a seat's board", { t: "board", stamp, seat: "Marath" }],
   ];

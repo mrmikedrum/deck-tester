@@ -3,7 +3,7 @@
 // stack's rules (`openStackRules`), the chips of set-aside layers and the Game menu's decks. Pure.
 import type { CardAction, Controls } from "../play";
 import type { CardId } from "../protocol";
-import { abilityText, handOrder, isCreature } from "../model";
+import { abilityText, asides, handOrder, isCreature } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, SiftView, StackRow } from "../chrome";
 import { SIFT_PAGE, siftOf, siftPages } from "../layout";
@@ -152,7 +152,7 @@ export function menuOf(s: AppState): MenuView {
  * The caption of a sift up (h.js `sift`): a graveyard or exile by whose it is, a pile by its one name or its kind, with
  * how many and how many are tapped; its pages when it has more than `SIFT_PAGE`. Null when the plan has no such group.
  */
-export function siftViewOf(model: TableModel, plan: TablePlan, group: string, page: number): SiftView | null {
+export function siftViewOf(model: TableModel, plan: TablePlan, group: string, page: number, chooser: number | null = null): SiftView | null {
   const all = siftCards(model, plan, group);
   if (!all || !all.ids.length) return null;
   const n = all.ids.length;
@@ -174,5 +174,10 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
     pages,
     range: pages > 1 ? `${from + 1}–${to} of ${n}` : null,
     top: Math.min(...places.map((q) => q.rect.top)),
+    chooser,
+    cards: all.ids.slice(from, to).flatMap((id) => {
+      const c = model.cards.get(id);
+      return c ? [{ id, label: [c.face.name, ...asides(model, c)].join(", ") }] : [];
+    }),
   };
 }

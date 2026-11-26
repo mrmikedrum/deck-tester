@@ -1,5 +1,5 @@
 // 6. pay, 7. on-table targets/choose (a. mixed vs same-name piles), 8. sheet decisions (order, repeat, number).
-const { test, expect, snapshot, withDecision, find, locate, pending } = require("./harness.js");
+const { test, expect, NEW, snapshot, withDecision, find, locate, pending } = require("./harness.js");
 const { label } = require("./labels.js");
 
 const you = (s, n, k = 0) => find(s, "You", n, k);
@@ -14,11 +14,11 @@ test.describe("pay", () => {
   test("tap sources, then Pay sends them in the order tapped", async ({ table }) => {
     const s = snapshot("main");
     await table.open(simple(s));
-    expect(await table.buttons()).toEqual(["Auto-pay", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual([...(NEW ? ["List"] : []), "Auto-pay", label("Let Forge decide")]);
     await table.tapCard(you(s, "Mystic Sanctuary").id);
     await table.tapCard(you(s, "Otawara, Soaring City").id);
     await table.tapCard(you(s, "Island", 3).id);
-    expect(await table.buttons()).toEqual(["Undo", "Pay", label("Let Forge decide")]);
+    expect(await table.buttons()).toEqual([...(NEW ? ["List"] : []), "Undo", "Pay", label("Let Forge decide")]);
     expect(table.answers()).toEqual([]);
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2, 1, 3]);
@@ -63,14 +63,44 @@ test.describe("pay", () => {
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2]);
   });
-  test("sources of different cards fanned in one pile ask \"Which source?\"", async ({ table }) => {
+  test("sources of different cards fanned in one pile: the player says which", async ({ table }) => {
+    // (The new entry opens the pile to choose the card, as for any gesture on distinct cards; the current client asks
+    // "Which source?".)
     const s = snapshot("main"), ring = you(s, "Sol Ring").id, signet = you(s, "Arcane Signet").id;
     await table.open(payment(s, ["Sol Ring (C)", "Arcane Signet (U)"], [{ card: ring }, { card: signet }]));
     await table.tapCard(signet);
-    expect(await table.sheetTitle()).toBe("Which source?");
-    await table.sheet().locator("button.l-opt").filter({ hasText: "Arcane Signet (U)" }).click();
+    if (NEW) {
+      expect(table.answers()).toEqual([]);
+      await table.tap(await table.locate({ sifted: signet }));
+    } else {
+      expect(await table.sheetTitle()).toBe("Which source?");
+      await table.sheet().locator("button.l-opt").filter({ hasText: "Arcane Signet (U)" }).click();
+    }
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2]);
+  });
+  test("a mixed pile of sources, paid by keyboard alone from the prompt", async ({ table }) => {
+    test.skip(!NEW, "the payment list is the new entry's");
+    const s = snapshot("main"), ring = you(s, "Sol Ring").id, signet = you(s, "Arcane Signet").id;
+    await table.open(payment(s, ["Sol Ring (C)", "Arcane Signet (U)", "Arcane Signet (W)"], [{ card: ring }, { card: signet }, { card: signet }]));
+    const page = table.page;
+    /** Tab until `target` has focus (at most 40 presses): the keyboard's way to it. */
+    const tabTo = async (target) => {
+      for (let i = 0; i < 40; i++) {
+        if (await target.evaluate((el) => el === document.activeElement).catch(() => false)) return;
+        await page.keyboard.press("Tab");
+      }
+      throw new Error("not reached by Tab");
+    };
+    await tabTo(table.button("List"));
+    await page.keyboard.press("Enter");
+    await table.step(100);
+    await tabTo(table.sheet().locator("button", { hasText: "Arcane Signet (W)" }));
+    await page.keyboard.press("Enter");
+    await table.step(100);
+    await tabTo(table.sheet().getByRole("button", { name: "Pay", exact: true }));
+    await page.keyboard.press("Enter");
+    expect((await table.answered(1))[0].answer).toEqual([3]);
   });
 });
 
@@ -86,6 +116,15 @@ test.describe("targets and choices on the table", () => {
     await table.tapCard(OPTS(s)[1].id);
     expect(await table.answered(1)).toEqual([{ key: expect.any(String), answer: [2] }]);
   });
+  test("a tapped card on the leaf across is chosen by a tap in its place, off its face", async ({ table }) => {
+    // Glissa is Atraxa's, across: tapped, it lies a quarter turn in a place a standing card's height wide (the new entry
+    // draws that leaf with the arrangement engine; the current client has no places and taps the card).
+    const s = snapshot("main");
+    find(s, "Atraxa", "Glissa, Herald of Predation").tapped = true;
+    await table.open(choice(s));
+    await table.tap(await table.locate({ place: OPTS(s)[1].id }));
+    expect(await table.answered(1)).toEqual([{ key: expect.any(String), answer: [2] }]);
+  });
   test("exactly one wanted: a tap on a player's plate sends the player", { tag: "@cast" }, async ({ table }) => {
     const s = snapshot("main");
     await table.open(choice(s));
@@ -95,7 +134,7 @@ test.describe("targets and choices on the table", () => {
   test("more than one wanted: taps pick, Done is disabled below min and sends the picks", async ({ table }) => {
     const s = snapshot("main");
     await table.open(choice(s, { min: 2, max: 3 }));
-    expect(await table.buttons()).toEqual(["List", "None", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual(["List", "None", label("Let Forge decide")]);
     expect(await table.button("None").isDisabled()).toBe(true);
     await table.tapCard(OPTS(s)[2].id);
     expect(table.answers()).toEqual([]);

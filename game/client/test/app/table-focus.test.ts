@@ -6,6 +6,7 @@ import type { CardId } from "../../src/protocol";
 import { seatId } from "../../src/model";
 import { SIFT_PAGE, siftOf } from "../../src/layout";
 import { describe as describeTable } from "../../src/scene/stage";
+import * as play from "../../src/play";
 import { envelope, rig } from "./rig";
 import type { Rig } from "./rig";
 
@@ -208,5 +209,91 @@ describe("a tap opens the table's layers", () => {
     expect(r.commits.at(-1)!.view.sift).toMatchObject({ page: 2, range: "55–60 of 60" });
     pageBy(r, g.id, -1);
     expect(r.commits.at(-1)!.view.sift).toMatchObject({ page: 1, range: "28–54 of 60" });
+  });
+});
+
+// A sift play opened for a gesture (a tap on a well of Islands, one of them another player's, while paying) lives as long
+// as the gesture waits on it: a new decision closes it with the gesture; put away, it lets the gesture go.
+describe("a chooser for a gesture", () => {
+  /** Five Islands, the last owned by Atraxa (not a twin of the others), and a payment from them. */
+  function paying(v: number, decision?: Json): Json {
+    const e = board({ v }) as { view: { players: Json[] }; decision: Json };
+    const bf = e.view.players[0]!["battlefield"] as Json[];
+    bf[4] = { ...bf[4], owner: "Atraxa" };
+    e.decision = decision ?? { id: v, kind: "pay", turn: "T1 main1", prompt: "mana to pay {U}", repeat: false, options: bf.map(() => "Island (U)"), refs: bf.map((c) => ({ card: c["id"] })), min: 0, max: 1 };
+    return e;
+  }
+  const choosing = (r: Rig) => play.present(r.state.play).controls.choosing?.group ?? null;
+  const opened = () => {
+    const r = started(paying(1));
+    const g = islands(r);
+    tap(r, g);
+    expect(layers(r)).toEqual([["sift", g.id]]);
+    expect(choosing(r)).toBe(g.id);
+    return { r, g };
+  };
+
+  it("its cards are named for the keyboard with what sets them apart (whose, tapped, counters, what is attached)", () => {
+    const { r } = opened();
+    expect(r.commits.at(-1)!.view.sift!.cards.map((c) => c.label)).toEqual(["Island", "Island", "Island", "Island", "Island, owned by Atraxa"]);
+  });
+
+  it("a new decision closes it, and the gesture goes with it", () => {
+    const { r, g } = opened();
+    const exile = paying(2, { id: 2, kind: "targets", turn: "T1 main1", prompt: "Exile target land", repeat: false, options: ["Island", "Island"], refs: [{ card: 10 }, { card: 11 }], min: 1, max: 1 });
+    r.transport.push(exile);
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(layers(r).filter(([l]) => l === "sift")).toEqual([]);
+    expect(choosing(r)).toBeNull();
+    expect(groups(r).some((x) => x.id === g.id)).toBe(true);
+  });
+
+  /** Two Grizzly Bears of mine, one owned by Atraxa (not twins), in one pile; they may attack Atraxa or Dack. */
+  function bears(v: number, ids = [20, 21]): Json {
+    const e = board({ v, islands: 0 }) as { view: { players: Json[] }; decision: Json };
+    const bear = (id: number, owner: string): Json => ({ id, name: "Grizzly Bears", owner, controller: "You", type: "Creature - Bear", power: 2, toughness: 2 });
+    e.view.players[0]!["battlefield"] = ids.map((id) => bear(id, id === 21 ? "Atraxa" : "You"));
+    const refs = [20, 21].flatMap((card) => ["Atraxa", "Dack"].map((to) => ({ card, to })));
+    e.decision = { id: 1, kind: "attack", turn: "T1 main1", prompt: "attackers", repeat: false, options: refs.map(() => "attack"), refs, min: 0, max: 4 };
+    return e;
+  }
+
+  it("a tap on a card in the chooser, let go after a snapshot removed that card, is refused: nothing attacks", () => {
+    const r = started(bears(1));
+    const g = groups(r).find((x) => x.members.length > 1)!;
+    r.send({ a: "drag", from: { group: g.id, members: g.members }, onto: { seat: seatId("Dack") } });
+    r.frame((r.now += 10));
+    // the tap on Bear 21 goes down in the sift: its stop and chooser are those on screen now
+    const c = play.present(r.state.play).controls, stop = c.stop, rev = c.choosing!.rev;
+    // the same decision, Bear 21 gone, arrives before the tap is let go
+    r.transport.push(bears(2, [20]));
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(choosing(r)).toBeNull();
+    r.send({ a: "tap", on: { card: 21 as CardId, chooser: rev } }, stop);
+    r.frame((r.now += 10));
+    expect(play.present(r.state.play).board.combat).toBeNull();
+    // and without the chooser's word, a card no longer on the table is no candidate either
+    r.send({ a: "tap", on: { card: 21 as CardId } }, stop);
+    r.frame((r.now += 10));
+    expect(play.present(r.state.play).board.combat).toBeNull();
+  });
+
+  it("put away (Escape), it lets the gesture go: a later tap on one of its cards is that tap alone", () => {
+    const r = started(bears(1));
+    const g = groups(r).find((x) => x.members.length > 1)!;
+    expect(g.members).toEqual([20, 21]);
+    r.send({ a: "drag", from: { group: g.id, members: g.members }, onto: { seat: seatId("Dack") } });
+    r.frame((r.now += 10));
+    expect(choosing(r)).toBe(g.id);
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([]);
+    expect(choosing(r)).toBeNull();
+    // a tap on bear 21 (as from a sift opened again): it attacks the first opponent, not Dack
+    r.send({ a: "tap", on: { card: 21 as CardId } });
+    r.frame((r.now += 10));
+    expect(play.present(r.state.play).board.combat?.attacks).toEqual([{ attacker: 21, defender: { seat: seatId("Atraxa") } }]);
   });
 });

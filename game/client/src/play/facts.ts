@@ -2,8 +2,8 @@
 // model's readings (threat, the sweep) computed once per snapshot. Kept in play's state, so the state stays
 // JSON-serialisable while the model (maps, functions) does not.
 import type { CardId, StackId } from "../protocol";
-import type { SeatId, TableModel, Target, Zone } from "../model";
-import { isCreatureSweep, threatens, topOf } from "../model";
+import type { Card, SeatId, TableModel, Target, Zone } from "../model";
+import { asides, isCreatureSweep, threatens, topOf } from "../model";
 
 export interface CardFact {
   /** The card's identity (same-named cards are the same card): "Face-down" face down. */
@@ -14,6 +14,11 @@ export interface CardFact {
   readonly owner: SeatId;
   readonly controller: SeatId;
   readonly tapped: boolean;
+  /** All the client knows of it but its identity, what is attached to it included, deeply (`stateOf`): two cards with
+   *  the same `state` are interchangeable. */
+  readonly state: string;
+  /** What sets it apart from others of its name, in words (model `asides`): "tapped", "owned by Atraxa", "with Rancor". */
+  readonly asides: readonly string[];
   readonly commander: boolean;
   /** Braced. */
   readonly cost: string;
@@ -66,6 +71,24 @@ export interface Facts {
   readonly floating: string;
 }
 
+/**
+ * A card as all the client knows of it, its identity aside (`CardFact.state`): every field of the model's card but its
+ * id and what it is attached to, its face as shown, and what is attached to it, each by the same rule (a cycle cut
+ * where it closes). Two cards with the same `state` are the same card to the eye and the rules.
+ */
+function stateOf(m: TableModel, c: Card, seen: ReadonlySet<CardId> = new Set()): string {
+  const rest = Object.fromEntries(Object.entries(c).filter(([k]) => k !== "id" && k !== "attachedTo"));
+  const inner = new Set([...seen, c.id]);
+  const dressed = m.attachments(c.id).flatMap((a) => {
+    const x = m.cards.get(a);
+    return x && !inner.has(a) ? [stateOf(m, x, inner)] : [];
+  });
+  return JSON.stringify([canon(rest), dressed.sort()]);
+}
+/** Plain data with its keys in order, so equal data reads equal. */
+const canon = (v: unknown): unknown =>
+  Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, canon(x)])) : v;
+
 export function factsOf(m: TableModel): Facts {
   const me = m.viewer.perspective;
   const cards: Record<number, CardFact> = {};
@@ -78,6 +101,8 @@ export function factsOf(m: TableModel): Facts {
       owner: c.owner,
       controller: c.controller,
       tapped: c.tapped,
+      state: stateOf(m, c),
+      asides: asides(m, c),
       commander: c.commander,
       cost: c.face.cost,
       text: c.face.text,
@@ -138,6 +163,9 @@ export function factsOf(m: TableModel): Facts {
 }
 
 export const topItem = (f: Facts): ItemFact | undefined => f.stack[f.stack.length - 1];
+/** On the battlefield now: what attacks, blocks and is attacked (a card that has left is no candidate, whatever a late
+ *  gesture says). */
+export const inPlay = (f: Facts, id: CardId): boolean => f.cards[id]?.zone === "battlefield";
 export const cardOf = (f: Facts, id: CardId | null | undefined): CardFact | undefined => (id == null ? undefined : f.cards[id]);
 export const seatName = (f: Facts, id: SeatId | null): string => (id === null ? "" : (f.seats.find((s) => s.id === id)?.name ?? id));
 export const hasSeat = (f: Facts, name: string): boolean => f.seats.some((s) => s.id === name);

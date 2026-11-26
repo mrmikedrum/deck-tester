@@ -71,7 +71,10 @@ function CardItem({ item, image, send }: { item: SheetItem; image: string; send:
       onClick={() => send({ a: "pick", option: item.option })}
     >
       <span class="pic" style={`background-image:url("${image}")`} />
-      <small>{item.label}</small>
+      <small>
+        {item.label}
+        {item.detail && item.detail !== item.label ? <i> · {item.detail}</i> : null}
+      </small>
     </button>
   );
 }

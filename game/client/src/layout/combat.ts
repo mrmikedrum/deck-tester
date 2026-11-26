@@ -65,7 +65,7 @@ export interface RowInput {
 }
 
 /** Unit ids in the fight: the attackers' and blockers' own units (mat gives each fighter a unit of its own). */
-function fightUnits(plans: readonly SeatPlan[], want: ReadonlySet<CardId>): Map<CardId, { unit: Unit; seat: SeatId }> {
+export function fightUnits(plans: readonly SeatPlan[], want: ReadonlySet<CardId>): Map<CardId, { unit: Unit; seat: SeatId }> {
   const out = new Map<CardId, { unit: Unit; seat: SeatId }>();
   for (const p of plans)
     for (const u of p.units)

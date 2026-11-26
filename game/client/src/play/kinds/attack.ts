@@ -4,7 +4,7 @@
 import type { AttackDecision, CardId } from "../../protocol";
 import { seatId } from "../../model";
 import type { Target as ModelTarget } from "../../model";
-import { cardOf, hasSeat } from "../facts";
+import { cardOf, hasSeat, inPlay } from "../facts";
 import { shortCard } from "../text";
 import { aim, defaultDefender, everyone, retarget, toggleAttacker } from "../interactions/pair";
 import { base, btn } from "./kind";
@@ -50,16 +50,16 @@ export const attack: Kind<AttackDecision> = {
       if (at.seat === f.me || !d.refs.some((r) => (r.to as string | number) === (at.seat as string))) return null;
       return { draft: { ...draft, attackTo: at.seat, sel: retarget(draft.sel, d.refs, at.seat) } };
     }
-    const id = at.ids.find((x) => d.refs.some((r) => r.card === x));
+    const id = at.ids.find((x) => inPlay(f, x) && d.refs.some((r) => r.card === x));
     if (id === undefined) {
-      const walker = at.ids.find((x) => d.refs.some((r) => r.to === x));
+      const walker = at.ids.find((x) => inPlay(f, x) && d.refs.some((r) => r.to === x));
       return walker === undefined ? null : { draft: { ...draft, attackTo: walker } };
     }
     return { draft: { ...draft, sel: toggleAttacker(draft.sel, d.refs, id, draft.attackTo) } };
   },
   drag(c, from, onto) {
     const { d, f, draft } = c;
-    const id = from.ids.find((x) => d.refs.some((r) => r.card === x));
+    const id = from.ids.find((x) => inPlay(f, x) && d.refs.some((r) => r.card === x));
     if (id === undefined || (onto.seat === null && !onto.ids.length)) return {};
     const to =
       onto.seat ??

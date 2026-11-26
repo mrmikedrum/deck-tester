@@ -20,18 +20,21 @@ export interface Reached {
   readonly seat: SeatId | null;
   /** On the table (not a hand card): a touch that holds auto-pass. */
   readonly table: boolean;
+  /** The group it was (a pile's id), for a choice among its members; null for a card, a seat or nothing. */
+  readonly group?: string;
 }
 
 /** Null when the target is a group whose members changed since it was drawn (or is gone): the act is dropped. */
 export function reached(t: Target, groups: readonly Group[], f: Facts): Reached | null {
   if ("nothing" in t) return { ids: [], seat: null, table: true };
   if ("seat" in t) return { ids: [], seat: t.seat, table: true };
-  if ("card" in t) return { ids: [t.card], seat: null, table: f.cards[t.card]?.zone !== "hand" };
+  // (a card the table no longer holds anywhere: dropped)
+  if ("card" in t) return f.cards[t.card] ? { ids: [t.card], seat: null, table: f.cards[t.card]?.zone !== "hand" } : null;
   const g = groups.find((x) => x.id === t.group);
   if (!g || g.members.length !== t.members.length || g.members.some((m, i) => m !== t.members[i])) return null;
   if (g.kind === "plate") return { ids: [], seat: g.seat, table: true };
   if (g.kind === "zone") return { ids: [], seat: null, table: true };
-  return { ids: g.members, seat: null, table: true };
+  return { ids: g.members, seat: null, table: true, group: g.id };
 }
 
 /** live.js `boardChoice`: whether a targets or choose decision is answered by tapping the table. */

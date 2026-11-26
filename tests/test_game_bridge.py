@@ -472,6 +472,46 @@ class NextClientServingTest(unittest.TestCase):
             self.assertEqual(s.get("/api/clientlog", "POST", [1, 2])[0], 400)
         self.assertEqual(len(self.log.path.read_text().splitlines()), 2)
 
+    def test_the_bench_endpoint_keeps_each_run_as_a_file(self):
+        bench = game.BenchResults(pathlib.Path(self.tmp.name) / "bench", clock=lambda: 1_700_000_000)
+        with mock.patch.object(game, "BENCH_RESULTS", bench), Server(self.dist, self.log) as s:
+            status, _, data = s.get("/next/api/bench", "POST", {"rows": [{"input": "dense"}], "userAgent": "iPad"})
+            reply = json.loads(data)
+            self.assertEqual((status, reply["ok"]), (200, True))
+            name = pathlib.Path(reply["file"]).name
+            self.assertEqual(json.loads((bench.folder / name).read_text())["rows"], [{"input": "dense"}])
+            second = json.loads(s.get("/api/bench", "POST", {"rows": []})[2])["file"]   # the same second: a new name
+            self.assertNotEqual(pathlib.Path(second).name, name)
+            self.assertEqual(s.get("/api/bench", "POST", {"no": "rows"})[0], 400)
+            # the render bench's run says which bench it is
+            render = json.loads(s.get("/api/bench", "POST", {"bench": "render", "table": "turn 15", "framesPerMoment": 120, "rows": []})[2])["file"]
+            self.assertEqual(json.loads((bench.folder / pathlib.Path(render).name).read_text())["bench"], "render")
+        bench.KEEP = 1
+        bench.add({"rows": []})
+        self.assertEqual(len(list(bench.folder.glob("bench-*.json"))), 1)
+
+    def test_the_bench_endpoint_answers_every_request_and_keeps_within_the_cap(self):
+        bench = game.BenchResults(pathlib.Path(self.tmp.name) / "bench")
+        with mock.patch.object(game, "BENCH_RESULTS", bench), Server(self.dist, self.log) as s:
+            # within the cap as sent, kept within it: compact, and only the page's fields
+            rows = [{f"k{k}": i for k in range(320)} for i in range(60)]   # ~230 KiB as sent, past the cap pretty-printed
+            status, _, data = s.get("/api/bench", "POST", {"rows": rows, "userAgent": "iPad", "extra": "not kept"})
+            self.assertEqual(status, 200)
+            kept = bench.folder / pathlib.Path(json.loads(data)["file"]).name
+            self.assertLessEqual(kept.stat().st_size, 256 * 1024)   # the request cap
+            self.assertEqual(sorted(json.loads(kept.read_text())), ["rows", "userAgent"])
+            # the wrong shape, too many rows, nested past what parses: refused, each with an answer
+            self.assertEqual(s.get("/api/bench", "POST", {"rows": [1, 2]})[0], 400)
+            self.assertEqual(s.get("/api/bench", "POST", {"rows": [{}] * 65})[0], 400)
+            deep = b'{"rows":[{"a":' + b"[" * 100000 + b"]" * 100000 + b"}]}"
+            self.assertEqual(s.post_raw("/api/bench", str(len(deep)), deep)[0], 400)
+            # a folder it cannot write: 500, and the server goes on
+            bench.folder = pathlib.Path(self.tmp.name) / "a-file"
+            bench.folder.write_text("")
+            status, _, data = s.get("/api/bench", "POST", {"rows": []})
+            self.assertEqual((status, json.loads(data)["ok"]), (500, False))
+            self.assertEqual(s.get("/api/bench", "POST", {"no": "rows"})[0], 400)
+
     def test_a_bad_content_length_is_refused_and_a_good_one_read_exactly(self):
         body = json.dumps({"entries": [entry()]}).encode()
         with Server(self.dist, self.log) as s:
@@ -579,9 +619,9 @@ class BuildOnStartTest(unittest.TestCase):
         config = (game.ROOT / "game" / "vite.config.mts").read_text()
         listed = re.search(r"const BUILD_INPUTS = \[(.*?)\];", config, re.S).group(1)
         self.assertEqual(tuple(re.findall(r'"([^"]+)"', listed)), game.STAMP_INPUTS)
-        motion = (game.ROOT / "game" / "client" / "src" / "scene" / "workbench" / "motion.ts").read_text()
         here = game.ROOT / "game" / "client" / "src" / "scene" / "workbench"
-        for glob in re.findall(r'import\.meta\.glob[^(]*\("([^"]+)"', motion):
+        sources = "".join(p.read_text() for p in sorted(here.glob("*.ts")))
+        for glob in re.findall(r'import\.meta\.glob[^(]*\("([^"]+)"', sources):
             target = os.path.relpath(os.path.normpath(here / glob), game.ROOT / "game").replace(os.sep, "/")
             self.assertTrue(any(target == rel or target.startswith(rel + "/") for rel in game.STAMP_INPUTS), target)
 
