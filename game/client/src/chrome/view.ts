@@ -50,7 +50,7 @@ export interface CardLook {
 }
 
 /** The focus layers (the app's focus stack): the table's own (the stack, a lean-in, a sift) and the chrome's. */
-export type ChromeLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses" | "seat";
+export type ChromeLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses" | "seat";
 
 /** A plate's icons, in a fixed order: total power on the table, open mana, cards in hand (and fliers in a focus). */
 export type IconKind = "power" | "creatures" | "wing" | "shield" | "mana" | "hand";
@@ -101,7 +101,7 @@ export interface PlateTally {
  * table's hit test reaches what they mark. */
 export interface ClashView {
   readonly unit: number;
-  readonly plaques: readonly { readonly key: string; readonly x: number; readonly y: number; readonly words: string; readonly tone: PlateTally["tone"]; readonly place: SeatPlace }[];
+  readonly plaques: readonly { readonly key: string; readonly x: number; readonly y: number; readonly w: number; readonly words: string; readonly tone: PlateTally["tone"]; readonly place: SeatPlace }[];
   readonly brands: readonly {
     readonly key: string;
     readonly x: number;

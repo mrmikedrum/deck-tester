@@ -42,14 +42,16 @@ export interface FocusState {
   readonly aside: readonly FocusEntry[];
   /** The stack (its items) the stack layer last came up for: a new item brings it up again, even set aside. */
   readonly stackKey: string;
+  /** The combat the clash last came up for: set aside, it stays aside until that combat ends. */
+  readonly clashKey?: string;
 }
 
 export const NO_FOCUS_STATE: FocusState = { layers: [], aside: [], stackKey: "" };
 
 /** The table's own layers: under every chrome layer. */
-const TABLE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "lean", "sift"]);
+const TABLE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "clash", "lean", "sift"]);
 /** Dismissed, these are set aside (a chip restores them) rather than closed. */
-const SET_ASIDE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "mulligan"]);
+const SET_ASIDE: ReadonlySet<LayerId> = new Set<LayerId>(["stack", "clash", "mulligan"]);
 
 const tier = (l: LayerId): number => (TABLE.has(l) ? 0 : 1);
 
@@ -125,7 +127,7 @@ export const stackKeyOf = (model: TableModel | null): string => (model ? model.s
  */
 export function sync(
   f: FocusState,
-  o: { sheet: boolean; mulligan: boolean; stack: string; groups?: (id: string) => boolean; pages?: (id: string) => number },
+  o: { sheet: boolean; mulligan: boolean; stack: string; clash?: string; groups?: (id: string) => boolean; pages?: (id: string) => number },
   restore: string | null,
 ): FocusState {
   let next = f;
@@ -142,6 +144,13 @@ export function sync(
   else if (!o.mulligan) next = close(next, "mulligan");
   if (o.stack !== next.stackKey) {
     next = o.stack ? open({ ...next, stackKey: o.stack }, entry("stack")) : { ...close(next, "stack"), stackKey: "" };
+  }
+  // The clash comes up for a combat that raises it (`clash`: that combat's key) and goes with it; under the stack, since
+  // a spell cast in combat is the focus above it.
+  const clash = o.clash ?? "";
+  if (clash !== (next.clashKey ?? "")) {
+    next = clash ? { ...open(next, entry("clash")), clashKey: clash } : { ...close(next, "clash"), clashKey: "" };
+    if (clash && isOpen(next, "stack")) next = open(next, next.layers.find((e) => e.layer === "stack")!);
   }
   return next;
 }

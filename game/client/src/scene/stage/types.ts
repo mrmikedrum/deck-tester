@@ -24,9 +24,9 @@ export interface MomentView {
 /** The app's focus layers (app/focus `LayerId`), the top one with its subject: `seat` for a lean-in, `group` for a sift,
  * `card` for the inspector. The table's own layers are the stack, a lean-in and a sift; the rest are the chrome's
  * (a sheet, the inspector, the mulligan, the Game menu, the hand's list), drawn over the table. */
-export type FocusLayer = "stack" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand";
+export type FocusLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand";
 /** The table's own layers: always under the chrome's. */
-export type TableLayerId = "stack" | "lean" | "sift";
+export type TableLayerId = "stack" | "clash" | "lean" | "sift";
 /** A table layer open in the focus stack, with its subject. */
 export interface TableLayer {
   readonly layer: TableLayerId;
@@ -51,7 +51,7 @@ export interface FocusTop {
 }
 export const NO_FOCUS: FocusTop = { layer: null, seat: null, group: null, card: null };
 
-const TABLE_LAYERS: ReadonlySet<FocusLayer> = new Set<FocusLayer>(["stack", "lean", "sift"]);
+const TABLE_LAYERS: ReadonlySet<FocusLayer> = new Set<FocusLayer>(["stack", "clash", "lean", "sift"]);
 
 /** The table layer that decides how the table looks: the topmost open, or none. */
 export function tableFocus(f: FocusTop): TableLayer | null {

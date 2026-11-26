@@ -9,7 +9,7 @@ export function Clash({ view: v }: { view: ClashView }): JSX.Element {
   return (
     <div class="l-clash" aria-hidden="true" style={`--u:${v.unit}px`}>
       {v.plaques.map((p) => (
-        <div key={p.key} class={`l-clash-plaque ${p.tone}`} data-focus="" style={`left:${p.x}px;top:${p.y}px;--seat:var(--seat-${p.place})`}>
+        <div key={p.key} class={`l-clash-plaque ${p.tone}`} data-focus="" style={`left:${p.x}px;top:${p.y}px;max-width:${p.w + 24}px;--seat:var(--seat-${p.place})`}>
           {p.words}
         </div>
       ))}

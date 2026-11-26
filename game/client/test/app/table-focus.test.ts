@@ -297,3 +297,75 @@ describe("a chooser for a gesture", () => {
     expect(play.present(r.state.play).board.combat?.attacks).toEqual([{ attacker: 21, defender: { seat: seatId("Atraxa") } }]);
   });
 });
+
+describe("the clash, a table layer", () => {
+  const creature = (id: number, name: string, who: string, p = 2): Json => ({ id, name, owner: who, controller: who, type: "Creature - Soldier", power: p, toughness: 2 });
+  /** Atraxa's two attack `at`; Dack's two stand by; Princess's one; a pass-only decision of mine. */
+  function fight(o: { v: number; at: string | null; blocks?: [number, number][] }): Json {
+    const e = board({ v: o.v, islands: 2 }) as { view: Json & { players: Json[] } };
+    e.view.players[0]!["battlefield"] = [...(e.view.players[0]!["battlefield"] as Json[]), creature(30, "Guard", "You")];
+    e.view.players[1]!["battlefield"] = [creature(40, "Raider", "Atraxa", 3), creature(41, "Brute", "Atraxa", 4)];
+    e.view.players[2]!["battlefield"] = [creature(50, "Watcher", "Dack")];
+    e.view["active"] = "Atraxa";
+    e.view["phase"] = "COMBAT_DECLARE_BLOCKERS";
+    e.view["combat"] = o.at ? { attackers: [40, 41].map((id) => ({ id, defender: o.at })), blockers: (o.blocks ?? []).map(([id, blocking]) => ({ id, blocking })) } : null;
+    return e;
+  }
+  const fighterOf = (r: Rig, card: number) => groups(r).find((g) => g.members.includes(card as CardId))!;
+
+  it("comes up when I am attacked; a tap on the shade sets it aside behind a Combat chip; the chip raises it; it goes with the combat", () => {
+    const r = started(fight({ v: 1, at: "You" }));
+    expect(layers(r)).toEqual([["clash", null]]);
+    expect(r.state.plan!.gathering!.focus).toBe(true);
+    expect(r.commits.at(-1)!.view.clash!.plaques.map((p) => p.words)).toEqual(["Atraxa attacks You · 7 unblocked"]);
+    // a tap on a fighter reads it (the inspector over the clash)
+    tap(r, fighterOf(r, 40));
+    expect(layers(r).at(-1)).toEqual(["inspector", null]);
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    // a tap off the fighters (my Islands, under the shade) sets it aside: the table form, the chip
+    tap(r, islands(r));
+    expect(layers(r)).toEqual([]);
+    expect(r.state.focus.aside.map((e) => e.layer)).toEqual(["clash"]);
+    expect(r.state.plan!.gathering!.form).toBe("table");
+    expect(r.commits.at(-1)!.view.chips).toEqual([{ layer: "clash", label: "Combat" }]);
+    // blocks declared in the same combat keep it aside
+    r.transport.push(fight({ v: 2, at: "You", blocks: [[30, 40]] }));
+    r.frame((r.now += 400));
+    expect(layers(r)).toEqual([]);
+    // the chip raises it again
+    r.inputs.push({ t: "restore", layer: "clash", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([["clash", null]]);
+    expect(r.state.plan!.gathering!.form).toBe("clash");
+    // the combat ends: it goes, chip and all
+    r.transport.push(fight({ v: 3, at: null }));
+    r.frame((r.now += 400));
+    expect(layers(r)).toEqual([]);
+    expect(r.state.focus.aside).toEqual([]);
+  });
+
+  it("between opponents: the table form before blocks, the clash once one is blocked", () => {
+    const r = started(fight({ v: 1, at: "Dack" }));
+    expect(layers(r)).toEqual([]);
+    expect(r.state.plan!.gathering!.form).toBe("table");
+    r.transport.push(fight({ v: 2, at: "Dack", blocks: [[50, 41]] }));
+    r.frame((r.now += 400));
+    expect(layers(r)).toEqual([["clash", null]]);
+  });
+
+  it("the wire is untouched: the same answer in either form", () => {
+    const answerIn = (aside: boolean) => {
+      const r = started(fight({ v: 1, at: "You" }));
+      if (aside) {
+        r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+        r.frame((r.now += 10));
+        expect(r.state.plan!.gathering!.form).toBe("table");
+      }
+      r.act();
+      r.frame((r.now += 10));
+      return r.transport.answers.map((a) => a.body);
+    };
+    expect(answerIn(true)).toEqual(answerIn(false));
+  });
+});

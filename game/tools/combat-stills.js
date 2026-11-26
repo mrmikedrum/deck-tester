@@ -91,7 +91,7 @@ async function tapCard(page, card) {
   try {
     for (const [name, m] of Object.entries(MOMENTS)) {
       if (only && !only.has(name)) continue;
-      const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, baseURL: url });
+      const ctx = await browser.newContext({ viewport: { width: 1210, height: 834 }, deviceScaleFactor: 2, baseURL: url });
       const page = await ctx.newPage();
       page.on("pageerror", (e) => console.error(name, String(e)));
       await page.route("**/still-scenario.json", (r) => r.fulfill({ json: { catalog: design.catalog, envelopes: [m.env] } }));

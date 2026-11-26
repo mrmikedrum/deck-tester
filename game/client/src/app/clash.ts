@@ -3,8 +3,9 @@
 // and the tally each defender's plate wears. They count what the client can see, the current power of the attackers
 // that have had no blocker, and say "unblocked", never "damage": trample, double strike and prevention are Forge's.
 // Pure.
-import type { ClashWing, Gathering, TablePlan } from "../layout";
-import { designUnit } from "../layout";
+import type { ClashWing, CombatPairs, Gathering, HitGroup, TablePlan } from "../layout";
+import { combatFormOf, designUnit, engineCombat, mergeCombat } from "../layout";
+import type { CardId } from "../protocol";
 import type { SeatId, TableModel } from "../model";
 import { shortName } from "../theme";
 import type { SeatPlace } from "../theme";
@@ -25,10 +26,40 @@ function defenderName(model: TableModel, w: ClashWing): string {
   return c ? shortName(c.face.name) : "a planeswalker";
 }
 
-/** The plaque's words. */
+/** The plaque's words: "Atraxa attacks You · 3 unblocked", "You attack Marath · 9 unblocked". */
 export function plaqueWords(model: TableModel, w: ClashWing): string {
   const who = String(model.seat(w.attacker)?.name ?? w.attacker);
-  return `${who} attacks ${defenderName(model, w)} · ${w.unblocked} unblocked`;
+  return `${who} ${who === "You" ? "attack" : "attacks"} ${defenderName(model, w)} · ${w.unblocked} unblocked`;
+}
+
+/** A plaque's width on screen (CSS px): its words at 18 design px in the serif, and its padding. */
+const plaqueWidth = (words: string, u: number): number => (words.length * 8.6 + 34) * u;
+
+/**
+ * Plaques centred over their wings, then spread so none meets the next (8 px apart) and all stay on the screen: each
+ * as near its wing as the others allow.
+ */
+export function spreadPlaques<T extends { x: number; w: number }>(ps: readonly T[], left: number, right: number, gap: number): T[] {
+  const out = ps.map((p) => ({ ...p }));
+  for (let k = 0; k < 8; k++) {
+    for (let i = 1; i < out.length; i++) {
+      const a = out[i - 1]!, b = out[i]!, over = a.x + a.w / 2 + gap - (b.x - b.w / 2);
+      if (over > 0) {
+        a.x -= over / 2;
+        b.x += over / 2;
+      }
+    }
+    const first = out[0], last = out.at(-1);
+    if (first && first.x - first.w / 2 < left) {
+      const d = left - (first.x - first.w / 2);
+      for (const p of out) p.x += d;
+    }
+    if (last && last.x + last.w / 2 > right) {
+      const d = last.x + last.w / 2 - right;
+      for (const p of out) p.x -= d;
+    }
+  }
+  return out;
 }
 
 /** The clash's chrome: null when it is not up. */
@@ -39,7 +70,8 @@ export function clashViewOf(model: TableModel, plan: TablePlan | null): ClashVie
   const plaques: ClashView["plaques"][number][] = [], brands: ClashView["brands"][number][] = [], clasps: ClashView["clasps"][number][] = [];
   for (const w of g.wings) {
     const tone = toneOf(w, me), place = placeOf(model, w.attacker);
-    plaques.push({ key: `${w.attacker}>${"seat" in w.defender ? w.defender.seat : w.defender.card}`, x: w.plaque.x, y: w.plaque.y, words: plaqueWords(model, w), tone, place });
+    const words = plaqueWords(model, w);
+    plaques.push({ key: `${w.attacker}>${"seat" in w.defender ? w.defender.seat : w.defender.card}`, x: w.plaque.x, y: w.plaque.y, w: plaqueWidth(words, u), words, tone, place });
     for (const c of w.columns) {
       if (c.clasp) clasps.push({ key: c.unit, x: c.clasp.x, y: c.clasp.y });
       if (!c.slot) continue;
@@ -48,7 +80,8 @@ export function clashViewOf(model: TableModel, plan: TablePlan | null): ClashVie
       brands.push({ key: c.unit, x: (l + r) / 2, y: (t + b) / 2, size: Math.min(r - l, b - t) * 0.62, figure: c.power > 0 ? String(c.power) : null, count: c.attackers.length > 1 ? c.attackers.length : null, tone, place, down: w.defenderSeat === me });
     }
   }
-  return { unit: u, plaques, brands, clasps };
+  const safe = plan.reserve.safe;
+  return { unit: u, plaques: spreadPlaques(plaques, safe.left + 16 * u, safe.right - 16 * u, 8 * u), brands, clasps };
 }
 
 /**
@@ -71,4 +104,22 @@ export function withTallies(plates: readonly PlateView[], model: TableModel, pla
     const tally: PlateTally | null = t && t.sum > 0 ? { figure: `−${t.sum}`, tone: t.tone, place: t.place } : null;
     return tally || attacking.has(p.seat) ? { ...p, tally, attacking: attacking.has(p.seat) } : p;
   });
+}
+
+/** The combat a clash comes up for, as a key ("" when the combat shown takes the table form by itself): its game and
+ *  attackers, so blocks declared in it keep a clash set aside, aside. */
+export function clashKeyOf(model: TableModel | null, draft: CombatPairs | null): string {
+  if (!model) return "";
+  const combat = mergeCombat(engineCombat(model), draft);
+  const seatOf = (id: CardId) => model.cards.get(id)?.controller ?? undefined;
+  if (combatFormOf(combat, model.viewer.perspective, seatOf) !== "clash") return "";
+  const engine = model.combat?.attackers.map((a) => a.attacker) ?? combat!.attacks.map((a) => a.attacker);
+  return `${model.gen}|${[...engine].sort((a, b) => a - b).join(",")}`;
+}
+
+/** A hit group of the clash: a fighter standing in it, or an unblocked attacker's slot. */
+export function isFighter(plan: TablePlan, g: HitGroup): boolean {
+  if (!plan.gathering?.focus) return false;
+  if (g.id.startsWith("slot:")) return true;
+  return g.seat !== null && !!plan.seats.get(g.seat)?.units.some((u) => u.id === g.id && u.fighting);
 }

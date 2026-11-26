@@ -303,6 +303,7 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
           losses: view.losses !== null,
           seat: view.seatFocus !== null,
           stack: false,
+          clash: false,
           lean: false,
           sift: false,
         };

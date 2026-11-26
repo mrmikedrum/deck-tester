@@ -32,8 +32,11 @@ function pairsKey(cues: BoardCues): string {
 
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${settling ? "settling" : ""}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${settling ? "settling" : ""}`;
 }
+
+/** The clash set aside: the combat takes the table form until it ends. */
+const asideOf = (s: AppState): boolean => s.focus.aside.some((e) => e.layer === "clash");
 
 export interface Replanned {
   readonly state: AppState;
@@ -66,6 +69,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         settling,
         involved: new Set(involved),
         combat: cues.combat,
+        ...(asideOf(s) ? { combatForm: "table" as const } : {}),
         // The across leaf is the arrangement engine's (docs/game-arrangement-engine.md, step 6): its memory rides in
         // the layout memory like any seat's.
         shadow: { draw: true },
