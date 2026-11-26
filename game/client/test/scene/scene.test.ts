@@ -34,6 +34,10 @@ vi.mock("../../src/scene/three/host", () => ({
     }
     setViewport() {}
     render() {}
+    get camParams() {
+      return { position: { x: 0, y: 18, z: 14 }, target: { x: 0, y: 0, z: 0 }, fov: 38, aspect: 1, near: 1, far: 120 };
+    }
+    setCameraOverride() {}
   },
 }));
 vi.mock("../../src/scene/three/view", () => ({

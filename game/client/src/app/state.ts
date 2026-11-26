@@ -92,6 +92,11 @@ export interface AppState {
   readonly viewport: ViewportState;
   /** The hit group under a mouse pointer on the canvas (a `pick`'s id), or null: paint only, the plan never changes. */
   readonly hover: string | null;
+  /**
+   * The camera composed on a hit group (a zoom), and whether the trial that offers it is on (`?zoom`: a long press on
+   * the table zooms to what is under it; any tap or Escape brings the table back). Off, nothing ever zooms.
+   */
+  readonly zoom: { readonly trial: boolean; readonly on: string | null };
   /** Reduced motion is asked for (`prefers-reduced-motion`): the scene shortens its moves; decision timing never changes. */
   readonly reducedMotion: boolean;
   readonly reserve: Reservations;
@@ -162,6 +167,8 @@ export interface InitialOptions {
   readonly lastGame?: NewGameRequest | null;
   /** The page's reduced-motion setting at start. */
   readonly reducedMotion?: boolean;
+  /** The camera zoom's trial (`?zoom`). */
+  readonly zoomTrial?: boolean;
 }
 
 export function initialState(o: InitialOptions): AppState {
@@ -182,6 +189,7 @@ export function initialState(o: InitialOptions): AppState {
     focus: NO_FOCUS_STATE,
     viewport,
     hover: null,
+    zoom: { trial: o.zoomTrial ?? false, on: null },
     reducedMotion: o.reducedMotion ?? false,
     reserve: reservations(viewport),
     moments: NO_MOMENTS,

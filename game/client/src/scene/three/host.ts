@@ -132,6 +132,8 @@ export class Host {
   private world: World;
   private tableLease: Lease;
   private spec: CameraSpec;
+  /** A composed camera drawn instead of the table's (a zoom), or null. */
+  private override: CameraParams | null = null;
   private viewport: Viewport;
   private dpr: number;
   private lost = false;
@@ -215,13 +217,20 @@ export class Host {
     this.renderer.setSize(s.width, s.height, false);
     this.composer.setPixelRatio(s.composer);
     this.composer.setSize(s.width, s.height);
-    applyCamera(this.camera, cameraParams(this.spec, viewport));
+    applyCamera(this.camera, this.override ?? cameraParams(this.spec, viewport));
     this.shadowStale = true;
   }
 
   setCamera(spec: CameraSpec): void {
     this.spec = spec;
-    applyCamera(this.camera, cameraParams(spec, this.viewport));
+    applyCamera(this.camera, this.override ?? cameraParams(spec, this.viewport));
+  }
+
+  /** Draw from a composed camera (a zoom), or the table's own again (null). */
+  setCameraOverride(p: CameraParams | null): void {
+    if (!p && !this.override) return;
+    this.override = p;
+    applyCamera(this.camera, p ?? cameraParams(this.spec, this.viewport));
   }
 
   /** The table's light (1 is full; the stage dims it under the stack). */

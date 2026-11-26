@@ -149,6 +149,7 @@ function route(s: AppState, m: Msg): Step {
     case "zone":
     case "siftPage":
     case "hover":
+    case "zoom":
       return input(s, m);
     case "viewport": {
       const tx: Tx = { s: { ...s, viewport: { w: m.w, h: m.h, safe: m.safe } }, fx: [] };
@@ -540,10 +541,16 @@ function input(s: AppState, m: InputMsg): Step {
   const at = "stamp" in m ? m.stamp.at : 0;
   switch (m.t) {
     case "act":
+      // Zoomed in, a tap on the table only brings the table back (the zoom's trial; nothing reaches play).
+      if (s.zoom.on !== null && m.act.a === "tap") return done({ ...tx, s: { ...s, zoom: { ...s.zoom, on: null } } });
       toPlay(tx, { t: "act", stamp: m.stamp, stop: m.stop, act: m.act }, at);
       plan(tx, at); // a combat draft changes who is involved
       return done(tx);
+    case "zoom":
+      return { state: s.zoom.trial && s.zoom.on !== m.group ? { ...s, zoom: { ...s.zoom, on: m.group } } : s, effects: [] };
     case "dismiss": {
+      // Zoomed in, Escape brings the table back first.
+      if (s.zoom.on !== null) return { state: { ...s, zoom: { ...s.zoom, on: null } }, effects: [] };
       // The top-layer rule (focus.ts): the top layer goes, or is set aside; play's sheet is play's to close. Only what
       // the last commit showed: a layer that came up since (a sheet arriving in the same frame as the Escape) stays, and
       // play hears the dismissal for the stop that was on screen, so a new decision's sheet is not closed by it.
@@ -749,7 +756,7 @@ export function sceneNews(s: AppState, r: RenderReport): boolean {
  * and what makes ids unique for the page's life: play (told the game is gone), the change seq and the moment serial.
  */
 export function tornDown(s: AppState, at: Ms): AppState {
-  const fresh = initialState({ clientBuild: s.session.clientBuild, viewport: s.viewport, epoch: s.epoch + 1, reducedMotion: s.reducedMotion });
+  const fresh = initialState({ clientBuild: s.session.clientBuild, viewport: s.viewport, epoch: s.epoch + 1, reducedMotion: s.reducedMotion, zoomTrial: s.zoom.trial });
   const r = play.step(s.play, { t: "snapshot", at, model: null, decision: null, continuity: "newGame" });
   return {
     ...fresh,

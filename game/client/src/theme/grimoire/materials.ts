@@ -124,3 +124,11 @@ export const highlight = {
   target: { dim: 0.22, lift: 0.12, flat: 0.8, halo: 1 },
   tones: { mine: signal.option, threat: signal.dangerRim, spell: signal.giltRim },
 } as const;
+
+/**
+ * A camera move onto a card or an area, and back: never free navigation, always a composed view. It comes down lower
+ * than the table's camera (`elevation` from the table, radians) and a little from the right (`yaw`), narrower (`fov`,
+ * degrees), near enough that its subject fills `fill` of the screen's height, over `ms` (eased in and out; reduced
+ * motion cuts).
+ */
+export const zoom = { ms: 650, fov: 30, elevation: 0.66, yaw: 0.32, fill: 0.46, seatFill: 0.9 } as const;

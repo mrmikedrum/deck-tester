@@ -15,6 +15,8 @@ import { loadAssets } from "./assets";
 import type { Assets } from "./assets";
 import { Host } from "./host";
 import { StageRenderer } from "./view";
+import { CameraMove, composeZoom } from "./zoom";
+import { materials } from "../../theme";
 
 export interface Scene {
   /** Classified gestures over the canvas. (A stub source for now: the gesture recognizer lands with input/.) */
@@ -87,6 +89,8 @@ export function createScene(opts: SceneOptions): SceneHandle {
   /** The last frame drawn without a fault: its plan and where it drew each piece (what `pick` reaches). */
   let shown: { readonly plan: TablePlan; readonly drawn: StageView["drawn"] } | null = null;
   let pending: Promise<void> | null = null;
+  /** The camera's composed move (a zoom) and whether it holds a camera other than the table's. */
+  const move = new CameraMove();
   /** Set by dispose: an init still waiting on fonts or images builds nothing when they land. */
   let disposed = false;
 
@@ -138,10 +142,17 @@ export function createScene(opts: SceneOptions): SceneHandle {
         const vp = frame.plan.viewport;
         if (vp.w !== host.size.w || vp.h !== host.size.h) host.setViewport(vp, opts.dpr);
         const { report, view } = stage.show(frame, now);
+        const still = frame.reducedMotion ?? opts.reducedMotion ?? false;
+        // The camera first (labels are sized for it as they are drawn): the table's, or composed on what the app asked.
+        const table = host.camParams;
+        const z = frame.zoom ?? null;
+        const want = z ? composeZoom(z, frame.plan, view.drawn, vp, materials.camera) : null;
+        move.set(want, want && z ? ("group" in z ? `g:${z.group}` : `s:${z.seat}`) : "", table, now, z?.ms);
+        host.setCameraOverride(move.at(now, table, still));
         renderer.draw(view);
-        host.render(now, frame.reducedMotion ?? opts.reducedMotion ?? false);
+        host.render(now, still);
         shown = { plan: frame.plan, drawn: view.drawn };
-        return report;
+        return move.moving(now, still) ? { ...report, active: true } : report;
       } catch (e) {
         renderer.clear();
         stage.reset();
@@ -149,7 +160,16 @@ export function createScene(opts: SceneOptions): SceneHandle {
       }
     },
     inspect: () => stage.inspect(),
-    pick: (p, skip) => (shown ? pickDrawn(shown.plan, shown.drawn, p, skip) : null),
+    pick: (p, skip) => {
+      if (!shown) return null;
+      // Under a composed camera, a tap is where the table's camera saw the point it lands on.
+      if (move.active && host && renderer) {
+        const at = renderer.pointAt(host.camera, p.x, p.y, host.size.w, host.size.h);
+        if (!at) return null;
+        return pickDrawn(shown.plan, shown.drawn, shown.plan.projector.project({ x: at.x, y: at.y, z: at.z }), skip);
+      }
+      return pickDrawn(shown.plan, shown.drawn, p, skip);
+    },
     dispose() {
       disposed = true;
       renderer?.dispose();

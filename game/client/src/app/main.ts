@@ -106,7 +106,9 @@ async function main(): Promise<void> {
   const reduced = reducedMotionSource(globalThis.window);
   const motion = new Queue<MotionReading>(true);
   reduced.subscribe((r) => motion.push({ at: now(), reduced: r }));
-  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read() }), {
+  // The camera zoom is a trial for now: `?zoom` offers it (a long press on the table).
+  const zoomTrial = new URLSearchParams(globalThis.location?.search ?? "").has("zoom");
+  loop = createLoop(initialState({ clientBuild, lastGame: lastGame(), reducedMotion: reduced.read(), zoomTrial }), {
     transport,
     // A scripted page reports to no bridge.
     log: script ? null : clientLogSender(),
@@ -121,7 +123,7 @@ async function main(): Promise<void> {
   });
   loop.start();
   for (const e of script?.envelopes ?? []) script!.transport.push(e);
-  installDebug(loop, renderer, script ? { script: script.transport } : {});
+  installDebug(loop, renderer, { ...(script ? { script: script.transport } : {}), input: (m) => inputs.push(m) });
 }
 
 void main();

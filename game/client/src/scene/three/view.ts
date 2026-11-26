@@ -599,6 +599,26 @@ export class StageRenderer {
     return (flat ?? near)?.id ?? null;
   }
 
+  /**
+   * The point on the table a ray from the eye through (x, y) CSS px first meets: a card, edge or label it holds, else the
+   * table's plane. Picking under a composed camera maps a tap through it to where the table's camera saw that point.
+   */
+  pointAt(camera: Camera, x: number, y: number, w: number, h: number): Vector3 | null {
+    const ray = new Raycaster();
+    ray.layers.enableAll();
+    ray.setFromCamera(new Vector2((x / w) * 2 - 1, -(y / h) * 2 + 1), camera);
+    this.root.updateWorldMatrix(true, true);
+    for (const hit of ray.intersectObject(this.root, true)) {
+      let shown = true;
+      for (let o: Object3D | null = hit.object; o; o = o.parent) if (!o.visible) shown = false;
+      if (shown && hit.object.userData[COVERS]) return hit.point;
+    }
+    const d = ray.ray.direction, o = ray.ray.origin;
+    if (Math.abs(d.y) < 1e-6) return null;
+    const t = -o.y / d.y;
+    return t > 0 ? o.clone().addScaledVector(d, t) : null;
+  }
+
   /** How many objects it holds (the workbench and tests read it). */
   counts(): { pieces: number; ghosts: number } {
     return { pieces: this.pieces.size, ghosts: this.ghosts.size };

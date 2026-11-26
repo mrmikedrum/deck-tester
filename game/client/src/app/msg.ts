@@ -33,6 +33,8 @@ export type InputMsg = (
   | { readonly t: "listDecks"; readonly stamp: Stamp }
   /** A mouse pointer moved onto another hit group on the canvas (null: onto none, off the canvas, or it pressed). */
   | { readonly t: "hover"; readonly stamp: Stamp; readonly group: string | null }
+  /** A long press on the table: the camera composed on that hit group (the zoom's trial only; null brings it back). */
+  | { readonly t: "zoom"; readonly stamp: Stamp; readonly group: string | null }
 ) & { readonly origin?: string | null };
 
 export type Msg =
@@ -61,6 +63,7 @@ export function rankOf(m: Msg): number {
     case "zone":
     case "siftPage":
     case "hover":
+    case "zoom":
       return 0;
     case "viewport":
     case "motion":

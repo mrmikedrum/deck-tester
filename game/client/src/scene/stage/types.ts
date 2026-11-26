@@ -84,6 +84,12 @@ export interface HighlightRequest {
   readonly look?: Partial<HighlightLook>;
 }
 
+/**
+ * A composed camera move the app asks for: onto a hit group (a card, a pile, a zone), where it was last drawn, or onto a
+ * seat's page; `ms` overrides the theme's time. Null in the frame: the table's own camera.
+ */
+export type ZoomRequest = ({ readonly group: string } | { readonly seat: SeatId }) & { readonly ms?: number };
+
 export interface SceneFrame {
   readonly model: TableModel;
   readonly plan: TablePlan;
@@ -101,6 +107,8 @@ export interface SceneFrame {
   readonly reducedMotion?: boolean;
   /** Cards to step out of the table's light (choosing targets), or none. */
   readonly highlight?: HighlightRequest | null;
+  /** The camera composed on a subject (a trial for now), or the table's. */
+  readonly zoom?: ZoomRequest | null;
 }
 
 /**

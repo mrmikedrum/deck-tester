@@ -117,8 +117,12 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
         // stop and commit are the press's.
         if (g.on?.group) act({ a: "drag", from: targetOf(g.on.group), onto: targetOf(plateAt(g.x, g.y) ?? pick(g.x, g.y)) }, g.at, g.on);
         return;
+      case "hold":
+        // A long press on a card or pile: the zoom's trial composes the camera on it (the app ignores it otherwise).
+        if (g.on?.group) ports.emit({ t: "zoom", stamp: { at: g.at, commit: g.on.commit }, group: g.on.group.id });
+        return;
       default:
-        return; // hold (peek) and the wheel: not in the slice; hover is read off the canvas's own moves (onMove)
+        return; // the wheel: not in the slice; hover is read off the canvas's own moves (onMove)
     }
   };
 
