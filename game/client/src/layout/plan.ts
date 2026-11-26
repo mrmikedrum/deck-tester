@@ -17,8 +17,11 @@ import type { TableTemplate } from "./template";
 import type { CardId, Insets, Point, Rect, SeatId, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 import { planLeaf } from "./arrange/leaves";
-import { arrangedSeat } from "./arrange/adapter";
+import { arrangedSeat, mineSeat } from "./arrange/adapter";
+import { planMine } from "./arrange/mine";
 import { partShift } from "./arrange/leaf";
+import { LEAN, onFrame } from "./arrange/frame";
+import { S_TABLE } from "./arrange/scale";
 import { posed } from "./arrange/solver";
 import { DUEL_ROW, combatFormOf, gathering } from "./arrange/gathering";
 import type { CombatForm, Gathering } from "./arrange/gathering";
@@ -240,10 +243,12 @@ export interface TablePlan {
   readonly blocked: ReadonlySet<CardId>;
   /** How it is shown: the clash's columns, wings and area, or the table form's wings (for the plates' tallies). */
   readonly gathering: Gathering | null;
-  /** My field row's tops on screen (px): the clash stops above them. */
+  /** My field row's tops on screen (px), as drawn (a parting slides them toward me): the clash stops above them. */
   readonly fieldTop: number;
   /** The arrangement engine's plan of each opponent's leaf at rest, when asked (`TableInput.engine`). */
   readonly leaves?: ReadonlyMap<SeatId, LeafPlan>;
+  /** The arrangement engine's plan of my side at rest, when asked (`TableInput.engine.mine`). */
+  readonly mine?: LeafPlan;
   /**
    * How far the mats are parted, in card heights (0 at rest): every opponent's leaf drawn by the engine slides along its
    * own `away` by this much to open the middle for duels or the stack (§5.3). Its units are the rest plan's.
@@ -280,11 +285,26 @@ export function planTable(input: TableInput): TablePlan {
     if (l) leaves.set(x.seat, planLeaf(l, tpl.slots[i]!, tpl.leaf, tpl.part, projector, reserve.safe));
   });
   const drawn = new Set(input.engine?.draw ? input.seats.flatMap((x, i) => (leaves.get(x.seat)?.result ? [i] : [])) : []);
+  // My side on the engine (step 9): one row on the template's field line, drawn as my seat's plan.
+  const me = input.engine?.mine && input.engine.mine.seat === input.seats[0]?.seat ? planMine(input.engine.mine, { slot: tpl.slots[0]!, tpl, projector, reserve }) : undefined;
+  const mineDrawn = !!(input.engine?.draw && me?.result);
   const leafSeat = (k: number, part: number): SeatPlan => {
     const l = leaves.get(input.seats[k]!.seat)!, at = part ? posed(l.input!, l.result!, partShift(part)) : l.result!;
     return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, reach: partShift(tpl.part.most), board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
   };
-  const plans: SeatPlan[] = inputs.map((i, k) => (drawn.has(k) ? leafSeat(k, 0) : planSeat(layout, i, { fighting: fight })));
+  // My row parted slides toward me (its frame's `away` points at the middle).
+  const mineSeatAt = (part: number): SeatPlan => {
+    const r = part ? posed(me!.input!, me!.result!, -partShift(part)) : me!.result!;
+    return mineSeat({ result: r, edge: tpl.slots[0]!.z + tpl.slots[0]!.d / 2 - r.fit.frame.anchor.z, facing: me!.input!.container.facing ?? 0, board: inputs[0]!.board, cards: me!.input!.cards, projector, reserve });
+  };
+  /** How far down my row's tops go on screen (px) when the mats part this far. */
+  const myDrop = (part: number): number => {
+    const fit = mineDrawn && part ? me!.result!.fit : null, row = fit?.rows.find((r) => r.posture === "stand");
+    if (!fit || !row) return 0;
+    const top = (shift: number) => projector.project(onFrame({ ...fit.frame, anchor: onFrame(fit.frame, 0, shift) }, 0, row.v + CH * S_TABLE * Math.sin(LEAN), CH * S_TABLE * Math.cos(LEAN))).y;
+    return top(-partShift(part)) - top(0);
+  };
+  const plans: SeatPlan[] = inputs.map((i, k) => (drawn.has(k) ? leafSeat(k, 0) : k === 0 && mineDrawn ? mineSeatAt(0) : planSeat(layout, i, { fighting: fight })));
   const floor = inputs.map(() => 0);
   const area = tapArea(reserve);
   const geo = makeGeo(projector, reserve, FLOOR.mine);
@@ -316,12 +336,16 @@ export function planTable(input: TableInput): TablePlan {
   const row = { foot: fieldTop - DUEL_ROW.foot * geo.u, mid: vp.w / 2 };
   const room = partRoom(input, tpl, projector, plans, leaves, drawn, reserve.safe);
   let part = 0, duels: typeof row | undefined, crowded = false;
-  if (combat && fight.size && form === "table" && combat.blocks.length) {
+  // Duels are fights between opponents: my cards in the middle at table size are under my floor, so a fight I am in,
+  // its clash set aside, stays home.
+  const mineFight = [...fight].some((id) => seatOf(id) === input.seats[0]!.seat);
+  if (combat && fight.size && form === "table" && combat.blocks.length && !mineFight) {
     const g0 = gatherIn(plans, "table", row);
     if (g0.duels) {
       const away = new Set(g0.plans.flatMap((p) => p.units.filter((un) => un.fighting).flatMap((un) => [...un.members, ...un.dressing])));
-      const d = room.row(g0.duels.r - g0.duels.l, row.mid, g0.duels.t - DUEL_ROW.clear * geo.u, away);
-      if (d !== null) [part, duels] = [d.part, { ...row, mid: d.mid }];
+      const d = room.row(g0.duels.r - g0.duels.l, row.mid, g0.duels.t - DUEL_ROW.clear * geo.u, away, myDrop);
+      // (the duels stand over my row's tops where the parting has slid them)
+      if (d !== null) [part, duels] = [d.part, { ...row, foot: row.foot + myDrop(d.part), mid: d.mid }];
       else {
         crowded = true;
         // All or nothing: duels that do not fit raise the clash, unless the app has set it aside (everyone home, lit).
@@ -332,6 +356,7 @@ export function planTable(input: TableInput): TablePlan {
   // The stack set aside rests in the open middle, sized by the room it has: the mats part all the way for it.
   if (input.stack.length && drawn.size) part = tpl.part.most;
   if (part) for (const k of drawn) plans[k] = leafSeat(k, part);
+  if (part && mineDrawn) plans[0] = mineSeatAt(part);
   // The composed table, as the scene draws it: every seat (cards acting where they stand), the stack set aside in the
   // open middle the pages leave (so it moves when they do), and the fight: the clash over it all, or at home.
   const compose = () => {
@@ -362,7 +387,7 @@ export function planTable(input: TableInput): TablePlan {
     let moved = false;
     plans.forEach((p, i) => {
       // (The engine's leaf folds by its own ladder: the table does not refold it.)
-      if (!bad.has(p.seat) || p.report.lastResort || drawn.has(i)) return;
+      if (!bad.has(p.seat) || p.report.lastResort || drawn.has(i) || (i === 0 && mineDrawn)) return;
       floor[i] = Math.max(floor[i]!, p.report.pressure) + 1;
       // A seat already at the last notch (it passed its own audit there) has nothing harder to fold to but its last resort.
       plans[i] = floor[i]! > MAX_PRESSURE ? lastResort(inputs[i]!, p, fight) : planSeat(layout, inputs[i]!, { minPressure: floor[i]!, fighting: fight });
@@ -388,14 +413,16 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   // The rev covers everything drawn or reached: every unit's place, frame and turn, the fixtures, every group's quad and
   // face, the stack at rest and as the focus, the gathering, and the parting.
-  const n = (x: number, d = 4) => x.toFixed(d);
+  // (rounded to 10^-d as an integer: as exact as `toFixed` for a key, and much cheaper)
+  const n = (x: number, d = 4) => String(Math.round(x * 10 ** d));
   const v3s = (a: V3) => `${n(a.x)},${n(a.y)},${n(a.z)}`;
   const quads = (qs: readonly Quad[]) => qs.map((q) => q.map((p) => `${n(p.x, 1)},${n(p.y, 1)}`).join(" ")).join(";");
   const placement = final
     .map((p) =>
       [
         p.seat,
-        p.units.map((u) => [u.id, v3s(u.placement.pos), n(u.placement.scale), u.placement.posture, u.placement.frame ? `${v3s(u.placement.frame.right)}/${v3s(u.placement.frame.up)}` : "", u.turn ?? "", u.tapped ? 1 : 0].join(",")).join(";"),
+        // (how many of its cards are tapped too: a well's sign says so)
+        p.units.map((u) => [u.id, v3s(u.placement.pos), n(u.placement.scale), u.placement.posture, u.placement.frame ? `${v3s(u.placement.frame.right)}/${v3s(u.placement.frame.up)}` : "", u.turn ?? "", u.tapped ? 1 : 0, u.members.reduce((t, id) => t + (tapped.has(id) ? 1 : 0), 0)].join(",")).join(";"),
         v3s(p.fixtures.page.pos), n(p.fixtures.page.w, 3), n(p.fixtures.page.d, 3),
         p.fixtures.commander ? `${p.fixtures.commander.card}@${v3s(p.fixtures.commander.placement.pos)}` : "",
         p.fixtures.zones.map((z) => `${z.zone}@${v3s(z.placement.pos)}`).join(","),
@@ -404,7 +431,7 @@ export function planTable(input: TableInput): TablePlan {
     .join("\n");
   const screen = `${quads(hits.groups.map((g) => g.quad))}\n${quads(hits.groups.flatMap((g) => (g.face ? [g.face] : [])))}\n${quads(stack.map((x) => x.quad))}\n${quads(stackUp.map((x) => x.quad))}`;
   const gathered = c.gathered ? JSON.stringify([c.gathered.form, c.gathered.step, c.gathered.extent, c.gathered.duels, c.gathered.moreAt, c.gathered.wings.map((w) => [w.attacker, w.defender, w.plaque, w.w, w.unblocked, w.walker, w.tallyAt, w.columns.map((col) => [col.unit, col.attackers, col.blockers, col.x, col.w, col.clasp, col.slot, col.power, col.blocked])]), c.gathered.more]) : "";
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${gathered}\n${part}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(input.engine ? { leaves } : {}), part, crowded };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${gathered}\n${part}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop: fieldTop + myDrop(part), ...(input.engine ? { leaves } : {}), ...(me ? { mine: me } : {}), part, crowded };
 }
 
 /** A clash shape over a face of my field row or over the chrome: the clash must leave both uncovered. */
@@ -459,12 +486,16 @@ function partRoom(input: TableInput, tpl: TableTemplate, proj: Projector, plans:
   };
   const clear = (k: number, l: number, r: number, top: number, away: ReadonlySet<CardId>): boolean =>
     lowAt(k).every((x) => x.b <= top || x.r <= l || x.l >= r || x.cards.some((id) => away.has(id)));
-  const row = (w: number, mid: number, top: number, away: ReadonlySet<CardId>): { mid: number; part: number } | null => {
+  /** `drop`: how far the row itself moves down at a parting (it stands on my row, which parts toward me). */
+  const row = (w: number, mid: number, top0: number, away: ReadonlySet<CardId>, drop: (part: number) => number = () => 0): { mid: number; part: number } | null => {
     const lo = safe.left + 16 + w / 2, hi = safe.right - 16 - w / 2;
     if (lo > hi) return null;
     const xs = [Math.min(hi, Math.max(lo, mid))];
     for (let d = 8; mid - d >= lo || mid + d <= hi; d += 8) xs.push(...[mid - d, mid + d].filter((x) => x >= lo && x <= hi));
-    for (let k = 0; k <= steps; k++) for (const x of xs) if (clear(k, x - w / 2, x + w / 2, top, away)) return { mid: x, part: k * tpl.part.step };
+    for (let k = 0; k <= steps; k++) {
+      const top = top0 + drop(k * tpl.part.step);
+      for (const x of xs) if (clear(k, x - w / 2, x + w / 2, top, away)) return { mid: x, part: k * tpl.part.step };
+    }
     return null;
   };
   return { row };
@@ -661,6 +692,18 @@ function stackFocus(input: TableInput, proj: Projector, plans: readonly SeatPlan
     for (const [x, y] of at) if (fits(boxAt(f, x, y))) return { ...f, x, y };
     return null;
   };
+  /** `first(f, anywhere(f))` in one pass: the nearest place to the middle where it fits (the earliest on a tie), its box
+   *  computed once and slid (a box at (x, y) is the box at the origin moved by x, y). */
+  const nearest = (f: Omit<FocusAt, "x" | "y">): FocusAt | null => {
+    const b = boxAt(f, 0, 0);
+    let best: [number, number] | null = null, bestD = Infinity;
+    for (let x = sl - b.l; x + b.r <= sr; x += 12)
+      for (let y = st - b.t; y + b.b <= sb; y += 12) {
+        const d = Math.hypot(x - xm, y - ym);
+        if (d < bestD && fits({ l: b.l + x, r: b.r + x, t: b.t + y, b: b.b + y })) [best, bestD] = [[x, y], d];
+      }
+    return best ? { ...f, x: best[0], y: best[1] } : null;
+  };
   const floor = STACK_FOCUS.floor, most = Math.max(floor, STACK_FOCUS.share * vh);
   // The narrowest strip a card under the top may show at the floor: a finger's patch, with room for the grid.
   const least = Math.min(STACK_FOCUS.shingle, (TAP_PX * 1.12) / u / (CW * floor));
@@ -679,13 +722,13 @@ function stackFocus(input: TableInput, proj: Projector, plans: readonly SeatPlan
       // The top at the floor; the rest overlapping further, nearest the middle, anywhere on the open screen.
       for (const share of narrower) {
         const f = { h: floor, row: false, share, shown: n };
-        const got = first(f, ways(f)) ?? first(f, anywhere(f));
+        const got = first(f, ways(f)) ?? nearest(f);
         if (got) return got;
       }
     // Still crowded: the deepest lie under the last one shown.
     for (let shown = n - 1; shown >= 1; shown--) {
       const f = { h: floor, row: false, share: least, shown };
-      const got = first(f, anywhere(f));
+      const got = nearest(f);
       if (got) return got;
     }
     return null;
@@ -738,9 +781,10 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
   const opponents = plans.filter((p) => p !== near);
   let t = across ? Math.max(...pageBox(across).ys) : opponents.length ? Math.max(...opponents.flatMap((p) => pageBox(p).ys)) : 60, b = near ? Math.min(...pageBox(near).ys) : 600;
   for (const un of near?.units ?? [])
-    if (un.role === "creature" && !un.fighting) {
-      const p = un.placement;
-      b = Math.min(b, proj.project({ x: p.pos.x, y: p.pos.y + Math.cos(proj.pitch) * CH * p.scale, z: p.pos.z - Math.sin(proj.pitch) * CH * p.scale }).y / u);
+    if (!un.fighting && (un.placement.frame ? un.placement.posture === "stand" : un.role === "creature")) {
+      // (an arranged card stands on its own axes; mat's stands back by the camera's pitch)
+      const p = un.placement, up = p.frame?.up ?? { x: 0, y: Math.cos(proj.pitch), z: -Math.sin(proj.pitch) };
+      b = Math.min(b, proj.project({ x: p.pos.x + up.x * CH * p.scale, y: p.pos.y + up.y * CH * p.scale, z: p.pos.z + up.z * CH * p.scale }).y / u);
     }
   t = t || 60;
   return { l: left ? Math.max(...pageBox(left).xs) : 60, r: right ? Math.min(...pageBox(right).xs) : 1120, t: t + 10, b: b - 10 };

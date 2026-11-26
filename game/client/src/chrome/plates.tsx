@@ -33,6 +33,22 @@ const ICON: Readonly<Record<IconKind, JSX.Element>> = {
       <rect x="10.5" y="5" width="9.5" height="14" rx="1.6" transform="rotate(10 15 12)" />
     </>
   ),
+  // a headstone
+  graveyard: (
+    <>
+      <path d="M6.5 21V10a5.5 5.5 0 0 1 11 0v11z" />
+      <path d="M4 21h16M12 9.5v5M9.8 11.5h4.4" />
+    </>
+  ),
+  // a card passing out of the world: an open frame, a card leaving it
+  exile: (
+    <>
+      <path d="M4 7.5V4h3.5M16.5 4H20v3.5M20 16.5V20h-3.5M7.5 20H4v-3.5" />
+      <rect x="8.5" y="7" width="7" height="10" rx="1.2" />
+    </>
+  ),
+  // a crown: the commander waiting in the command zone
+  command: <path d="M4 17.5 3 8l5 4 4-6.5 4 6.5 5-4-1 9.5zM5 20.5h14" />,
 };
 
 export function Icon({ kind, none }: { kind: IconKind; none?: boolean | undefined }): JSX.Element {
@@ -51,6 +67,9 @@ const WORD: Readonly<Record<IconKind, string>> = {
   shield: "untapped creatures",
   mana: "untapped mana sources",
   hand: "cards in hand",
+  graveyard: "cards in the graveyard",
+  exile: "cards in exile",
+  command: "in the command zone",
 };
 
 /**
@@ -73,7 +92,12 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             aria-label={said}
             aria-expanded={open === p.seat}
             style={`left:${p.x}px;top:${p.y}px;${p.mine ? "transform:translate(-50%,-100%);" : ""}--u:${p.unit}px;--seat:var(--seat-${p.place})`}
-            onClick={() => send(p.out ? { t: "seat", seat: p.seat } : { a: "tap", on: { group: p.group as never, members: [] } })}
+            onClick={(e) => {
+              // (my graveyard's and exile's counts open those zones, whatever else a tap on my plate means: my commander)
+              const zone = (e.target as Element).closest?.("[data-zone]")?.getAttribute("data-zone");
+              if (zone === "graveyard" || zone === "exile") return send({ t: "zone", seat: p.seat, zone });
+              send(p.out ? { t: "seat", seat: p.seat } : { a: "tap", on: { group: p.group as never, members: [] } });
+            }}
           >
             <span class="bronze">
               <i class="sigil" />
@@ -88,7 +112,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             {p.icons.length ? (
               <span class="tab">
                 {p.icons.map((i) => (
-                  <span key={i.kind} class="fig">
+                  <span key={i.kind} class="fig" {...(i.kind === "graveyard" || i.kind === "exile" ? { "data-zone": i.kind } : {})}>
                     <Icon kind={i.kind} none={i.none} />
                     {i.figure}
                   </span>

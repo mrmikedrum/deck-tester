@@ -49,7 +49,7 @@ interface EngineDid {
 }
 /** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
 const did = (p: TablePlan): EngineDid => {
-  const ls = [...(p.leaves?.values() ?? [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
+  const ls = [...(p.leaves?.values() ?? []), ...(p.mine ? [p.mine] : [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
   const sum = (f: (x: (typeof fs)[number]) => number) => fs.reduce((t, x) => t + f(x), 0);
   return { units: sum((f) => f.units.length), candidates: sum((f) => f.report.candidates), audits: sum((f) => f.report.audits + f.report.poses.length), overflow: ls.some((l) => !!l.result?.overflow), error: ls.some((l) => !!l.error) };
 };

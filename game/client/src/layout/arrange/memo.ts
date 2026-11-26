@@ -59,6 +59,7 @@ export function containerKey(c: Container, s: number, du: number, bands: readonl
     JSON.stringify(c.keepouts),
     JSON.stringify(c.floors),
     JSON.stringify(c.safe),
+    c.facing === undefined ? "" : n(c.facing),
     n(s),
     n(du),
     bands.map((x) => `${x.posture}${x.markers ? "m" : ""}${x.proud ? "p" : ""}:${x.tiers.map((t) => t.id).join("+")}`).join("|"),
@@ -132,7 +133,7 @@ const cardMix = (m: Mix, c: ArrCard): void => {
   const t = c.types;
   const bits =
     +t.creature | (+t.land << 1) | (+t.artifact << 2) | (+t.enchantment << 3) | (+t.planeswalker << 4) | (+t.battle << 5) | (+c.supertypes.legendary << 6) | (+c.supertypes.basic << 7) |
-    (+c.token << 8) | (+c.commander << 9) | (+c.copy << 10) | (+c.faceDown << 11) | (+c.manaSource << 12) | (+c.tapped << 13) | (+c.sick << 14) | (+(c.reach === "table") << 15);
+    (+c.token << 8) | (+c.commander << 9) | (+c.copy << 10) | (+c.faceDown << 11) | (+c.manaSource << 12) | (+c.tapped << 13) | (+c.sick << 14) | (+(c.reach === "table") << 15) | (+!!c.provisional << 16);
   m.num(c.id).num(bits).str(c.controller).str(c.owner).str(c.cardKey).str(c.lookKey).str(c.name).str(c.subtypes.join(" ")).str(c.keywords.join(","));
   m.opt(c.power).opt(c.toughness).opt(c.loyalty).opt(c.defense).num(c.counters).opt(c.attachedTo).num(c.manaValue).str(c.produces.join(""));
 };
@@ -163,6 +164,7 @@ function policyHash(p: PolicyMemory): string {
   m.num(p.folds.length);
   for (const f of p.folds) m.str(f);
   m.str(p.tidy ? `${p.tidy.turn}|${p.tidy.phase}|${p.tidy.ranking.join(",")}` : "-").str(p.seen ? `${p.seen.turn}|${p.seen.phase}` : "-");
+  m.str((p.guessed ?? []).join(","));
   POLICY_HASH.set(p, (h = `${(m.a >>> 0).toString(36)}.${(m.b >>> 0).toString(36)}`));
   return h;
 }

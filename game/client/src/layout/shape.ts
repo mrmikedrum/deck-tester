@@ -195,12 +195,16 @@ export function inQuad(q: Quad, x: number, y: number): boolean {
   return true;
 }
 
-export const bounds = (q: Quad): { l: number; r: number; t: number; b: number } => ({
-  l: Math.min(...q.map((p) => p.x)),
-  r: Math.max(...q.map((p) => p.x)),
-  t: Math.min(...q.map((p) => p.y)),
-  b: Math.max(...q.map((p) => p.y)),
-});
+export const bounds = (q: Quad): { l: number; r: number; t: number; b: number } => {
+  let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+  for (const p of q) {
+    if (p.x < l) l = p.x;
+    if (p.x > r) r = p.x;
+    if (p.y < t) t = p.y;
+    if (p.y > b) b = p.y;
+  }
+  return { l, r, t, b };
+};
 
 const lerpQuad = (q: Quad, u: number, v: number): Point => {
   // bilinear over (foot-left, foot-right, top-right, top-left)

@@ -64,14 +64,13 @@ test.describe("pay", () => {
     expect((await table.answered(1))[0].answer).toEqual([2]);
   });
   test("sources of different cards fanned in one pile: the player says which", async ({ table }) => {
-    // (The new entry opens the pile to choose the card, as for any gesture on distinct cards; the current client asks
-    // "Which source?".)
+    // (The new entry lays the sources a payment offers out of my piles where my row holds them, so one tap takes
+    // Arcane Signet; the current client asks "Which source?".)
     const s = snapshot("main"), ring = you(s, "Sol Ring").id, signet = you(s, "Arcane Signet").id;
     await table.open(payment(s, ["Sol Ring (C)", "Arcane Signet (U)"], [{ card: ring }, { card: signet }]));
     await table.tapCard(signet);
     if (NEW) {
       expect(table.answers()).toEqual([]);
-      await table.tap(await table.locate({ sifted: signet }));
     } else {
       expect(await table.sheetTitle()).toBe("Which source?");
       await table.sheet().locator("button.l-opt").filter({ hasText: "Arcane Signet (U)" }).click();
@@ -172,6 +171,13 @@ test.describe("targets and choices on the table", () => {
   test("an option inside a pile of unlike cards is chosen from a sheet", async ({ table }) => {
     const s = snapshot("main"), ring = you(s, "Sol Ring");
     await table.open(withDecision(s, { kind: "choose", prompt: "Choose an artifact (Ghostly Flicker)", options: ["Sol Ring"], refs: [{ card: ring.id }], min: 1, max: 1 }));
+    if (NEW) {
+      // the new entry lays the option out of my pile where my row holds it: one tap sends it
+      expect(await table.sheet().count()).toBe(0);
+      await table.tapCard(ring.id);
+      expect((await table.answered(1))[0].answer).toEqual([1]);
+      return;
+    }
     expect(await table.sheet().count()).toBe(1);
     expect(await table.buttons()).toContain("Choose…");
     await grid(table).first().click();

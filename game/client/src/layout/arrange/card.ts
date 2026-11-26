@@ -91,6 +91,8 @@ export function arrCardOf(c: Card): ArrCard {
     reach: reachOf(c.face.text),
     manaValue: valueOf(c.face.cost),
     produces: c.face.produces,
+    // (a token's facts are all in the snapshot: no data is coming for it)
+    ...(c.face.catalogued || c.token ? {} : { provisional: true }),
   };
 }
 

@@ -1,7 +1,7 @@
 // The seats as the chrome tells them: each seat's nameplate with its summary as icons, and the nameplate focus with the
 // same summary in words and the seat's zones picked up as printed cards. Figures are facts the engine sent, never a
 // verdict. The client's words name a seat by its name, never by a pronoun. Pure.
-import { FEED_UNITS, designUnit } from "../layout";
+import { FEED_UNITS, HAND_UNITS, designUnit } from "../layout";
 import type { TablePlan } from "../layout";
 import { RULE_CARDS, isLand } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
@@ -224,6 +224,16 @@ export function summaryOf(model: TableModel, seat: SeatId): Tally {
   return t;
 }
 
+/** My nameplate's icons: my graveyard and exile once anything is there, a commander waiting in the command zone. */
+function myIcons(model: TableModel, seat: SeatId): IconView[] {
+  const n = (zone: "graveyard" | "exile" | "command") => model.zone(seat, zone).length;
+  return [
+    ...(n("command") ? [{ kind: "command" as const, figure: String(n("command")) }] : []),
+    ...(n("graveyard") ? [{ kind: "graveyard" as const, figure: String(n("graveyard")) }] : []),
+    ...(n("exile") ? [{ kind: "exile" as const, figure: String(n("exile")) }] : []),
+  ];
+}
+
 /** The icons at rest: power on the table once there is any, untapped mana sources once there is one, cards in hand
  * always. */
 function restIcons(model: TableModel, seat: SeatId, t: Tally): IconView[] {
@@ -265,7 +275,9 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
     const at = plan ? centre(plan, s.id) : null;
     const i = others.indexOf(s);
     const mark = marks.get(s.id);
-    const icons = mine || s.out ? [] : restIcons(model, s.id, summaryOf(model, s.id));
+    // Mine says what of my game is off the table (my own table is in front of me): my graveyard and exile by count, and
+    // a commander waiting in the command zone; the nameplate's focus holds them.
+    const icons = s.out ? [] : mine ? myIcons(model, s.id) : restIcons(model, s.id, summaryOf(model, s.id));
     return {
       seat: String(s.id),
       group: `plate:${s.id}`,
@@ -278,7 +290,6 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       out: s.out,
       mid: at?.x ?? (mine ? w / 2 : ((i + 1) * w) / (others.length + 1)),
       bottom: at?.bottom ?? null,
-      // Mine carries no icons at rest: my own table is in front of me (my nameplate focus has the words).
       icons,
       width: plateWidth(String(s.name), s.life, icons, measure, s.out),
     };
@@ -322,7 +333,8 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       out: r.out,
       icons: r.icons,
       unit: plateUnit,
-      x: r.mine ? Math.min(w - safe.right - half, Math.max(safe.left + half, r.mid)) : lefts!.get(r.seat)!,
+      // (mine: centred on its place, but never over the hand, however wide its icons make it)
+      x: r.mine ? Math.min(w - safe.right - half, Math.max(safe.left + half, safe.left + (HAND_UNITS.right + PLATE.gap * 2) * u + half, r.mid)) : lefts!.get(r.seat)!,
       y: r.mine ? Math.min(r.bottom ?? h, h - safe.bottom - PLATE.bottom * u) : top,
     };
   });

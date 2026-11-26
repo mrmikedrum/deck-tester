@@ -472,3 +472,44 @@ Against the last gate run (Nov 25: dense 7 / 9, the combat of twelve 92 / 98), t
 dense board about 2 ms slower at worst; both still miss the 8 ms worst case by 1 to 3 ms, as `mat` alone does (9).
 Most of a plan is still `mat` (my side and the rest), which steps 9 and 12 replace. Planning runs on a snapshot, not
 on every frame, so a miss costs one late frame on that snapshot.
+
+## planTable with my side on the engine — 2026-11-26
+
+`game/tools/bench-plan.mjs`, Node 24, the inputs planned at 1210 × 834, 200 plans each, median / p90 / worst ms per
+`planTable` as the app plans; main and this branch back to back on the Mac (load average 4 to 5):
+
+| Input | Main (my side on `mat`) | My side on the engine | And the speedups |
+|---|---|---|---|
+| The design pass's turn 15 | 0.92 / 1.16 / 5.64 | 0.88 / 1.18 / 2.57 | 0.59 / 0.69 / 1.47 |
+| Dense | 1.50 / 1.73 / 2.78 | 1.34 / 1.48 / 1.95 | 0.62 / 0.68 / 1.70 |
+| 40 distinct names | 0.77 / 0.82 / 1.18 | 0.72 / 0.75 / 1.36 | 0.44 / 0.46 / 1.35 |
+| A combat of twelve | 0.82 / 0.88 / 1.32 | 0.64 / 0.68 / 1.52 | 0.51 / 0.64 / 1.82 |
+| 30 snapshots in sequence | 1.66 / 2.52 / 5.46 | 1.89 / 3.16 / 6.12 | 1.63 / 2.42 / 5.44 |
+
+Moving my side off `mat` saved a little; most of a dense plan was the stack's focus searching for room (a third of it:
+it sorted every 12 px grid point of the screen and rebuilt its box at each) and the table's audit. The speedups change
+no plan: the search scans once for the nearest point that fits, `bounds` lost its `map` and spread, the rev formats by
+integer rounding. Node's worst cases are single garbage-collection outliers. Each sequence snapshot changes every
+seat, so it arranges four containers a plan (a real snapshot usually changes one).
+
+On the iPad, earlier runs went 6 to 9 times Node's p90 (its clock is 1 ms, so its worst is about its p90): the dense
+board should come to about 4 to 6 ms worst and the combat of twelve about 5 to 6, under the 8 ms budget; the sequence
+stays over it (about 13). The owner's run (`workbench.html?only=bench`, held in landscape) decides.
+
+After the review (my mana lying in front of my field, mana by kind, zones on my nameplate), the same bench at load
+average about 17, as the app plans: turn 15 0.61 / 1.12 / 2.83; dense 0.84 / 0.93 / 1.31; 40 distinct names 0.45 /
+0.47 / 0.98; the combat of twelve 0.49 / 0.52 / 1.31; the sequence 1.61 / 2.34 / 4.94. Within the noise of the run above.
+
+**The iPad** (Chrome on iPadOS, held in landscape, build dc67eef), median / p90 / worst ms per `planTable`:
+
+| Input | As the app plans | Every engine leaf changed each plan | `mat` alone |
+|---|---|---|---|
+| The design pass's turn 15 | 1 / 1 / 2 | 2 / 4 / 9 | 1 / 1 / 3 |
+| Dense | 1 / 1 / 2 | 2 / 3 / 7 | 1 / 1 / 2 |
+| 40 distinct names | 0 / 1 / 2 | 2 / 3 / 9 | 1 / 1 / 2 |
+| A combat of twelve | 0 / 1 / 2 | 2 / 3 / 5 | 1 / 1 / 3 |
+| 30 snapshots in sequence | 2 / 3 / 6 | 2 / 3 / 5 | 1 / 1 / 2 |
+
+Every input is inside the 8 ms budget as the app plans (dense 2 ms worst, down from 11 with every opponent on the
+engine and `mat` laying out my side). Only the synthetic every-leaf-rebuilt column touches 9 ms at worst, on single
+outliers. The iPad ran far below the 6 to 9 times Node's p90 estimated above.

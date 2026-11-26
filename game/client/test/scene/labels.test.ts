@@ -42,4 +42,24 @@ describe("pile labels", () => {
     const out = placeLabels(plan, [ask("a", "Beast", 3)], chars);
     expect(out.has("a")).toBe(false);
   });
+  it("on my side a label stays off a standing neighbour's face, which would hide it: it is shortened or slid clear, or gives way to the chip", () => {
+    // a fanned pile, and a standing card beside it whose face reaches over the pile's left end (above its name strip)
+    const pile = { id: "pile", kind: "pile", seat: "You", members: [], quad: quad(200, 300, 120, 90), order: 0 };
+    const face = quad(130, 250, 90, 110);
+    const sides = [
+      // an engine unit: its place on the table, and its face as drawn
+      { id: "card", kind: "card", seat: "You", members: [], quad: quad(120, 240, 110, 130), face, order: 1 },
+      // a card with no separate face: its quad is what is drawn
+      { id: "card", kind: "card", seat: "You", members: [], quad: face, order: 1 },
+    ];
+    for (const card of sides) {
+      const plan = { hits: { rev: 0, groups: [pile, card] } } as unknown as TablePlan;
+      const l = placeLabels(plan, [ask("pile", "Elemental", 5, true)], chars).get("pile");
+      // shortened or slid, it clears the face (or gives way to the chip)
+      if (l) expect(260 + l.slide * 120 - (chars(labelText(l.name, 5, null), l.px) + LABEL_PX.pad * l.px) / 2).toBeGreaterThanOrEqual(220 - 2);
+    }
+    // theirs keep the ledger's rule (name strips and feet only)
+    const theirs = { hits: { rev: 0, groups: [pile, sides[1]!].map((g) => ({ ...g, seat: "Dack" })) } } as unknown as TablePlan;
+    expect(placeLabels(theirs, [ask("pile", "Elemental", 5)], chars).get("pile")?.slide).toBe(0);
+  });
 });

@@ -86,6 +86,12 @@ export interface Container {
   readonly growth: { readonly d: readonly number[] } | "fixed";
   readonly entry: EntryId;
   readonly paging: { readonly page: number } | null;
+  /**
+   * Where the policy's last band stands (v of its first row's feet), for a container laid from my edge toward the middle:
+   * my field stands on its line however many rows the bands before it take, and they fill the space from the anchor up
+   * to it. Absent, every band is laid from the anchor in turn (a leaf).
+   */
+  readonly facing?: number;
 }
 
 export interface FramePose {
@@ -138,6 +144,9 @@ export interface ArrCard {
   readonly reach: "table" | "self";
   readonly manaValue: number;
   readonly produces: readonly string[];
+  /** Only the snapshot's facts so far (not a token): its card data has not arrived, so what it is may still change. Nothing remembers
+   *  where it was put (a card whose data lands is placed by what it is, not held where its guess put it). */
+  readonly provisional?: boolean;
 }
 
 export interface Relations {
@@ -413,6 +422,8 @@ export interface TierSpec {
   readonly markers?: boolean;
   /** Its fans may push a notable member proud: reserve that strip behind the row. */
   readonly proud?: boolean;
+  /** Where its units take a standing row's free places: nearest the middle first (the default), or from an end. */
+  readonly from?: "centre" | "left" | "right";
 }
 
 /** Which groups a fold step takes. */
@@ -425,6 +436,8 @@ export type Selector =
       /** Every member tapped, beside a sibling of the same card with one untapped. */
       readonly spent?: boolean;
       readonly creatures?: boolean;
+      /** A fan step also takes these tiers' units, fanned or not, into its own fan (my mana's kinds into one well). */
+      readonly gather?: readonly TierId[];
     }
   | { readonly all: true };
 
@@ -435,7 +448,8 @@ export type FoldStep =
   | { readonly op: "split-spent"; readonly where: Selector; readonly to: TierId }
   | { readonly op: "stack"; readonly where: Selector }
   | { readonly op: "fan"; readonly where: Selector; readonly show: number }
-  | { readonly op: "demote"; readonly where: Selector; readonly to: DemoteTo }
+  /** `ifRoom`: only while the band it goes to has room for it (my mana spilling into free places of my field). */
+  | { readonly op: "demote"; readonly where: Selector; readonly to: DemoteTo; readonly ifRoom?: boolean }
   | { readonly op: "summary"; readonly where: Selector };
 
 /** What a policy sees beyond the cards: who looks, whose they are, what acts. Never the moment, but where it says so. */
@@ -508,6 +522,8 @@ export interface PolicyMemory {
   /** The turn and phase the last plan saw (not counting plans while cards were in flight): a phase change is measured
    *  from it, never from the last re-sort. */
   readonly seen: { readonly turn: number; readonly phase: Phase } | null;
+  /** Cards placed on the snapshot's facts alone at the last plan (their data to come): when they land, the plan knows. */
+  readonly guessed?: readonly CardId[];
 }
 
 /** Plain JSON, versioned. Places and keys, never classifications. */

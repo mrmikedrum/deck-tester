@@ -24,6 +24,8 @@ export interface LeafInput {
   readonly involved: ReadonlySet<CardId>;
   readonly offered: ReadonlySet<CardId>;
   readonly choosing: boolean;
+  /** The decision's kind (null: none). */
+  readonly decision?: string | null;
   readonly moment: Moment;
   readonly clock: Clock;
   readonly memory: ContainerMemory | null;
@@ -36,6 +38,8 @@ export interface LeafInput {
 /** The opponents' leaves for `planTable`: every one arranged, and drawn as its seat's plan when `draw`. */
 export interface EngineInput {
   readonly leaves: readonly LeafInput[];
+  /** My side (step 9), laid out by `mine`. */
+  readonly mine?: LeafInput;
   readonly draw: boolean;
 }
 
@@ -58,6 +62,8 @@ export interface EngineOptions {
   readonly auditPoses?: boolean;
   /** Draw the leaves (each the seat's plan), not only record them. */
   readonly draw?: boolean;
+  /** Lay my side out with the engine too (the default); false keeps `mat`'s. */
+  readonly mine?: boolean;
 }
 
 /** A seat's leaf input from the model: its battlefield as `boardOf` draws it, read from current types. */
@@ -71,6 +77,7 @@ export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlyS
     involved,
     offered: new Set(decision.options),
     choosing: decision.kind !== null,
+    decision: decision.kind,
     moment: momentOf(model, decision),
     clock: { turn: model.turn, phase: model.phase, active: model.active, settling },
     memory: o.memory ?? null,

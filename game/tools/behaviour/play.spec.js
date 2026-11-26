@@ -1,6 +1,6 @@
 // 2. `play` decisions: Pass, dragging a hand card up, tapping glowing permanents, direct mana, rapid input, cancelled drags.
 //    (also d. duplicate input, e. pointer cancellation, b. mana activation)
-const { test, expect, snapshot, withDecision, find, inHand, opponentSpell, sleep, locate, pending } = require("./harness.js");
+const { test, expect, NEW, snapshot, withDecision, find, inHand, opponentSpell, sleep, locate, pending } = require("./harness.js");
 const { label } = require("./labels.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
@@ -115,6 +115,16 @@ test.describe("tapping what glows", () => {
     await table.page.locator(".l-actions button").first().click();
     expect((await table.answered(1))[0].answer).toEqual([7]);
   });
+  test("my plate's graveyard count opens my graveyard, though a tap on my plate casts my commander", async ({ table }) => {
+    test.skip(!NEW, "My graveyard is counted on my nameplate in the new entry");
+    const s = snapshot("main");
+    await table.open(s);
+    await table.page.locator('.l-plate.mine [data-zone="graveyard"]').click();
+    await table.step(600);
+    await expect(table.page.locator(".l-sift")).toBeVisible();
+    expect(await table.page.locator(".l-actions button").count()).toBe(0);
+    expect(table.answers()).toEqual([]);
+  });
   test("\"Choose a play\" lists everything; the list never sends by itself", async ({ table }) => {
     await table.open("main");
     await table.press(label("Choose a play (6)"));
@@ -126,12 +136,38 @@ test.describe("tapping what glows", () => {
   });
 });
 
+test.describe("an attachment I can use", () => {
+  test("an Equipment with Equip available is reached through its creature: a tap opens both, the Equipment's play is there", async ({ table }) => {
+    test.skip(!NEW, "The arrangement engine's host chooser belongs to the new entry");
+    const s = snapshot("main");
+    const host = find(s, "You", "Master of Waves");
+    s.view.players.find((p) => p.name === "You").battlefield.push({ id: 990, name: "Swiftfoot Boots", type: "Artifact - Equipment", text: "Equip {1}", cost: "2", attachedTo: host.id, owner: "You", controller: "You" });
+    await table.open(withDecision(s, { kind: "play", prompt: "", options: ["Pass", "Swiftfoot Boots: Equip {1}"], refs: [{}, { card: 990, spell: false }], min: 1, max: 1 }));
+    await table.tapCard(host.id);
+    await table.step(1500); // the chooser opens
+    await table.tap(await table.locate({ sifted: 990 }));
+    expect(await table.page.locator(".l-actions button").count()).toBe(1);
+    await table.page.locator(".l-actions button").first().click();
+    expect((await table.answered(1))[0].answer).toEqual([2]);
+  });
+});
+
 test.describe("mana abilities", () => {
   const mana = s => withDecision(s, { kind: "play", prompt: "", options: ["Pass", "Mystic Sanctuary: {T}: Add {U}."], refs: [{}, { card: find(s, "You", "Mystic Sanctuary").id, spell: false, mana: true }], min: 1, max: 1 });
+  // (In the new entry Mystic Sanctuary may lie in a pile of my lands, which holds still while I have priority: then a
+  // tap opens the pile, a second the land.)
+  const tapSanctuary = async (table, s) => {
+    const id = find(s, "You", "Mystic Sanctuary").id;
+    if (!NEW) return table.click(await locate(table.page, { card: id }));
+    await table.tapCard(id);
+    if (await table.page.locator(".l-actions button").count()) return;
+    await table.step(1500); // the pile opens
+    await table.tap(await table.locate({ sifted: id }));
+  };
   test("tapping a source whose only option is mana opens it with the ability; choosing sends it", async ({ table }) => {
     const s = snapshot("main");
     await table.open(mana(s));
-    await table.click(await locate(table.page, { card: find(s, "You", "Mystic Sanctuary").id }));
+    await tapSanctuary(table, s);
     expect(await table.page.locator(".l-actions button").count()).toBe(1);
     await table.page.locator(".l-actions button").first().click();
     expect((await table.answered(1))[0].answer).toEqual([2]);
@@ -139,7 +175,7 @@ test.describe("mana abilities", () => {
   test("the colour question that follows is a sheet; one tap sends the colour", async ({ table }) => {
     const s = snapshot("main");
     await table.open(mana(s));
-    await table.click(await locate(table.page, { card: find(s, "You", "Mystic Sanctuary").id }));
+    await tapSanctuary(table, s);
     await table.page.locator(".l-actions button").first().click();
     await table.answered(1);
     await table.push(withDecision(s, { kind: "choose", prompt: "Choose a color (Sol Ring)", options: ["white", "blue", "black", "red", "green"], refs: [{ name: "white" }, { name: "blue" }, { name: "black" }, { name: "red" }, { name: "green" }], min: 1, max: 1 }));
