@@ -262,10 +262,11 @@ describe("my side's policy (`mine`)", () => {
     expect(Math.min(z("Sol Ring"), z("Temple"))).toBeGreaterThan(Math.max(z("Wurm"), z("Bear")) + 1);
   });
 
-  it("review: the same lands keep my field's spill places plan after plan (equal weights never swap)", () => {
+  it("review: the same rocks keep my field's spill places plan after plan (equal weights never swap)", () => {
     resetIds(300);
     const creatures = Array.from({ length: 8 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
-    const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    // (rocks: lands never spill among my creatures, breaks.ts)
+    const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "rock", name: `Rock ${i}` }));
     const cards = [...creatures, ...lands];
     let r = mineRun({ cards });
     const spilled = (x: ArrangeResult) => x.fit.units.filter((u) => u.tier === "spill").map((u) => u.members[0]).sort();
@@ -277,10 +278,22 @@ describe("my side's policy (`mine`)", () => {
     }
   });
 
-  it("offered sources step out into free places only: what rest shows stays where it is, the rest lit in their pile", () => {
+  it("my lands lie on their own row: with my mana row full they pile there, never among my creatures (playtest item 11)", () => {
     resetIds(300);
     const creatures = Array.from({ length: 8 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
     const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const r = mineRun({ cards: [...creatures, ...lands] });
+    const land = new Set(lands.map((l) => l.id));
+    for (const u of r.fit.units) if (u.members.some((id) => land.has(id))) expect(u.tier, u.id).not.toBe("spill");
+    // with no creature in my field yet, a land may still stand there: the row is its own
+    const alone = mineRun({ cards: lands });
+    expect(alone.fit.units.some((u) => u.tier === "spill")).toBe(true);
+  });
+
+  it("offered sources step out into free places only: what rest shows stays where it is, the rest lit in their pile", () => {
+    resetIds(300);
+    const creatures = Array.from({ length: 8 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "rock", name: `Rock ${i}` }));
     const cards = [...creatures, ...lands];
     const rest = settled({ cards });
     const offered = new Set(lands.slice(0, 4).map((l) => l.id));

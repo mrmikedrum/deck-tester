@@ -209,6 +209,8 @@ export interface SlotRef {
   readonly row: number;
   readonly interval: number;
   readonly place: number;
+  /** A lying unit's middle across its row (frame units): a run keeps where it lies while its units last. */
+  readonly u?: number;
 }
 
 export interface Row {

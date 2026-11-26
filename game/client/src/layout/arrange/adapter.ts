@@ -123,8 +123,9 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const zones: Fixtures["zones"] = [];
   if (left.length)
     units.push({ id: `u:entry:${board.seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(f, 0, behind + 0.2), scale: S_TABLE, posture: "flat" } });
-  // The page from its front row's feet back (the strip in front of them, for a stack's dice, is the open table's).
-  const v0 = fit.rows[0] ? fit.rows[0].v : 0;
+  // The page from the front line back (the strip in front of it, for a stack's dice, is the open table's): the template's,
+  // never its rows', so a mat neither grows nor shrinks as cards come and go.
+  const v0 = SLOT.margin + SLOT.strip * S_TABLE;
   const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw }, plate, zones, ...(commander ? { commander } : {}) };
   const memory: LayoutMemory = { v: 1, paradigm: ARRANGED, fit: fit.memory };
   const folded = fit.units.reduce((t, u) => t + Math.max(0, u.members.length - 1), 0);

@@ -33,6 +33,8 @@ import type {
 import { auditUnits } from "./audit";
 import { Lru, containerKey, inputKey, memoryHash } from "./memo";
 import { attachmentRoots } from "./card";
+import { mayShare, rowClassOf, runsOf } from "./breaks";
+import type { RowClass } from "./breaks";
 import type { AuditUnit } from "./audit";
 import { drawUnit } from "./draw";
 import type { Drawn } from "./draw";
@@ -86,6 +88,8 @@ interface G {
   readonly arrival: number;
   /** A retyped card's place from the last plan. */
   readonly prefer: { readonly tier: TierId; readonly slot: SlotRef | null } | null;
+  /** What it is for the break rules (breaks.ts), on current types. */
+  readonly cls: RowClass;
 }
 
 /** What the ladder has done to the groups so far. */
@@ -107,6 +111,7 @@ interface U extends DraftUnit {
   readonly prefer: G["prefer"];
   /** How many fan members show their edges (its fan step's `show`); 1 for anything else. */
   readonly show: number;
+  readonly cls: RowClass;
 }
 
 interface Edit {
@@ -397,6 +402,7 @@ function planGroups(
       allTapped: cs.every((x) => x.tapped),
       anyUntapped: cs.some((x) => !x.tapped),
       name: cs[0]!.cardKey,
+      cls: rowClassOf(cs),
       arrival: Math.min(...g.members.map((id) => seq[id] ?? 0)),
       prefer: null,
       ...extra,
@@ -623,12 +629,15 @@ function walk(
         if (d && (l.count.get(d.index) ?? 0) > 0 && left > 0) batch = { step: e.index, band: target, held: wasHeld, budget: left, filled: new Set([...l.count].filter(([, n]) => n > 0).map(([b]) => b)) };
       }
     }
-    // A demote that goes only where there is room: not when the band it goes to would overflow with it.
+    // A demote that goes only where there is room: not when the band it goes to would overflow with it, nor into a
+    // standing row the break rules keep it out of (breaks.ts: my lands do not spill among my creatures).
     if (need && step.op === "demote" && step.ifRoom && g) {
       const to = typeof step.to === "string" ? step.to : g.creature ? step.to.creature : step.to.other;
+      const band = bandOf.get(to)!;
+      const apart = band.posture === "stand" && groups.some((o) => o.key !== g.key && !st.summary.has(o.key) && band.tiers.some((t) => t.id === st.tier.get(o.key)) && !mayShare(g.cls, o.cls));
       const moved: State = { ...st, tier: new Map(st.tier).set(g.key, to) };
-      estimates++;
-      if (lay(bands, planner, draftUnits(policy, groups, moved, tierOf, s), tight, null).over.has(bandOf.get(to)!.index)) {
+      if (!apart) estimates++;
+      if (apart || lay(bands, planner, draftUnits(policy, groups, moved, tierOf, s), tight, null).over.has(band.index)) {
         need = false;
         batch = null;
       }
@@ -683,7 +692,7 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       out.push(...hit.units);
       continue;
     }
-    const common = { tier, imp: g.imp, pinned: g.pinned, acting: g.acting, retyped: g.retyped, arrival: g.arrival, prefer: g.prefer, groups: [g.key], show: 1 };
+    const common = { tier, imp: g.imp, pinned: g.pinned, acting: g.acting, retyped: g.retyped, arrival: g.arrival, prefer: g.prefer, groups: [g.key], show: 1, cls: g.cls };
     // It stands where its tier stands (or it acts, or its types just changed where it lies); demoted, it lies.
     const stands = g.presented && (!lying(tier) || g.acting || g.retyped);
     const mine: U[] = [];
@@ -716,6 +725,7 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       arrival: Math.min(...sorted.map((g) => g.arrival)),
       prefer: null,
       show: n,
+      cls: sorted.every((g) => g.cls === "land") ? "land" : "other",
     });
   }
   if (summary.length) {
@@ -737,6 +747,7 @@ function draftUnits(policy: Policy, groups: readonly G[], st: State, tierOf: Rea
       arrival: Math.min(...sorted.map((g) => g.arrival)),
       prefer: null,
       show: 1,
+      cls: sorted.every((g) => g.cls === "land") ? "land" : "other",
     });
   }
   // In the order lying bands pack them (tier, a retyped card first, then the heaviest), so no band sorts again.
@@ -780,7 +791,8 @@ function lay(bands: readonly Band[], planner: RowPlanner, units: readonly U[], t
     if (!mine.length) continue;
     const later = bands.slice(b.index + 1).filter((x) => per[x.index]!.length);
     const less = (tight.get(b.index) ?? 0) + (slackFor === b.index ? 1 : 0);
-    while (!(got.length && fitsBand(b, mine, got, less))) {
+    // (a lying band takes another row for its break rules' runs while the space has one: breaks.ts)
+    while (!(got.length && fitsBand(b, mine, got, less, true))) {
       const next: RowGeo | null = planner.next(prev, b);
       if (!next || (got.length && !roomAfter(next, later))) break;
       got.push(next);
@@ -796,10 +808,26 @@ function lay(bands: readonly Band[], planner: RowPlanner, units: readonly U[], t
 
 const span = (x: U, row: RowGeo): number => Math.max(1, Math.ceil(x.width / row.base - EPS));
 
-function fitsBand(b: Band, units: readonly U[], rows: readonly RowGeo[], less: number): boolean {
+/** `broken`: with the break rules' runs each starting a row (lying bands; a standing band's places are a grid). */
+function fitsBand(b: Band, units: readonly U[], rows: readonly RowGeo[], less: number, broken = false): boolean {
   if (!rows.length) return !units.length;
   if (b.posture === "stand") return units.reduce((t, x) => t + span(x, rows[0]!), 0) <= rows.reduce((t, r) => t + placesOf(r), 0) - less;
+  if (broken) {
+    const r = broke(units);
+    if (r.breaks.size) return packBand(rows, r.seq, less * rows[0]!.base, 0, r.breaks) !== null;
+  }
   return packBand(rows, ordered(b, units), less * rows[0]!.base) !== null;
+}
+
+/** A lying sequence as the break rules split it (breaks.ts): the runs in order, and where each but the first starts. */
+function broke(units: readonly U[]): { seq: U[]; breaks: Set<number> } {
+  const runs = runsOf(units, (x) => x.cls), breaks = new Set<number>();
+  let n = 0;
+  for (const r of runs) {
+    if (n) breaks.add(n);
+    n += r.length;
+  }
+  return { seq: runs.flat(), breaks };
 }
 
 /** A lying band's units in their tier order, then the heaviest first. */
@@ -837,34 +865,94 @@ interface Packed {
   readonly w: number;
 }
 
-/** Pack units left to right across a lying band's rows and their intervals, each run centred; null when they do not
- *  fit. `less` world units of room are held back from the first interval. */
-/** `tail`: the last units lie after the run, which is centred without them; null where they then run off its span. */
-function packBand(rows: readonly RowGeo[], units: readonly U[], less = 0, tail = 0): Packed[] | null {
+/**
+ * Pack units left to right across a lying band's rows and their intervals; null when they do not fit. `less` world units
+ * of room are held back from the first interval. `tail`: the last units lie after the run, which is placed without them;
+ * null where they then run off its span. `breaks`: indices whose unit starts a row after the one before it (the break
+ * rules' runs), null where no row is left for one. Each run is centred in its span, unless `anchor` gives where one of
+ * its units lay last plan: then the run keeps that unit there (as near as its span allows), so what lies stays put while
+ * a newcomer joins its end.
+ */
+function packBand(rows: readonly RowGeo[], units: readonly U[], less = 0, tail = 0, breaks?: ReadonlySet<number>, anchor?: (key: string) => number | undefined): Packed[] | null {
   const spans = rows.flatMap((row, k) => row.intervals.map((iv, interval) => ({ row, k, interval, lo: iv.lo, hi: iv.hi })));
   const runs: U[][] = spans.map(() => []), used = spans.map(() => 0), extra = spans.map(() => 0);
   let i = 0, budget = less;
-  for (const x of units) {
+  for (let j = 0; j < units.length; j++) {
+    const x = units[j]!;
+    if (breaks?.has(j) && i < spans.length && runs.slice(0, i + 1).some((r) => r.length)) {
+      const k = spans[i]!.k;
+      while (i < spans.length && spans[i]!.k === k) i++;
+      budget = 0;
+    }
     while (i < spans.length && x.width > spans[i]!.hi - spans[i]!.lo - used[i]! - budget + EPS) {
       i++;
       budget = 0;
     }
     if (i >= spans.length) return null;
     runs[i]!.push(x);
-    if (units.indexOf(x) >= units.length - tail) extra[i]! += x.width;
+    if (j >= units.length - tail) extra[i]! += x.width;
     else used[i]! += x.width;
   }
   const out: Packed[] = [];
-  for (let n = 0; n < spans.length; n++) if (extra[n]! > 0 && (spans[n]!.lo + spans[n]!.hi) / 2 + used[n]! / 2 + extra[n]! > spans[n]!.hi + EPS) return null;
-  runs.forEach((run, n) => {
-    const sp = spans[n]!;
+  for (let n = 0; n < runs.length; n++) {
+    const run = runs[n]!, sp = spans[n]!;
+    if (!run.length) continue;
+    const held = anchor && !extra[n] ? hold(run, sp, anchor) : null;
+    if (held) {
+      held.forEach((h, p) => out.push({ key: h.x.key, row: sp.row, k: sp.k, interval: sp.interval, place: p, u: h.u, w: h.x.width }));
+      continue;
+    }
     let u0 = (sp.lo + sp.hi) / 2 - used[n]! / 2;
+    if (anchor) {
+      let off = 0;
+      for (const x of run) {
+        const a = anchor(x.key);
+        if (a !== undefined) {
+          u0 = Math.max(sp.lo, Math.min(sp.hi - used[n]!, a - off - x.width / 2));
+          break;
+        }
+        off += x.width;
+      }
+    }
+    if (extra[n]! > 0 && u0 + used[n]! + extra[n]! > sp.hi + EPS) return null;
     run.forEach((x, p) => {
       out.push({ key: x.key, row: sp.row, k: sp.k, interval: sp.interval, place: p, u: u0 + x.width / 2, w: x.width });
       u0 += x.width;
     });
-  });
+  }
   return out;
+}
+
+/**
+ * A run whose units lay in this span last plan, each where it lay: what stays keeps its place exactly, and a newcomer takes
+ * a place free beside what stays (where a unit left first, then the run's right end, then its left), so nothing that
+ * lies moves for it. Null where that cannot be done (what stays no longer fits where it lay, or no free place beside it
+ * is wide enough): the run is then packed whole from its anchor.
+ */
+function hold(run: readonly U[], sp: { lo: number; hi: number }, anchor: (key: string) => number | undefined): { x: U; u: number }[] | null {
+  const at: { x: U; u: number }[] = [], fresh: U[] = [];
+  for (const x of run) {
+    const a = anchor(x.key);
+    if (a === undefined) fresh.push(x);
+    else at.push({ x, u: a });
+  }
+  if (!at.length) return null;
+  at.sort((a, b) => a.u - b.u);
+  const lo = (h: { x: U; u: number }) => h.u - h.x.width / 2, hi = (h: { x: U; u: number }) => h.u + h.x.width / 2;
+  if (lo(at[0]!) < sp.lo - EPS || hi(at.at(-1)!) > sp.hi + EPS) return null;
+  for (let i = 1; i < at.length; i++) if (lo(at[i]!) < hi(at[i - 1]!) - EPS) return null;
+  for (const x of fresh) {
+    // gaps between what lies (a unit left), then the right end, then the left end
+    const inner: number[] = [];
+    for (let i = 1; i < at.length; i++) if (lo(at[i]!) - hi(at[i - 1]!) >= x.width - EPS) inner.push(hi(at[i - 1]!) + x.width / 2);
+    const right = hi(at.at(-1)!) + x.width <= sp.hi + EPS ? [hi(at.at(-1)!) + x.width / 2] : [];
+    const left = lo(at[0]!) - x.width >= sp.lo - EPS ? [lo(at[0]!) - x.width / 2] : [];
+    const u = [...inner, ...right, ...left][0];
+    if (u === undefined) return null;
+    at.push({ x, u });
+    at.sort((a, b) => a.u - b.u);
+  }
+  return at;
 }
 
 // ---- placing, drawing, auditing one candidate -----------------------------------------------------------------------
@@ -908,11 +996,28 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
     } else {
       // (what the moment steps out lies after what rest shows, which keeps its places: the run is not centred again)
       const out = here.filter((x) => walked.exempt.size > 0 && x.groups.every((k) => walked.exempt.has(k)));
-      const units = ordered(b, out.length ? [...here.filter((x) => !out.includes(x)), ...out] : here);
-      let n = units.length;
-      const pack = (k: number) => packBand(rows, units.slice(0, k), 0, Math.max(0, k - (units.length - out.length)));
+      // Between re-sorts what lies keeps its order and its place: a newcomer joins the end of its run (a re-sort deals
+      // the band afresh, in its tiers' order, centred).
+      const tiers = new Set(b.tiers.map((t) => t.id));
+      const was = (x: U): SlotRef | null => (!tidy && pm && pm.tiers[x.key] !== undefined && tiers.has(pm.tiers[x.key]!) ? (pm.slots[x.key] ?? null) : null);
+      const before = (x: U, y: U): number => {
+        const a = was(x)!, c = was(y)!;
+        return a.row - c.row || a.interval - c.interval || a.place - c.place;
+      };
+      const rest = here.filter((x) => !out.includes(x));
+      const stayed = rest.filter((x) => was(x)).sort(before), fresh = rest.filter((x) => !was(x));
+      const seq = ordered(b, [...stayed, ...fresh]);
+      const anchor = tidy ? undefined : (key: string): number | undefined => (pm?.tiers[key] !== undefined && tiers.has(pm.tiers[key]!) ? pm.slots[key]?.u : undefined);
+      // The break rules (breaks.ts) split what rest shows into runs, each on a row of its own while the space has one.
+      const cut = broke(seq);
+      let n = seq.length + out.length;
+      const pack = (k: number): Packed[] | null => {
+        const tail = Math.max(0, k - seq.length);
+        const moment = out.slice(0, tail);
+        return (cut.breaks.size && k >= seq.length ? packBand(rows, [...cut.seq, ...moment], 0, tail, cut.breaks, anchor) : null) ?? packBand(rows, [...seq, ...moment].slice(0, k), 0, tail, undefined, anchor);
+      };
       while (n > 0 && pack(n) === null) n--;
-      for (const p of pack(n) ?? []) slots.set(p.key, { row: p.row, band: b, ref: { row: p.k, interval: p.interval, place: p.place }, u: p.u, w: p.w });
+      for (const p of pack(n) ?? []) slots.set(p.key, { row: p.row, band: b, ref: { row: p.k, interval: p.interval, place: p.place, u: p.u }, u: p.u, w: p.w });
       for (const x of here) if (!slots.has(x.key)) (x.pinned ? actors : other).push(...x.members, ...x.dressing);
     }
   }
@@ -1168,15 +1273,9 @@ function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemor
           : (open.filter((q) => q.u > lmax && q.u < rmin).sort(near(c))[0] ?? open.sort(near(c))[0]);
         if (p) give(x, p);
       }
-      // Where no free place kept the block's order (a work right of something that stands), its units take the same
-      // places in order: works left, what stands, mana right, each side as it was.
-      const rankOf = (k: string) => ({ left: 0, centre: 1, right: 2 })[fromOf(units.find((x) => x.key === k)!)];
-      const seated = [...at.entries()].sort((a, b) => a[1].u - b[1].u);
-      const want = [...seated].sort((a, b) => rankOf(a[0]) - rankOf(b[0]) || a[1].u - b[1].u);
-      if (want.some(([k], i) => k !== seated[i]![0])) {
-        const places = seated.map(([, v]) => v);
-        want.forEach(([k], i) => at.set(k, places[i]!));
-      }
+      // Where no free place keeps the block's order (a rock spilling with the block's right end at the row's), the
+      // newcomer takes the free place nearest that end and nothing seated moves for it: the next re-sort deals the block
+      // in order again.
     }
     for (const x of newcomers) if (!at.has(x.key)) left.push(x);
     return { at, left };
