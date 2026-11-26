@@ -14,6 +14,7 @@ import {
   materials,
   NO_SURFACES,
   paintPage,
+  paintPrinted,
   shortName,
   shortType,
   tokens,
@@ -57,6 +58,15 @@ const paint = (spec: FaceSpec): string[] => {
   drawFace(r.ctx, spec, env);
   return r.log;
 };
+
+it("paints a lifted card at its decoded image size", () => {
+  const { ctx, log } = recorder();
+  const canvas = { getContext: () => ctx } as unknown as HTMLCanvasElement;
+  const image = { width: 350, height: 488 } as HTMLImageElement;
+  paintPrinted(canvas, image);
+  expect([canvas.width, canvas.height]).toEqual([350, 488]);
+  expect(log.find((call) => call.startsWith("drawImage("))).toMatch(/,0\.00,0\.00\)$/);
+});
 
 describe("tokens and css", () => {
   it("generates the custom properties the chrome stylesheet uses", () => {

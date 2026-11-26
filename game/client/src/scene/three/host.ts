@@ -102,7 +102,8 @@ export interface HostStats {
 export interface Quality {
   /** The composer's pixel ratio (including the focus pass); null is the policy's (`renderSizes`). */
   readonly composerDpr: number | null;
-  readonly msaa: boolean;
+  /** Null uses two samples below 2× and one at 2×. */
+  readonly msaa: boolean | null;
 }
 
 /** How many frame intervals the host keeps (about ten seconds at 60 fps). */
@@ -127,7 +128,7 @@ export class Host {
   private composer: EffectComposer;
   private focusPass!: FocusPass;
   /** The post-processing's settings (the render bench times each): the composer's pixel ratio and MSAA. */
-  private quality: Quality = { composerDpr: null, msaa: true };
+  private quality: Quality = { composerDpr: null, msaa: null };
   private textures: TextureCache;
   private arts: ArtCache;
   private _painter: Painter;
@@ -224,7 +225,14 @@ export class Host {
     const s = renderSizes(viewport, dpr);
     this.renderer.setPixelRatio(s.renderer);
     this.renderer.setSize(s.width, s.height, false);
-    this.composer.setPixelRatio(this.quality.composerDpr === null ? s.composer : Math.min(s.renderer, this.quality.composerDpr));
+    const composerDpr = this.quality.composerDpr === null ? s.composer : Math.min(s.renderer, this.quality.composerDpr);
+    const samples = (this.quality.msaa ?? composerDpr < 2) ? materials.tone.msaaSamples : 0;
+    for (const target of [this.composer.renderTarget1, this.composer.renderTarget2]) {
+      if (target.samples === samples) continue;
+      target.dispose();
+      target.samples = samples;
+    }
+    this.composer.setPixelRatio(composerDpr);
     this.composer.setSize(s.width, s.height);
     applyCamera(this.camera, this.override ?? cameraParams(this.spec, viewport));
     this.shadowStale = true;
@@ -372,22 +380,16 @@ export class Host {
 
   /**
    * The post-processing's settings, for measuring what each costs (the render bench): the composer's pixel ratio (null:
-   * the policy's) and MSAA on or off. The game never changes them.
+   * the policy's) and an optional MSAA override. The game never changes them.
    */
   setQuality(q: Partial<Quality>): void {
-    const msaa = q.msaa !== undefined && q.msaa !== this.quality.msaa;
     this.quality = { ...this.quality, ...q };
-    if (msaa) {
-      disposeComposer(this.composer);
-      this.composer = this.newComposer();
-    }
     this.setViewport(this.viewport, this.dpr);
   }
 
   private newComposer(): EffectComposer {
     const s = renderSizes(this.viewport, this.dpr);
     const target = new WebGLRenderTarget(s.width, s.height, {
-      samples: this.quality.msaa ? materials.tone.msaaSamples : 0,
       type: HalfFloatType,
     });
     const composer = new EffectComposer(this.renderer, target);

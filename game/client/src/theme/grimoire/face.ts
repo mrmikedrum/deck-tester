@@ -123,16 +123,14 @@ export function paintFace(canvas: Canvas, spec: FaceSpec, env: FaceEnv): void {
   drawFace(begin(canvas, FACE_W, FACE_H), spec, env);
 }
 
-/** The printed card at this size (twice the painted face's, so it reads held up large). */
-export const PRINTED = { w: FACE_W * 2, h: FACE_H * 2, radius: 0.0475 } as const;
-
-/** Paint a printed card image into a canvas, with the card's rounded corners. */
+/** Keep the decoded image's pixels for a lifted card, with the card's rounded corners. */
 export function paintPrinted(canvas: Canvas, img: NonNullable<ReturnType<ArtOf>>): void {
-  const x = begin(canvas, PRINTED.w, PRINTED.h);
+  const { width, height } = img;
+  const x = begin(canvas, width, height);
   x.save();
-  rr(x, 0, 0, PRINTED.w, PRINTED.h, PRINTED.w * PRINTED.radius);
+  rr(x, 0, 0, width, height, width * 0.0475);
   x.clip();
-  x.drawImage(img as CanvasImageSource, 0, 0, PRINTED.w, PRINTED.h);
+  x.drawImage(img as CanvasImageSource, 0, 0);
   x.restore();
 }
 
@@ -148,7 +146,7 @@ const EDGE = 20;
 const INK = "rgba(26,16,6,.8)";
 const FOOT_H = 100;
 /** A commander's name: gold leaf, in the book's serif. */
-const GOLD = { leaf: ["#f6dc8c", "#d9aa45", "#b7832a"], ink: "#2a1a06" } as const;
+const GOLD = { leaf: ["#f6dc8c", "#d9aa45", "#b7832a"], ink: "#160d04" } as const;
 
 export function drawFace(x: Ctx, c: FaceSpec, env: FaceEnv): void {
   const FW = FACE_W,
@@ -680,8 +678,8 @@ function paintTextArt(x: Ctx, text: string, X: number, Y: number, W: number, H: 
     .replace(/\([^)]*\)/g, "")
     .split(/\s+/)
     .filter(Boolean);
-  x.font = `500 22px ${NUM}`;
-  x.fillStyle = "#d9dee6";
+  x.font = `600 24px ${NUM}`;
+  x.fillStyle = "#fff4dc";
   x.textBaseline = "top";
   let line = "",
     y = Y + 12;
@@ -689,7 +687,7 @@ function paintTextArt(x: Ctx, text: string, X: number, Y: number, W: number, H: 
     const t = line ? line + " " + w : w;
     if (x.measureText(t).width > W - 24 && line) {
       x.fillText(line, X + 12, y);
-      y += 25;
+      y += 27;
       line = w;
       if (y > Y + H - 30) {
         line += " …";

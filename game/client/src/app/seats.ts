@@ -28,7 +28,7 @@ const estimate: Measure = (text, style) => text.length * (style.startsWith("400"
 
 /** A plate's width in design units, including the life box's padding and the name's letter spacing (chrome.css). */
 export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate): number {
-  const title = measure(name, `400 19px ${font.serif}`) + name.length * 19 * 0.02;
+  const title = measure(name, `600 19px ${font.ui}`) + name.length * 19 * 0.02;
   const lifeBox = Math.max(34, measure(String(life), `700 19px ${font.ui}`)) + 12;
   const bronze = 10 + 18 + 8 + title + 8 + lifeBox + 6;
   const tab = icons.length ? 20 + icons.reduce((n, i) => n + 18 + 3 + measure(i.figure, `700 16px ${font.ui}`), 0) + 10 * (icons.length - 1) : 0;

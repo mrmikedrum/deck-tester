@@ -4,8 +4,7 @@
 // the GPU (one pixel read back), so its cost is the whole frame's, CPU and GPU. It is how the table's cost is measured
 // on the iPad: open it there, wait for "Done" and press "Send to Mac" (POST api/bench, as the planTable bench does, kept
 // under .deckmaster/bench/); over plain http there is no clipboard, so the results also sit in a box to select by hand.
-// Then the table at rest again with the composer's pixel ratio and MSAA varied, so a run on the iPad shows what
-// dominates its frame.
+// The 1180×820 CSS canvas scrolls on narrow screens so the timed workload and preview keep the same size.
 import { decodeCatalog, diff, modelOf, playerViewer } from "../../model";
 import type { CardCatalog, ChangeSet, TableModel } from "../../model";
 import { planTable, tableInputOf } from "../../layout";
@@ -121,7 +120,9 @@ export async function renderBench(root: HTMLElement): Promise<void> {
       <span id="r-sent" style="color:#a69c8b;font-size:13px"></span>
     </p>
     <textarea id="r-json" readonly style="box-sizing:border-box;width:100%;height:24vh;font:11px/1.4 monospace;background:#120b06;color:#d8cfbf;border:1px solid #3b2717;padding:8px"></textarea>
-    <canvas id="stage" style="width:${VIEWPORT.w}px;height:${VIEWPORT.h}px;max-width:100%"></canvas>`;
+    <div style="overflow-x:auto">
+      <canvas id="stage" style="width:${VIEWPORT.w}px;height:${VIEWPORT.h}px"></canvas>
+    </div>`;
   const $ = (id: string) => root.querySelector<HTMLElement>(`#${id}`)!;
   const t = await table();
   const a = modelFrom(t.envelope, t.catalog);
@@ -169,7 +170,8 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   };
 
   /** Time `n` frames of a moment; `step` draws one (and says whether it counts). */
-  let quality: Quality = { composerDpr: null, msaa: true };
+  const defaults: Quality = { composerDpr: null, msaa: null };
+  let quality = defaults;
   async function time(moment: string, what: string, step: () => boolean): Promise<Row> {
     const costs: number[] = [],
       gaps: number[] = [],
@@ -218,7 +220,7 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   const run = async (): Promise<void> => {
     const tableEl = $("r-table");
     tableEl.innerHTML = `<tr><th align=left>moment</th><th>frame median</th><th>p90</th><th>worst</th><th>mean</th><th>interval median</th><th>draw calls</th><th>max</th><th>shadow redraws</th><th>cards / batches</th><th>sprites / batches</th></tr>`;
-    quality = { composerDpr: null, msaa: true };
+    quality = defaults;
     host.setQuality(quality);
     const rows: Row[] = [];
     const add = (row: Row): void => {
@@ -256,21 +258,28 @@ export async function renderBench(root: HTMLElement): Promise<void> {
     );
     atB = false;
     await settle();
-    // The table at rest under each post-processing setting on its own, then with both reduced.
+    // Keep the earlier 1.5×/MSAA timing scenarios alongside the native-resolution policy.
     const variants: [string, Partial<Quality>][] = [
       ["rest · composer 1.0x", { composerDpr: 1 }],
       ["rest · composer 1.5x", { composerDpr: 1.5 }],
-      ["rest · no MSAA", { msaa: false }],
+      ["rest · no MSAA", { composerDpr: 1.5, msaa: false }],
       ["rest · 1.0x, no MSAA", { composerDpr: 1, msaa: false }],
+      ["rest · native with MSAA", { msaa: true }],
     ];
     for (const [name, q] of variants) {
-      quality = { composerDpr: null, msaa: true, ...q };
+      quality = { ...defaults, ...q };
       host.setQuality(quality);
       $("r-status").textContent = `Timing ${name}…`;
       add(await time(name, "the table at rest with these composer settings", () => (show(false), true)));
     }
-    quality = { composerDpr: null, msaa: true };
+    quality = { ...defaults, composerDpr: 1.5, msaa: true };
     host.setQuality(quality);
+    $("r-status").textContent = "Timing highlight · composer 1.5x…";
+    add(await time("highlight · composer 1.5x", "the highlight with the earlier composer and MSAA settings", () => (show(true), true)));
+    quality = defaults;
+    host.setQuality(quality);
+    mode = "cut";
+    show(false);
     last = { userAgent: navigator.userAgent, screen: { w: screen.width, h: screen.height, dpr: devicePixelRatio }, viewport: VIEWPORT, table: t.name, framesPerMoment: FRAMES, bench: "render", rows };
     (root.querySelector("#r-json") as HTMLTextAreaElement).value = JSON.stringify(last, null, 1);
     (root.querySelector("#r-send") as HTMLButtonElement).disabled = false;

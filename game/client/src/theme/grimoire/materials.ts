@@ -64,8 +64,8 @@ export const faceTone = {
 
 export const tone = { exposure: 0.95, msaaSamples: 2 } as const;
 
-/** The pixel-ratio policy: the renderer at most 2, the composer's targets at most 1.5. */
-export const pixelRatio = { renderer: 2, composer: 1.5 } as const;
+/** The pixel ratio cap for the renderer and composer. */
+export const pixelRatio = { renderer: 2 } as const;
 
 /** The camera's clip planes (its fov and place are layout's template). */
 export const camera = { near: 1, far: 120 } as const;

@@ -50,13 +50,13 @@ export interface RenderSizes {
   readonly composer: number;
 }
 
-/** The DPR policy: the renderer at most 2x, the composer's targets at most 1.5x. The size is the viewport it was given, never measured. */
+/** Match the scene targets to the drawing buffer, up to 2x. */
 export function renderSizes(viewport: Viewport, dpr: number): RenderSizes {
   const renderer = Math.min(dpr > 0 ? dpr : 1, materials.pixelRatio.renderer);
   return {
     width: Math.max(1, Math.round(viewport.w)),
     height: Math.max(1, Math.round(viewport.h)),
     renderer,
-    composer: Math.min(renderer, materials.pixelRatio.composer),
+    composer: renderer,
   };
 }
