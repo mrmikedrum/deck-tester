@@ -70,6 +70,14 @@ function handCard(c: Card, playable: boolean): HandCard {
   };
 }
 
+/** A chooser of cards up (a library search, a graveyard): the hand slides away, as for a sift, and the cards have the
+ * screen. */
+function choosingCards(s: AppState, model: TableModel): boolean {
+  const sheet = play.present(s.play).controls.sheet;
+  if (sheet?.kind !== "chooser" || !isOpen(s.focus, "sheet")) return false;
+  return sheet.items.some((i) => (i.card !== null && model.cards.has(i.card)) || (i.name !== null && s.catalog.has(i.name)));
+}
+
 function handOf(s: AppState, model: TableModel, scene: SceneReport | null): HandView {
   const { board, controls } = play.present(s.play);
   const me = model.viewer.perspective;
@@ -88,7 +96,7 @@ function handOf(s: AppState, model: TableModel, scene: SceneReport | null): Hand
   const top = model.stack[model.stack.length - 1];
   return {
     cards: cards.map((c) => handCard(c, board.marks.hand.has(c.id))),
-    away: board.handAway || isOpen(s.focus, "sift") || isOpen(s.focus, "mulligan"),
+    away: board.handAway || isOpen(s.focus, "sift") || isOpen(s.focus, "mulligan") || choosingCards(s, model),
     respond: !!top && top.controller !== me && board.marks.hand.size > 0,
     carried,
     // The cards that last came into my hand (live.js `lastHandArrivals`) glow as they join the fan.

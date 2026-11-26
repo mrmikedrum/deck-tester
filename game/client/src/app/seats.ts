@@ -33,7 +33,7 @@ export function plateWidth(name: string, life: number, icons: readonly IconView[
   if (out) return 10 + 18 + 8 + title + 8 + measure("Out", `italic 400 15px ${font.serif}`) + 4 + 6 + 2;
   const lifeBox = Math.max(34, measure(String(life), `700 19px ${font.ui}`)) + 12;
   const bronze = 10 + 18 + 8 + title + 8 + lifeBox + 6;
-  const tab = icons.length ? 20 + icons.reduce((n, i) => n + 18 + 3 + measure(i.figure, `700 16px ${font.ui}`), 0) + 10 * (icons.length - 1) : 0;
+  const tab = icons.length ? 20 + icons.reduce((n, i) => n + 19 + 3 + measure(i.figure, `700 16px ${font.ui}`), 0) + 10 * (icons.length - 1) : 0;
   return bronze + tab + 2; // Leave room for differences in canvas and CSS rounding.
 }
 
@@ -382,13 +382,14 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
           sub: [`${landCount} land${landCount === 1 ? "" : "s"}`, ...others.slice(0, 3)].join(", ") + (others.length > 3 ? ` and ${others.length - 3} more.` : "."),
         }
       : { icon: "mana", head: "No mana sources on the table", sub: null, none: true },
-    { icon: "hand", head: `${s.hand} card${s.hand === 1 ? "" : "s"} in hand`, sub: null },
+    // (my own hand is in front of me: its count is no news)
+    ...(mine ? [] : [{ icon: "hand" as const, head: `${s.hand} card${s.hand === 1 ? "" : "s"} in hand`, sub: null }]),
   ];
   const graveyard = picked(model, [...model.zone(seat, "graveyard")].reverse());
   const exile = picked(model, [...model.zone(seat, "exile")].reverse());
   const command = picked(model, model.zone(seat, "command"));
-  const handIds = model.zone(seat, "hand");
-  const hand = mine || s.handVisible ? picked(model, handIds) : Array.from({ length: s.hand }, () => ({ id: null, name: "A card in hand", image: null }));
+  // An opponent's hand only when it is shown (its count is a line); mine never (it is in front of me).
+  const hand = !mine && s.handVisible ? picked(model, model.zone(seat, "hand")) : [];
   const also = [
     s.poison ? `Poison ${s.poison}` : null,
     s.monarch ? "The monarch" : null,

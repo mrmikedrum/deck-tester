@@ -214,7 +214,8 @@ describe("the nameplates", () => {
     expect($$(".l-seat .l-zone-open")).toHaveLength(1); // an empty exile has nothing to open
     click($(".l-seat .l-zone-open"));
     click($(".l-seat .l-more"));
-    expect($(".l-seat .l-more")?.textContent).toBe("3 more");
+    expect($(".l-seat .l-more")?.textContent).toBe("+2"); // a card of its own past the six shown
+    expect($(".l-seat .l-more")?.getAttribute("aria-label")).toBe("2 more");
     expect(orders()).toEqual([
       { t: "zone", seat: "Dack", zone: "graveyard" },
       { t: "zone", seat: "Dack", zone: "graveyard" },

@@ -5,57 +5,26 @@
 // up as printed cards. Pure projections; each sends an act for play or an order for the app.
 import type { JSX } from "preact";
 import { useMemo } from "preact/hooks";
+import { SEAT_GLYPHS } from "../theme";
+import type { GlyphPart } from "../theme";
 import type { Send } from "./send";
 import { Close, onScrim } from "./sheet";
 import type { IconKind, PickedCard, PlateView, SeatFocusView } from "./view";
 
-/** The icons, drawn in ink on a 24 box. */
-const ICON: Readonly<Record<IconKind, JSX.Element>> = {
-  power: (
-    <>
-      <path d="M19.5 4.5 9 15" />
-      <path d="M19.5 4.5h-3.2M19.5 4.5v3.2" />
-      <path d="M6.6 12.6l4.8 4.8M8 18.8l-3 3M5.4 16.2 3 18.6" />
-    </>
-  ),
-  creatures: (
-    <>
-      <rect x="6" y="3" width="12" height="18" rx="2" />
-      <path d="M9 17h6" />
-    </>
-  ),
-  wing: <path d="M20 4C12 5 6 10 4 20c3-4 6-6 10-7l-3-1c3-1 5-3 6-5l-3 .5C16.5 6 18.5 5 20 4z" />,
-  shield: <path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6z" />,
-  mana: <path d="M12 3.5S6.5 10.6 6.5 14.6a5.5 5.5 0 0 0 11 0C17.5 10.6 12 3.5 12 3.5z" />,
-  hand: (
-    <>
-      <rect x="3.5" y="6" width="9.5" height="14" rx="1.6" transform="rotate(-12 8 13)" />
-      <rect x="10.5" y="5" width="9.5" height="14" rx="1.6" transform="rotate(10 15 12)" />
-    </>
-  ),
-  // a headstone
-  graveyard: (
-    <>
-      <path d="M6.5 21V10a5.5 5.5 0 0 1 11 0v11z" />
-      <path d="M4 21h16M12 9.5v5M9.8 11.5h4.4" />
-    </>
-  ),
-  // a card passing out of the world: an open frame, a card leaving it
-  exile: (
-    <>
-      <path d="M4 7.5V4h3.5M16.5 4H20v3.5M20 16.5V20h-3.5M7.5 20H4v-3.5" />
-      <rect x="8.5" y="7" width="7" height="10" rx="1.2" />
-    </>
-  ),
-  // a crown: the commander waiting in the command zone
-  command: <path d="M4 17.5 3 8l5 4 4-6.5 4 6.5 5-4-1 9.5zM5 20.5h14" />,
-};
-
+/** A seat glyph (theme's SEAT_GLYPHS): ink on a 24 box, the same on the plate and in its focus; struck through when the
+ * absence is the answer. */
 export function Icon({ kind, none }: { kind: IconKind; none?: boolean | undefined }): JSX.Element {
   return (
     <svg class={none ? "l-icon none" : "l-icon"} viewBox="0 0 24 24" aria-hidden="true">
-      {ICON[kind]}
-      {none ? <path class="strike" d="M4 20 20 4" /> : null}
+      {SEAT_GLYPHS[kind].map((part: GlyphPart, i) => (
+        <path key={i} d={part.d} class={part.cut ? "cut" : undefined} transform={part.turn ? `rotate(${part.turn.join(" ")})` : undefined} />
+      ))}
+      {none ? (
+        <>
+          <path class="strike-rim" d="M4 20 20 4" />
+          <path class="strike" d="M4 20 20 4" />
+        </>
+      ) : null}
     </svg>
   );
 }
@@ -102,13 +71,20 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             <span class="bronze">
               <i class="sigil" />
               <b class="name">{p.name}</b>
-              {p.out ? <span class="gone">Out</span> : <span class="life">{p.life}</span>}
+              {p.out ? (
+                <span class="gone">Out</span>
+              ) : (
+                <span class="life">
+                  {p.life}
+                  {/* In a combat, the damage coming: hung from the life toward the table, a debit against it. */}
+                  {p.tally ? (
+                    <span class={`tally ${p.tally.tone}`} style={`--tally-ink:var(--seat-${p.tally.place})`}>
+                      {p.tally.figure}
+                    </span>
+                  ) : null}
+                </span>
+              )}
             </span>
-            {p.tally ? (
-              <span class={`tally ${p.tally.tone}`} style={`--tally-ink:var(--seat-${p.tally.place})`}>
-                {p.tally.figure}
-              </span>
-            ) : null}
             {p.icons.length ? (
               <span class="tab">
                 {p.icons.map((i) => (
@@ -126,15 +102,17 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
   );
 }
 
-function Picked({ cards, max, empty, more }: { cards: readonly PickedCard[]; max: number; empty: string; more?: (() => void) | undefined }): JSX.Element {
-  if (!cards.length) return <div class="l-zone-empty">{empty}</div>;
-  const shown = cards.slice(0, max);
+/** A zone's cards picked up: the first `max` as printed cards, fanned a little; past them a card-sized "+N" that opens
+ * the zone in full (its sift, which pages), as does any card shown. */
+function Picked({ cards, max, more }: { cards: readonly PickedCard[]; max: number; more?: (() => void) | undefined }): JSX.Element {
+  if (!cards.length) return <div class="l-zone-empty">Empty</div>;
   const rest = cards.length - max;
+  const shown = cards.slice(0, rest > 0 ? max - 1 : max);
+  const left = cards.length - shown.length;
   return (
     <div class="l-picked">
       {shown.map((c, i) =>
         more ? (
-          // A card picked up from a zone opens that zone in full (each card its own there, to read or to choose).
           <button key={c.id ?? `b${i}`} type="button" class={c.image ? "pc" : "pc back"} aria-label={c.name} style={c.image ? `background-image:url("${c.image}")` : undefined} onClick={more} />
         ) : (
           <span key={c.id ?? `b${i}`} class={c.image ? "pc" : "pc back"} role="img" aria-label={c.name} style={c.image ? `background-image:url("${c.image}")` : undefined} />
@@ -142,11 +120,13 @@ function Picked({ cards, max, empty, more }: { cards: readonly PickedCard[]; max
       )}
       {rest > 0 ? (
         more ? (
-          <button type="button" class="l-more" onClick={more}>
-            {rest} more
+          <button type="button" class="pc l-more" aria-label={`${left} more`} onClick={more}>
+            +{left}
           </button>
         ) : (
-          <small>{rest} more</small>
+          <span class="pc l-more" role="img" aria-label={`${left} more`}>
+            +{left}
+          </span>
         )
       ) : null}
     </div>
@@ -213,28 +193,29 @@ export function SeatFocus({ view: v, send, style }: { view: SeatFocusView; send:
           <div class="zones">
             <section class="gy">
               <ZoneHead label="Graveyard" n={v.graveyard.length} open={v.graveyard.length ? openZone("graveyard") : undefined} />
-              <Picked cards={v.graveyard} max={5} empty="Empty" more={openZone("graveyard")} />
-              {v.graveyard.length ? <small class="note">newest first</small> : null}
+              <Picked cards={v.graveyard} max={7} more={openZone("graveyard")} />
             </section>
             <div class="row">
-              <section>
+              <section class="ex">
                 <ZoneHead label="Exile" n={v.exile.length} open={v.exile.length ? openZone("exile") : undefined} />
-                <Picked cards={v.exile} max={3} empty="Empty" more={openZone("exile")} />
+                <Picked cards={v.exile} max={v.hand.length ? 2 : 3} more={openZone("exile")} />
               </section>
               {v.command.length ? (
                 <section>
                   <h4>
                     Command <b>{v.command.length}</b>
                   </h4>
-                  <Picked cards={v.command} max={2} empty="Empty" />
+                  <Picked cards={v.command} max={2} />
                 </section>
               ) : null}
-              <section>
-                <h4>
-                  Hand <b>{v.handCount}</b>
-                </h4>
-                <Picked cards={v.hand} max={v.mine ? 7 : 4} empty="Empty" />
-              </section>
+              {v.hand.length ? (
+                <section>
+                  <h4>
+                    Hand <b>{v.handCount}</b>
+                  </h4>
+                  <Picked cards={v.hand} max={2} />
+                </section>
+              ) : null}
               <section>
                 <h4>
                   Library <b>{v.library}</b>

@@ -157,6 +157,7 @@
   .l-hand-view,
   .l-stackchip,
   .l-sift .pager button,
+  .l-pager button,
   .l-back button {
     position: relative;
     min-height: 44px;
@@ -195,6 +196,7 @@
   .l-hand-view:active,
   .l-stackchip:active,
   .l-sift .pager button:active:not(:disabled),
+  .l-pager button:active:not(:disabled),
   .l-back button:active {
     transform: translateY(2px);
     box-shadow: var(--plaque-press), var(--btn-edge), var(--btn-pressed);
@@ -207,7 +209,8 @@
   .l-buttons button:disabled,
   .l-row button:disabled,
   .l-number button:disabled,
-  .l-sift .pager button:disabled {
+  .l-sift .pager button:disabled,
+  .l-pager button:disabled {
     cursor: default;
     filter: var(--btn-off);
     box-shadow: var(--plaque-press);
@@ -373,59 +376,193 @@
   .l-grid .l-opt {
     grid-column: 1 / -1;
   }
-  /* Many cards: two balanced rows, each card as large as two rows can be on the sheet, but never narrower than a card
-     that can be read and tapped: past that they wrap into more rows and the sheet scrolls. */
-  .l-grid.two {
-    --card-min: max(88px, calc(100 * var(--u)));
-    grid-template-columns: repeat(auto-fill, minmax(max(var(--card-min), calc(100% / var(--cols) - 16 * var(--u))), 1fr));
-    justify-items: center;
-    gap: calc(12 * var(--u)) calc(16 * var(--u));
+  /* ---- A card sheet: the printed cards, one size, in at most two rows; pages past what fits (chrome/deal.ts) ----- */
+  /* Between the plates, the hand slid away. The box is as wide as its cards; the grid keeps its height from page to
+     page; the pager and the buttons share its foot. */
+  .l-sheet.cards {
+    padding-top: calc(58 * var(--u) + var(--safe-top, 0px));
+    padding-bottom: calc(58 * var(--u) + var(--safe-bottom, 0px));
   }
-  .l-grid.two .l-card {
-    width: 100%;
-    max-width: calc(152 * var(--u));
+  .l-sheet.cards .l-box {
+    box-sizing: border-box;
+    max-width: calc(100vw - 32px);
+    max-height: none;
+    overflow: visible;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    row-gap: 0;
+    column-gap: calc(16 * var(--u));
+    padding: calc(16 * var(--u)) calc(22 * var(--u)) calc(20 * var(--u));
+  }
+  .l-sheet.cards .l-box h3 {
+    grid-column: 1 / -1;
+  }
+  .l-deal {
+    grid-column: 1 / -1;
+    justify-self: center;
+    grid-template-columns: repeat(var(--cols), var(--cw));
+    align-content: start;
+    gap: calc(16 * var(--u));
+    padding: 14px;
+    min-height: calc(var(--rows) * var(--cw) * 1.3934 + (var(--rows) - 1) * 16 * var(--u) + 28px);
+  }
+  .l-sheet.cards .l-pager {
+    grid-column: 1;
+    justify-self: start;
+  }
+  .l-sheet.cards .l-row {
+    grid-column: 2;
+    margin-top: 0;
   }
   .l-card {
     position: relative;
-    display: grid;
-    gap: 4px;
-    padding: 4px;
-    border-radius: calc(12 * var(--u));
-    border: 1px solid transparent;
+    width: var(--cw, calc(150 * var(--u)));
+    padding: 0;
+    border: 0;
+    border-radius: calc(var(--cw, 150px) * 0.048);
     background: none;
     color: var(--ink);
     cursor: pointer;
-  }
-  .l-card::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 12%;
-    bottom: 12%;
-    width: 3px;
-    border-radius: 2px;
-    background: var(--sig-option);
-  }
-  .l-card.on {
-    border-color: transparent;
-    box-shadow:
-      0 0 0 4px var(--sig-selected),
-      0 0 0 6px var(--ink);
-  }
-  .l-card.on::before {
-    display: none;
+    transition:
+      transform 120ms ease-out,
+      filter 120ms;
   }
   .l-card .pic {
+    position: relative;
+    display: grid;
+    place-items: center;
     aspect-ratio: 488 / 680;
-    border-radius: calc(8 * var(--u));
-    background: var(--card-art-ground) center / cover;
+    border-radius: inherit;
+    background: var(--card-art-ground);
+    box-shadow: var(--card-shadow);
   }
-  .l-card small {
-    font: 400 calc(15 * var(--u)) / 1.15 var(--serif);
-    color: var(--ink);
+  .l-card .pic .art {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: center / cover no-repeat;
+  }
+  /* Under the picture, the name on the card's ground: what shows while the picture is on its way, or if it never comes. */
+  .l-card .pic b {
+    padding: 0 10%;
+    color: var(--btn-act-ink);
+    font: 400 calc(18 * var(--u)) / 1.15 var(--serif);
     text-align: center;
   }
-  .l-card[data-n]::after,
+  /* Copies lie as a pile: two edges under the top card, and their count on a bronze tab at its foot. */
+  .l-card.pile .pic {
+    box-shadow:
+      3px 3px 0 -1px #3a2715,
+      6px 6px 0 -2px #23170c,
+      var(--card-shadow);
+  }
+  .l-card .count {
+    position: absolute;
+    left: 50%;
+    bottom: calc(-12 * var(--u));
+    translate: -50% 0;
+    min-width: calc(44 * var(--u));
+    padding: calc(2 * var(--u)) calc(10 * var(--u));
+    border-radius: 4px;
+    background: var(--plaque);
+    box-shadow: var(--plaque-shadow), var(--btn-edge);
+    color: var(--btn-act-ink);
+    text-shadow: var(--btn-act-ink-shadow);
+    font: 700 calc(16 * var(--u)) var(--ui);
+    white-space: nowrap;
+  }
+  /* What sets a source apart from one that looks the same ("with Wild Growth"): on its tag, wrapping inside the card. */
+  .l-card .count:has(small) {
+    max-width: 88%;
+    width: max-content;
+    white-space: normal;
+    text-align: center;
+  }
+  .l-card .count small {
+    margin: 0 0.3em;
+    font: 600 calc(14 * var(--u)) / 1.2 var(--ui);
+  }
+  /* Picked: lifted, in a ring of gold, with a gold seal on its corner (the pick's number when it has one). */
+  .l-card.on {
+    transform: translateY(calc(-8 * var(--u)));
+  }
+  .l-card.on .pic {
+    box-shadow:
+      0 0 0 3px var(--sig-selected),
+      0 0 0 5px #1a0f05,
+      0 14px 26px rgba(0, 0, 0, 0.5);
+  }
+  .l-card.on.pile .pic {
+    box-shadow:
+      0 0 0 3px var(--sig-selected),
+      0 0 0 5px #1a0f05,
+      7px 7px 0 0 #3a2715,
+      0 14px 26px rgba(0, 0, 0, 0.5);
+  }
+  .l-card .seal {
+    position: absolute;
+    top: calc(-12 * var(--u));
+    right: calc(-12 * var(--u));
+    width: calc(34 * var(--u));
+    height: calc(34 * var(--u));
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%, #ffe6a3, var(--sig-selected) 55%, #8a5a14);
+    box-shadow:
+      0 0 0 2px #1a0f05,
+      0 3px 8px rgba(0, 0, 0, 0.55);
+    color: #1a0f05;
+    font: 700 calc(17 * var(--u)) / 1 var(--ui);
+  }
+  .l-card .seal svg {
+    width: 58%;
+    height: 58%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* Full (the choice takes no more until one is put back): dimmed, still the card. */
+  .l-card.full {
+    filter: saturate(0.35) brightness(0.62);
+    cursor: default;
+  }
+  .l-card .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* The pager: two bronze plates and a stud per page, the current one lit. */
+  .l-pager {
+    display: flex;
+    align-items: center;
+    gap: calc(10 * var(--u));
+  }
+  .l-pager button {
+    min-width: 56px;
+    font-size: calc(26 * var(--u));
+    line-height: 1;
+  }
+  .l-pager .studs {
+    display: flex;
+    gap: calc(8 * var(--u));
+  }
+  .l-pager .studs i {
+    width: calc(10 * var(--u));
+    height: calc(10 * var(--u));
+    border-radius: 50%;
+    background: #6b4f2c;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
+  }
+  .l-pager .studs i.on {
+    background: radial-gradient(circle at 40% 35%, #ffe6a3, var(--sig-selected) 60%, #8a5a14);
+    box-shadow: 0 0 0 1.5px #1a0f05;
+  }
   .l-opt[data-n]::after {
     content: attr(data-n);
     position: absolute;
@@ -1389,18 +1526,33 @@
     gap: calc(3 * var(--u));
     white-space: nowrap;
   }
+  /* The seat glyphs: filled ink, holes by the even-odd rule; a part laid over another is set off by a rim of the page. */
   .l-icon {
-    width: calc(18 * var(--u));
-    height: calc(18 * var(--u));
+    --icon-ground: #e6d6ae;
+    width: calc(19 * var(--u));
+    height: calc(19 * var(--u));
     flex: none;
+    fill: currentColor;
+    fill-rule: evenodd;
+    stroke: none;
+  }
+  .l-icon .cut {
+    stroke: var(--icon-ground);
+    stroke-width: 1.8;
+    paint-order: stroke;
+  }
+  .l-icon .strike,
+  .l-icon .strike-rim {
     fill: none;
-    stroke: currentColor;
-    stroke-width: 1.9;
     stroke-linecap: round;
-    stroke-linejoin: round;
   }
   .l-icon .strike {
-    stroke-width: 2.2;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+  .l-icon .strike-rim {
+    stroke: var(--icon-ground);
+    stroke-width: 5;
   }
   /* Its turn: a gilt edge. An option (a player I can choose): the ember ring; chosen: gold leaf. */
   .l-plate.turn .bronze,
@@ -1432,25 +1584,59 @@
     outline-offset: 3px;
   }
 
-  /* A plate's tally in a combat: the unblocked power coming at it, red at me, gold when my attack is at it, the
-     attacker's ink between opponents. The attacking seat's plate wears a thin rule in its ink. */
+  /* A plate's tally in a combat: the unblocked power coming at the seat, hung from its life toward the table (below an
+     opponent's, above mine) with a notch pointing at the life, a debit against it: red at me, gold when my attack is at
+     it, the attacker's ink between opponents. It hangs clear of the plate, so the plate never changes size. The
+     attacking seat's plate wears a thin rule in its ink. */
+  .l-plate .life {
+    position: relative;
+  }
   .l-plate .tally {
-    align-self: center;
-    margin-left: calc(6 * var(--u));
-    padding: calc(2 * var(--u)) calc(7 * var(--u));
+    --tally-bg: #9c1f24;
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 9 * var(--u));
+    translate: -50% 0;
+    padding: calc(1 * var(--u)) calc(7 * var(--u));
     border-radius: 4px;
-    background: #9c1f24;
+    background: var(--tally-bg);
     color: #fff4dc;
-    box-shadow: 0 0 0 1.5px #2a0a08, 0 3px 8px rgba(0, 0, 0, 0.45);
-    font: 700 calc(19 * var(--u)) var(--ui);
+    box-shadow:
+      0 0 0 1.5px #2a0a08,
+      0 3px 8px rgba(0, 0, 0, 0.45);
+    font: 700 calc(17 * var(--u)) var(--ui);
+    text-shadow: none;
     white-space: nowrap;
+    pointer-events: none;
+  }
+  .l-plate .tally::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    translate: -50% 0;
+    border: calc(6 * var(--u)) solid transparent;
+    border-bottom-color: var(--tally-bg);
+    border-top-width: 0;
+  }
+  .l-plate.mine .tally {
+    top: auto;
+    bottom: calc(100% + 9 * var(--u));
+  }
+  .l-plate.mine .tally::before {
+    bottom: auto;
+    top: 100%;
+    border-bottom-width: 0;
+    border-top-width: calc(6 * var(--u));
+    border-top-color: var(--tally-bg);
+    border-bottom-color: transparent;
   }
   .l-plate .tally.gold {
-    background: #e0a62c;
+    --tally-bg: #e0a62c;
     color: #1a0f05;
   }
   .l-plate .tally.ink {
-    background: color-mix(in srgb, var(--tally-ink) 75%, #1a110a);
+    --tally-bg: color-mix(in srgb, var(--tally-ink) 75%, #1a110a);
   }
   .l-plate.attacking .bronze {
     box-shadow: var(--plaque-shadow), var(--btn-edge), inset 0 -3px 0 var(--seat);
@@ -1614,9 +1800,7 @@
   .l-seat {
     position: relative;
     box-sizing: border-box;
-    width: min(calc(880 * var(--u)), calc(100vw - 32px));
-    max-height: calc(100dvh - 140 * var(--u));
-    overflow: auto;
+    width: min(calc(900 * var(--u)), calc(100vw - 32px));
     padding: calc(22 * var(--u)) calc(28 * var(--u)) calc(18 * var(--u));
     border-radius: 3px;
     color: var(--ink);
@@ -1651,7 +1835,6 @@
     gap: calc(14 * var(--u));
   }
   .l-seat .lines {
-    flex: 1;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -1686,7 +1869,10 @@
     align-content: start;
   }
   .l-seat h4 {
-    margin: 0 0 calc(6 * var(--u));
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    margin: 0 0 calc(4 * var(--u));
     font: 400 calc(18 * var(--u)) var(--serif);
   }
   .l-seat h4 b {
@@ -1707,17 +1893,17 @@
   .l-seat .commander-damage .danger {
     color: var(--sig-danger-ink);
   }
-  .l-seat .row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: calc(12 * var(--u));
+  /* A zone's place: printed cards fanned a little, one size (smaller in the last row), "+N" as a card of its own. */
+  .l-seat .zones {
+    --pc: calc(66 * var(--u));
   }
-  /* Picked up: printed cards, fanned a little, as held in a hand. */
+  .l-seat .row {
+    display: flex;
+    gap: calc(30 * var(--u));
+  }
   .l-picked {
     display: flex;
-    flex-wrap: wrap;
     align-items: flex-end;
-    row-gap: calc(2 * var(--u));
   }
   .l-picked button.pc {
     padding: 0;
@@ -1727,24 +1913,23 @@
   }
   .l-picked .pc {
     flex: none;
-    width: calc(74 * var(--u));
+    width: var(--pc);
     aspect-ratio: 488 / 680;
-    margin-right: calc(-22 * var(--u));
-    border-radius: calc(5 * var(--u));
+    margin-right: calc(var(--pc) * -0.22);
+    border-radius: calc(var(--pc) * 0.06);
     background: var(--card-art-ground) center / cover;
     box-shadow: var(--card-shadow);
   }
-  .l-seat .gy .pc {
-    width: calc(84 * var(--u));
-    margin-right: calc(-14 * var(--u));
+  .l-picked .pc:last-child {
+    margin-right: 0;
   }
   .l-picked .pc.back,
   .l-library {
     background: radial-gradient(circle, #c9a25c 0 8%, #6a4a20 9%, transparent 10%), radial-gradient(ellipse at 50% 45%, rgba(120, 70, 30, 0.25), rgba(0, 0, 0, 0.5)), #2a170c;
   }
-  .l-seat .l-zone-open,
-  .l-picked .l-more {
+  .l-seat .l-zone-open {
     min-height: 44px;
+    margin-left: calc(-6 * var(--u));
     padding: 0 calc(6 * var(--u));
     border: 0;
     border-radius: 4px;
@@ -1753,34 +1938,32 @@
     font: inherit;
     cursor: pointer;
   }
-  .l-seat .l-zone-open:hover,
-  .l-picked .l-more:hover {
+  .l-seat .l-zone-open:hover {
     background: rgba(60, 40, 15, 0.1);
   }
-  .l-picked .l-more {
-    margin-left: calc(22 * var(--u));
-    white-space: nowrap;
-    color: var(--ink-2);
-    text-decoration: underline;
-  }
-  .l-picked small {
-    margin-left: calc(30 * var(--u));
-    white-space: nowrap;
-    color: var(--ink-2);
+  .l-picked .pc.l-more {
+    display: grid;
+    place-items: center;
+    background: linear-gradient(rgba(60, 40, 15, 0.08), rgba(60, 40, 15, 0.16)), var(--sheet);
+    box-shadow:
+      inset 0 0 0 1.5px var(--sheet-rule-strong),
+      var(--card-shadow);
+    color: var(--ink);
+    font: 700 calc(21 * var(--u)) var(--ui);
   }
   .l-library {
-    width: calc(64 * var(--u));
+    width: var(--pc);
     aspect-ratio: 488 / 680;
-    border-radius: calc(5 * var(--u));
+    border-radius: calc(var(--pc) * 0.06);
     box-shadow: 0 calc(var(--n) * 1px) 0 #5a3e22, calc(var(--n) * 0.4px) calc(var(--n) * 1px + 2px) 8px rgba(0, 0, 0, 0.5);
   }
   .l-zone-empty {
-    width: calc(64 * var(--u));
+    width: var(--pc);
     aspect-ratio: 488 / 680;
     display: grid;
     place-items: center;
     border: 2px dashed var(--sheet-rule-strong);
-    border-radius: calc(5 * var(--u));
+    border-radius: calc(var(--pc) * 0.06);
     color: var(--ink-2);
     font-size: calc(12 * var(--u));
   }

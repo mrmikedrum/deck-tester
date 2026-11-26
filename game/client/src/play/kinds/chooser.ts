@@ -44,7 +44,12 @@ export function chooserSheet(c: Ctx<Choice>): SheetView & { readonly buttons: re
       enabled: draft.sel.length >= d.min,
     }),
   );
-  return { kind: "chooser", title: promptText(d, f), wide: d.options.length > 6, items, stepper: null, buttons, carried: null };
+  // Copies are interchangeable only where the engine says so (a library search); never where place or order counts
+  // (a scry, a surveil, an order) or an option repeats.
+  const copies = d.kind === "choose" && !d.repeat && d.refs.length > 0 && d.refs.every((r) => r.search);
+  const cards = d.options.some((_, i) => refOf(d, i).card !== null);
+  const pick = { min: d.min, max: d.max, copies, cards };
+  return { kind: "chooser", title: promptText(d, f), wide: d.options.length > 6, items, stepper: null, buttons, carried: null, pick };
 }
 
 /** A sheet pick: picked, and sent when that completes a single-option choice. `mode` is the draft's mode to keep. */
