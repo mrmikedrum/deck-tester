@@ -34,7 +34,7 @@ function pairsKey(cues: BoardCues): string {
 
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean, d: DecisionFacts): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${blockedOf(model).join(",")}|${settling ? "settling" : ""}|${d.kind ?? ""}:${d.options.join(",")}:${d.draft.join(",")}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${blockedOf(model).join(",")}|${d.kind ?? ""}:${d.options.join(",")}:${d.draft.join(",")}|${settling ? "settling" : ""}`;
 }
 
 /**
