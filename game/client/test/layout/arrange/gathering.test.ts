@@ -183,6 +183,21 @@ describe("the clash", () => {
     expect(plan.violations.filter((v) => v.rule === "floor" && unitOf(plan, Number(v.group.replace(/\D/g, ""))).fighting)).toEqual([]);
   });
 
+  it("a defender whose attackers all wait in \"more\" keeps its wing, its plaque and its total", () => {
+    const ids = Array.from({ length: 17 }, (_, i) => 300 + i);
+    const combat = { attackers: ids.map((a, i) => ({ id: a, defender: i < 14 ? "You" : "Atraxa" })) };
+    const plan = drawn(crowded("Dack", ids, { combat }));
+    const g = plan.gathering!;
+    const atraxa = g.wings.find((w) => "seat" in w.defender && String(w.defender.seat) === "Atraxa")!;
+    expect(atraxa).toBeDefined();
+    expect(atraxa.columns).toEqual([]);
+    // Fighters 14, 15, 16: powers 1 + (i % 7)
+    expect(atraxa.unblocked).toBe([14, 15, 16].reduce((t, i) => t + 1 + (i % 7), 0));
+    // mine counts every attacker at me, those in "more" too
+    const mine = g.wings.find((w) => "seat" in w.defender && String(w.defender.seat) === "You")!;
+    expect(mine.unblocked).toBe(Array.from({ length: 14 }, (_, i) => 1 + (i % 7)).reduce((t, n) => t + n, 0));
+  });
+
   it("the step never rises while columns only grow", () => {
     const ids = Array.from({ length: 13 }, (_, i) => 300 + i);
     let last = Infinity;

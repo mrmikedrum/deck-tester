@@ -97,7 +97,7 @@ const plus = (a: V3, b: V3, k = 1): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k,
  * at one page are spread at least 0.9 apart along its edge; at me the edge lies under my
  * standing row's lean, so they land just past it on the open book, in the nearest gap between my creatures.
  */
-export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: SeatId, combat: CombatPairs | null): LaneSpec[] {
+export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: SeatId, combat: CombatPairs | null, blocked: ReadonlySet<CardId> = new Set()): LaneSpec[] {
   if (!combat) return [];
   const where = new Map<CardId, { unit: Unit; seat: SeatId }>();
   for (const [seat, p] of plans) for (const u of p.units) for (const id of u.members) where.set(id, { unit: u, seat });
@@ -121,8 +121,8 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
       .map((b) => where.get(b.blocker))
       .filter((x): x is { unit: Unit; seat: SeatId } => !!x && x.unit.id !== atk.unit.id)
       .filter((x, i, all) => all.findIndex((y) => y.unit.id === x.unit.id) === i);
-    // Blocked, its blockers gone: it stays blocked and aims at no one.
-    if (!stopped.length && blockers.length) return;
+    // Blocked, its blockers gone (now, or since it was blocked this combat: `blocked`): it stays blocked and aims at no one.
+    if (!stopped.length && (blockers.length || blocked.has(a.attacker))) return;
     const defSeat = "seat" in a.defender ? a.defender.seat : (where.get(a.defender.card)?.seat ?? null);
     const page = defSeat ? plans.get(defSeat)?.fixtures.page : undefined;
     const pos = atk.unit.placement.pos;

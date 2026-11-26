@@ -689,7 +689,7 @@ function wellRows(units: readonly Unit[]): Map<string, { alt: boolean; small: bo
 function lanesOf(model: TableModel, plan: TablePlan, cues: BoardCues, pieces: ReadonlyMap<string, Piece>): Lane[] {
   const combat = mergeCombat(engineCombat(model), cues.combat);
   const out: Lane[] = [];
-  for (const l of combatLanes(plan.seats, model.viewer.perspective, combat)) {
+  for (const l of combatLanes(plan.seats, model.viewer.perspective, combat, plan.blocked)) {
     if (!pieces.has(l.from.unit)) continue;
     if ("unit" in l.to && !pieces.has(l.to.unit)) continue;
     out.push({

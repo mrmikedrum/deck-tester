@@ -9,6 +9,8 @@ const { test, expect, NEW } = require("./harness.js");
 
 const design = JSON.parse(readFileSync(resolve(__dirname, "../../../tests/fixtures/boards/design-pass.json"), "utf8"));
 const ATTACKERS = [1019, 1041, 1117, 1169, 1221, 1072];
+/** The hit order the clash raises its fighters to (layout/plan.ts `FOCUS_ORDER`). */
+const CLASH_ORDER = 2e6;
 
 /** Turn 15 with Atraxa's attackers untapped; `fight`: they attack me (the clash). */
 function table(fight) {
@@ -33,7 +35,7 @@ async function faces(browser, envelope) {
     await new Promise((r) => setTimeout(r, 250));
   }
   const png = (await page.screenshot({ type: "png" })).toString("base64");
-  const out = await page.evaluate(async ([png, ids]) => {
+  const out = await page.evaluate(async ([png, ids, CLASH_ORDER]) => {
     const img = new Image();
     img.src = `data:image/png;base64,${png}`;
     await img.decode();
@@ -67,8 +69,11 @@ async function faces(browser, envelope) {
         }
       if (n > 200) res[id] = sum / n;
     }
-    return res;
-  }, [png, ATTACKERS]);
+    // Where each stands: raised into the clash (its hit group over the whole table, the clash's order) or at home.
+    const aloft = {};
+    for (const id of ids) aloft[id] = window.__deckmaster.hits().some((g) => g.members.includes(id) && g.order >= CLASH_ORDER);
+    return { lum: res, aloft };
+  }, [png, ATTACKERS, CLASH_ORDER]);
   await ctx.close();
   return out;
 }
@@ -76,10 +81,14 @@ async function faces(browser, envelope) {
 test.describe("the physical table's exposure", () => {
   test.skip(!NEW, "the physical table is the new entry's");
   test("a card the gathering lifts toward the lamp keeps its brightness at rest", async ({ browser }) => {
-    const rest = await faces(browser, table(false)), gathered = await faces(browser, table(true));
+    const home = await faces(browser, table(false)), fight = await faces(browser, table(true));
+    const rest = home.lum, gathered = fight.lum;
     const both = ATTACKERS.filter((id) => rest[id] !== undefined && gathered[id] !== undefined);
     expect(both.length).toBeGreaterThanOrEqual(4);
     for (const id of both) {
+      // the comparison is of a lift: in the clash in the fight, at home at rest
+      expect(fight.aloft[id], `card ${id} stands in the clash`).toBe(true);
+      expect(home.aloft[id], `card ${id} rests at home`).toBe(false);
       const ratio = gathered[id] / rest[id];
       expect(ratio, `card ${id}: gathered ${gathered[id].toFixed(1)}, at rest ${rest[id].toFixed(1)}`).toBeGreaterThan(0.8);
       expect(ratio, `card ${id}: gathered ${gathered[id].toFixed(1)}, at rest ${rest[id].toFixed(1)}`).toBeLessThan(1.2);

@@ -104,7 +104,7 @@ export interface Gathering {
 /** The steps a clash tries, largest first (one tier at each). */
 export const CLASH_STEPS = [1.8, 1.6, 1.5, 1.3, 1.2, 1.1] as const;
 /** The clash's area, design px: its top (under the plaques), and how far above my field row it stops. */
-export const CLASH = { top: 88, plaqueTop: 58, plaqueH: 22, foot: 8, gap: 10, columnGap: 14, wingGap: 28, maxColumns: 13 } as const;
+export const CLASH = { top: 88, plaqueTop: 58, plaqueH: 22, foot: 8, gap: 10, columnGap: 14, wingGap: 64, maxColumns: 13, wingMin: 320 } as const;
 
 interface Formation {
   readonly ks: Unit[];
@@ -284,9 +284,14 @@ export function gathering(input: GatherInput): Gathering {
     const wk = walkers.get(defKey(d));
     return wk ? CLASH.columnGap * u + l.m.wide(l.feet[wk.seat === perspective ? "near" : "far"]) : 0;
   };
+  /** A wing's columns' width, and the width it takes: with more than one wing, at least a plaque wide (`wingMin`), so
+   *  each plaque stands over its own wing. */
+  const colsWidth = (l: Laid, w: { fs: readonly Formation[] }): number =>
+    w.fs.reduce((s, f) => s + span(l, f), 0) + CLASH.columnGap * u * (w.fs.length - 1) + walkerSpan(l, w.fs[0]!.defender);
+  const wingWidth = (l: Laid, w: { fs: readonly Formation[] }, n: number): number => Math.max(colsWidth(l, w), n > 1 ? CLASH.wingMin * u : 0);
   const widthOf = (l: Laid, fs: readonly Formation[], extra = 0): number => {
     const ws = wingsOf(fs);
-    return ws.reduce((t, w) => t + w.fs.reduce((s, f) => s + span(l, f), 0) + CLASH.columnGap * u * (w.fs.length - 1) + walkerSpan(l, w.fs[0]!.defender), 0) + CLASH.wingGap * u * (ws.length - 1) + extra;
+    return ws.reduce((t, w) => t + wingWidth(l, w, ws.length), 0) + CLASH.wingGap * u * (ws.length - 1) + extra;
   };
   let laid: Laid | null = null, kept = forms, more: Formation[] = [];
   for (const step of CLASH_STEPS) {
@@ -318,9 +323,17 @@ export function gathering(input: GatherInput): Gathering {
   ];
   const width = widthOf(laid, kept, more.length ? m.wide(feet.atk) + CLASH.wingGap * u : 0);
   let x = cx0 - width / 2;
+  // Each wing's total counts every one of its attackers, those waiting in "more" too.
+  const wingKey = (f: Formation) => `${f.from}>${defKey(f.defender)}`;
+  const totals = new Map<string, number>();
+  for (const f of forms) totals.set(wingKey(f), (totals.get(wingKey(f)) ?? 0) + (f.blocked ? 0 : f.ks.reduce((s, k) => s + powerOf(k), 0)));
+  const plaqueY = (top: number) => Math.min(top, safe.top + (CLASH.plaqueTop + CLASH.plaqueH / 2) * u);
   const wings: ClashWing[] = [];
-  for (const w of wingsOf(kept)) {
+  const visible = wingsOf(kept);
+  for (const w of visible) {
     const x0 = x, columns: ClashColumn[] = [];
+    const ww0 = wingWidth(laid, w, visible.length);
+    x += (ww0 - colsWidth(laid, w)) / 2;
     w.fs.forEach((f, i) => {
       if (i) x += CLASH.columnGap * u;
       const sw = span(laid, f), cx = x + sw / 2;
@@ -346,24 +359,34 @@ export function gathering(input: GatherInput): Gathering {
       walker = { unit: wk.unit.id, card: wk.unit.top, x: x + ww / 2, top: feet[row] - m.tall(feet[row]) };
       x += ww;
     }
+    x = x0 + ww0;
     const top = (farRow ? feet.far - m.tall(feet.far) : feet.atk - m.tall(feet.atk)) - 6 * u;
     wings.push({
       attacker: w.fs[0]!.from,
       defender: w.fs[0]!.defender,
       defenderSeat: w.fs[0]!.defSeat,
-      plaque: { x: (x0 + x) / 2, y: Math.min(top, safe.top + (CLASH.plaqueTop + CLASH.plaqueH / 2) * u) },
+      plaque: { x: (x0 + x) / 2, y: plaqueY(top) },
       w: x - x0,
-      unblocked: columns.filter((c) => !c.blocked).reduce((t, c) => t + c.power, 0),
+      unblocked: totals.get(w.key) ?? 0,
       columns,
       ...(walker ? { walker } : {}),
     });
     x += CLASH.wingGap * u;
   }
   const moreAt = more.length ? quadAt(x + m.wide(feet.atk) / 2, feet.atk, m.wide(feet.atk), m.tall(feet.atk)) : null;
-  // The "more" wing still counts in its wing's tally: its attackers are unblocked or not as they are.
-  for (const f of more) {
-    const w = wings.find((x) => x.attacker === f.from && defKey(x.defender) === defKey(f.defender));
-    if (w && !f.blocked) wings[wings.indexOf(w)] = { ...w, unblocked: w.unblocked + f.ks.reduce((s, k) => s + powerOf(k), 0) };
+  // A wing whose attackers all wait in "more" keeps its plaque (over that column) and its defender's tally.
+  for (const w of wingsOf(more)) {
+    if (wings.some((x) => x.attacker === w.fs[0]!.from && defKey(x.defender) === defKey(w.fs[0]!.defender))) continue;
+    const mx = x + m.wide(feet.atk) / 2;
+    wings.push({
+      attacker: w.fs[0]!.from,
+      defender: w.fs[0]!.defender,
+      defenderSeat: w.fs[0]!.defSeat,
+      plaque: { x: mx, y: plaqueY(feet.atk - m.tall(feet.atk) - 6 * u) },
+      w: m.wide(feet.atk),
+      unblocked: totals.get(w.key) ?? 0,
+      columns: [],
+    });
   }
 
   const standing = (un: Unit): Unit => {

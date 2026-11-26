@@ -157,6 +157,7 @@ export class Stage {
   /** The clash's calm ground easing in and out with its scrim (0..1), and the last rect it covered. */
   private groundFade = { from: 0, to: 0, at: 0 as Ms };
   private groundRect: Rect | null = null;
+  private groundView: FocusGround | null = null;
   /** Each piece stepping out of the light or back (its meaning kept while it steps back), and the look last asked for. */
   private readonly hlFade = new Map<string, { from: number; to: number; at: Ms; tone: HighlightTone }>();
   private hlLook: HighlightLook = { dim: 0, lift: 0, flat: 0, halo: 0 };
@@ -749,18 +750,24 @@ export class Stage {
   private groundAt(t: Ms): FocusGround | null {
     const r = this.desc?.ground ?? null;
     if (r) this.groundRect = r;
-    const target = r ? 1 : 0, f0 = this.groundFade;
-    const at = (f: typeof f0): number => {
-      const ms = f.to > f.from ? SCRIM.inMs : SCRIM.outMs;
-      if (this.reduced || f.from === f.to || t - f.at >= ms) return f.to;
-      const k = Math.max(0, (t - f.at) / ms);
-      return f.from + (f.to - f.from) * (1 - (1 - k) * (1 - k));
-    };
-    if (target !== f0.to) this.groundFade = { from: at(f0), to: target, at: t };
-    const k = at(this.groundFade), g = this.groundRect, G = materials.shade.ground;
+    const target = r ? 1 : 0;
+    if (target !== this.groundFade.to) this.groundFade = { from: this.groundK(t), to: target, at: t };
+    const k = this.groundK(t), g = this.groundRect, G = materials.shade.ground;
     if (k <= 0 || !g) return null;
     const u = this.plan ? Math.min(this.plan.viewport.w / 1180, this.plan.viewport.h / 820) : 1;
-    return { l: g.left, t: g.top, r: g.right, b: g.bottom, feather: G.feather * u, colour: G.colour, alpha: G.alpha * k };
+    // The same ground object while its bounds and opacity hold: nothing is made per frame at rest.
+    const v = this.groundView, alpha = G.alpha * k, feather = G.feather * u;
+    if (v && v.l === g.left && v.t === g.top && v.r === g.right && v.b === g.bottom && v.alpha === alpha && v.feather === feather) return v;
+    return (this.groundView = { l: g.left, t: g.top, r: g.right, b: g.bottom, feather, colour: G.colour, alpha });
+  }
+
+  /** How far the ground has come in at `t` (0..1), eased as the scrim is. */
+  private groundK(t: Ms): number {
+    const f = this.groundFade;
+    const ms = f.to > f.from ? SCRIM.inMs : SCRIM.outMs;
+    if (this.reduced || f.from === f.to || t - f.at >= ms) return f.to;
+    const k = Math.max(0, (t - f.at) / ms);
+    return f.from + (f.to - f.from) * (1 - (1 - k) * (1 - k));
   }
 
   private scrimTo(target: number, t: Ms): number {

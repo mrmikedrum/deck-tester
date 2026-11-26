@@ -231,6 +231,8 @@ export interface TablePlan {
   readonly violations: readonly Violation[];
   /** The combat shown, or null. */
   readonly combat: CombatPairs | null;
+  /** Attackers blocked at some point this combat (the app's memory): a lane never runs from one to its defender. */
+  readonly blocked: ReadonlySet<CardId>;
   /** How it is shown: the clash's columns, wings and area, or the table form's wings (for the plates' tallies). */
   readonly gathering: Gathering | null;
   /** My field row's tops on screen (px): the clash stops above them. */
@@ -349,7 +351,7 @@ export function planTable(input: TableInput): TablePlan {
   const memory = new Map(final.map((p) => [p.seat, p.memory]));
   const placement = final.map((p) => [p.seat, p.units.map((u) => [u.id, u.placement.pos.x.toFixed(4), u.placement.pos.z.toFixed(4), u.placement.scale.toFixed(4)].join(",")).join(";"), p.fixtures.page.w.toFixed(3), p.fixtures.page.d.toFixed(3)].join("|")).join("\n");
   const screen = hits.groups.map((g) => g.quad.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ")).join(";");
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, gathering: c.gathered, fieldTop, ...(shadow ? { shadow } : {}) };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop, ...(shadow ? { shadow } : {}) };
 }
 
 /** A clash shape over a face of my field row or over the chrome: the clash must leave both uncovered. */
@@ -658,7 +660,10 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
     for (const w of clash.wings)
       for (const col of w.columns)
         if (col.slot) groups.push({ id: `slot:${col.unit}`, kind: "card", seat: w.attacker, members: [...col.attackers], quad: col.slot, order: FOCUS_ORDER });
-    if (clash.moreAt && clash.more.length) groups.push({ id: "clash:more", kind: "pile", seat: null, members: [...clash.more], quad: clash.moreAt, order: FOCUS_ORDER });
+    if (clash.moreAt && clash.more.length) {
+      const seat = plans.find((p) => p.home.has(clash.more[0]!))?.seat ?? null;
+      groups.push({ id: "clash:more", kind: "pile", seat, members: [...clash.more], quad: clash.moreAt, order: FOCUS_ORDER });
+    }
   }
   // The stack, top first, by its depth like any card; under the plates.
   for (const s of stack) if (s.reachable) groups.push({ id: `stack:${s.key}`, kind: "stack", seat: null, members: [s.card], quad: s.quad, order: shape(`stack:${s.key}`).order });

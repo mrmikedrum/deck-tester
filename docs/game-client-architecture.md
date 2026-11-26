@@ -467,7 +467,9 @@ table; what it covers is reached once it is set aside. **The table form** moves 
 trunk per attacking seat and defender. `TablePlan.gathering` carries the columns, wings, plaques and extent for the
 scene (one light shade, a calm ground of the page's tone under the picture, fighters above both, no lanes) and the
 chrome (plaques, brands, clasps, the plates' tallies, `app/clash.ts`). They count the unblocked attackers' current
-power and say "unblocked", never "damage"; after damage the plaque says what was dealt, from the life lost.
+power and say "unblocked", never "damage"; once Forge logs combat damage from a wing's attackers to its defender (a
+player or a planeswalker), the plaque says what was dealt. Wings stand apart, each at least a plaque wide; a defender
+whose attackers all wait in "more" keeps its wing and tally.
 
 `hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
 by depth, so the stack's top wins where its cards meet), a later group winning a tie. It is what layout tests, the
@@ -735,8 +737,10 @@ report); a new layer goes on top of its tier, one of each. An entry carries its 
 lean-in's seat, a sift's group) and the control keyboard focus returns to when it goes (the chrome's `data-fk`). The app
 keeps it in step with what its layers stand for (`sync`): a `sheet` entry while play presents a sheet, the mulligan
 while one is asked, and the stack layer for every new stack (a new item brings it up again, even set aside) until the
-stack empties; and the clash for a combat that raises it, until that combat ends (with what it keeps for that combat:
-the life it began from, the attackers seen blocked, and the order it first stood them in). Play keeps its choice draft
+stack empties; and the clash while the combat raises it. The combat itself is remembered for its lifetime, a game's
+turn while the engine shows a combat in a combat step, whatever its fighters or form do meanwhile (`CombatMemory`:
+where it began in Forge's log, the attackers seen blocked, the order the clash first stood them in); it ends with the
+combat, a jump to the main phase included, and takes the clash and its chip with it. Play keeps its choice draft
 and whether its sheet may close.
 
 One rule for every way out, Escape, a tap outside (a sheet's scrim, an unclaimed tap on the table) and the ✕: the top

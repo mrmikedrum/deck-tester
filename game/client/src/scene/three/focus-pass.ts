@@ -4,7 +4,7 @@
 // shadows fall as before. The clash also asks for a calm ground under its fighters: a soft-edged panel of the page's own
 // tone over the area it covers (`FocusWell`), so the boards behind it stop showing through, while the shade over the rest
 // of the table stays light.
-import { Color, ShaderMaterial, Vector4 } from "three";
+import { Color, ShaderMaterial, Vector2, Vector4 } from "three";
 import type { Camera, Scene, WebGLRenderer, WebGLRenderTarget } from "three";
 import { FullScreenQuad, Pass } from "three/addons/postprocessing/Pass.js";
 
@@ -59,6 +59,8 @@ export class FocusPass extends Pass {
   well: FocusWell | null = null;
   /** The viewport, CSS px (the well's rect is in it). */
   size = { w: 1, h: 1 };
+  /** The well last written to the uniforms (the stage hands the same object while it is unchanged). */
+  private wellShown: FocusWell | null = null;
   private readonly material: ShaderMaterial;
   private readonly quad: FullScreenQuad;
 
@@ -74,7 +76,7 @@ export class FocusPass extends Pass {
         uScrim: { value: new Color(colour) },
         uAlpha: { value: 0 },
         uRect: { value: new Vector4() },
-        uSize: { value: [1, 1] },
+        uSize: { value: new Vector2(1, 1) },
         uFeather: { value: 1 },
         uWell: { value: new Color() },
         uWellAlpha: { value: 0 },
@@ -95,15 +97,17 @@ export class FocusPass extends Pass {
     const layers = this.camera.layers.mask;
     renderer.setRenderTarget(this.renderToScreen ? null : read);
     renderer.autoClear = false;
+    // (Uniforms are updated in place, and only when what they say changed: nothing is allocated per frame.)
     const u = this.material.uniforms, w = this.well;
     u["uAlpha"]!.value = linearAlpha(this.alpha);
-    u["uSize"]!.value = [this.size.w, this.size.h];
+    (u["uSize"]!.value as Vector2).set(this.size.w, this.size.h);
     u["uWellAlpha"]!.value = w ? linearAlpha(w.alpha) : 0;
-    if (w) {
+    if (w && w !== this.wellShown) {
       (u["uRect"]!.value as Vector4).set(w.l, w.t, w.r, w.b);
       u["uFeather"]!.value = Math.max(1, w.feather);
       (u["uWell"]!.value as Color).setHex(w.colour);
     }
+    this.wellShown = w;
     this.quad.render(renderer);
     // Above the scrim: only what is marked, over a fresh depth (it never meets the dimmed table's depth), with the
     // shadow map the first pass made.

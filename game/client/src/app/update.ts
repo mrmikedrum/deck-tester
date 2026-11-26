@@ -27,7 +27,7 @@ import type { Gated } from "./catalog";
 import { cancelDeadline, cancelOwned, isLive, setDeadline } from "./deadlines";
 import type { Effect } from "./effects";
 import { effectFault, ingestFault, ingestOk, logEntry } from "./faults";
-import { clashKeyOf, isFighter, lifeOf } from "./clash";
+import { CLASH_MORE, combatSightOf, isFighter } from "./clash";
 import { close, dismiss, entry, isAside, isOpen, NO_FOCUS_STATE, open, restore, setAside, stackKeyOf, sync, tableTop, top, topKey } from "./focus";
 import { isDeadlineId } from "./ids";
 import { timeOf } from "./msg";
@@ -126,7 +126,7 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const groups = s.plan?.hits.groups;
   const has = (id: string): boolean => groups?.some((g) => g.id === id) ?? false;
   const pages = (id: string): number => siftPages(s.model && s.plan ? (siftCards(s.model, s.plan, id)?.ids.length ?? 0) : 0);
-  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), clash: clashKeyOf(s.model, play.present(s.play).board.combat), life: () => lifeOf(s.model), blocked: s.model?.combat?.blockers.map((b) => b.attacker) ?? [], groups: has, pages }, origin);
+  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat), groups: has, pages }, origin);
   return focus === s.focus ? s : { ...s, focus };
 }
 
@@ -326,7 +326,12 @@ function tapDefault(tx: Tx, on: play.Target): void {
   // The stack held up as the focus: its card is there to read, and a tap on it opens its inspector.
   const held = g?.kind === "stack" && t?.layer === "stack" ? g.members[0] : undefined;
   if (held !== undefined) return inspect(tx, held);
-  // The clash up: a tap on a fighter (or its slot) reads it; a tap on the shade sets the clash aside.
+  // The clash up: its "more" column opens the fighters past its columns (a sift over it); a tap on a fighter (or its
+  // slot) reads it; a tap on the shade sets the clash aside.
+  if (t?.layer === "clash" && g?.id === CLASH_MORE) {
+    tx.s = { ...tx.s, focus: open(f, entry("sift", { group: g.id, restore: tx.origin ?? null })) };
+    return;
+  }
   if (t?.layer === "clash") {
     const fighter = g && tx.s.plan ? isFighter(tx.s.plan, g) : false;
     if (fighter && g!.members.length === 1) return inspect(tx, g!.members[0]!);

@@ -42,14 +42,33 @@ export interface FocusState {
   readonly aside: readonly FocusEntry[];
   /** The stack (its items) the stack layer last came up for: a new item brings it up again, even set aside. */
   readonly stackKey: string;
-  /** The combat the clash last came up for: set aside, it stays aside until that combat ends. */
-  readonly clashKey?: string;
-  /** Each player's life when the clash came up: after damage its plaques say what was dealt, from the change. */
-  readonly clashLife?: Readonly<Record<string, number>>;
-  /** Attackers the engine has shown blocked in this combat: one whose blockers all left stays blocked. */
-  readonly clashBlocked?: readonly CardId[];
-  /** The clash's attackers in the order it first stood them: kept for the combat, so no column jumps. */
-  readonly clashOrder?: readonly CardId[];
+  /** The combat on the table, kept for its lifetime (`CombatMemory`); absent outside combat. */
+  readonly combat?: CombatMemory;
+}
+
+/**
+ * What the app keeps for one combat, from its first sight to its end (whatever its fighters or its form do meanwhile):
+ * where it began in Forge's log (its damage is read from the entries after it), the attackers the engine has shown
+ * blocked (one whose blockers all left stays blocked), the order the clash first stood its attackers in, and whether
+ * the combat raises the clash now.
+ */
+export interface CombatMemory {
+  /** The combat's identity: its game and turn ("" never: no memory outside combat). */
+  readonly key: string;
+  /** The last log entry's index when the combat began. */
+  readonly since: number;
+  readonly blocked: readonly CardId[];
+  readonly order: readonly CardId[];
+  readonly wanted: boolean;
+}
+
+/** The combat as `sync` hears of it each time: its identity ("" outside combat), whether it raises the clash, where the
+ *  log stood, and the attackers the engine shows blocked now. */
+export interface CombatSight {
+  readonly key: string;
+  readonly wanted: boolean;
+  readonly since: number;
+  readonly blocked: readonly CardId[];
 }
 
 export const NO_FOCUS_STATE: FocusState = { layers: [], aside: [], stackKey: "" };
@@ -133,7 +152,7 @@ export const stackKeyOf = (model: TableModel | null): string => (model ? model.s
  */
 export function sync(
   f: FocusState,
-  o: { sheet: boolean; mulligan: boolean; stack: string; clash?: string; life?: () => Readonly<Record<string, number>>; blocked?: readonly CardId[]; groups?: (id: string) => boolean; pages?: (id: string) => number },
+  o: { sheet: boolean; mulligan: boolean; stack: string; combat?: CombatSight; groups?: (id: string) => boolean; pages?: (id: string) => number },
   restore: string | null,
 ): FocusState {
   let next = f;
@@ -151,18 +170,32 @@ export function sync(
   if (o.stack !== next.stackKey) {
     next = o.stack ? open({ ...next, stackKey: o.stack }, entry("stack")) : { ...close(next, "stack"), stackKey: "" };
   }
-  // The clash comes up for a combat that raises it (`clash`: that combat's key) and goes with it; under the stack, since
-  // a spell cast in combat is the focus above it.
-  const clash = o.clash ?? "";
-  if (clash !== (next.clashKey ?? "")) {
-    next = clash
-      ? { ...open(next, entry("clash")), clashKey: clash, clashLife: o.life?.() ?? {}, clashBlocked: [], clashOrder: [] }
-      : { ...close(next, "clash"), clashKey: "", clashLife: {}, clashBlocked: [], clashOrder: [] };
-    if (clash && isOpen(next, "stack")) next = open(next, next.layers.find((e) => e.layer === "stack")!);
+  return combatSync(next, o.combat);
+}
+
+/**
+ * The combat's memory and the clash kept in step with it. A new combat (or none) starts the memory afresh and takes
+ * the clash and its chip down. Within one combat: the attackers seen blocked only grow; the clash comes up while the
+ * combat raises it and goes (not aside) while it does not; set aside, it stays aside for the rest of that combat. Under
+ * the stack, since a spell cast in combat is the focus above it.
+ */
+function combatSync(f: FocusState, c: CombatSight | undefined): FocusState {
+  const sight = c && c.key ? c : null;
+  let next = f;
+  if ((sight?.key ?? "") !== (next.combat?.key ?? "")) {
+    const { combat: _, ...rest } = close(next, "clash");
+    void _;
+    next = sight ? { ...rest, combat: { key: sight.key, since: sight.since, blocked: [], order: [], wanted: false } } : rest;
   }
-  const seen = next.clashBlocked ?? [];
-  const more = clash ? (o.blocked ?? []).filter((id) => !seen.includes(id)) : [];
-  if (more.length) next = { ...next, clashBlocked: [...seen, ...more] };
+  const mem = next.combat;
+  if (!sight || !mem) return next;
+  const blocked = [...mem.blocked, ...sight.blocked.filter((id, i, all) => !mem.blocked.includes(id) && all.indexOf(id) === i)];
+  if (blocked.length !== mem.blocked.length || sight.wanted !== mem.wanted) next = { ...next, combat: { ...mem, blocked, wanted: sight.wanted } };
+  const up = isOpen(next, "clash"), aside = isAside(next, "clash");
+  if (sight.wanted && !up && !aside) {
+    next = open(next, entry("clash"));
+    if (isOpen(next, "stack")) next = open(next, next.layers.find((e) => e.layer === "stack")!);
+  } else if (!sight.wanted && up) next = close(next, "clash");
   return next;
 }
 

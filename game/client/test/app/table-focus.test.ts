@@ -301,14 +301,14 @@ describe("a chooser for a gesture", () => {
 describe("the clash, a table layer", () => {
   const creature = (id: number, name: string, who: string, p = 2): Json => ({ id, name, owner: who, controller: who, type: "Creature - Soldier", power: p, toughness: 2 });
   /** Atraxa's two attack `at`; Dack's two stand by; Princess's one; a pass-only decision of mine. */
-  function fight(o: { v: number; at: string | null; blocks?: [number, number][] }): Json {
+  function fight(o: { v: number; at: string | null; blocks?: [number, number][]; attackers?: number[]; phase?: string; guard?: boolean }): Json {
     const e = board({ v: o.v, islands: 2 }) as { view: Json & { players: Json[] } };
-    e.view.players[0]!["battlefield"] = [...(e.view.players[0]!["battlefield"] as Json[]), creature(30, "Guard", "You")];
+    e.view.players[0]!["battlefield"] = [...(e.view.players[0]!["battlefield"] as Json[]), ...(o.guard === false ? [] : [creature(30, "Guard", "You")])];
     e.view.players[1]!["battlefield"] = [creature(40, "Raider", "Atraxa", 3), creature(41, "Brute", "Atraxa", 4)];
     e.view.players[2]!["battlefield"] = [creature(50, "Watcher", "Dack")];
     e.view["active"] = "Atraxa";
-    e.view["phase"] = "COMBAT_DECLARE_BLOCKERS";
-    e.view["combat"] = o.at ? { attackers: [40, 41].map((id) => ({ id, defender: o.at })), blockers: (o.blocks ?? []).map(([id, blocking]) => ({ id, blocking })) } : null;
+    e.view["phase"] = o.phase ?? "COMBAT_DECLARE_BLOCKERS";
+    e.view["combat"] = o.at ? { attackers: (o.attackers ?? [40, 41]).map((id) => ({ id, defender: o.at })), blockers: (o.blocks ?? []).map(([id, blocking]) => ({ id, blocking })) } : null;
     return e;
   }
   const fighterOf = (r: Rig, card: number) => groups(r).find((g) => g.members.includes(card as CardId))!;
@@ -360,6 +360,60 @@ describe("the clash, a table layer", () => {
     expect(raider.slot).toBeNull();
     expect(cols().map((c) => c.attackers[0])).toEqual(order);
     expect(r.commits.at(-1)!.view.clash!.plaques[0]!.words).toBe("Atraxa attacks You · 4 unblocked");
+  });
+
+  it("one combat, one memory: an attacker leaving combat as another loses its blocker keeps it blocked, and a clash set aside stays aside", () => {
+    const r = started(fight({ v: 1, at: "You", blocks: [[30, 40]] }));
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(r.state.focus.aside.map((e) => e.layer)).toEqual(["clash"]);
+    // the Brute leaves combat and the Guard dies: the Raider attacks alone, its blocker gone
+    r.transport.push(fight({ v: 2, at: "You", attackers: [40], guard: false }));
+    r.frame((r.now += 400));
+    expect(r.state.focus.combat?.blocked).toEqual([40]);
+    expect(layers(r)).toEqual([]);
+    expect(r.state.focus.aside.map((e) => e.layer)).toEqual(["clash"]);
+    // set aside: the table form, and the Raider, still blocked, draws no lane at me
+    expect(r.state.plan!.gathering!.form).toBe("table");
+    expect(r.state.plan!.gathering!.wings[0]!.columns[0]!.blocked).toBe(true);
+    const d = describeTable({ model: r.state.model!, plan: r.state.plan!, cues: play.present(r.state.play).board, focus: { layer: null, seat: null, group: null, card: null, table: [] }, hover: null });
+    expect(d.lanes).toEqual([]);
+    // raised again: no brand for it
+    r.inputs.push({ t: "restore", layer: "clash", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    expect(r.state.plan!.gathering!.wings[0]!.columns[0]!.slot).toBeNull();
+  });
+
+  it("a tap on the \"more\" column opens the fighters past the clash's columns, the clash still up under them", () => {
+    const e = fight({ v: 1, at: "You" }) as { view: Json & { players: Json[] } };
+    const ids = Array.from({ length: 20 }, (_, i) => 100 + i);
+    e.view.players[1]!["battlefield"] = ids.map((id, i) => creature(id, `Fighter ${i}`, "Atraxa", 2));
+    e.view["combat"] = { attackers: ids.map((id) => ({ id, defender: "You" })), blockers: [] };
+    const r = started(e);
+    const more = groups(r).find((g) => g.id === "clash:more")!;
+    expect(more.members.length).toBe(r.state.plan!.gathering!.more.length);
+    expect(more.members.length).toBeGreaterThan(0);
+    tap(r, more);
+    expect(layers(r)).toEqual([
+      ["clash", null],
+      ["sift", "clash:more"],
+    ]);
+    expect(r.commits.at(-1)!.view.sift).not.toBeNull();
+    const d = describeTable({ model: r.state.model!, plan: r.state.plan!, cues: play.present(r.state.play).board, focus: r.commits.at(-1)!.frame!.focus, hover: null });
+    const sifted = [...d.pieces.values()].flatMap((p) => (p.draw.t === "sift" ? [p.draw.card] : []));
+    expect(sifted.sort()).toEqual([...more.members].sort());
+  });
+
+  it("a jump straight to the main phase ends the combat: its memory, the clash and its chip go", () => {
+    const r = started(fight({ v: 1, at: "You", blocks: [[30, 40]] }));
+    expect(r.state.focus.combat?.blocked).toEqual([40]);
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
+    r.transport.push(fight({ v: 2, at: "You", phase: "MAIN2" }));
+    r.frame((r.now += 400));
+    expect(r.state.focus.combat).toBeUndefined();
+    expect(r.state.focus.aside).toEqual([]);
+    expect(r.commits.at(-1)!.view.chips).toEqual([]);
   });
 
   it("between opponents: the table form before blocks, the clash once one is blocked", () => {
