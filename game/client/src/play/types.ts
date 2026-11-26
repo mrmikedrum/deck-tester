@@ -66,7 +66,8 @@ export type Event =
 
 /** What a gesture landed on. A group carries its members as drawn: if they changed since, the act is dropped. */
 export type Target =
-  | { readonly card: CardId }
+  /** `chooser`: the card was chosen in the chooser of that revision (`Controls.choosing.rev`): refused once it is gone. */
+  | { readonly card: CardId; readonly chooser?: number }
   | { readonly group: HitGroupId; readonly members: readonly CardId[] }
   | { readonly seat: SeatId }
   | { readonly nothing: true };
@@ -112,7 +113,7 @@ export type Effect =
   /** Play did not use this act: the app applies its default (inspect, sift, lean, dismiss the stack layer). */
   | { readonly kind: "unclaimed" }
   /** Open this group's members (its sift) for the player to choose one: a gesture meant one of several. */
-  | { readonly kind: "choose"; readonly group: string };
+  | { readonly kind: "choose"; readonly group: string; readonly rev: number };
 
 export interface Step {
   readonly state: State;
@@ -224,8 +225,9 @@ export interface Controls {
   readonly sheet: SheetView | null;
   /** The inspector's buttons for a card: pressing one is a `pick` of its option. */
   readonly cardActions: ReadonlyMap<CardId, readonly CardAction[]>;
-  /** A gesture waits for the player to choose one of this group's members (its sift, the app's to open and close). */
-  readonly choosing: HitGroupId | null;
+  /** A gesture waits for the player to choose one of this group's members (its sift, the app's to open and close);
+   *  `rev` names this chooser: a card chosen in it says so, and is refused once the chooser is gone. */
+  readonly choosing: { readonly group: HitGroupId; readonly rev: number } | null;
 }
 
 export interface Presentation {

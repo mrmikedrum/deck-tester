@@ -433,8 +433,10 @@ engine to them. The rules:
   `choose` may offer hidden cards (a library search).
 - **Decisions** carry `id`, `kind`, `turn`, `prompt`, `options` (labels, which can repeat), `details`, `min`, `max`,
   `repeat`, `mine` (asked in my turn; every decision is mine to answer), and `refs` aligned with the options for what
-  they point at: `play` (`{card, spell, mana?}`; pass is `{}`), `pay`, `targets` and `choose` (`{card}`, `{player}`,
-  `{name}` or `{}`), `attack` (`{card, to}`: a player or a planeswalker's id), `block` (`{card, blocks}`). `mulligan`,
+  they point at: `play` (`{card, spell, mana?}`; pass is `{}`), `pay` (`{card, repeats?}`: `repeats` when the mana
+  ability's cost does not tap its source, so the answer may take it again, one activation each), `targets` and
+  `choose` (`{card}`, `{player}`, `{name}` or `{}`), `attack` (`{card, to}`: a player or a planeswalker's id), `block`
+  (`{card, blocks}`). `mulligan`,
   `number` (no options; the answer is one value), `mode`, `confirm` and `order` have none, and neither does a `choose`
   Forge asks by label only (a colour, a creature type, a yes or no): the client gives each of its options an empty
   ref. A client shows an unknown kind by its labels.

@@ -91,10 +91,11 @@ export function update(s: AppState, m: Msg): Step {
  */
 function choosing(st: Step, at: Ms): Step {
   const c = play.present(st.state.play).controls;
-  const sift = [...st.state.focus.layers, ...st.state.focus.aside].find((e) => e.layer === "sift" && e.choosing);
+  const sift = [...st.state.focus.layers, ...st.state.focus.aside].find((e) => e.layer === "sift" && e.choosing !== undefined);
   const tx: Tx = { s: st.state, fx: [...st.effects] };
-  if (sift && sift.group !== c.choosing) tx.s = { ...tx.s, focus: close(tx.s.focus, "sift") };
-  if (c.choosing !== null && sift?.group !== c.choosing)
+  const same = !!sift && !!c.choosing && sift.group === c.choosing.group && sift.choosing === c.choosing.rev;
+  if (sift && !same) tx.s = { ...tx.s, focus: close(tx.s.focus, "sift") };
+  if (c.choosing !== null && !same)
     toPlay(tx, { t: "act", stamp: { at, commit: 0 as CommitId }, stop: c.stop, act: { a: "putBack" } }, at);
   return tx.s === st.state ? st : { state: tx.s, effects: tx.fx };
 }
@@ -255,7 +256,7 @@ function playEffect(tx: Tx, fx: play.Effect, at: Ms, cause: play.Event): void {
       inspect(tx, fx.card);
       return;
     case "choose":
-      chooseFrom(tx, fx.group);
+      chooseFrom(tx, fx.group, fx.rev);
       return;
     case "unclaimed":
       // The app's default for a tap play did not use (a drag has none yet; a dismiss went by the focus rule first).
@@ -295,13 +296,13 @@ function sifts(s: AppState, g: HitGroup): boolean {
 
 /** Play asks the player to choose one of a group's members (a gesture meant one of several): its sift opens, the stack
  * set aside first; a tap on a sifted card then acts on that card alone. */
-function chooseFrom(tx: Tx, group: string): void {
+function chooseFrom(tx: Tx, group: string, rev: number): void {
   const g = tx.s.plan ? groupById(tx.s.plan.hits, group) : undefined;
   if (!g || (top(tx.s.focus)?.layer === "sift" && top(tx.s.focus)?.group === g.id)) return;
   // (A drag's other end, after its first was chosen: that sift gives way to this one.)
   const f = isOpen(tx.s.focus, "sift") ? close(tx.s.focus, "sift") : tx.s.focus;
   const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
-  tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null, choosing: true })) };
+  tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null, choosing: rev })) };
 }
 
 /**

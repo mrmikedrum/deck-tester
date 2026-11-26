@@ -174,6 +174,9 @@ export const ChoiceRefSchema = v.object({
   player: v.nullish(playerName, null),
   name: v.nullish(v.string(), null),
 });
+/** pay: the mana ability's source; `repeats` when its cost does not tap it, so the same option may be picked again (one
+ *  activation each: Workhorse's counters). */
+export const PayRefSchema = v.object({ ...ChoiceRefSchema.entries, repeats: flag });
 export const AttackRefSchema = v.object({ card: cardId, to: cardOrPlayer });
 export const BlockRefSchema = v.object({ card: cardId, blocks: cardId });
 
@@ -246,7 +249,7 @@ export const ConfirmSchema = finish(v.object({ kind: v.literal("confirm"), ...co
 export const OrderSchema = finish(v.object({ kind: v.literal("order"), ...common }));
 /** Option 1 is "pass". */
 export const PlaySchema = finish(v.object({ kind: v.literal("play"), ...common, refs: v.array(PlayRefSchema) }));
-export const PaySchema = finish(v.object({ kind: v.literal("pay"), ...common, refs: v.array(ChoiceRefSchema) }));
+export const PaySchema = finish(v.object({ kind: v.literal("pay"), ...common, refs: v.array(PayRefSchema) }));
 export const TargetsSchema = finish(
   v.object({ kind: v.literal("targets"), ...common, refs: v.array(ChoiceRefSchema) }),
 );

@@ -32,7 +32,7 @@ export interface Reaction {
   /** Open this group's members to choose one from (its sift): a tap on a member then acts on that card alone. */
   readonly choose?: string;
   /** The gesture the choice completes (step.ts's resolution of a group; never a kind's). */
-  readonly pending?: Pending | null;
+  readonly pending?: Omit<Pending, "rev"> | null;
 }
 
 export interface Btn extends Button {

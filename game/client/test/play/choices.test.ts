@@ -57,6 +57,39 @@ describe("pay", () => {
     expect(t.answers()).toEqual([[3]]);
   });
 
+  // 011 with Workhorse (995, four +1/+1 counters): its ability removes a counter and does not tap it (the engine's
+  // `repeats`), so paying {2} with it twice is [1, 1]; an Island beside it taps.
+  const workhorse = () =>
+    withDecision(
+      PAY,
+      { kind: "pay", prompt: "mana to pay {2}", options: ["Workhorse (C)", "Island (C)"], refs: [{ card: 995, repeats: true }, { card: 810 }], min: 0, max: 2, repeat: true },
+      (v) => void (v["players"] as { battlefield: Record<string, unknown>[] }[])[0]!.battlefield.push({ id: 995, name: "Workhorse", owner: "You", controller: "You", type: "Artifact Creature - Horse", power: 4, toughness: 4, counters: { "+1/+1": 4 } }),
+    );
+
+  it("a source whose ability does not tap it is picked again on the board; the Island tapped again is taken back", () => {
+    const t = new Table();
+    t.open(workhorse());
+    t.tapCard(995);
+    t.tapCard(995);
+    t.tapCard(810);
+    t.tapCard(810); // taken back
+    t.press("Pay");
+    expect(t.answers()).toEqual([[1, 1]]);
+  });
+
+  it("a source whose ability does not tap it is picked again in List (badged twice); Undo takes one back", () => {
+    const t = new Table();
+    t.open(workhorse());
+    t.press("List");
+    t.pick(1);
+    t.pick(1);
+    expect(t.p.controls.sheet?.items[0]?.badge).toBe(2);
+    t.pick(2);
+    t.pick(2); // the Island: taken back
+    t.act({ a: "press", button: t.p.controls.sheet!.buttons.find((b) => b.label === "Pay")!.id });
+    expect(t.answers()).toEqual([[1, 1]]);
+  });
+
   it("List: every source's every option, each with what sets its card apart; picks stay up until Pay (011, an Island another's)", () => {
     const t = new Table();
     t.open(withDecision(PAY, { kind: "pay", prompt: "mana to pay {U}{U}", options: ["Island (U)", "Island (U)"], refs: [{ card: 810 }, { card: 816 }], min: 0, max: 2 }, (v) => {

@@ -50,6 +50,8 @@ export interface Pending {
   readonly members: readonly CardId[];
   /** Where each card of the gesture was (zone and controller): a snapshot that moves one lets the gesture go. */
   readonly where: Readonly<Record<number, string>>;
+  /** This chooser's revision (never reused in a session): input from another is refused. */
+  readonly rev: number;
 }
 
 export interface S {
@@ -67,6 +69,8 @@ export interface S {
   readonly chooserClosed: boolean;
   /** A gesture waiting for the player to choose one of a group's members; it completes with the card chosen. */
   readonly pending: Pending | null;
+  /** Choosers opened so far: the next one's revision. */
+  readonly choosers: number;
   /** The answer out for this stop: play's token, or null for the bridge's own (a reload while it worked on one). */
   readonly inflight: { readonly token: AnswerToken | null; readonly stop: StopId } | null;
   readonly auto: { readonly id: string; readonly from: Ms; readonly ms: number } | null;
@@ -99,6 +103,7 @@ export const INITIAL: S = {
   sheet: null,
   chooserClosed: false,
   pending: null,
+  choosers: 0,
   inflight: null,
   auto: null,
   held: false,
@@ -110,4 +115,4 @@ export const open = (s: State): S => s as unknown as S;
 export const seal = (s: S): State => s as unknown as State;
 
 /** What a game reset keeps: the counters that make stop ids and tokens unique. */
-export const reset = (s: S): S => ({ ...INITIAL, serial: s.serial, tokens: s.tokens });
+export const reset = (s: S): S => ({ ...INITIAL, serial: s.serial, tokens: s.tokens, choosers: s.choosers });

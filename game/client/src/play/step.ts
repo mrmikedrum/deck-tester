@@ -94,8 +94,12 @@ function apply(s: S, r: Reaction, before: Effect[] = []): Out {
   }
   if (r.toast) effects.push({ kind: "toast", text: r.toast });
   if (r.inspect !== undefined) effects.push({ kind: "inspect", card: r.inspect });
-  if (r.choose !== undefined) effects.push({ kind: "choose", group: r.choose });
-  if (r.pending !== undefined) next = { ...next, pending: r.pending };
+  if (r.pending === null) next = { ...next, pending: null };
+  if (r.pending) {
+    const rev = next.choosers + 1;
+    next = { ...next, choosers: rev, pending: { ...r.pending, rev } };
+  }
+  if (r.choose !== undefined) effects.push({ kind: "choose", group: r.choose, rev: next.pending?.rev ?? 0 });
   // A chooser open for a gesture holds auto-pass: nothing is passed while the player chooses.
   if (r.pending && next.auto) {
     effects.push(...cancelAuto(next));
@@ -194,6 +198,10 @@ function onAct(was: S, e: Extract<Event, { t: "act" }>): Out {
     case "drag": {
       // A drag let go over nothing has no destination: nothing happens (live.js `H.drag` returned without one).
       if (act.a === "drag" && "nothing" in act.onto) return { state: s, effects: [UNCLAIMED] };
+      // A card chosen in a chooser that is gone (done, put away, dropped with the table it was for): refused, whatever
+      // waits now is left as it is.
+      if (act.a === "tap" && "card" in act.on && act.on.chooser !== undefined && act.on.chooser !== was.pending?.rev)
+        return { state: was, effects: [{ kind: "toast", text: "That choice has gone: choose again" }] };
       let g: Gesture = act.a === "tap" ? { a: "tap", at: act.on } : { a: "drag", from: act.from, onto: act.onto };
       const c0 = was.pending && act.a === "tap" && "card" in act.on ? completed(was.pending, act.on.card, s.groups.find((x) => x.id === was.pending!.group)?.members) : "other";
       if (c0 === "stale") return { state: s, effects: [{ kind: "toast", text: "That card has moved: choose again" }] };

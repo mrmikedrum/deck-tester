@@ -307,6 +307,16 @@ const CROWDED: { name: string; env: () => Raw; piles: number[][]; prepare?: (t: 
     env: () => withDecision("011-pay-my-planeswalker.json", { kind: "pay", prompt: "mana to pay {1}{G}", options: ["Mountain (R)", "Mountain (R)", "Mountain (G)"], refs: [{ card: 807 }, { card: 808 }, { card: 808 }], min: 0, max: 2 }),
     piles: [[807, 808]],
   },
+  {
+    name: "6. twin sources whose ability does not tap them (picked again, one activation each)",
+    env: () =>
+      withDecision("011-pay-my-planeswalker.json", { kind: "pay", prompt: "mana to pay {3}", options: ["Workhorse (C)", "Workhorse (C)"], refs: [{ card: 995, repeats: true }, { card: 996, repeats: true }], min: 0, max: 3, repeat: true }, (v) => {
+        const horse = (id: number) => ({ id, name: "Workhorse", owner: "You", controller: "You", type: "Artifact Creature - Horse", power: 4, toughness: 4, counters: { "+1/+1": 4 } });
+        player(v, "You").battlefield.push(horse(995), horse(996));
+      }),
+    piles: [[995, 996]],
+    prepare: (t) => void t.tapCard(995),
+  },
 ];
 
 // 011 (my Islands 810 and 816, my Grizzly Bears 817 and 818), changed so the twins are not twins, or are.
@@ -434,7 +444,7 @@ describe("a gesture on a group commits only what the player could have meant", (
     t.pile([[871, 829], [872, 900]]);
     t.drag({ group: "p871", members: [871, 829] as CardId[] }, { group: "p872", members: [872, 900] as CardId[] });
     expect(t.tapCard(871).some((e) => e.kind === "choose")).toBe(true); // the attacker chosen; now which planeswalker
-    expect(t.p.controls.choosing).toBe("p872");
+    expect(t.p.controls.choosing?.group).toBe("p872");
     // the same decision, with 871 gone from the battlefield
     const gone = structuredClone(env);
     const me = player(gone["view"] as Raw, "You");

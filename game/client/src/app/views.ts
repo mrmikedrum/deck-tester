@@ -157,7 +157,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null): Chrom
     menu: isOpen(f, "menu") ? menuOf(s) : null,
     handSheet: model && isOpen(f, "hand") ? handSheetOf(model, board.marks.hand, n.fresh) : null,
     stack: model && controls.sheet?.kind === "stack" ? stackRowsOf(model) : [],
-    sift: model && s.plan && sifted?.group != null ? siftViewOf(model, s.plan, sifted.group, sifted.page) : null,
+    sift: model && s.plan && sifted?.group != null ? siftViewOf(model, s.plan, sifted.group, sifted.page, sifted.choosing ?? null) : null,
     back: model && lean ? `${model.seat(lean)?.name ?? String(lean)}'s side` : null,
     newGame: offersNewGame(s),
     stackOpen: isOpen(f, "stack"),

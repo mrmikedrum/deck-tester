@@ -223,7 +223,7 @@ describe("a chooser for a gesture", () => {
     e.decision = decision ?? { id: v, kind: "pay", turn: "T1 main1", prompt: "mana to pay {U}", repeat: false, options: bf.map(() => "Island (U)"), refs: bf.map((c) => ({ card: c["id"] })), min: 0, max: 1 };
     return e;
   }
-  const choosing = (r: Rig) => play.present(r.state.play).controls.choosing;
+  const choosing = (r: Rig) => play.present(r.state.play).controls.choosing?.group ?? null;
   const opened = () => {
     const r = started(paying(1));
     const g = islands(r);
@@ -249,14 +249,39 @@ describe("a chooser for a gesture", () => {
     expect(groups(r).some((x) => x.id === g.id)).toBe(true);
   });
 
-  it("put away (Escape), it lets the gesture go: a later tap on one of its cards is that tap alone", () => {
-    // Two Grizzly Bears of mine, one owned by Atraxa (not twins), in one pile; they may attack Atraxa or Dack.
-    const e = board({ v: 1, islands: 0 }) as { view: { players: Json[] }; decision: Json };
+  /** Two Grizzly Bears of mine, one owned by Atraxa (not twins), in one pile; they may attack Atraxa or Dack. */
+  function bears(v: number, ids = [20, 21]): Json {
+    const e = board({ v, islands: 0 }) as { view: { players: Json[] }; decision: Json };
     const bear = (id: number, owner: string): Json => ({ id, name: "Grizzly Bears", owner, controller: "You", type: "Creature - Bear", power: 2, toughness: 2 });
-    e.view.players[0]!["battlefield"] = [bear(20, "You"), bear(21, "Atraxa")];
+    e.view.players[0]!["battlefield"] = ids.map((id) => bear(id, id === 21 ? "Atraxa" : "You"));
     const refs = [20, 21].flatMap((card) => ["Atraxa", "Dack"].map((to) => ({ card, to })));
     e.decision = { id: 1, kind: "attack", turn: "T1 main1", prompt: "attackers", repeat: false, options: refs.map(() => "attack"), refs, min: 0, max: 4 };
-    const r = started(e);
+    return e;
+  }
+
+  it("a tap on a card in the chooser, let go after a snapshot removed that card, is refused: nothing attacks", () => {
+    const r = started(bears(1));
+    const g = groups(r).find((x) => x.members.length > 1)!;
+    r.send({ a: "drag", from: { group: g.id, members: g.members }, onto: { seat: seatId("Dack") } });
+    r.frame((r.now += 10));
+    // the tap on Bear 21 goes down in the sift: its stop and chooser are those on screen now
+    const c = play.present(r.state.play).controls, stop = c.stop, rev = c.choosing!.rev;
+    // the same decision, Bear 21 gone, arrives before the tap is let go
+    r.transport.push(bears(2, [20]));
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(choosing(r)).toBeNull();
+    r.send({ a: "tap", on: { card: 21 as CardId, chooser: rev } }, stop);
+    r.frame((r.now += 10));
+    expect(play.present(r.state.play).board.combat).toBeNull();
+    // and without the chooser's word, a card no longer on the table is no candidate either
+    r.send({ a: "tap", on: { card: 21 as CardId } }, stop);
+    r.frame((r.now += 10));
+    expect(play.present(r.state.play).board.combat).toBeNull();
+  });
+
+  it("put away (Escape), it lets the gesture go: a later tap on one of its cards is that tap alone", () => {
+    const r = started(bears(1));
     const g = groups(r).find((x) => x.members.length > 1)!;
     expect(g.members).toEqual([20, 21]);
     r.send({ a: "drag", from: { group: g.id, members: g.members }, onto: { seat: seatId("Dack") } });

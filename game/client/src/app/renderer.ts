@@ -45,10 +45,12 @@ export interface PageRenderer extends Renderer {
 
 /** What a gesture is aimed at: the group under it, or nothing; a sifted card's group (`sift:<card>`, the scene's
  * `siftGroupId`) is the card itself, as a tap on it on the table would be. */
-const targetOf = (g: HitGroup | null): Target => {
+const targetOf = (g: HitGroup | null, chooser: number | null = null): Target => {
   if (!g) return { nothing: true };
   const card = g.id.startsWith("sift:") ? g.members[0] : undefined;
-  return card !== undefined ? { card } : { group: g.id, members: g.members };
+  if (card === undefined) return { group: g.id, members: g.members };
+  // a card in a sift play opened to choose from says which chooser (refused once that one is gone)
+  return chooser === null ? { card } : { card, chooser };
 };
 
 /** A press on the canvas, captured at pointer-down: the commit and stop on screen then, and the hit group under it. */
@@ -56,6 +58,8 @@ interface Press {
   readonly commit: number;
   readonly stop: StopId | null;
   readonly group: HitGroup | null;
+  /** The chooser the sift on screen was opened for (its revision), or null. */
+  readonly chooser: number | null;
 }
 
 export function pageRenderer(ports: PagePorts): PageRenderer {
@@ -67,9 +71,9 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
   let failure: string | null = null;
   let binding: PointerBinding | null = null;
   /** What the last commit showed: canvas gestures are stamped with it and aimed at its stop. */
-  let drawn: { commit: number; stop: StopId | null } = { commit: 0, stop: null };
+  let drawn: { commit: number; stop: StopId | null; chooser: number | null } = { commit: 0, stop: null, chooser: null };
   /** The last press, read by the recognizer's `pick` as the pointer goes down (each gesture keeps its own). */
-  let press: Press = { commit: 0, stop: null, group: null };
+  let press: Press = { commit: 0, stop: null, group: null, chooser: null };
   /** The group a mouse hovers, as last emitted. */
   let hovered: string | null = null;
   /** The plates' hit groups as last committed: a drag let go over a nameplate (chrome) drops on that seat's plate. */
@@ -96,7 +100,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
   };
   const act = (act: Act, at: Ms, p: Press): void => ports.emit({ t: "act", stamp: { at, commit: p.commit }, stop: p.stop, act });
   const capture = (e: PointerEvent): void => {
-    press = { commit: drawn.commit, stop: drawn.stop, group: pick(e.clientX, e.clientY) };
+    press = { commit: drawn.commit, stop: drawn.stop, group: pick(e.clientX, e.clientY), chooser: drawn.chooser };
   };
   const hover = (group: string | null): void => {
     if (group === hovered) return;
@@ -110,7 +114,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
   const gesture = (g: Gesture<Press>): void => {
     switch (g.g) {
       case "tap":
-        if (g.on) act({ a: "tap", on: targetOf(g.on.group) }, g.at, g.on);
+        if (g.on) act({ a: "tap", on: targetOf(g.on.group, g.on.chooser) }, g.at, g.on);
         return;
       case "drop":
         // The drop's target is what is under it now (a seat's nameplate, which is chrome, or the table); its source,
@@ -166,7 +170,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
       const frame = sceneFrame(state);
       const sceneReport = scene && sceneReady && frame ? scene.show(frame, now) : null;
       const c = chrome!.show(chromeView(state, sceneReport), now);
-      drawn = { commit: state.commit, stop: frame?.cues.stop ?? null };
+      drawn = { commit: state.commit, stop: frame?.cues.stop ?? null, chooser: state.focus.layers.find((e) => e.layer === "sift")?.choosing ?? null };
       const terminal = failure;
       failure = null;
       const active = (sceneReport?.active ?? false) || c.active || (binding?.active ?? false);

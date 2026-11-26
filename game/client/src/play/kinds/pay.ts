@@ -1,7 +1,8 @@
 // pay: tap mana sources in the order they pay (live.js `tapDecision` for pay, `pickColor`). A well of one land gives its
 // next free source per tap (a pile of different sources is opened to choose one first: step.ts, resolve.ts). A source with one mana option (a land, a rock)
 // is used once it is picked: tapped again (alone in its pile) it is taken back, and a well whose sources are all used
-// gives back its last. A source with several options (a colour choice, a dual land) asks which mana on every tap and
+// gives back its last; a source whose ability does not tap it (the engine's `repeats`: Workhorse's counters) is
+// picked again instead, one activation each, and Undo takes one back. A source with several options (a colour choice, a dual land) asks which mana on every tap and
 // adds that pick, as live.js `pickColor` did: the engine takes the same option more than once and activates it once
 // per pick (Crystalline Crawler's two counters pay two colours); its sheet's Take back gives back that source's picks.
 // The only picks refused are those the engine refuses (ManualController's pay decision: at most `max` picks, each an
@@ -15,6 +16,9 @@ import { base, btn } from "./kind";
 import type { Ctx, Kind, Reaction } from "./kind";
 
 const optsFor = (d: PayDecision, id: CardId): number[] => d.refs.flatMap((r, i) => (r.card === id ? [i + 1] : []));
+
+/** Its ability does not tap it (the engine's `repeats`): picked again, it is activated again. */
+const repeats = (d: PayDecision, id: CardId): boolean => optsFor(d, id).some((o) => d.refs[o - 1]?.repeats);
 
 const item = (o: number, label: string, n: number): SheetItem => ({ option: o, label, cost: null, detail: null, card: null, name: null, picked: n > 0, badge: n > 0 ? n : null });
 const times = (sel: readonly number[], o: number): number => sel.filter((x) => x === o).length;
@@ -38,9 +42,9 @@ function tapSources(c: Ctx<PayDecision>, ids: readonly CardId[]): Reaction | nul
   if (id === undefined) return null;
   const used = (x: CardId) => optsFor(d, x).some((o) => sel.includes(o));
   const single = (x: CardId) => optsFor(d, x).length === 1;
-  // a land tapped again: take it back
-  if (sources.length === 1 && used(id) && single(id)) return takeBack(c, id);
-  const free = sources.find((x) => !used(x)) ?? sources.find((x) => !single(x));
+  // a land tapped again: take it back (a source whose ability does not tap it is picked again: Undo takes one back)
+  if (sources.length === 1 && used(id) && single(id) && !repeats(d, id)) return takeBack(c, id);
+  const free = sources.find((x) => !used(x) || repeats(d, x)) ?? sources.find((x) => !single(x));
   if (free === undefined) {
     // a well whose sources are all picked: the last one picked comes back
     const last = [...sel].reverse().map((o) => d.refs[o - 1]?.card).find((x): x is CardId => x != null && sources.includes(x));
@@ -96,10 +100,10 @@ export const pay: Kind<PayDecision> = {
   pick(c, o) {
     const open = c.s.sheet;
     if (open?.k === "sources") {
-      // the list stays up: a one-option source picked already is taken back, anything else is one more pick
+      // the list stays up: a one-option source that taps, picked already, is taken back; anything else is one more pick
       const card = c.d.refs[o - 1]?.card;
       if (!Number.isInteger(o) || o < 1 || o > c.d.options.length) return null;
-      const r = card != null && c.draft.sel.includes(o) && optsFor(c.d, card).length === 1 ? takeBack(c, card) : add(c, o);
+      const r = card != null && c.draft.sel.includes(o) && optsFor(c.d, card).length === 1 && !repeats(c.d, card) ? takeBack(c, card) : add(c, o);
       return { ...r, sheet: open };
     }
     if (!open || open.k !== "mana" || !open.options.includes(o)) return null;

@@ -30,8 +30,9 @@ export interface FocusEntry {
   readonly dismissible: boolean;
   /** The control keyboard focus returns to when it goes (the chrome's `data-fk`), or null. */
   readonly restore: string | null;
-  /** A sift play opened to choose one of its cards (a gesture that meant one of several): it goes once one is chosen. */
-  readonly choosing?: boolean;
+  /** A sift play opened to choose one of its cards (a gesture that meant one of several), by that chooser's revision
+   *  (play's `Controls.choosing.rev`): it goes with the gesture. */
+  readonly choosing?: number;
 }
 
 export interface FocusState {

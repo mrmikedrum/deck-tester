@@ -131,7 +131,7 @@ describe("attack", () => {
     t.open(twoAttackers());
     t.pile([[871, 829], [872, 873]]);
     // a tap: the attackers open, and the one chosen is picked
-    expect(ofKind(t.tapGroupOf(829), "choose")).toEqual([{ kind: "choose", group: expect.any(String) }]);
+    expect(ofKind(t.tapGroupOf(829), "choose")).toEqual([{ kind: "choose", group: expect.any(String), rev: expect.any(Number) }]);
     expect(t.p.board.combat).toBeNull();
     t.tapCard(829);
     expect(t.p.board.combat?.attacks.map((a) => a.attacker)).toEqual([829]);

@@ -163,6 +163,9 @@ export function factsOf(m: TableModel): Facts {
 }
 
 export const topItem = (f: Facts): ItemFact | undefined => f.stack[f.stack.length - 1];
+/** On the battlefield now: what attacks, blocks and is attacked (a card that has left is no candidate, whatever a late
+ *  gesture says). */
+export const inPlay = (f: Facts, id: CardId): boolean => f.cards[id]?.zone === "battlefield";
 export const cardOf = (f: Facts, id: CardId | null | undefined): CardFact | undefined => (id == null ? undefined : f.cards[id]);
 export const seatName = (f: Facts, id: SeatId | null): string => (id === null ? "" : (f.seats.find((s) => s.id === id)?.name ?? id));
 export const hasSeat = (f: Facts, name: string): boolean => f.seats.some((s) => s.id === name);
