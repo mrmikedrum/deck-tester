@@ -13,10 +13,12 @@ export const WAITING: Record<AppState["session"]["bridge"], string> = {
   playing: "No game yet",
   over: "No game yet",
   error: "Game couldn't start",
+  interrupted: "Game interrupted",
 };
 
 /** The line the waiting prompt shows before a game has a model. */
 export function waitingLine(s: AppState): string {
+  if (s.session.bridge === "error" && s.session.snap?.startFailure === "deck") return "Deck failed lobby checks";
   return WAITING[s.session.bridge];
 }
 

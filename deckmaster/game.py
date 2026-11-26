@@ -83,12 +83,18 @@ class Table:
             self._store({"state": "starting", "gen": self.generation, "answer": None})
             return self.generation
 
-    def fail_start(self, gen, error):
+    def fail_start(self, gen, error, reason=None):
         with self.lock:
             if gen == self.generation and self.snapshot["state"] == "starting":
-                self.error = str(error)
-                self.session = None
-                self._store({"state": "error", "gen": gen, "error": self.error, "answer": None})
+                self.failure(gen, "error", error, **({"startFailure": reason} if reason else {}))
+
+    def failure(self, gen, state, error, **fields):
+        """Hold the lock. End the current generation's ability to answer, including any answer still in flight."""
+        self.error = str(error)
+        self.session = None
+        self.status = None
+        self.answers += 1
+        self._store({"state": state, "gen": gen, "error": self.error, "answer": None, **fields})
 
     def _store(self, snap):
         """Hold the lock. A changed snapshot is a new version, and wakes the long polls."""
@@ -167,33 +173,34 @@ class Table:
     def watch(self, gen, session):
         """Game `gen`'s watcher: polls its own seat's view until a newer game begins. A view that comes back after that
         is dropped (`show` checks the gen under the lock), so it never overwrites the newer game's snapshot."""
-        last_ok = time.time()
+        last_ok = time.monotonic()
         while gen == self.generation:
             try:
                 reply = engine.request({"cmd": "view", "session": session}, start=False)
+                last_ok = time.monotonic()
                 if self.snapshot["state"] == "starting":
-                    if (reply.get("over") or "").startswith("error:"):
-                        self.fail_start(gen, reply["over"])
+                    reason = reply.get("startFailure")
+                    if reason or (reply.get("over") or "").startswith("error:"):
+                        self.fail_start(gen, reply.get("over") or "engine could not start", reason)
                         return
                     if not (reply.get("view") or reply.get("decision") or reply.get("over")):
-                        if time.time() - last_ok > 60:
-                            self.fail_start(gen, "engine did not send an opening view")
-                            return
                         time.sleep(0.25)
                         continue
                 if not self.show(snapshot(reply, gen, self.pilots), gen, session):
                     return
-                last_ok = time.time()
+                if "over" in reply:
+                    return
                 time.sleep(0.12 if reply.get("decision") else 0.25)
             except Exception as error:  # a read while Forge moves cards can fail: read again
-                if time.time() - last_ok > 10:
+                if time.monotonic() - last_ok > 10:
                     with self.lock:
                         if gen != self.generation:
                             return
                         if self.snapshot["state"] == "starting":
                             self.fail_start(gen, error)
                             return
-                        self.error = str(error)
+                        self.failure(gen, "interrupted", error)
+                        return
                 time.sleep(0.1)
 
     def answer(self, body):

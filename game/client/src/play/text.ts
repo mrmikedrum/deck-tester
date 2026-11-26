@@ -4,7 +4,7 @@
 // what may be answered.
 import type { Decision, StackId } from "../protocol";
 import type { SeatId, Target } from "../model";
-import { phaseName, stackValues } from "../model";
+import { abilityTargetNames, phaseName, stackValues } from "../model";
 import type { Facts, ItemFact } from "./facts";
 import { cardOf, seatName, topItem } from "./facts";
 
@@ -29,7 +29,7 @@ export function where(f: Facts): string {
 export function itemLine(f: Facts, st: ItemFact): string {
   const name = shortCard(cardOf(f, st.source)?.display ?? "");
   const who = st.controller === f.me ? "You" : seatName(f, st.controller);
-  const names = st.targets.map((t) => targetName(f, t)).filter(Boolean);
+  const names = itemTargets(f, st);
   const subject = st.spell ? name : `${name} ability`;
   const line = names.length
     ? `${st.controller === f.me ? subject : `${whoName(f, st.controller)} ${subject}`} targets ${listNames(names)}`
@@ -146,6 +146,11 @@ function targetName(f: Facts, t: Target): string {
   return c ? (c.controller === f.me ? "your " : "") + shortCard(c.display) : "";
 }
 
+const itemTargets = (f: Facts, st: ItemFact): string[] => [
+  ...st.targets.map((t) => targetName(f, t)).filter(Boolean),
+  ...abilityTargetNames(st, f.stack, (id) => cardOf(f, id)?.display),
+];
+
 /** One row of the stack summary: "1 Arcane Denial → Swords to Plowshares", "2 Swords to Plowshares → your Meloku". */
 export interface StackSummaryRow {
   readonly item: StackId;
@@ -169,7 +174,7 @@ export function stackRows(f: Facts): StackSummaryRow[] {
       item: st.id,
       n: i + 1,
       title: [st.spell ? name : `${shortCard(name)} ability`, ...stackValues(st)].join(" · "),
-      at: listNames(st.targets.map((t) => targetName(f, t)).filter(Boolean)),
+      at: listNames(itemTargets(f, st)),
       aimed: st.sweep || st.threat,
     };
   });

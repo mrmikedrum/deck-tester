@@ -6,6 +6,7 @@ import os
 import pathlib
 import queue
 import re
+import socket
 import tempfile
 import threading
 import time
@@ -501,6 +502,36 @@ class WatcherTest(unittest.TestCase):
         self.assertEqual(t.snapshot["state"], "starting")
 
 
+    def test_persistent_view_failure_interrupts_the_playing_generation(self):
+        t = game.Table()
+        gen = t.begin()
+        replies = [{"view": {"me": "You"}, "decision": PLAY}, engine.EngineError("engine isn't running")]
+        with mock.patch.object(game.time, "monotonic", side_effect=[0, 1, 12]), \
+                mock.patch.object(game.time, "sleep"), mock.patch.object(engine, "request", side_effect=replies):
+            t.watch(gen, "s1")
+        version, snap = t.wait(2, timeout=0)
+        self.assertEqual(version, 3)
+        self.assertEqual(snap["state"], "interrupted")
+        self.assertEqual(snap["gen"], gen)
+        self.assertNotIn("decision", snap)
+        self.assertEqual(t.answer({"id": PLAY["id"], "gen": gen, "answer": [1]})["ok"], False)
+
+    def test_transient_view_failure_keeps_watching_the_game(self):
+        t = game.Table()
+        gen = t.begin()
+        replies = [
+            {"view": {"me": "You"}, "decision": PLAY},
+            engine.EngineError("Forge moved a card mid-read"),
+            {"view": {"me": "You"}, "over": "over: a draw"},
+        ]
+        with mock.patch.object(game.time, "monotonic", side_effect=[0, 1, 2, 3]), \
+                mock.patch.object(game.time, "sleep"), mock.patch.object(engine, "request", side_effect=replies):
+            t.watch(gen, "s1")
+        self.assertEqual(t.snapshot["state"], "over")
+        self.assertEqual(t.snapshot["gen"], gen)
+        self.assertIsNone(t.error)
+
+
 class EnvelopeTest(unittest.TestCase):
     def test_the_envelope_carries_version_error_build_and_answer(self):
         self.assertEqual(game.envelope({"state": "no game"}, 0, None),
@@ -881,7 +912,7 @@ class GameStartTest(unittest.TestCase):
     def test_no_first_view_publishes_start_error(self):
         t = game.Table()
         gen = t.begin()
-        with mock.patch.object(game.time, "time", side_effect=[0, 11]), \
+        with mock.patch.object(game.time, "monotonic", side_effect=[0, 11]), \
                 mock.patch.object(engine, "request", side_effect=engine.EngineError("engine closed the connection")):
             t.watch(gen, "s1")
         _, snap = t.wait(1, timeout=0)
@@ -896,6 +927,76 @@ class GameStartTest(unittest.TestCase):
         version, snap = t.wait(1, timeout=0)
         self.assertEqual(version, 2)
         self.assertEqual((snap["state"], snap["gen"]), ("error", gen))
+
+    def test_silent_engine_times_out_start_and_view(self):
+        t = game.Table()
+        commands = []
+        deck = mock.Mock(slug="test")
+        deck.list = mock.Mock(commanders=["Marath, Will of the Wild"], main=[[99, "Forest"]])
+        deck.list.revision.return_value = "test"
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp, socket.socket(socket.AF_UNIX) as peer:
+            root = pathlib.Path(tmp)
+            path = root / "table.sock"
+            peer.bind(str(path))
+            peer.listen()
+            peer.settimeout(2)
+
+            def listen():
+                for _ in range(3):
+                    conn, _ = peer.accept()
+                    with conn, conn.makefile("rb") as stream:
+                        conn.settimeout(2)
+                        cmd = json.loads(stream.readline())["cmd"]
+                        commands.append((cmd, conn.recv(1)))  # record the timeout closing the unanswered socket
+
+            worker = threading.Thread(target=listen, daemon=True)
+            worker.start()
+            with mock.patch.multiple(engine, HOME=root, SOCKET=path, REQUEST_TIMEOUTS=dict.fromkeys(
+                    ("table", "table_end", "view"), 0.05)), \
+                    mock.patch.multiple(game, TABLE=t, ARGS=mock.Mock(table_port=18000)), \
+                    mock.patch("deckmaster.game.decks.get", return_value=deck), mock.patch("deckmaster.game.model.key"), \
+                    mock.patch("deckmaster.game.traceback.print_exc"):
+                game.safe_open("test", [], None, "creatures")
+                self.assertEqual(t.snapshot["state"], "error")
+                self.assertEqual(t.snapshot["gen"], 1)
+                self.assertIn("engine timed out on table", t.snapshot["error"])
+                self.assertTrue(t.start_lock.acquire(blocking=False))
+                t.start_lock.release()
+                with self.assertRaisesRegex(engine.EngineError, "engine timed out on view"):
+                    engine.request({"cmd": "view", "session": "s1"}, start=False)
+            worker.join(timeout=2)
+            self.assertFalse(worker.is_alive())
+        self.assertEqual(commands, [(cmd, b"") for cmd in ("table_end", "table", "view")])
+
+    def test_responsive_empty_views_can_wait_past_the_old_start_limit(self):
+        t = game.Table()
+        gen = t.begin()
+        seen = []
+
+        def request(req, start=True):
+            seen.append(t.snapshot["state"])
+            return {"view": {}} if len(seen) < 3 else {"view": {"me": "You"}, "decision": PLAY}
+
+        def pause(delay):
+            if len(seen) == 3:
+                self.assertEqual(t.snapshot["decision"], PLAY)
+                t.begin()
+
+        with mock.patch.object(game.time, "monotonic", side_effect=[0, 0, 61, 62]), \
+                mock.patch.object(game.time, "time", side_effect=[0, 0, 61, 62]), \
+                mock.patch.object(game.time, "sleep", side_effect=pause), mock.patch.object(engine, "request", side_effect=request):
+            t.watch(gen, "s1")
+        self.assertEqual(seen, ["starting"] * 3)
+
+    def test_deck_rejection_is_a_start_failure(self):
+        t = game.Table()
+        gen = t.begin()
+        msg = "could not start (a deck failed the lobby's checks)"
+        with mock.patch.object(engine, "request", return_value={"view": {}, "over": msg, "startFailure": "deck"}):
+            t.watch(gen, "s1")
+        version, snap = t.wait(1, timeout=0)
+        self.assertEqual(version, 2)
+        self.assertEqual(snap, {"state": "error", "gen": gen, "error": msg, "answer": None, "startFailure": "deck"})
 
     def test_long_socket_path_fails_before_starting_java(self):
         with mock.patch.object(engine, "SOCKET", pathlib.Path("/tmp") / ("a" * 108)):

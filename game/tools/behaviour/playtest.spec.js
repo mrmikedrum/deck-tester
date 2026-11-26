@@ -18,6 +18,24 @@ test("failed shuffle offers a new game", async ({ table }) => {
   await expect(table.page.getByRole("button", { name: "Start" })).toBeVisible();
 });
 
+test("a deck rejected by the lobby explains the failed start", async ({ table }) => {
+  await table.open({ state: "starting" });
+  await table.push({ state: "error", gen: table.snapshot.gen, startFailure: "deck",
+    error: "could not start (a deck failed the lobby's checks)" });
+  await expect(table.page.getByText("Deck failed lobby checks", { exact: true })).toBeVisible();
+  await expect(table.button("New game")).toBeVisible();
+});
+
+test("an interrupted game clears the old decision and offers recovery", async ({ table }) => {
+  await table.open("main");
+  await expect(table.page.locator('.l-prompt [data-button="pass"]')).toBeVisible();
+  await table.push({ state: "interrupted", gen: table.snapshot.gen, error: "engine timed out on view" });
+  await expect(table.page.getByText("Game interrupted", { exact: true })).toBeVisible();
+  await expect(table.page.locator('.l-prompt [data-button="pass"]')).toHaveCount(0);
+  await expect(table.button("New game")).toBeVisible();
+  expect(table.answers()).toEqual([]);
+});
+
 test("floating mana stays visible from priority through payment", async ({ table }) => {
   const s = snapshot("main");
   await table.open(s);

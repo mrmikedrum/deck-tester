@@ -129,6 +129,7 @@ final class Session {
     private volatile Thread thread;
     volatile Player pilot;
     volatile String over;
+    volatile String startFailure;
     /** Milliseconds building the game (decks, cards) before the first action, for measuring forks. */
     volatile long setupMillis;
     private volatile SeededRandom.Source random;
@@ -1148,6 +1149,7 @@ final class Session {
             }
             List<Object> targets = new ArrayList<>();
             List<String> modes = new ArrayList<>();
+            List<Integer> abilityTargets = new ArrayList<>();
             for (var sub = item; sub != null; sub = sub.getSubInstance()) {
                 var effect = sub.getSpellAbility();
                 // Forge chains the chosen modes as sub-abilities and gives each a CharmOrder.
@@ -1158,11 +1160,23 @@ final class Session {
                 if (choices != null) {
                     choices.getTargetCards().forEach(card -> targets.add(card.getId()));
                     choices.getTargetPlayers().forEach(player -> targets.add(player.getName()));
-                    choices.getTargetSpells().forEach(spell -> targets.add(spell.getHostCard().getId()));
+                    for (var target : choices.getTargetSpells()) {
+                        if (target.isSpell()) {
+                            targets.add(target.getHostCard().getId());
+                        } else {
+                            var instance = game.getStack().getInstanceMatchingSpellAbilityID(target);
+                            if (instance != null) {
+                                abilityTargets.add(instance.getId());
+                            }
+                        }
+                    }
                 }
             }
             if (!targets.isEmpty()) {
                 entry.put("targets", targets);
+            }
+            if (!abilityTargets.isEmpty()) {
+                entry.put("abilityTargets", abilityTargets);
             }
             if (!modes.isEmpty()) {
                 entry.put("modes", modes);

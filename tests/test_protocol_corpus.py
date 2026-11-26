@@ -12,7 +12,7 @@ from deckmaster import engine, game
 from tests import protocol_capture as pc
 
 CORPUS = pathlib.Path(__file__).resolve().parent / "fixtures" / "protocol"
-STATES = {"no game", "starting", "playing", "over", "error"}
+STATES = {"no game", "starting", "playing", "over", "error", "interrupted"}
 KINDS = {"mulligan", "play", "number", "mode", "targets", "confirm", "order", "pay", "choose", "attack", "block"}
 
 

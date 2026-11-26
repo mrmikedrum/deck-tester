@@ -39,7 +39,7 @@ KNOWN_OPTIONAL = {
     "card": {"faceDown", "cost", "power", "toughness", "sick", "loyalty", "tapped", "token", "commander", "copy",
              "attachedTo", "counters", "keywords", "text"},
     "player": {"poison", "monarch", "lost", "commanderDamage", "hand", "handCount"},
-    "stack": {"source", "controller", "targets", "modes", "x"},
+    "stack": {"source", "controller", "targets", "modes", "x", "abilityTargets"},
     "view": {"active", "priority", "combat", "over"},
     "decision": {"details", "refs"},
     "log": {"card"},

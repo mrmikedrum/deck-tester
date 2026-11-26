@@ -214,6 +214,9 @@ public final class Server {
                     reply.put("decision", numbered(parked));
                 } else if (session.channel.isFinished()) {
                     reply.put("over", session.over);
+                    if (session.startFailure != null) {
+                        reply.put("startFailure", session.startFailure);
+                    }
                 }
                 reply.put("view", session.view());
                 return reply;

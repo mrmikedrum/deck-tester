@@ -3,7 +3,7 @@
 // stack's rules (`openStackRules`), the chips of set-aside layers and the Game menu's decks. Pure.
 import type { CardAction, Controls } from "../play";
 import type { CardId } from "../protocol";
-import { abilityText, asides, handOrder, isCreature, stackValues } from "../model";
+import { abilityTargetNames, abilityText, asides, handOrder, isCreature, stackValues } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, SiftView, StackRow } from "../chrome";
 import { SIFT_PAGE, siftOf, siftPages } from "../layout";
@@ -77,6 +77,7 @@ export function inspectorOf(model: TableModel, id: CardId, actions: readonly Car
       const who = it.controller === null ? "Controller unrecorded" : seatName(model, it.controller);
       const effect = it.spell ? "" : abilityText(it.text, c.face.name);
       const targets = it.targets.map((t) => ("seat" in t ? seatName(model, t.seat) : model.cards.get(t.card)?.face.name)).filter(Boolean);
+      targets.push(...abilityTargetNames(it, model.stack, (id) => model.cards.get(id)?.face.name));
       return [it.spell ? "Spell" : "Ability", who, effect, ...stackValues(it), targets.length ? `Targets ${targets.join(", ")}` : ""].filter(Boolean).join(" · ");
     });
   return {

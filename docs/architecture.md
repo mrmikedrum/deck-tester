@@ -426,20 +426,23 @@ schemas with the rules in comments); `tests/fixtures/protocol/` holds real envel
 engine to them. The rules:
 
 - **The envelope** (`GET /api/view?v=N`, a long poll that answers when the version passes `N`, or at once when `N` is
-  ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`), `gen` (a new game, a new
-  gen, retained on a failed start), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view
+  ahead of a restarted bridge): `state` (`no game`, `starting`, `playing`, `over`, `error`, `interrupted`), `gen`
+  (a new game, a new gen, retained on a failed start), `v`, `error` (the bridge's last error, under any state), `view` (the engine's view
   of my seat, `{}` or null before the game), `decision` (the pending one, or null), `over` (the result line), `pilots` (seat to pilot), plus
   `answer` and `build` below. The view is facts by card id and player name: players from mine in turn order, gone once
   they lose (me included); the stack top first; `turn` global, `label` per player ("T3 Dack main1"); `cost` in Forge's
   short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. A stack item carries its
-  `targets`, chosen `x` and `modes` when present. A target may be a card gone from the game (still named in the
-  item's text), and a `choose` may offer hidden cards (a library search). `combat` carries Forge's facts about the combat on the table:
+  `targets`, `abilityTargets` (stack-instance ids), chosen `x` and `modes` when present. A target may be a card gone
+  from the game (still named in the item's text), and a `choose` may offer hidden cards (a library search).
+  `combat` carries Forge's facts about the combat on the table:
   its `ordinal` in the turn, each attacker's `defender`, `defending` player (a battle's protector) and Forge's
   `blocked` verdict (it holds when the blockers leave), the `blockers`, and the combat `damage` dealt in it by `source`,
   `target` and `defender` (what the source was attacking when it hit; after prevention, summed over its damage steps;
   noncombat damage is not in it). The engine's `CombatFacts` takes them from Forge's own damage state on the game
   thread as they happen, publishes them for the view, and saves and restores them with a session snapshot; a hit
   stays counted when its source or target leaves, and nothing comes from the game log.
+  Responsive empty views keep the bridge in `starting`. An opening failure can include `startFailure` (`deck` or
+  `engine`). A persistent read failure after the opening publishes `interrupted` and clears the decision.
 - **Decisions** carry `id`, `kind`, `turn`, `prompt`, `options` (labels, which can repeat), `details`, `min`, `max`,
   `repeat`, `mine` (asked in my turn; every decision is mine to answer), and `refs` aligned with the options for what
   they point at: `play` (`{card, spell, mana?}`; pass is `{}`), `pay` (`{card, repeats?}`: `repeats` when the mana

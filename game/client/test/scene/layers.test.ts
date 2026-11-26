@@ -8,7 +8,7 @@ import type { Point, Quad } from "../../src/layout";
 import { diff, modelOf } from "../../src/model";
 import { groupsOf } from "../../src/play/reach";
 import { decodeSnapshot } from "../../src/protocol";
-import { catalog, rawCorpus, viewerOf } from "../model/fixtures";
+import { catalog, creature, rawCorpus, spell, tableOf, viewerOf } from "../model/fixtures";
 import { NO_FOCUS, SCRIM, Stage, chipsOf, describe, pickDrawn, poseQuad, siftRoll } from "../../src/scene/stage";
 import type { FocusTop, StageView } from "../../src/scene/stage";
 import { NO_CUES, corpusSteps, frameOf } from "./corpus";
@@ -98,6 +98,22 @@ group("the stack as the table's focus", () => {
     expect(groupsOf(plan.hits).map((g) => g.id)).toContain(`stack:${plan.stack[spilled]!.key}`);
     for (const s of plan.stackUp) expect(pickDrawn(plan, shown.drawn, centre(s.quad))?.id).toMatch(/^stack:/);
   });
+  it("points an ability counter at the exact activation rather than the permanent", () => {
+    const source = creature(301, "Marath, Will of the Wild", "You");
+    const model = tableOf({
+      seats: { You: { battlefield: [source] } },
+      stack: [
+        { id: 31, source, spell: false },
+        { id: 32, source, spell: false },
+        { id: 33, source: spell(302, "Stifle", "Atraxa", "Counter target activated or triggered ability."), abilityTargets: [31] },
+      ],
+    });
+    const plan = planTable(tableInputOf(model, { viewport: { w: 1180, h: 820 } }));
+    const scene = describe({ model, plan, focus: at({ layer: "stack" }), cues: NO_CUES, hover: null });
+    expect(scene.aims).toHaveLength(1);
+    expect(scene.aims[0]).toMatchObject({ from: "stack:33", to: "stack:31", onto: "spell" });
+  });
+
   it("its arc runs from the spell to Princess's plate, ending at the plate's top", () => {
     const view = rest(bolt, at({ layer: "stack" }));
     expect(view.aims).toHaveLength(1);

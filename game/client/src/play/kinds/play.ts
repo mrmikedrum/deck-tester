@@ -56,7 +56,7 @@ export const play: Kind<PlayDecision> = {
   // What can be played is lit on the table; my own item on top is on screen.
   words(c) {
     const { f } = c, top = topItem(f);
-    if (top && (top.controller !== f.me || top.targets.length || top.x !== null || top.modes.length)) return { headline: itemLine(f, top) };
+    if (top && (top.controller !== f.me || top.targets.length || top.abilityTargets.length || top.x !== null || top.modes.length)) return { headline: itemLine(f, top) };
     if (top) return { headline: "" };
     if (f.attackersAtMe.length) return { headline: `${seatName(f, f.active)} attacks you with ${f.attackersAtMe.length}` };
     if (f.blockerSeats.length) return { headline: "Blockers declared" };

@@ -99,6 +99,8 @@ export const StackItemSchema = v.object({
   /** Chosen X (including zero) and the descriptions of the chosen modes, when recorded by Forge. */
   x: v.nullish(count, null),
   modes: v.optional(v.array(v.string()), () => []),
+  /** Stack-instance ids for targeted abilities, distinct from their source permanents. */
+  abilityTargets: v.optional(v.array(stackId), () => []),
 });
 
 export const CombatSchema = v.object({
@@ -319,7 +321,7 @@ export const DecisionSchema = v.lazy((input) => {
 
 // ---- The envelope ------------------------------------------------------------------------------------------------
 
-export const STATES = ["no game", "starting", "playing", "over", "error"] as const;
+export const STATES = ["no game", "starting", "playing", "over", "error", "interrupted"] as const;
 
 /** What happened to the last answer the bridge forwarded to the engine. */
 export const AnswerStatusSchema = v.object({
@@ -337,6 +339,7 @@ export const AnswerStatusSchema = v.object({
 
 const SnapshotFields = v.object({
   state: v.picklist(STATES),
+  startFailure: v.optional(v.picklist(["deck", "engine"])),
   /** The game's generation: a new game, a new gen. Null before the first game. */
   gen: v.nullish(count, null),
   /** The bridge's version of this snapshot: the long poll's cursor. Goes backwards when the bridge restarts. */

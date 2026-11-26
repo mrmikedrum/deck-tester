@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent
 HOME = ROOT / ".deckmaster"
 SOCKET = HOME / "engine.sock"
 LOG = HOME / "engine.log"
+# Browser table RPCs do not wait for a game decision. Leave decision/fork requests on Forge's own deadline.
+REQUEST_TIMEOUTS = {"table": 30, "table_end": 10, "view": 3, "shutdown": 3}
 MODE = []  # extra arguments for the engine: ["table"] for the table engine (see use_table)
 _started = {}  # socket to the detached process this interpreter started, for reaping on stop
 
@@ -68,9 +70,10 @@ def _build() -> None:
     CLASSPATH.touch()
 
 
-def _connect():
+def _connect(timeout=None):
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
+        client.settimeout(timeout)
         client.connect(str(SOCKET))
     except OSError:
         client.close()
@@ -108,7 +111,7 @@ def _start() -> None:
         if proc.poll() is not None:
             raise EngineError(f"engine exited during startup ({proc.returncode}); see {LOG}")
         try:
-            _connect().close()
+            _connect(0.2).close()
             _started[SOCKET] = proc
             return
         except OSError:
@@ -121,10 +124,11 @@ def _start() -> None:
 def request(payload: dict, start: bool = True) -> dict:
     """Send one request; start the engine first if it isn't running. Raises EngineError on failure."""
     HOME.mkdir(exist_ok=True)
+    timeout = REQUEST_TIMEOUTS.get(payload["cmd"])
     client = None
     for attempt in range(3):  # a busy engine can refuse a connection for a moment; don't start a second one
         try:
-            client = _connect()
+            client = _connect(timeout)
             break
         except OSError:
             if not SOCKET.exists():
@@ -134,15 +138,24 @@ def request(payload: dict, start: bool = True) -> dict:
         if not start:
             raise EngineError("engine isn't running")
         _start()
-        client = _connect()
+        client = _connect(timeout)
+    deadline = None if timeout is None else time.monotonic() + timeout
     with client:
-        client.sendall((json.dumps(payload) + "\n").encode())
-        data = b""
-        while not data.endswith(b"\n"):
-            chunk = client.recv(65536)
-            if not chunk:
-                break
-            data += chunk
+        try:
+            client.sendall((json.dumps(payload) + "\n").encode())
+            data = b""
+            while not data.endswith(b"\n"):
+                if deadline is not None:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise socket.timeout()
+                    client.settimeout(remaining)
+                chunk = client.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+        except socket.timeout as error:
+            raise EngineError(f"engine timed out on {payload['cmd']}; see {LOG}") from error
     if not data:
         raise EngineError(f"engine closed the connection; see {LOG}")
     reply = json.loads(data)
@@ -160,7 +173,7 @@ def stop() -> None:
     deadline = time.time() + 10
     while time.time() < deadline:
         try:
-            _connect().close()
+            _connect(0.2).close()
             time.sleep(0.2)
         except OSError:
             break

@@ -71,6 +71,24 @@ function through(last: string, o: { playLast?: boolean } = {}): Story {
   return story;
 }
 
+it("leaves X and modes off ambiguous log lines for activations of one permanent", () => {
+  const source = creature(37, "Marath, Will of the Wild", "Atraxa");
+  const story = new Story().see(tableOf({ seats: { Atraxa: { battlefield: [source] } } }));
+  story.see(tableOf({
+    seats: { Atraxa: { battlefield: [source] } },
+    stack: [
+      { id: 10, source, spell: false, x: 1, modes: ["First mode"] },
+      { id: 11, source, spell: false, x: 3, modes: ["Second mode"] },
+    ],
+    log: [
+      { i: 0, type: "STACK_ADD", card: 37, text: "Atraxa activated Marath targeting Dack" },
+      { i: 1, type: "STACK_ADD", card: 37, text: "Atraxa activated Marath targeting You" },
+    ],
+  }));
+  const activations = story.sheet.groups.flatMap((g) => g.rows).filter((r) => r.type === "stack_add");
+  expect(activations.map((r) => r.text)).toEqual(["Atraxa activated Marath targeting You", "Atraxa activated Marath targeting Dack"]);
+});
+
 describe("the log strip and the log, over the first game", () => {
   it("the turn heads the strip in place of Forge's own turn line", () => {
     const st = through("009-play-commander-zone.json", { playLast: true });

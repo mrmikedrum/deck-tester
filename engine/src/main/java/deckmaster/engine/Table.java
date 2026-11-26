@@ -72,7 +72,10 @@ final class Table {
             Runnable start = lobby.startGame();
             if (start == null) {
                 state = "could not start (a deck failed the lobby's checks)";
-                seats.values().forEach(s -> s.finishAtTable(state));
+                seats.values().forEach(s -> {
+                    s.startFailure = "deck";
+                    s.finishAtTable(state);
+                });
                 return;
             }
             start.run();
@@ -99,7 +102,12 @@ final class Table {
         } catch (RuntimeException error) {
             state = "error: " + error;
             error.printStackTrace();
-            seats.values().forEach(s -> s.finishAtTable(state));
+            seats.values().forEach(s -> {
+                if (game == null) {
+                    s.startFailure = "engine";
+                }
+                s.finishAtTable(state);
+            });
         }
     }
 

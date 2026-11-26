@@ -59,7 +59,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     key: String(s.id),
     card: (s.source ?? s.id) as CardId,
     ability: !s.spell,
-    answers: s.targets.some((t) => "card" in t && spells.has(t.card) && t.card !== s.source),
+    answers: s.abilityTargets.length > 0 || s.targets.some((t) => "card" in t && spells.has(t.card) && t.card !== s.source),
     targets: s.targets.flatMap((t) => ("card" in t ? [t.card] : [])),
     seats: s.targets.flatMap((t) => ("seat" in t ? [t.seat] : [])),
     controller: s.controller,

@@ -28,6 +28,7 @@
     "gen",
     "over",
     "pilots",
+    "startFailure",
     "view"
    ]
   },
@@ -140,6 +141,7 @@
     "text"
    ],
    "optional": [
+    "abilityTargets",
     "controller",
     "modes",
     "source",
