@@ -46,8 +46,11 @@ import type { World } from "./world";
 
 const MB = 1024 * 1024;
 
-/** The memory the host allows itself: painted textures on the GPU, and decoded art. */
-export const BUDGETS = { textures: 160 * MB, art: 64 * MB } as const;
+/**
+ * The memory the host allows itself: painted textures (signs, chips, pages; a face's canvas until it is copied), the face
+ * atlas's pages that show nothing (the faces on show always have their layers), and decoded art.
+ */
+export const BUDGETS = { textures: 160 * MB, faces: 96 * MB, art: 64 * MB } as const;
 
 /**
  * Dispose a composer and the passes it was given: the composer frees only its own targets and copy pass, while bloom
@@ -70,7 +73,7 @@ export interface HostOptions {
   readonly onArt?: (url: string) => void;
   /** The context was lost and has come back: every resource was disposed; rebuild the scene from the latest description. */
   readonly onRebuild?: () => void;
-  readonly budgets?: { readonly textures: number; readonly art: number };
+  readonly budgets?: { readonly textures: number; readonly faces?: number; readonly art: number };
 }
 
 export interface HostStats {
@@ -93,9 +96,17 @@ export interface HostStats {
   readonly cardBatches: number;
   readonly sprites: number;
   readonly spriteBatches: number;
-  readonly atlas: { readonly pages: number; readonly faces: number; readonly shown: number };
+  readonly atlas: { readonly pages: number; readonly faces: number; readonly shown: number; readonly bytes: number };
   /** Frames whose shadow map was drawn again (something that throws a shadow moved). */
   readonly shadowFrames: number;
+}
+
+/** The post-processing's settings (`Host.setQuality`). */
+export interface Quality {
+  /** The composer's pixel ratio (its targets: bloom, the focus pass); null is the policy's (`renderSizes`). */
+  readonly composerDpr: number | null;
+  readonly bloom: boolean;
+  readonly msaa: boolean;
 }
 
 /** How many frame intervals the host keeps (about ten seconds at 60 fps). */
@@ -119,6 +130,9 @@ export class Host {
   readonly renderer: WebGLRenderer;
   private composer: EffectComposer;
   private focusPass!: FocusPass;
+  private bloomPass!: UnrealBloomPass;
+  /** The post-processing's settings (the render bench times each): the composer's pixel ratio, bloom, MSAA. */
+  private quality: Quality = { composerDpr: null, bloom: true, msaa: true };
   private textures: TextureCache;
   private arts: ArtCache;
   private _painter: Painter;
@@ -149,7 +163,7 @@ export class Host {
   private lastFrame: number | null = null;
   private intervals: number[] = [];
   private pacing = { count: 0, max: 0, over33: 0 };
-  private readonly budgets: { readonly textures: number; readonly art: number };
+  private readonly budgets: { readonly textures: number; readonly faces?: number; readonly art: number };
   private readonly listeners: { readonly lost: (e: Event) => void; readonly restored: () => void };
 
   constructor(private readonly opts: HostOptions) {
@@ -175,7 +189,7 @@ export class Host {
     this._painter = this.newPainter();
     this.geo = cardGeometry();
     this.backLease = this._painter.back();
-    this.deck = new CardDeck(this.renderer.capabilities.getMaxAnisotropy(), this.backLease.texture, this.rim);
+    this.deck = new CardDeck(this.renderer.capabilities.getMaxAnisotropy(), this.backLease.texture, this.rim, this.budgets.faces ?? BUDGETS.faces);
     this.decals = new DecalBatch(this.batches);
     this.batches.add(this.deck.group);
     this._kit = { deck: this.deck, geo: this.geo, rim: this.rim };
@@ -215,7 +229,7 @@ export class Host {
     const s = renderSizes(viewport, dpr);
     this.renderer.setPixelRatio(s.renderer);
     this.renderer.setSize(s.width, s.height, false);
-    this.composer.setPixelRatio(s.composer);
+    this.composer.setPixelRatio(this.quality.composerDpr === null ? s.composer : Math.min(s.renderer, this.quality.composerDpr));
     this.composer.setSize(s.width, s.height);
     applyCamera(this.camera, this.override ?? cameraParams(this.spec, viewport));
     this.shadowStale = true;
@@ -361,10 +375,25 @@ export class Host {
     this.renderer.dispose();
   }
 
+  /**
+   * The post-processing's settings, for measuring what each costs (the render bench): the composer's pixel ratio (null:
+   * the policy's), bloom on or off, MSAA on or off. The game never changes them.
+   */
+  setQuality(q: Partial<Quality>): void {
+    const msaa = q.msaa !== undefined && q.msaa !== this.quality.msaa;
+    this.quality = { ...this.quality, ...q };
+    if (msaa) {
+      disposeComposer(this.composer);
+      this.composer = this.newComposer();
+    }
+    this.bloomPass.enabled = this.quality.bloom;
+    this.setViewport(this.viewport, this.dpr);
+  }
+
   private newComposer(): EffectComposer {
     const s = renderSizes(this.viewport, this.dpr);
     const target = new WebGLRenderTarget(s.width, s.height, {
-      samples: materials.tone.msaaSamples,
+      samples: this.quality.msaa ? materials.tone.msaaSamples : 0,
       type: HalfFloatType,
     });
     const composer = new EffectComposer(this.renderer, target);
@@ -374,7 +403,9 @@ export class Host {
     composer.addPass(this.focusPass);
     // Light that is brighter than white blooms: the spells and the arcs. Cards and pages never reach it.
     const b = materials.bloom;
-    composer.addPass(new UnrealBloomPass(new Vector2(s.width, s.height), b.strength, b.radius, b.threshold));
+    this.bloomPass = new UnrealBloomPass(new Vector2(s.width, s.height), b.strength, b.radius, b.threshold);
+    this.bloomPass.enabled = this.quality.bloom;
+    composer.addPass(this.bloomPass);
     composer.addPass(new OutputPass());
     return composer;
   }
@@ -422,7 +453,7 @@ export class Host {
     this._painter = this.newPainter();
     this.geo = cardGeometry();
     this.backLease = this._painter.back();
-    this.deck = new CardDeck(this.renderer.capabilities.getMaxAnisotropy(), this.backLease.texture, this.rim);
+    this.deck = new CardDeck(this.renderer.capabilities.getMaxAnisotropy(), this.backLease.texture, this.rim, this.budgets.faces ?? BUDGETS.faces);
     this.decals = new DecalBatch(this.batches);
     this.batches.add(this.deck.group);
     this._kit = { deck: this.deck, geo: this.geo, rim: this.rim };

@@ -420,3 +420,7 @@ count includes every pass (shadows when drawn, the table, the focus, bloom, outp
 was negligible: the frame waits on the GPU. A highlight costs about 3 ms over rest whatever its dim, the focus pass's
 second render into the multisampled target (the stack's focus already drew so). WebKit's clock is 1 ms, so medians are
 rounded; the means were 11.2, 14.8 and 11.8 ms.
+
+The same table at rest with one post-processing setting changed (a second run, so the baseline moved to 12.8 ms mean):
+the composer at 1.0x, 10.6 ms; at 1.5x (the policy's), 12.3; bloom off, 11.6 (55 calls); MSAA off, 11.5; all three,
+9.2. On the M4 none of them dominates: the lit table itself is most of the frame. The iPad's run decides.

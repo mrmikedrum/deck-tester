@@ -604,15 +604,17 @@ times a second (`AMBIENT_MS`) and still counts as settled, so a recorder's virtu
 **Highlight** steps cards out of the physical light: each rises a little toward the eye (a tap reaches it where it rose),
 its face is drawn flat and unlit, a thin halo rings it in its tone's colour (ember mine, blood a threat, gold a spell),
 and one scrim dims the rest; each card eases out and back on its own over 200 ms (cut under reduced motion), and lifted
-cards keep throwing shadows onto the dimmed table. The stack as the focus brings its own (its spells and what they aim
+cards keep throwing shadows onto the dimmed table. Drawn over the rest, a highlighted card is also reached first by a
+tap. The stack as the focus brings its own (its spells and what they aim
 at); the app asks for the rest (`highlight`: choosing targets). Each moment's look (dim, lift, flat, halo) is a theme
 token (`materials.highlight`).
 
 **Zoom** is a composed camera move, never navigation: `zoom` names a subject and the camera eases onto it (lower and
 from the right, so cards show their thickness and shadows) and back to the table's when it is gone. Picking stays right
 under it: a tap is mapped through the zoomed camera to the point it lands on, then to where the table's camera sees that
-point. For now it is a trial (`?zoom`: a long press on the table zooms; any tap or Escape comes back; nothing reaches
-play).
+point, and the piece the ray meets keeps its identity (what stands above the scrim first). For now it is a trial
+(`?zoom`: a long press on a card, a pile or a seat's page zooms; then any input, a tap, a button or Escape, only comes
+back, and nothing reaches play).
 
 Inside, the **stage** turns frames into motion:
 
@@ -657,10 +659,12 @@ faint paper grain, contact shades where they meet the page; the tome's texture p
 audit measures and raycasts); each frame the host's `CardDeck` gathers the shown proxies into instanced meshes, one per
 face-atlas page, layer and pass, with each card's look (tapped, dim, flat, rim signal) as instance data. Faces are copied
 from their painted canvases into layers of array textures (`FaceAtlas`, 32 faces a page), so cards wearing different
-faces still draw together; a block of cards is the same slab stretched to its height. Flat sprites (contact shades,
+faces still draw together; a new face reuses the room of one nobody shows before the atlas grows, and pages showing
+nothing go past its budget (`BUDGETS.faces`); a block of cards is the same slab stretched to its height. Flat sprites (contact shades,
 pools, glows, halos) marked `batched` are drawn the same way by `DecalBatch`. The shadow map is drawn again only when
 something that throws a shadow moved, came or went. The turn-15 table draws in about 70 calls, post-processing included
-(`workbench.html?only=render` times it: below, "Budgets").
+(`workbench.html?only=render` times it: below, "Budgets"; it also times the table at rest with the composer's pixel
+ratio at 1.0 and 1.5, bloom off and MSAA off, each alone, through the host's `setQuality`, which the game never calls).
 Painted textures are leased by content key (`TextureCache`): reference-counted by the pieces showing them, and, once
 unreferenced, kept in an LRU bounded by an estimated byte budget (`ByteCache`, pure, in `scene/resources/`: 160 MB of
 textures, 64 MB of decoded art, `BUDGETS` in `host.ts`); evicting disposes the texture and releases the canvas pixels.

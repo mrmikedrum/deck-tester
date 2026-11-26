@@ -4,6 +4,8 @@
 // the GPU (one pixel read back), so its cost is the whole frame's, CPU and GPU. It is how the table's cost is measured
 // on the iPad: open it there, wait for "Done" and press "Send to Mac" (POST api/bench, as the planTable bench does, kept
 // under .deckmaster/bench/); over plain http there is no clipboard, so the results also sit in a box to select by hand.
+// Then the table at rest again under each post-processing setting on its own (the composer's pixel ratio at 1.0 and 1.5,
+// bloom off, MSAA off, all three), so a run on the iPad shows what dominates its frame.
 import { decodeCatalog, diff, modelOf, playerViewer } from "../../model";
 import type { CardCatalog, ChangeSet, TableModel } from "../../model";
 import { planTable, tableInputOf } from "../../layout";
@@ -14,7 +16,7 @@ import { frame, now } from "../../platform";
 import { NO_FOCUS } from "../stage";
 import type { HighlightRequest, HighlightTone, SceneFrame, SceneReport } from "../stage";
 import { createScene } from "../three";
-import type { SceneHandle } from "../three";
+import type { Quality, SceneHandle } from "../three";
 
 const VIEWPORT = { w: 1180, h: 820 } as const;
 const NO_CUES: BoardCues = { stop: null, marks: { cards: new Map(), seats: new Map(), hand: new Set() }, combat: null, handAway: false };
@@ -85,6 +87,8 @@ const stats = (xs: readonly number[]): Stats => {
 
 interface Row {
   readonly moment: string;
+  /** The post-processing it was drawn with: the composer's pixel ratio (null: the policy's), bloom, MSAA. */
+  readonly quality: Quality;
   readonly what: string;
   readonly frames: number;
   /** A frame drawn and finished on the GPU, ms. */
@@ -165,6 +169,7 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   };
 
   /** Time `n` frames of a moment; `step` draws one (and says whether it counts). */
+  let quality: Quality = { composerDpr: null, bloom: true, msaa: true };
   async function time(moment: string, what: string, step: () => boolean): Promise<Row> {
     const costs: number[] = [],
       gaps: number[] = [],
@@ -194,6 +199,7 @@ export async function renderBench(root: HTMLElement): Promise<void> {
     const c = [...calls].sort((x, y) => x - y);
     return {
       moment,
+      quality,
       what,
       frames: costs.length,
       frame: stats(costs),
@@ -212,6 +218,8 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   const run = async (): Promise<void> => {
     const tableEl = $("r-table");
     tableEl.innerHTML = `<tr><th align=left>moment</th><th>frame median</th><th>p90</th><th>worst</th><th>mean</th><th>interval median</th><th>draw calls</th><th>max</th><th>shadow redraws</th><th>cards / batches</th><th>sprites / batches</th></tr>`;
+    quality = { composerDpr: null, bloom: true, msaa: true };
+    host.setQuality(quality);
     const rows: Row[] = [];
     const add = (row: Row): void => {
       rows.push(row);
@@ -247,6 +255,23 @@ export async function renderBench(root: HTMLElement): Promise<void> {
       }),
     );
     atB = false;
+    await settle();
+    // The table at rest under each post-processing setting on its own, then all three off.
+    const variants: [string, Partial<Quality>][] = [
+      ["rest · composer 1.0x", { composerDpr: 1 }],
+      ["rest · composer 1.5x", { composerDpr: 1.5 }],
+      ["rest · no bloom", { bloom: false }],
+      ["rest · no MSAA", { msaa: false }],
+      ["rest · 1.0x, no bloom, no MSAA", { composerDpr: 1, bloom: false, msaa: false }],
+    ];
+    for (const [name, q] of variants) {
+      quality = { composerDpr: null, bloom: true, msaa: true, ...q };
+      host.setQuality(quality);
+      $("r-status").textContent = `Timing ${name}…`;
+      add(await time(name, "the table at rest with only this post-processing changed", () => (show(false), true)));
+    }
+    quality = { composerDpr: null, bloom: true, msaa: true };
+    host.setQuality(quality);
     last = { userAgent: navigator.userAgent, screen: { w: screen.width, h: screen.height, dpr: devicePixelRatio }, viewport: VIEWPORT, table: t.name, framesPerMoment: FRAMES, bench: "render", rows };
     (root.querySelector("#r-json") as HTMLTextAreaElement).value = JSON.stringify(last, null, 1);
     (root.querySelector("#r-send") as HTMLButtonElement).disabled = false;
