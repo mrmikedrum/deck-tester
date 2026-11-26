@@ -12,11 +12,11 @@ Code: `game/client/src/layout/arrange/` (paths below are under `game/client/src/
 and today's layout code it replaces in steps (`layout/seat.ts`, `layout/plan.ts`, `layout/seat/{fit,fold,geometry,mat}.ts`,
 `layout/focus.ts`, `layout/combat.ts`, `play/reach.ts`, `scene/stage/pick.ts`, `model/predicates.ts`).
 
-**Status:** the first slice's steps 1 to 6 are built (§6.1), and steps 8 and 9 (§6.2): every opponent's leaf and my
+**Status:** the first slice's steps 1 to 6 are built (§6.1), and steps 8 to 10 (§6.2): every opponent's leaf and my
 side are drawn, tapped and audited through the engine on the no-middle template (two to four seats), the mats part for
-duels and the stack, and a fight is gathered as the clash or as duels (the combat part of step 11, brought forward). The
-focuses are still the old layout's. What building changed from this design, and why, is in "Round 3" to "Round 7" below;
-where they differ, the code and those rounds win.
+duels and the stack, a fight is gathered as the clash or as duels (the combat part of step 11, brought forward), and
+moments light the table in place. The focuses are still the old layout's. What building changed from this design, and
+why, is in "Round 3" to "Round 8" below; where they differ, the code and those rounds win.
 
 ## Changes after review
 
@@ -148,6 +148,20 @@ The combat spec's section 4 (the parting, computed) and its duels are built with
 | **Regions** | A grid place's count strip extends the place's own edges down (`draw.ts`). | A spent stack lying a quarter turn in my row fell out of a region whose sides ran from the strip's corners. |
 | **Offered and usable** | While I choose, the groups the decision offers are exempt from fans, the muster and the summary: they step out of my piles in place. All or nothing: where the row cannot hold them all (a payment offering every land), they fold as at rest and their pile opens with them lit. What a priority decision offers is usable, not offered: light and a cue on its pile, never moved, so my row holds still at every stop (a usable card inside a pile is a tap on the pile, then one on the card; a usable attachment is reached through its host, whose chooser holds it). What a decision offers may spill into my field's free places, before anything else does. | A payment from a pile took two taps a land; stepping some out but not others would need the walk to know free places ahead (left for step 10). With my mana tier full (three places), the mana a payment does not offer spills into my field's free places, so the offered stay out. |
 | **Not built** | Named lands overlapped showing name strips (they lie singly, then pile as "Lands n"); the acting rank. | Step 10. |
+
+### Round 8: moments (step 10, Nov 26)
+
+| What | Built | Why |
+|---|---|---|
+| **Nothing rest shows moves** | The moment's cards (what a decision offers on my side, what the stack aims at anywhere) step out of piles only where every card rest shows (alone, on top, or in a block of its copies) is still drawn where it was. They take whole free places after what rest shows, which keeps its centre, so a centred row needs a whole place free past its end; within a step they go after what goes back where it sat last plan. Round 7's all-or-nothing, and its offered-first that pushed what rest spilled into a pile, are gone. | The owner: the table does not rearrange for a moment. Offered-first gathered my mana into one well and hid the Island block; re-centring a row slid every pile half a place. |
+| **The acting rank** | An order, not a row: which of the moment's cards take the free places (what rest hides among unlike cards first, then the policy's importance, then the oldest). The longest prefix that fits steps out, by halving (at most log₂ n + 2 attempts, only while a moment has such cards). The rest stay in their pile, lit and cued, which opens with them. | The row in front of a leaf's front exists only while a pose parts the mats, and a moment never parts them. |
+| **Aimed** | What the stack aims at and does not fight is `Acting.aimed`, not `involved`: lit where it is. Guarantee 9 holds for fighters. | As an actor it took a standing card's place and pushed that card into a pile. |
+| **Light** | `emphasis` reaches the scene (`Unit.light`): forward is the lamp's light on the card's edge (a soft, still rim) and a brighter pool where it stands; down loses its pool and greys a little. Attackers between opponents are forward (they were null); the stack's targets are forward whatever decision is up. A unit hiding what answers the moment carries a cue (`Unit.cue`: act, threat, answer) from its attention; what matters only at rest (a big creature, a card that binds me) is not cued yet. | A pool under a lying card drew over it: half-real. The rim is the ember's mechanism in the lamp's colour. |
+| **News** | What another player puts onto the battlefield is news (the narrative's `arrived`, until the next arrive or the turn): a pale mote where it lands, alone or in a pile. | A card entering, seen after it lands. |
+| **Targets through piles** | A target or card choice stays on the table when an option hides in a pile (play's `onTable`): the pile steps out in highlight mode with the options, and its tap asks which card (resolve.ts's rule), or means the one option it holds. List offers every option. | The owner: highlight mode for picking targets, on the table. |
+| **Highlight mode** | Dims: the stack 0.16 (was 0.3), choosing targets 0.12 (was 0.22). Not used for priority, payments or combat: those are light on the physical table. | The owner: much lighter than the render study's. |
+| **The spill holds** | A demote into a standing tier takes first what sat there last plan. | My equal-weight lands swapped their spill places on every plan (step 9). |
+| **Not built** | Offered cards on an opponent's leaf step out (they stay in their pile, lit); cues for what matters only at rest. | |
 
 ## 0. Shape of the thing
 
@@ -883,7 +897,7 @@ Each step keeps the old seat view for every consumer not yet moved, and passes t
 
 8. The side leaves; the template without a reserved middle and its poses (§5.3). Built (Round 6).
 9. My side (`mine`), with the band measured. Built (Round 7): my field on its line, my mana lying in front of it.
-10. Moments and acting on rest containers (light, in-place, the acting rank).
+10. Moments and acting on rest containers (light, in-place, the acting rank). Built (Round 8).
 11. Focus containers one at a time: the gathering (`clash`, replacing `combatRow`; built with combat), the spread
     (replacing `leanOf`) and a pile of mine (replacing `siftOf` for my permanents, paging kept). The hand and the plate
     focus stay chrome (Scope, Nov 26).
