@@ -60,11 +60,12 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     seats: s.targets.flatMap((t) => ("seat" in t ? [t.seat] : [])),
     controller: s.controller,
   }));
+  const seats = boards(model);
   return {
     viewport: o.viewport,
     ...(o.safe ? { safe: o.safe } : {}),
     mode: o.mode ?? "normal",
-    seats: boards(model),
+    seats,
     involved,
     settling: o.settling ?? false,
     memory: o.memory ?? null,
@@ -74,16 +75,16 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.
     ...(blocked.size ? { blocked } : {}),
     ...(o.order?.length ? { order: o.order } : {}),
-    ...(o.engine && model.seats.length === 4 ? { engine: engineInputOf(model, involved, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
+    ...(o.engine && model.seats.length === 4 ? { engine: engineInputOf(model, seats, involved, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
   };
 }
 
 /** Every opponent's leaf (every seat but the perspective's), each with its own memory: given, or carried in the layout
  *  memory. */
-function engineInputOf(model: TableModel, involved: ReadonlySet<CardId>, settling: boolean, o: EngineOptions, memory: ReadonlyMap<SeatId, LayoutMemory> | null) {
-  const leaves = model.seats.slice(1).map((st) => {
-    const m = o.memory?.has(st.id) ? (o.memory.get(st.id) ?? null) : arrangedMemory(memory?.get(st.id));
-    return leafInputOf(model, st.id, involved, settling, { ...o, memory: m });
+function engineInputOf(model: TableModel, seats: TableInput["seats"], involved: ReadonlySet<CardId>, settling: boolean, o: EngineOptions, memory: ReadonlyMap<SeatId, LayoutMemory> | null) {
+  const leaves = seats.slice(1).map(({ seat, board }) => {
+    const m = o.memory?.has(seat) ? (o.memory.get(seat) ?? null) : arrangedMemory(memory?.get(seat));
+    return leafInputOf(model, seat, involved, settling, { ...o, memory: m }, board);
   });
   return { leaves, draw: !!o.draw };
 }

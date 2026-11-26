@@ -68,6 +68,9 @@ export interface ArrangedSeatInput {
   readonly reserve: Reservations;
 }
 
+/** The far strip's depth found for an arrangement (its rows and frame decide it), by what lies on the strip. */
+const STRIP_V = new WeakMap<object, Map<string, number>>();
+
 /** An opponent's seat plan from its arrangement. */
 export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const { result, board } = a, f = result.fit.frame, yaw = Math.atan2(-f.across.z, f.across.x);
@@ -114,8 +117,9 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   // Nearest it may come: behind the rows in use (a standing row's tops, a lying row's far edge and proud strip).
   const far = f.d - a.far, under = a.reserve.safe.top + (PLATE.top + PLATE.h + 4) * g.u;
   const behind = fit.rows.reduce((t, r) => Math.max(t, r.posture === "stand" ? clearBehind(a.projector, rest, r.v, s, 2, LEAN) : r.v + LIE_DEPTH * s + 0.3 * CARD.h * s), 0) + 0.1;
-  let v = far;
-  if (present.length || board.fixtures.commander !== undefined) {
+  const key = `${present.join(",")}|${board.fixtures.commander ?? ""}|${a.shift}|${under}`;
+  let v = STRIP_V.get(fit)?.get(key) ?? far;
+  if (!STRIP_V.get(fit)?.has(key) && (present.length || board.fixtures.commander !== undefined)) {
     const lo = Math.min(far, behind);
     if (strip(rest, far).top < under) {
       let a0 = lo, b0 = far;
@@ -127,6 +131,8 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
       v = a0;
     }
   }
+  if (!STRIP_V.has(fit)) STRIP_V.set(fit, new Map());
+  STRIP_V.get(fit)!.set(key, v);
   const { zones, plate, commander, entry } = strip(f, v);
   if (left.length)
     units.push({ id: `u:entry:${board.seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos: entry, scale: S_TABLE, posture: "flat" } });

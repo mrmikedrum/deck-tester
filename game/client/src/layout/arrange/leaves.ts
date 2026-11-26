@@ -3,6 +3,7 @@
 // `mat`'s plan of the same seat, for goldens and the bench.
 import type { TableModel } from "../../model";
 import { boardOf } from "../board";
+import type { SeatBoard } from "../board";
 import type { Projector } from "../projector";
 import type { LeafGeometry, Parting, SeatSlot } from "../template";
 import type { CardId, Rect, SeatId } from "../types";
@@ -60,8 +61,8 @@ export interface EngineOptions {
 }
 
 /** A seat's leaf input from the model: its battlefield as `boardOf` draws it, read from current types. */
-export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlySet<CardId>, settling: boolean, o: Omit<EngineOptions, "memory"> & { readonly memory?: ContainerMemory | null }): LeafInput {
-  const cards = boardOf(model, seat).cards.map((c) => arrCard(model, c.id)).filter((c): c is ArrCard => c !== null);
+export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlySet<CardId>, settling: boolean, o: Omit<EngineOptions, "memory"> & { readonly memory?: ContainerMemory | null }, board: SeatBoard = boardOf(model, seat)): LeafInput {
+  const cards = board.cards.map((c) => arrCard(model, c.id)).filter((c): c is ArrCard => c !== null);
   const decision = o.decision ?? { kind: null, options: [], draft: [] };
   return {
     seat,

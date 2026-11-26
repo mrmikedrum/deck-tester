@@ -31,7 +31,6 @@ const engineOf = (plan) => {
   const sum = (f) => fs.reduce((t, x) => t + f(x), 0);
   return { policy: [...new Set(ls.map((l) => l.policy))].join("+"), error: ls.some((l) => !!l.error), overflow: ls.some((l) => !!l.result?.overflow), units: sum((f) => f.units.length), candidates: sum((f) => f.report.candidates), audits: sum((f) => f.report.audits + f.report.poses.length), violations: sum((f) => f.report.violations.length), parted: sum((f) => f.report.poses.reduce((t, p) => t + p.violations.length, 0)), part: plan.part };
 };
-};
 
 /** `runs` plans of an input in the shared course (bench-inputs.ts `course`), after WARM to warm the JIT; per-plan times. */
 function time(input, plan) {
@@ -82,7 +81,7 @@ if (json) console.log(JSON.stringify({ node: process.version, viewport: VIEWPORT
 else {
   const ms = (x) => x.toFixed(2).padStart(6);
   console.log(`planTable at ${VIEWPORT.w}x${VIEWPORT.h}, Node ${process.version}, ${runs} plans per input (ms per plan; budget 8 on the iPad)`);
-  console.log("input        as the app plans        the leaf changed        mat only                engine: estimates units violations");
+  console.log("input        as the app plans        the leaves changed      mat only                engine: estimates units violations");
   console.log("             median   p90 worst       median   p90 worst       median   p90 worst");
   for (const r of rows)
     console.log(

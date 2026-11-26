@@ -41,14 +41,33 @@ const boxOf = (q: Quad): Box => ({
 });
 const meets = (a: Box, b: Box): boolean => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
 
-/** A point moved `k` px toward `c`. */
-const inward = (p: Point, c: Point, k: number): Point => {
-  const dx = c.x - p.x, dy = c.y - p.y, l = Math.hypot(dx, dy) || 1;
-  return { x: p.x + (dx / l) * k, y: p.y + (dy / l) * k };
-};
+/** How much of a face its place's region must hold (a card lying turned in a place skewed by perspective reaches a
+ *  sliver past the place's edges, under its neighbour's). */
+const PLACE_HOLDS = 0.85;
 
-/** How much of the way from a face's corner to its middle a place's region may leave out (the corner's sliver). */
-const PLACE_SLIVER = 0.2;
+/** The area of a convex polygon. */
+const area = (ps: readonly Point[]): number => Math.abs(ps.reduce((t, p, i) => t + p.x * ps[(i + 1) % ps.length]!.y - ps[(i + 1) % ps.length]!.x * p.y, 0)) / 2;
+
+/** A convex polygon clipped to a convex quad (Sutherland–Hodgman), either winding. */
+function clip(subject: readonly Point[], by: Quad): Point[] {
+  const sign = Math.sign((by[1].x - by[0].x) * (by[2].y - by[0].y) - (by[1].y - by[0].y) * (by[2].x - by[0].x)) || 1;
+  let out = [...subject];
+  for (let i = 0; i < 4 && out.length; i++) {
+    const a = by[i]!, b = by[(i + 1) % 4]!;
+    const side = (p: Point) => sign * ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
+    const inp = out;
+    out = [];
+    inp.forEach((p, k) => {
+      const q = inp[(k + 1) % inp.length]!, sp = side(p), sq = side(q);
+      if (sp >= 0) out.push(p);
+      if ((sp >= 0) !== (sq >= 0)) {
+        const t = sp / (sp - sq);
+        out.push({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+      }
+    });
+  }
+  return out;
+}
 
 export function auditUnits(c: Container, units: readonly AuditUnit[], designUnit: number): ArrViolation[] {
   const out: ArrViolation[] = [];
@@ -60,10 +79,11 @@ export function auditUnits(c: Container, units: readonly AuditUnit[], designUnit
       const floor = un.creature && un.face.standing ? c.floors.creature : c.floors.any;
       const w = faceWidth(c.projector, un.face.upright, un.scale);
       if (w / designUnit < floor - 1e-6) out.push({ rule: "floor", unit: un.id, measured: w / designUnit, limit: floor });
-      // place: the region holds the face it reaches (all but a sliver at its corners: a place's region runs up its slot's
-      // edges, and a card lying turned in a skewed place reaches a hair past them, under its neighbour)
+      // place: the region holds the face it reaches, its middle and nearly all its area (a place's region runs up its
+      // slot's edges, and a card lying turned in a place skewed by perspective reaches a sliver past them)
       const q = un.face.quad, mid = { x: (q[0].x + q[2].x) / 2, y: (q[0].y + q[2].y) / 2 };
-      if (!q.every((p) => inQuad(un.region, ...xy(inward(p, mid, 1.5 + PLACE_SLIVER * Math.hypot(p.x - mid.x, p.y - mid.y)))))) out.push({ rule: "place", unit: un.id, measured: 0, limit: 1 });
+      const held = area(clip(q, un.region)) / Math.max(1e-9, area(q));
+      if (!inQuad(un.region, mid.x, mid.y) || held < PLACE_HOLDS) out.push({ rule: "place", unit: un.id, measured: held, limit: PLACE_HOLDS });
       // nothing of another unit over its name strip or foot (only what is painted later and reaches its face)
       const fb = boxOf(q);
       const over = units.flatMap((o) => (o.id === un.id || !meets(boxes.get(o.id)!, fb) ? [] : o.faces.filter((x) => x.paint > un.paint && meets(boxOf(x.quad), fb)).map((x) => x.quad)));
@@ -83,8 +103,6 @@ export function auditUnits(c: Container, units: readonly AuditUnit[], designUnit
   }
   return out;
 }
-
-const xy = (p: Point): [number, number] => [p.x, p.y];
 
 function covered(q: Quad, over: readonly Quad[]): number {
   if (!over.length) return 0;

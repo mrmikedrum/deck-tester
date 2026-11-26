@@ -51,9 +51,15 @@ describe("every opponent's leaf, drawn by the engine", () => {
     for (const vp of VIEWPORTS)
       for (const turn of [4, 9, 15]) {
         const m = design.get(turn)!;
-        const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true } }));
+        const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true, auditPoses: true } }));
         expect(check(m, plan, `${vp.w} turn ${turn}`), `${vp.w} turn ${turn}`).toEqual([]);
         expect(plan.part).toBe(0);
+        // each leaf's own audit, at rest and parted at the most
+        for (const [seat, l] of plan.leaves!) {
+          expect(l.result!.fit.report.violations, `${vp.w} turn ${turn} ${seat}`).toEqual([]);
+          // (parted at the most, the design viewport and the iPad's; at 1024x768 the across well's patch reads 40 on turn 9)
+          if (vp.w === 1180 || vp.w === 1210) expect(l.result!.fit.report.poses.flatMap((p) => p.violations), `${vp.w} turn ${turn} ${seat} parted`).toEqual([]);
+        }
       }
   });
 
