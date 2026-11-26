@@ -14,6 +14,7 @@ import hashlib
 import json
 import mimetypes
 import os
+import queue
 import re
 import shutil
 import socket
@@ -24,7 +25,6 @@ import time
 import traceback
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -282,6 +282,9 @@ LEGACY_PRINT = "cache/card/"
 CARD_LOCK = threading.Lock()
 CARD_MISS_LOCK = threading.Lock()
 SCRYFALL_LOCK = threading.Lock()
+PRINT_WORKERS = 3
+PRINT_QUEUE = queue.Queue()
+PRINT_WORKERS_STARTED = 0
 PRINT_COOLDOWN = 60
 PRINT_RETRY_AT = {}  # A running job has no finite retry time.
 CARDS = {}
@@ -410,43 +413,69 @@ def save_cards():
     write_cache_file(CARDS_FILE, json.dumps(CARDS).encode())
 
 
-def upgrade_prints(upgrades):
-    lookup = [n for n, card in upgrades.items() if any(
-        needs_print(f) and not f.get("printPending") and not (CACHE / print_path(f)).is_file()
-        for f in card["faces"])]
-    found = lookup_cards(lookup)
+def upgrade_print(name, card):
+    found = {}
+    if any(needs_print(f) and not f.get("printPending") and not (CACHE / print_path(f)).is_file()
+           for f in card["faces"]):
+        found = lookup_cards([name])
 
-    def upgrade(name, card):
-        faces = []
-        for face in card["faces"]:
-            if needs_print(face):
-                rel = print_path(face)
-                path = CACHE / rel
-                try:
-                    if not path.is_file():
-                        _, uris = card_face(face["name"], found.get(name, {}))
-                        fetch_image(face.get("printPending") or uris["large"], path)
-                    face = dict(face, img="cache/" + rel)
-                    face.pop("printPending", None)
-                except Exception:
-                    pass
-            faces.append(face)
-        return dict(card, faces=faces)
+    faces = []
+    for face in card["faces"]:
+        if needs_print(face):
+            rel = print_path(face)
+            path = CACHE / rel
+            try:
+                if not path.is_file():
+                    _, uris = card_face(face["name"], found.get(name, {}))
+                    fetch_image(face.get("printPending") or uris["large"], path)
+                face = dict(face, img="cache/" + rel)
+                face.pop("printPending", None)
+            except Exception:
+                pass
+        faces.append(face)
+    return dict(card, faces=faces)
 
-    with ThreadPoolExecutor(8) as pool:
-        results = list(pool.map(upgrade, upgrades, upgrades.values()))
-    with CARD_LOCK:
-        changed = False
-        for name, card in zip(upgrades, results):
-            if any(needs_print(f) for f in card["faces"]):
-                PRINT_RETRY_AT[name] = time.monotonic() + PRINT_COOLDOWN
-            else:
-                PRINT_RETRY_AT.pop(name, None)
-            if card != CARDS[name]:
-                CARDS[name] = card
-                changed = True
-        if changed:
-            save_cards()
+
+def print_worker(jobs):
+    while True:
+        name = jobs.get()
+        retry = True
+        try:
+            with CARD_LOCK:
+                original = CARDS[name]
+            card = upgrade_print(name, original)
+            with CARD_LOCK:
+                if card != original:
+                    CARDS[name] = card
+                    save_cards()
+            retry = any(needs_print(f) for f in card["faces"])
+        except Exception:
+            traceback.print_exc()
+        finally:
+            with CARD_LOCK:
+                if retry:
+                    PRINT_RETRY_AT[name] = time.monotonic() + PRINT_COOLDOWN
+                else:
+                    PRINT_RETRY_AT.pop(name, None)
+            jobs.task_done()
+
+
+def queue_prints(names):
+    """Claim upgrades and start the fixed daemon workers with CARD_LOCK held."""
+    global PRINT_WORKERS_STARTED
+    if not names:
+        return
+    while PRINT_WORKERS_STARTED < PRINT_WORKERS:
+        try:
+            threading.Thread(target=print_worker, args=(PRINT_QUEUE,), daemon=True).start()
+        except RuntimeError:
+            traceback.print_exc()
+            break
+        PRINT_WORKERS_STARTED += 1
+    if PRINT_WORKERS_STARTED:
+        for name in names:
+            PRINT_QUEUE.put_nowait(name)
+            PRINT_RETRY_AT[name] = float("inf")
 
 
 def cards(names):
@@ -454,14 +483,10 @@ def cards(names):
     with CARD_LOCK:
         missing = [n for n in names if n not in CARDS]
         now = time.monotonic()
-        upgrades = {n: CARDS[n] for n in names if n in CARDS
-                    and PRINT_RETRY_AT.get(n, 0) <= now
-                    and any(needs_print(f) for f in CARDS[n]["faces"])}
-        for n in upgrades:
-            PRINT_RETRY_AT[n] = float("inf")
+        queue_prints([n for n in names if n in CARDS
+                      and PRINT_RETRY_AT.get(n, 0) <= now
+                      and any(needs_print(f) for f in CARDS[n]["faces"])])
         cached = {n: CARDS[n] for n in names if n in CARDS}
-    if upgrades:
-        threading.Thread(target=upgrade_prints, args=(upgrades,), daemon=True).start()
     if not missing:
         return cached
 
@@ -469,8 +494,7 @@ def cards(names):
         with CARD_LOCK:
             missing = [n for n in missing if n not in CARDS]
         found = lookup_cards(missing)
-        with ThreadPoolExecutor(8) as pool:  # images download side by side
-            made = list(pool.map(lambda n: entry(n, found[n]) if n in found else None, missing))
+        made = [entry(n, found[n]) if n in found else None for n in missing]
         with CARD_LOCK:
             for n, card in zip(missing, made):
                 CARDS[n] = card or {"name": n, "faces": [{"name": n, "art": None, "img": None, "keywords": []}], "produces": [], "identity": [], "layout": "normal"}
@@ -857,7 +881,7 @@ def fill_cache():
             if not ((CACHE / img[len("cache/"):]).is_file() and art.is_file()):
                 lost.append(img)
             continue
-        stamp = path.with_suffix(".id")
+        stamp = path.with_suffix(".printing")
         # Replace images cached before these tokens were resolved by printing ID.
         replace = bool(printing and (not stamp.is_file() or stamp.read_text() != printing))
         if replace or not path.is_file() or not art.is_file():
@@ -879,7 +903,7 @@ def fill_cache():
             lost.append(face["img"])
             continue
         fetch_image(uris["large"], path, replace=replace)
-        fetch_image(uris["art_crop"], art)
+        fetch_image(uris["art_crop"], art, replace=replace)
         if printing:
             write_cache_file(stamp, printing.encode())
         fetched += 1

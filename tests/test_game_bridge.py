@@ -92,15 +92,6 @@ class CardImageTest(unittest.TestCase):
         clock.start()
         self.addCleanup(clock.stop)
 
-    def wait_for_print_job(self, name):
-        deadline = time.monotonic() + 5
-        while time.monotonic() < deadline:
-            with game.CARD_LOCK:
-                if game.PRINT_RETRY_AT.get(name) != float("inf"):
-                    return
-            time.sleep(0.01)
-        self.fail(f"print job did not complete for {name}")
-
     def test_cached_clients_share_background_upgrade_and_retry_after_cooldown(self):
         normal = "cache/card/forest.jpg"
         large = "cache/card-large/forest.jpg"
@@ -130,7 +121,7 @@ class CardImageTest(unittest.TestCase):
                 self.assertEqual(lookup.call_count, 1)
             finally:
                 release.set()
-                self.wait_for_print_job("Forest")
+                game.PRINT_QUEUE.join()
 
             self.now += game.PRINT_COOLDOWN - 1
             self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0]["img"], normal)
@@ -139,7 +130,7 @@ class CardImageTest(unittest.TestCase):
             lookup.side_effect = None
             lookup.return_value = found
             game.cards(["Forest"])
-            self.wait_for_print_job("Forest")
+            game.PRINT_QUEUE.join()
             face = game.cards(["Forest"])["Forest"]["faces"][0]
             self.assertEqual((face["img"], face["art"]), (large, "cache/art/forest.jpg"))
             self.assertEqual(lookup.call_count, 2)
@@ -159,13 +150,67 @@ class CardImageTest(unittest.TestCase):
             game.PRINT_RETRY_AT.clear()
             game.load_cards()
             self.assertEqual(game.cards(["Forest"])["Forest"]["faces"][0], first)
-            self.wait_for_print_job("Forest")
+            game.PRINT_QUEUE.join()
             face = game.cards(["Forest"])["Forest"]["faces"][0]
             self.assertEqual((face["type"], face["art"], face["img"]),
                              ("Basic Land", "cache/art/forest.jpg", "cache/card-large/forest.jpg"))
             self.assertNotIn("printPending", face)
             lookup.assert_called_once_with(["Forest"])
             self.assertEqual(download.call_args, mock.call(print_url, raw=True))
+
+    def test_pending_downloads_share_a_fixed_worker_count(self):
+        names = [f"Card {i}" for i in range(100)]
+        for name in names:
+            game.CARDS[name] = {"faces": [{"name": name, "printPending": "https://example.test/" + name}]}
+
+        full, release = threading.Event(), threading.Event()
+        lock = threading.Lock()
+        active = peak = 0
+
+        def download(url, raw):
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                if active == game.PRINT_WORKERS:
+                    full.set()
+            try:
+                if not release.wait(5):
+                    raise AssertionError("test never released the download")
+                return b"print"
+            finally:
+                with lock:
+                    active -= 1
+
+        with mock.patch.object(game, "get", side_effect=download) as get, ThreadPoolExecutor(3) as clients:
+            try:
+                requests = [clients.submit(game.cards, names[offset::3]) for offset in range(3)]
+                for request in requests:
+                    request.result(timeout=2)
+                self.assertTrue(full.wait(2))
+                self.assertEqual(get.call_count, game.PRINT_WORKERS)
+            finally:
+                release.set()
+                game.PRINT_QUEUE.join()
+            self.assertEqual(peak, game.PRINT_WORKERS)
+            self.assertEqual(get.call_count, len(names))
+            self.assertTrue(all(game.CARDS[n]["faces"][0]["img"] for n in names))
+
+    def test_worker_exception_releases_the_claim(self):
+        game.CARDS["Forest"] = {"faces": [{"name": "Forest", "printPending": "https://example.test/forest"}]}
+        upgrade_result = {"faces": [{"name": "Forest", "img": "cache/card-large/forest.jpg"}]}
+        with mock.patch.object(game, "upgrade_print", side_effect=[RuntimeError(), upgrade_result]) as attempt, \
+                mock.patch.object(game.traceback, "print_exc") as log:
+            game.cards(["Forest"])
+            game.PRINT_QUEUE.join()
+            log.assert_called_once()
+            self.assertEqual(game.PRINT_RETRY_AT["Forest"], self.now + game.PRINT_COOLDOWN)
+            self.now += game.PRINT_COOLDOWN
+            game.cards(["Forest"])
+            game.PRINT_QUEUE.join()
+            self.assertEqual(game.CARDS["Forest"], upgrade_result)
+            self.assertEqual(attempt.call_count, 2)
+            self.assertNotIn("Forest", game.PRINT_RETRY_AT)
 
     def test_fill_cache_uses_distinct_printing_ids_for_elemental_tokens(self):
         faces = [f for f in game.fixture_faces() if f["name"] == "Elemental"]
@@ -178,10 +223,14 @@ class CardImageTest(unittest.TestCase):
             path = self.cache / "card-large" / (token + ".jpg")
             path.parent.mkdir(exist_ok=True)
             path.write_bytes(b"previous ambiguous print")
+            path.with_suffix(".id").write_text(printing)
+            art = self.cache / "art" / (token + ".jpg")
+            art.parent.mkdir(exist_ok=True)
+            art.write_bytes(b"previous ambiguous crop")
             uri = "https://example.test/" + token
             replies["https://api.scryfall.com/cards/" + printing] = {"image_uris": {"large": uri, "art_crop": uri + "-art"}}
             replies[uri] = token.encode()
-            replies[uri + "-art"] = b"art"
+            replies[uri + "-art"] = (token + "-art").encode()
 
         with mock.patch.object(game, "fixture_faces", return_value=faces), \
                 mock.patch.object(game, "scryfall") as by_name, \
@@ -193,6 +242,7 @@ class CardImageTest(unittest.TestCase):
             by_name.assert_not_called()
         for token in tokens:
             self.assertEqual((self.cache / "card-large" / (token + ".jpg")).read_bytes(), token.encode())
+            self.assertEqual((self.cache / "art" / (token + ".jpg")).read_bytes(), (token + "-art").encode())
 
 
 class AnswerStatusTest(unittest.TestCase):
