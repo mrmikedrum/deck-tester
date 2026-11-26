@@ -1,14 +1,16 @@
-// Stills of combat moments on the design pass's turn-15 table (tests/fixtures/boards/design-pass.json), for judging the
-// clash by eye against docs/game-client-architecture.md's combat section. Each moment is one envelope on the scripted
-// transport, then the taps it names (a block draft), then a screenshot once the table is settled.
-//   npx vite build && node tools/combat-stills.js <outdir> [only,names]
+// Stills of table moments on the design pass's tables (tests/fixtures/boards/design-pass.json), for judging by eye: the
+// table at rest (turns 4, 9 and 15), the stack at rest, combat (the clash, duels in the parted middle), a seat leaving.
+// Each moment is its envelopes on the scripted transport, then the taps and keys it names, then a screenshot once the
+// table is settled.
+//   npm run build && node tools/combat-stills.js <outdir> [only,names]
 const fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
 const { serve } = require("./serve.js");
 
 const design = JSON.parse(fs.readFileSync(path.join(__dirname, "../../tests/fixtures/boards/design-pass.json"), "utf8"));
 const clone = (v) => JSON.parse(JSON.stringify(v));
-const base = () => clone(design.stages.find((s) => s.turn === 15).envelope);
+const stage = (turn) => clone(design.stages.find((s) => s.turn === turn).envelope);
+const base = () => stage(15);
 
 // Atraxa's six (Atraxa, Steel Overseer, Chrome Host Seedshark, Tekuthal, Brimaz, Phyrexian Metamorph), and my blockers.
 const ATRAXA6 = [1019, 1041, 1117, 1169, 1221, 1072];
@@ -64,7 +66,43 @@ const dealt = (v, phase, combat = true) => {
   return e;
 };
 const rest = (v) => Object.assign(base(), { v });
+const at = (turn, v) => Object.assign(stage(turn), { v });
+
+/** The turn-15 table with spells on the stack (top first): Dack's Swords on Herd Baloth, Marath's Chaos Warp on
+ *  Wispweaver Angel, my Arcane Denial on the Chaos Warp. */
+function withStack(v) {
+  const e = rest(v);
+  const spell = (id, name, who, type, targets) => ({ id, source: { id, name, owner: who, controller: who, type, zone: "stack" }, controller: who, spell: true, text: name, targets });
+  e.view = { ...e.view, active: "Dack", priority: "You", phase: "MAIN1", stack: [spell(9003, "Arcane Denial", "You", "Instant", [9002]), spell(9002, "Chaos Warp", "Marath", "Instant", [1129]), spell(9001, "Swords to Plowshares", "Dack", "Instant", [1064])] };
+  return e;
+}
+
+/** The turn-15 table after Dack has lost: Forge lists only players still in the game; the seat keeps its place. */
+function dackGone(v) {
+  const e = rest(v);
+  e.view = { ...e.view, players: e.view.players.filter((p) => p.name !== "Dack") };
+  return e;
+}
+
+const MARATH4 = [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]];
 const MOMENTS = {
+  "turn-4": { what: "Turn 4 at rest: an early board", env: at(4, 19) },
+  "turn-9": { what: "Turn 9 at rest: a mid board", env: at(9, 19) },
+  "turn-15": { what: "Turn 15 at rest: the dense board", env: rest(19) },
+  "stack-at-rest": { what: "Three spells on the stack, the focus set aside: the mats part and the stack rests in the middle", env: withStack(19), keys: ["Escape"] },
+  "opponents-duel": {
+    what: "Marath attacks Dack with four; Dack Fayden blocks Marath: one duel in the parted middle, the rest laned",
+    env: fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015]], priority: "Marath" }),
+  },
+  "opponents-duels": {
+    what: "Marath attacks Dack with four; Dack blocks two: two duels in the parted middle",
+    env: fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015], [1129, 1064]], priority: "Marath" }),
+  },
+  "opponents-crowded": {
+    what: "Marath attacks Dack with four, all blocked: the duels do not fit the middle, so the clash rises",
+    env: fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015], [1129, 1064], [1048, 1105], [1080, 1157]], priority: "Marath" }),
+  },
+  "seat-leaves": { what: "Dack has lost: the leaf empties, every other seat stays where it was", envs: [rest(19), dackGone(20)] },
   "attacked-by-six": { what: "Atraxa attacks me with six; no blocks yet, nothing to decide", env: fight({ active: "Atraxa", attackers: atraxa6, priority: "Atraxa" }) },
   "choosing-blocks": {
     what: "My block decision: Master of Waves on Steel Overseer, Mulldrifter on Chrome Host Seedshark, Meloku held",
@@ -76,10 +114,6 @@ const MOMENTS = {
   "my-attack-blocked": {
     what: "I attack Marath with four; Marath blocks Meloku with Herd Baloth and Master of Waves with a Beast",
     env: fight({ active: "You", attackers: [[1089, "Marath"], [1057, "Marath"], [1027, "Marath"], [1090, "Marath"]], blockers: [[1064, 1089], [1066, 1057]], priority: "You" }),
-  },
-  "opponents-fight": {
-    what: "Marath attacks Dack with four; Dack blocks two (the clash, until duels fit the middle)",
-    env: fight({ active: "Marath", attackers: [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]], blockers: [[1024, 1015], [1129, 1064]], priority: "Marath" }),
   },
   "opponents-attack": { what: "Marath attacks Dack with four, no blocks yet: the table form", env: fight({ active: "Marath", attackers: [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]], phase: "COMBAT_DECLARE_ATTACKERS", priority: "Marath" }) },
   "split-attack": {
@@ -148,6 +182,10 @@ async function tapCard(page, card) {
       await page.waitForFunction(() => window.__deckmaster && window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
       await settle(page);
       for (const c of m.taps ?? []) await tapCard(page, c);
+      for (const k of m.keys ?? []) {
+        await page.keyboard.press(k);
+        await settle(page, 4000);
+      }
       await settle(page);
       await page.screenshot({ path: path.join(outDir, `${name}.jpg`), type: "jpeg", quality: 88 });
       console.log(`${name}: ${m.what}`);

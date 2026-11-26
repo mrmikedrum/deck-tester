@@ -453,13 +453,18 @@ describe("the clash, a table layer", () => {
     expect(r.commits.at(-1)!.view.chips).toEqual([]);
   });
 
-  it("between opponents: the table form before blocks, the clash once one is blocked", () => {
+  it("between opponents: the table form before blocks; once one is blocked, a duel in the parted middle, no layer", () => {
     const r = started(fight({ v: 1, at: "Dack" }));
     expect(layers(r)).toEqual([]);
     expect(r.state.plan!.gathering!.form).toBe("table");
     r.transport.push(fight({ v: 2, at: "Dack", blocks: [[50, 41]] }));
     r.frame((r.now += 400));
-    expect(layers(r)).toEqual([["clash", null]]);
+    expect(layers(r)).toEqual([]);
+    expect(r.state.plan!.gathering!.duels).not.toBeNull();
+    expect(r.state.plan!.part).toBeGreaterThanOrEqual(0);
+    // the duel wears its clasp; no plaque, no brand (the plates' tallies and the prompt say who fights)
+    expect(r.commits.at(-1)!.view.clash).toMatchObject({ plaques: [], brands: [] });
+    expect(r.commits.at(-1)!.view.clash!.clasps.length).toBe(1);
   });
 
   it("the wire is untouched: the same answer in either form", () => {

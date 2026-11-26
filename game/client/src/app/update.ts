@@ -126,7 +126,7 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const groups = s.plan?.hits.groups;
   const has = (id: string): boolean => groups?.some((g) => g.id === id) ?? false;
   const pages = (id: string): number => siftPages(s.model && s.plan ? (siftCards(s.model, s.plan, id)?.ids.length ?? 0) : 0);
-  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat), groups: has, pages }, origin);
+  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat, s.plan), groups: has, pages }, origin);
   return focus === s.focus ? s : { ...s, focus };
 }
 
