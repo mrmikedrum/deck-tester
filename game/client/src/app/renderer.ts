@@ -9,7 +9,7 @@
 // mouse with no button down reports the group under it as `hover` when that changes (null when it leaves the canvas or
 // presses); a touch never hovers.
 // Teardown disposes everything; a later commit builds it again.
-import { chromeRenderer } from "../chrome";
+import { canvasMeasure, chromeRenderer } from "../chrome";
 import type { ChromeRenderer } from "../chrome";
 import { bindPointer } from "../input";
 import type { Gesture, PointerBinding } from "../input";
@@ -63,6 +63,7 @@ interface Press {
 }
 
 export function pageRenderer(ports: PagePorts): PageRenderer {
+  const measure = canvasMeasure(ports.ui.ownerDocument, ports.wake);
   let chrome: ChromeRenderer | null = null;
   let scene: SceneHandle | null = null;
   let sceneReady = false;
@@ -127,7 +128,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
   };
 
   function build(s: AppState): void {
-    chrome ??= chromeRenderer(ports.ui, { emit: (i) => ports.emit(i), wake: ports.wake });
+    chrome ??= chromeRenderer(ports.ui, { emit: (i) => ports.emit(i), wake: ports.wake, measure });
     if (scene || failed || s.viewport.w <= 0 || s.viewport.h <= 0) return;
     const sc = createScene({ canvas: ports.canvas, viewport: { w: s.viewport.w, h: s.viewport.h }, dpr: ports.dpr(), wake: ports.wake });
     scene = sc;
@@ -169,7 +170,7 @@ export function pageRenderer(ports: PagePorts): PageRenderer {
       binding?.tick(now);
       const frame = sceneFrame(state);
       const sceneReport = scene && sceneReady && frame ? scene.show(frame, now) : null;
-      const c = chrome!.show(chromeView(state, sceneReport), now);
+      const c = chrome!.show(chromeView(state, sceneReport, measure), now);
       drawn = { commit: state.commit, stop: frame?.cues.stop ?? null, chooser: state.focus.layers.find((e) => e.layer === "sift")?.choosing ?? null };
       const terminal = failure;
       failure = null;

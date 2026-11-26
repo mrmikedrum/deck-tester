@@ -1327,6 +1327,7 @@
     align-items: stretch;
     gap: 0;
     min-height: 44px;
+    width: max-content;
     padding: 0;
     border: 0;
     background: none;
@@ -1463,7 +1464,13 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: calc(28 * var(--u));
   }
+  .l-seat .summary {
+    display: flex;
+    flex-direction: column;
+    gap: calc(14 * var(--u));
+  }
   .l-seat .lines {
+    flex: 1;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -1504,6 +1511,20 @@
   .l-seat h4 b {
     margin-left: calc(8 * var(--u));
     font: 700 calc(16 * var(--u)) var(--ui);
+  }
+  .l-seat .commander-damage ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: calc(4 * var(--u));
+    font-size: calc(15 * var(--u));
+  }
+  .l-seat .commander-damage strong {
+    white-space: nowrap;
+  }
+  .l-seat .commander-damage .danger {
+    color: var(--sig-danger-ink);
   }
   .l-seat .row {
     display: grid;
