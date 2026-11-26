@@ -77,10 +77,10 @@ function withStack(v) {
   return e;
 }
 
-/** The turn-15 table after Dack has lost: Forge lists only players still in the game; the seat keeps its place. */
-function dackGone(v) {
+/** The turn-15 table after players have lost: Forge lists only players still in the game; their room goes to the rest. */
+function gone(v, names) {
   const e = rest(v);
-  e.view = { ...e.view, players: e.view.players.filter((p) => p.name !== "Dack") };
+  e.view = { ...e.view, players: e.view.players.filter((p) => !names.includes(p.name)) };
   return e;
 }
 
@@ -102,7 +102,8 @@ const MOMENTS = {
     what: "Marath attacks Dack with four, all blocked: the duels do not fit the middle, so the clash rises",
     env: fight({ active: "Marath", attackers: MARATH4, blockers: [[1024, 1015], [1129, 1064], [1048, 1105], [1080, 1157]], priority: "Marath" }),
   },
-  "seat-leaves": { what: "Dack has lost: the leaf empties, every other seat stays where it was", envs: [rest(19), dackGone(20)] },
+  "seat-leaves": { what: "Dack has lost: two opponents share the width three had; Dack's plate is a small chip", envs: [rest(19), gone(20, ["Dack"])] },
+  "one-opponent": { what: "Dack and Marath have lost: Atraxa's leaf takes the whole width", envs: [rest(19), gone(20, ["Dack"]), gone(21, ["Dack", "Marath"])] },
   "attacked-by-six": { what: "Atraxa attacks me with six; no blocks yet, nothing to decide", env: fight({ active: "Atraxa", attackers: atraxa6, priority: "Atraxa" }) },
   "choosing-blocks": {
     what: "My block decision: Master of Waves on Steel Overseer, Mulldrifter on Chrome Host Seedshark, Meloku held",

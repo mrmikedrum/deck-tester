@@ -93,6 +93,8 @@ group("leaning in, as drawn", () => {
   const step = steps.reduce((a, b) => (sideUnits(b) > sideUnits(a) ? b : a));
   function sideUnits(s: (typeof steps)[number]): number {
     const seats = [...s.plan.seats.keys()];
+    // (a table of four still: a seat out of the game gives its side back)
+    if (seats.length < 4) return -1;
     return [1, 3].reduce((n, i) => n + (s.plan.seats.get(seats[i]!)?.units.length ?? 0), 0);
   }
   const seats = [...step.plan.seats.keys()];

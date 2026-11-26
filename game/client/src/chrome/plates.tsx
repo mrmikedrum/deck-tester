@@ -62,7 +62,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
   return (
     <div class="l-plates" inert={inert}>
       {plates.map((p) => {
-        const said = `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}${p.tally ? `, ${p.tally.figure.slice(1)} unblocked` : ""}`;
+        const said = p.out ? `${p.name}, out of the game` : `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}${p.tally ? `, ${p.tally.figure.slice(1)} unblocked` : ""}`;
         return (
           <button
             key={p.seat}
@@ -78,7 +78,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             <span class="bronze">
               <i class="sigil" />
               <b class="name">{p.name}</b>
-              <span class="life">{p.life}</span>
+              {p.out ? <span class="gone">Out</span> : <span class="life">{p.life}</span>}
             </span>
             {p.tally ? (
               <span class={`tally ${p.tally.tone}`} style={`--tally-ink:var(--seat-${p.tally.place})`}>

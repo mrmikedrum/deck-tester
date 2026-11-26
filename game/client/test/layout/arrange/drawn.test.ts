@@ -25,7 +25,10 @@ function check(model: TableModel, plan: TablePlan, label: string) {
   const ids = plan.hits.groups.map((g) => g.id);
   expect(new Set(ids).size, `${label}: unique group ids`).toBe(ids.length);
   const out = [];
-  for (const st of model.seats.slice(1)) out.push(...checkSeat(model, plan, st.id, `${label} ${st.id}`));
+  // every opponent still in the game is laid out; one out of it gives its room back (no seat plan)
+  for (const st of model.seats.slice(1))
+    if (plan.seats.has(st.id)) out.push(...checkSeat(model, plan, st.id, `${label} ${st.id}`));
+    else expect(st.out, `${label} ${st.id} is out`).toBe(true);
   return [...out, ...plan.violations.filter((v) => v.seat === null)];
 }
 
@@ -61,6 +64,29 @@ describe("every opponent's leaf, drawn by the engine", () => {
           if (vp.w === 1180 || vp.w === 1210) expect(l.result!.fit.report.poses.flatMap((p) => p.violations), `${vp.w} turn ${turn} ${seat} parted`).toEqual([]);
         }
       }
+  });
+
+  it("a seat that leaves gives its room back: three, two and one opponents share the table's width", () => {
+    const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: { players: { name: string }[] } } }[]; catalog: unknown };
+    const without = (turn: number, gone: readonly string[]): TableModel => {
+      const st = structuredClone(raw.stages.find((x) => x.turn === turn)!);
+      st.envelope.view.players = st.envelope.view.players.filter((p) => !gone.includes(p.name));
+      return designModels({ stages: [st], catalog: raw.catalog }).get(turn)!;
+    };
+    for (const vp of [VP, { w: 1210, h: 834 }])
+      for (const gone of [[], ["Dack"], ["Dack", "Marath"]] as const)
+        for (const turn of [4, 9, 15]) {
+          const m = without(turn, gone), label = `${vp.w} turn ${turn} without ${gone.join("+") || "anyone"}`;
+          const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true } }));
+          expect(plan.seats.size, label).toBe(4 - gone.length);
+          expect(check(m, plan, label), label).toEqual([]);
+          // the leaves span what three did: their outer edges where the four-seat table's are
+          const frames = [...plan.leaves!.values()].map((l) => l.result!.fit.frame);
+          const left = Math.min(...frames.map((f) => f.anchor.x - f.w / 2)), right = Math.max(...frames.map((f) => f.anchor.x + f.w / 2));
+          expect(left, label).toBeCloseTo(-12.58, 1);
+          expect(right, label).toBeCloseTo(12.58, 1);
+          for (const [seat, l] of plan.leaves!) expect(l.result!.fit.report.violations, `${label} ${seat}`).toEqual([]);
+        }
   });
 
   it("the protocol corpus, memory carried from plan to plan", () => {

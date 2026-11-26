@@ -712,8 +712,12 @@ function openMiddle(tpl: TableTemplate, proj: Projector, plans: readonly SeatPla
     return { xs: pts.map((q) => q.x / u), ys: pts.map((q) => q.y / u) };
   };
   const at = (pos: string) => plans.find((_, i) => tpl.slots[i]!.position === pos);
-  const across = at("across"), left = at("left"), right = at("right"), near = at("near");
-  let t = across ? Math.max(...pageBox(across).ys) : 60, b = near ? Math.min(...pageBox(near).ys) : 600;
+  const across = at("across"), near = at("near");
+  // Between the side pages when a page stands across from me; with fewer opponents (their leaves meet in the middle) the
+  // whole width, under every page's near edge.
+  const left = across ? at("left") : undefined, right = across ? at("right") : undefined;
+  const opponents = plans.filter((p) => p !== near);
+  let t = across ? Math.max(...pageBox(across).ys) : opponents.length ? Math.max(...opponents.flatMap((p) => pageBox(p).ys)) : 60, b = near ? Math.min(...pageBox(near).ys) : 600;
   for (const un of near?.units ?? [])
     if (un.role === "creature" && !un.fighting) {
       const p = un.placement;

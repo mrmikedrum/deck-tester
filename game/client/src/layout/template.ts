@@ -55,7 +55,7 @@ export interface Parting {
 
 export class NotTunedError extends Error {
   constructor(seats: number, form: Form) {
-    super(`No table template is tuned for ${seats} seats in ${form}: only 4 seats in landscape so far.`);
+    super(`No table template is tuned for ${seats} seats in ${form}: 2 to 4 seats in landscape so far.`);
     this.name = "NotTunedError";
   }
 }
@@ -77,13 +77,27 @@ const LANDSCAPE_4: readonly SeatSlot[] = [
 
 // Every leaf's front row reaches toward my creatures on one line; across, it stands at z ≈ −3.9 (its slice's measure),
 // and the side leaves, turned the same as their slots, meet it there.
-const LEAF_4: LeafGeometry = { front: -3.9, d: 13, far: 2.2 };
-const PART_4: Parting = { most: 0.35, step: 0.05 };
+const LEAF_4: LeafGeometry = { front: -3.9, d: 13, far: 0 };
+const PART_4: Parting = { most: 0.15, step: 0.05 };
 
-/** The template for `seats` seats in `form`, or a `NotTunedError`: other counts and portrait are not tuned yet. */
+/**
+ * Fewer opponents share the same width (a seat that leaves gives its room back): the span from the left leaf's outer
+ * edge to the right's, the gap between two leaves as at four seats, each opponent an equal slot, square to me. Their
+ * positions keep their order (left to right, clockwise from me).
+ */
+function fewer(opponents: number): SeatSlot[] {
+  const left = LANDSCAPE_4[1]!, right = LANDSCAPE_4[3]!, across = LANDSCAPE_4[2]!;
+  const l = left.x - left.w / 2, r = right.x + right.w / 2, gap = across.x - across.w / 2 - (left.x + left.w / 2);
+  const w = (r - l - gap * (opponents - 1)) / opponents;
+  const positions: readonly SeatPosition[] = opponents === 1 ? ["across"] : ["left", "right"];
+  return positions.map((position, i) => ({ position, x: l + w / 2 + i * (w + gap), z: across.z, w, d: across.d, yaw: 0 }));
+}
+
+/** The template for `seats` seats in `form` (2 to 4 in landscape), or a `NotTunedError`: portrait is not tuned. */
 export function tableTemplate(seats: number, form: Form = "landscape"): TableTemplate {
-  if (seats === 4 && form === "landscape") {
-    return { form, seats, camera: CAMERA, slots: LANDSCAPE_4, growOnTurn: 1.1, leaf: LEAF_4, part: PART_4 };
+  if (form === "landscape" && seats >= 2 && seats <= 4) {
+    const slots = seats === 4 ? LANDSCAPE_4 : [LANDSCAPE_4[0]!, ...fewer(seats - 1)];
+    return { form, seats, camera: CAMERA, slots, growOnTurn: 1.1, leaf: LEAF_4, part: PART_4 };
   }
   throw new NotTunedError(seats, form);
 }

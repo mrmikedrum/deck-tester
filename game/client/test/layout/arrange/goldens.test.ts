@@ -97,7 +97,9 @@ describe("the protocol corpus: planTable's across leaf, recorded beside mat", ()
       if (!model || model.seats.length !== 4) continue;
       const across = model.seats[2]!.id;
       const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", engine: { memory: new Map([[across, memory]]) } }));
-      const sh = plan.leaves!.get(across)!;
+      const sh = plan.leaves!.get(across);
+      // (a seat out of the game is not laid out)
+      if (!sh) continue;
       expect(sh.error, n).toBeNull();
       const fit = sh.result!.fit;
       memory = fit.memory;
