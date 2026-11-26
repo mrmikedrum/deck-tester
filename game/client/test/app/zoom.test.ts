@@ -1,36 +1,59 @@
-// The camera zoom's trial (`?zoom`): a long press on the table composes the camera on what is under it; a tap or
-// Escape brings the table back, and nothing of either reaches play. Without the trial nothing zooms.
+// The camera zoom's trial (`?zoom`): a long press on the table composes the camera on what is under it (a card or pile,
+// or a seat's page); then any input (a tap on the table, a prompt's button, a hand card, Escape) only brings the table
+// back, and nothing of it reaches play. Without the trial nothing zooms.
 import { describe, expect, it } from "vitest";
 import { initialState } from "../../src/app/state";
 import { update } from "../../src/app/update";
 import type { AppState } from "../../src/app/state";
 import type { Msg } from "../../src/app/msg";
 import type { CommitId, Stamp } from "../../src/protocol";
+import { seatId } from "../../src/model";
+import type { ZoomRequest } from "../../src/scene/stage";
 
 const stamp: Stamp = { at: 10, commit: 0 as CommitId };
-const zoom = (group: string | null): Msg => ({ t: "zoom", stamp, group });
+const zoom = (to: ZoomRequest | null): Msg => ({ t: "zoom", stamp, to });
 const run = (s: AppState, ...ms: Msg[]): AppState => ms.reduce((x, m) => update(x, m).state, s);
+const zoomed = (to: ZoomRequest = { group: "card:7" }) => run(initialState({ clientBuild: "t", zoomTrial: true }), zoom(to));
 
 describe("the zoom's trial", () => {
-  it("a long press zooms to the group under it; Escape brings the table back", () => {
-    const s = run(initialState({ clientBuild: "t", zoomTrial: true }), zoom("card:7"));
-    expect(s.zoom.on).toBe("card:7");
+  it("a long press zooms to the group or the seat's page under it", () => {
+    expect(zoomed().zoom.on).toEqual({ group: "card:7" });
+    expect(zoomed({ seat: seatId("Marath") }).zoom.on).toEqual({ seat: "Marath" });
+  });
+
+  it("Escape brings the table back and closes nothing", () => {
+    const s = zoomed();
     const back = update(s, { t: "dismiss", stamp });
     expect(back.state.zoom.on).toBeNull();
     expect(back.effects).toEqual([]);
     expect(back.state.focus).toBe(s.focus);
   });
 
-  it("zoomed in, a tap on the table only brings it back: play hears nothing", () => {
-    const s = run(initialState({ clientBuild: "t", zoomTrial: true }), zoom("card:7"));
-    const tap = update(s, { t: "act", stamp, stop: null, act: { a: "tap", on: { group: "card:9", members: [] } } });
-    expect(tap.state.zoom.on).toBeNull();
-    expect(tap.state.play).toBe(s.play);
-    expect(tap.effects).toEqual([]);
+  // Every way input acts: a tap on the table, a prompt's button, opening a layer. Zoomed, each only comes back.
+  const acts: [string, Msg][] = [
+    ["a tap on the table", { t: "act", stamp, stop: null, act: { a: "tap", on: { group: "card:9", members: [] } } }],
+    ["a prompt's button", { t: "act", stamp, stop: null, act: { a: "press", button: "b1" } } as Msg],
+    ["opening the inspector", { t: "open", stamp, layer: "inspector", card: null }],
+    ["a seat's board", { t: "board", stamp, seat: "Marath" }],
+  ];
+  for (const [what, m] of acts)
+    it(`zoomed in, ${what} only brings the table back: play hears nothing`, () => {
+      const s = zoomed();
+      const step = update(s, m);
+      expect(step.state.zoom.on).toBeNull();
+      expect(step.state.play).toBe(s.play);
+      expect(step.state.focus).toBe(s.focus);
+      expect(step.effects).toEqual([]);
+    });
+
+  it("a hover is still a hover while zoomed", () => {
+    const s = update(zoomed(), { t: "hover", stamp, group: "card:3" }).state;
+    expect(s.zoom.on).toEqual({ group: "card:7" });
+    expect(s.hover).toBe("card:3");
   });
 
   it("without the trial a long press does nothing", () => {
     const s0 = initialState({ clientBuild: "t" });
-    expect(run(s0, zoom("card:7"))).toBe(s0);
+    expect(run(s0, zoom({ group: "card:7" }))).toBe(s0);
   });
 });

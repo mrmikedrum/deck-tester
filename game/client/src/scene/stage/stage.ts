@@ -661,7 +661,7 @@ export class Stage {
         this.stackUps.set(st.id, p.draw.up);
       }
       const sift = p.draw.t === "sift" ? { sift: { card: p.draw.card, seat: p.seat, roll: siftRoll(p.draw.tapped, sample.alpha) } } : {};
-      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...(up ? { up } : {}), ...sift });
+      drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...(up ? { up } : {}), ...(hl ? { above: true } : {}), ...sift });
       const faceCard = p.kind === "zone" ? (st.shown[st.shown.length - 1] ?? null) : p.kind === "unit" ? (st.shown.includes(p.face!) ? p.face : (st.shown[0] ?? p.face)) : p.face;
       const fm = this.faceOf(st, faceCard, p.mark, p.small ?? false);
       const face = fm?.face ?? null;

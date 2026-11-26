@@ -600,23 +600,36 @@ export class StageRenderer {
   }
 
   /**
-   * The point on the table a ray from the eye through (x, y) CSS px first meets: a card, edge or label it holds, else the
-   * table's plane. Picking under a composed camera maps a tap through it to where the table's camera saw that point.
+   * What a ray from the eye through (x, y) CSS px meets first as drawn: a card, edge or label of a piece (its id and the
+   * point), where what stands above the scrim is drawn over everything else (the focus pass); else the table's plane (no
+   * piece). Pieces in `skip` are looked through. Picking under a composed camera reads it (stage `pickHit`).
    */
-  pointAt(camera: Camera, x: number, y: number, w: number, h: number): Vector3 | null {
+  pickAt(camera: Camera, x: number, y: number, w: number, h: number, skip: ReadonlySet<string> = new Set()): { id: string | null; point: Vector3 } | null {
+    const owner = new Map<Object3D, string>();
+    for (const [id, e] of this.pieces) if (e.view) owner.set(e.view.group, id);
     const ray = new Raycaster();
     ray.layers.enableAll();
     ray.setFromCamera(new Vector2((x / w) * 2 - 1, -(y / h) * 2 + 1), camera);
     this.root.updateWorldMatrix(true, true);
+    let near: { id: string; point: Vector3 } | null = null;
     for (const hit of ray.intersectObject(this.root, true)) {
-      let shown = true;
-      for (let o: Object3D | null = hit.object; o; o = o.parent) if (!o.visible) shown = false;
-      if (shown && hit.object.userData[COVERS]) return hit.point;
+      if (!hit.object.userData[COVERS]) continue;
+      let shown = true,
+        id: string | undefined;
+      for (let o: Object3D | null = hit.object; o; o = o.parent) {
+        if (!o.visible) shown = false;
+        id ??= owner.get(o);
+      }
+      if (!shown || id === undefined || skip.has(id)) continue;
+      // Above the scrim it is drawn over whatever is nearer: the first such hit wins outright.
+      if (this.pieces.get(id)?.above) return { id, point: hit.point };
+      near ??= { id, point: hit.point };
     }
+    if (near) return near;
     const d = ray.ray.direction, o = ray.ray.origin;
     if (Math.abs(d.y) < 1e-6) return null;
     const t = -o.y / d.y;
-    return t > 0 ? o.clone().addScaledVector(d, t) : null;
+    return t > 0 ? { id: null, point: o.clone().addScaledVector(d, t) } : null;
   }
 
   /** How many objects it holds (the workbench and tests read it). */

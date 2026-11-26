@@ -2,11 +2,11 @@
 // turns it into motion, the view draws it with the host, and the report says what happened. A throw in `show` is a
 // fault: reported, and the next commit is a cut; a lost context rebuilds the host and cuts likewise.
 import { tableTemplate } from "../../layout";
-import type { CameraSpec, HitGroup, Point, TablePlan, Viewport } from "../../layout";
+import type { CameraSpec, HitGroup, Point, SeatId, TablePlan, Viewport } from "../../layout";
 import { Queue, fontsReady } from "../../platform";
 import type { Ms } from "../../platform";
 import type { ArtLoader } from "../resources";
-import { pickDrawn } from "../stage/pick";
+import { pickDrawn, pickHit, seatOnTable } from "../stage/pick";
 import { Stage } from "../stage/stage";
 import { estimate } from "../stage/labels";
 import { SIGN_FONT, font } from "../../theme";
@@ -34,6 +34,8 @@ export interface Scene {
    * looked through (the layout audit sets a focus aside).
    */
   pick(p: Point, skip?: ReadonlySet<string>): HitGroup | null;
+  /** The seat whose page is under `p` as drawn (a long press there zooms to it in the zoom's trial), or null. */
+  seatAt(p: Point): SeatId | null;
   dispose(): void;
 }
 
@@ -162,13 +164,20 @@ export function createScene(opts: SceneOptions): SceneHandle {
     inspect: () => stage.inspect(),
     pick: (p, skip) => {
       if (!shown) return null;
-      // Under a composed camera, a tap is where the table's camera saw the point it lands on.
+      // Under a composed camera, a tap reaches the piece drawn where it lands (or what the table's camera saw there).
       if (move.active && host && renderer) {
-        const at = renderer.pointAt(host.camera, p.x, p.y, host.size.w, host.size.h);
-        if (!at) return null;
-        return pickDrawn(shown.plan, shown.drawn, shown.plan.projector.project({ x: at.x, y: at.y, z: at.z }), skip);
+        const hit = renderer.pickAt(host.camera, p.x, p.y, host.size.w, host.size.h, skip);
+        return pickHit(shown.plan, shown.drawn, hit && { id: hit.id, point: { x: hit.point.x, y: hit.point.y, z: hit.point.z } }, skip);
       }
       return pickDrawn(shown.plan, shown.drawn, p, skip);
+    },
+    seatAt: (p) => {
+      if (!shown) return null;
+      if (move.active && host && renderer) {
+        const hit = renderer.pickAt(host.camera, p.x, p.y, host.size.w, host.size.h);
+        return hit ? seatOnTable(shown.plan, { x: hit.point.x, y: hit.point.y, z: hit.point.z }) : null;
+      }
+      return seatOnTable(shown.plan, shown.plan.projector.onTable(p.x, p.y, 0));
     },
     dispose() {
       disposed = true;

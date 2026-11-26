@@ -1,4 +1,5 @@
 // AppState: everything more than one module reads. Renderers keep only private motion state. Focus is app/focus.ts.
+import type { ZoomRequest } from "../scene/stage/types";
 import type { CommitId, Continuity, Decision, Snapshot, StopId } from "../protocol";
 import type { Insets, Ms } from "../platform";
 import { NO_INSETS } from "../platform";
@@ -96,7 +97,7 @@ export interface AppState {
    * The camera composed on a hit group (a zoom), and whether the trial that offers it is on (`?zoom`: a long press on
    * the table zooms to what is under it; any tap or Escape brings the table back). Off, nothing ever zooms.
    */
-  readonly zoom: { readonly trial: boolean; readonly on: string | null };
+  readonly zoom: { readonly trial: boolean; readonly on: ZoomRequest | null };
   /** Reduced motion is asked for (`prefers-reduced-motion`): the scene shortens its moves; decision timing never changes. */
   readonly reducedMotion: boolean;
   readonly reserve: Reservations;

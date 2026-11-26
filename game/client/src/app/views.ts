@@ -38,7 +38,7 @@ export function sceneFrame(s: AppState): SceneFrame | null {
     commit: s.commit,
     reducedMotion: s.reducedMotion,
     ...(highlight ? { highlight } : {}),
-    ...(s.zoom.on !== null ? { zoom: { group: s.zoom.on } } : {}),
+    ...(s.zoom.on !== null ? { zoom: s.zoom.on } : {}),
   };
 }
 

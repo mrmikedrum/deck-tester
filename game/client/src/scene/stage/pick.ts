@@ -19,6 +19,8 @@ export interface DrawnPiece {
   readonly pickable: boolean;
   /** A stack card drawn as the table's focus: reached by the plan's `hits.up` group, measured where it stands up. */
   readonly up?: boolean;
+  /** Stepped out of the light (a highlight): drawn over everything else on the table, so reached first. */
+  readonly above?: boolean;
   /** A sifted card: its card, whose it is, and its turn as drawn (poses `siftRoll`). */
   readonly sift?: { readonly card: CardId; readonly seat: SeatId | null; readonly roll: number };
 }
@@ -42,18 +44,66 @@ export function pickDrawn(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece
     });
     return hit;
   }
-  // The stack as the focus: its cards are reached where they stand up, in the order they are drawn, over everything.
-  const up = plan.stack.some((s) => drawn.get(`stack:${s.key}`)?.up);
-  const groups = up ? [...plan.hits.groups.filter((g) => g.kind !== "stack"), ...(plan.hits.up ?? [])] : plan.hits.groups;
-  let best: HitGroup | null = null;
-  for (const g of groups) {
+  // What a highlight steps out of the light is drawn over the rest (the focus pass): reached before anything under it.
+  let best: HitGroup | null = null,
+    above: HitGroup | null = null;
+  for (const g of candidates(plan, drawn)) {
     // A seat's nameplate is chrome (it takes its own taps): the table under it is what a tap on the canvas reaches.
-    if ((best && g.order < best.order) || skip?.has(g.id) || g.kind === "plate") continue;
+    if (skip?.has(g.id) || g.kind === "plate") continue;
     const d = drawn.get(g.id);
     if (d && !d.pickable) continue;
-    if (inQuad(d ? movedQuad(plan.projector, g.quad, d) : g.quad, p.x, p.y)) best = g;
+    const top = d?.above ? above : best;
+    if (top && g.order < top.order) continue;
+    if (!inQuad(d ? movedQuad(plan.projector, g.quad, d) : g.quad, p.x, p.y)) continue;
+    if (d?.above) above = g;
+    else best = g;
   }
-  return best;
+  return above ?? best;
+}
+
+/** The groups a tap may reach: the stack as the focus is reached where it stands up (layout's `hits.up`). */
+function candidates(plan: TablePlan, drawn: ReadonlyMap<string, DrawnPiece>): readonly HitGroup[] {
+  const up = plan.stack.some((s) => drawn.get(`stack:${s.key}`)?.up);
+  return up ? [...plan.hits.groups.filter((g) => g.kind !== "stack"), ...(plan.hits.up ?? [])] : plan.hits.groups;
+}
+
+/**
+ * What a tap reaches under a composed camera (a zoom), from what a ray through it met there: the piece it hit, when that
+ * piece is a group a tap may reach (its identity, whatever lies behind it as the table's camera sees it); else the
+ * point it hit, as the table's camera sees that point. `hit` is null when the ray met nothing at all.
+ */
+export function pickHit(
+  plan: TablePlan,
+  drawn: ReadonlyMap<string, DrawnPiece>,
+  hit: { readonly id: string | null; readonly point: V3 } | null,
+  skip?: ReadonlySet<string>,
+): HitGroup | null {
+  if (!hit) return null;
+  if (hit.id !== null && !skip?.has(hit.id)) {
+    const d = drawn.get(hit.id);
+    if (d?.sift) {
+      const sifted = pickDrawn(plan, drawn, plan.projector.project(hit.point), skip);
+      if (sifted?.id === siftGroupId(d.sift.card)) return sifted;
+    }
+    const g = candidates(plan, drawn).find((x) => x.id === hit.id && x.kind !== "plate");
+    if (g && (!d || d.pickable)) return g;
+  }
+  return pickDrawn(plan, drawn, plan.projector.project(hit.point), skip);
+}
+
+/** The seat whose page lies under a point on the table (world units), or null. */
+export function seatOnTable(plan: TablePlan, at: V3): SeatId | null {
+  for (const [seat, sp] of plan.seats) {
+    const pg = sp.fixtures.page,
+      dx = at.x - pg.pos.x,
+      dz = at.z - pg.pos.z,
+      c = Math.cos(pg.yaw),
+      s = Math.sin(pg.yaw);
+    const lx = dx * c - dz * s,
+      lz = dx * s + dz * c;
+    if (Math.abs(lx) <= pg.w / 2 && Math.abs(lz) <= pg.d / 2) return seat;
+  }
+  return null;
 }
 
 const lifted = (s: Sample): V3 => ({ x: s.pos.x, y: s.pos.y + s.lift, z: s.pos.z });

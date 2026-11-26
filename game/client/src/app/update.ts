@@ -7,6 +7,7 @@
 // every settlement as a `settled` event, and of an answer the bridge is working on that this page did not send as a
 // `working` event. Play never reads the bridge's status itself. Play's state lives for the page: a new game, a restart
 // or teardown reaches it as a snapshot event, never as a reset to `initial`.
+import type { ZoomRequest } from "../scene/stage/types";
 import { diff, modelOf, playerViewer } from "../model";
 import { groupById, siftPages } from "../layout";
 import type { HitGroup } from "../layout";
@@ -536,21 +537,23 @@ function answered(s: AppState, m: Extract<TransportEvent, { t: "answered" }>): S
 
 // ---- the player's input -----------------------------------------------------------------------------------------------
 
+/** A zoom's subject as a key (the same subject asked for again changes nothing). */
+const zoomKey = (z: ZoomRequest | null): string => (z === null ? "" : "group" in z ? `g:${z.group}` : `s:${z.seat}`);
+
 function input(s: AppState, m: InputMsg): Step {
   const tx: Tx = { s, fx: [], origin: m.origin ?? null };
   const at = "stamp" in m ? m.stamp.at : 0;
+  // Zoomed in (the zoom's trial), any input but a hover or another zoom only brings the table back: a tap on the table,
+  // a prompt's button, a hand card, Escape. Nothing of it reaches play or opens anything.
+  if (s.zoom.on !== null && m.t !== "hover" && m.t !== "zoom") return { state: { ...s, zoom: { ...s.zoom, on: null } }, effects: [] };
   switch (m.t) {
     case "act":
-      // Zoomed in, a tap on the table only brings the table back (the zoom's trial; nothing reaches play).
-      if (s.zoom.on !== null && m.act.a === "tap") return done({ ...tx, s: { ...s, zoom: { ...s.zoom, on: null } } });
       toPlay(tx, { t: "act", stamp: m.stamp, stop: m.stop, act: m.act }, at);
       plan(tx, at); // a combat draft changes who is involved
       return done(tx);
     case "zoom":
-      return { state: s.zoom.trial && s.zoom.on !== m.group ? { ...s, zoom: { ...s.zoom, on: m.group } } : s, effects: [] };
+      return { state: s.zoom.trial && zoomKey(s.zoom.on) !== zoomKey(m.to) ? { ...s, zoom: { ...s.zoom, on: m.to } } : s, effects: [] };
     case "dismiss": {
-      // Zoomed in, Escape brings the table back first.
-      if (s.zoom.on !== null) return { state: { ...s, zoom: { ...s.zoom, on: null } }, effects: [] };
       // The top-layer rule (focus.ts): the top layer goes, or is set aside; play's sheet is play's to close. Only what
       // the last commit showed: a layer that came up since (a sheet arriving in the same frame as the Escape) stays, and
       // play hears the dismissal for the stop that was on screen, so a new decision's sheet is not closed by it.

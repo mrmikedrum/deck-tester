@@ -5,7 +5,7 @@ import { CameraMove, between, composeZoom } from "../../src/scene/three/zoom";
 import { cameraParams } from "../../src/scene/three/camera";
 import { materials } from "../../src/theme";
 import { tableTemplate } from "../../src/layout";
-import { NO_FOCUS, Stage } from "../../src/scene/stage";
+import { NO_FOCUS, Stage, seatOnTable } from "../../src/scene/stage";
 import { corpusSteps, frameOf } from "./corpus";
 
 const board = corpusSteps().flat().find((s) => s.name.startsWith("023"))!;
@@ -65,5 +65,16 @@ describe("the camera's move", () => {
     m.set(close, "g:x", table, 0);
     expect(m.at(0, table, true)).toEqual(close);
     expect(m.moving(1, true)).toBe(false);
+  });
+});
+
+describe("a long press on a seat's page", () => {
+  it("finds the seat whose page lies under it, and none off every page", () => {
+    for (const [seat, sp] of board.plan.seats) {
+      const pg = sp.fixtures.page;
+      const at = board.plan.projector.project(pg.pos);
+      expect(seatOnTable(board.plan, board.plan.projector.onTable(at.x, at.y, 0))).toBe(seat);
+    }
+    expect(seatOnTable(board.plan, { x: 1000, y: 0, z: 1000 })).toBeNull();
   });
 });

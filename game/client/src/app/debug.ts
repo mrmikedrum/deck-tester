@@ -10,8 +10,8 @@
 //   settled()            true when no frame is wanted (nothing moving, nothing queued, no deadline within a frame) and
 //                        no card art is loading: a recorder steps its clock only when it is
 //   redraw()             asks for a frame though nothing changed: a recorder's first frame is drawn at its clock's time
-//   zoom(group)          with the zoom's trial on (`?zoom`): the camera composed on a hit group, as a long press on it
-//                        would; null brings the table back
+//   zoom(to)             with the zoom's trial on (`?zoom`): the camera composed on a hit group (its id) or a seat's page
+//                        ({seat}), as a long press on it would; null brings the table back
 //   outstanding()        what the app is waiting on from the network: card data requests out, card art loading
 //   seats()              the seats, the perspective first, then in turn order
 //   card(id)             a card of the model, or null; zone(seat, zone) and attachments(id) the model's card ids
@@ -137,8 +137,9 @@ export function installDebug(loop: Loop, renderer: PageRenderer, extras: DebugEx
     ready: renderer.ready,
     settled: () => loop.settled() && artPending() === 0,
     redraw: () => loop.wake(),
-    zoom: (group: string | null) => {
-      extras.input?.({ t: "zoom", stamp: { at: now(), commit: loop.state.commit }, group });
+    zoom: (to: string | { seat: string } | null) => {
+      const z = to === null ? null : typeof to === "string" ? { group: to } : { seat: seatId(to.seat) };
+      extras.input?.({ t: "zoom", stamp: { at: now(), commit: loop.state.commit }, to: z });
       loop.wake();
     },
     outstanding: () => ({ cards: loop.state.cardAsks.out.size, art: artPending() }),
