@@ -173,18 +173,21 @@ Three pure stages. Only the middle one is swappable.
 - The **audit** measures the final candidate as drawn and accepts it or sends the solver to its next edit. When the
   edits run out, the result is a typed overflow, never a silent pass.
 
-The engine is called once per **container**: an opponent's leaf, my side, a seat's spread, a pile, the plate focus,
-the hand, combat's gathering. `planTable` composes containers into the table as it composes seats today.
+The engine is called once per **container**: an opponent's leaf, my side, a seat's spread, a pile of mine, combat's
+gathering. `planTable` composes containers into the table as it composes seats today. **Scope** (the owner, Nov 26): the
+engine lays out the table's permanents. The hand fan and the plate focus's zone grids are chrome, not containers: the
+corner hand fan is its own UI element, and the grids are flat lists of printed cards. They may share the engine's
+ordering (offered first), not its layout or grouping.
 
 ## 1. The contract
 
 ### 1.1 The container (what the caller gives)
 
 ```ts
-export type ContainerRole = "rest" | "spread" | "pile" | "plate" | "hand" | "gathering";
+export type ContainerRole = "rest" | "spread" | "pile" | "gathering";
 
 export interface Container {
-  readonly id: ContainerId;                // "rest:<seat>", "spread:<seat>", "pile:<unit>", "plate:<seat>", "hand", "gathering"
+  readonly id: ContainerId;                // "rest:<seat>", "spread:<seat>", "pile:<unit>", "gathering"
   readonly role: ContainerRole;
   readonly owner: SeatId | null;           // whose cards (null: mixed; the gathering reads `controller` per card)
   readonly viewer: SeatId;
@@ -232,8 +235,6 @@ cannot meet them does not create the container and routes its cards through the 
 | My side | my slot | table | to its slot, in steps | my plate | hand and prompt (screen) |
 | A seat's spread | the leaf's frame, brought nearer as a sheet | nearer | down to the hand's top, in steps | the seat's plate | the rail |
 | A pile of my own permanents | a small sheet brought nearer | nearer | fixed, pages | the pile | the rail |
-| The plate focus | a panel from the plate: words (chrome) and the zones as held grids | held | fixed, pages per zone | the plate | the rail |
-| The hand | a fan across the bottom, the touched card held up | held | fixed, pages | my cards | the prompt |
 | Combat's gathering | the middle the combat pose opens (§5.3) | nearer when I am in it, else table | fixed, tiers then pages | the clash's caption | the rail, the stack's place |
 
 Fixtures (plates, the commander beside its plate while in the command zone) stay the builder's. Zone piles at rest
@@ -450,11 +451,10 @@ export interface Overflow {
 ```
 
 - **The entry.** Every container has one, reachable at every viewport and under every focus: a leaf and my side have
-  their plates (on the rail); a spread, pile or plate focus has what opened it; the hand has my cards. When the last
+  their plates (on the rail); a spread or pile has what opened it. When the last
   edit still leaves cards without a target, they are reached through the entry, which opens the container's focus at
   their page, and the result says so (`reason: "space"`, `ask: entry`), so tests tell it from a fit.
-- **Paging.** Only focuses page: a spread (by rows, past its smallest step), a pile, the plate focus's zone grids, the
-  hand, the gathering (by tiers of formations). When a decision is choosing, offered members come first, so page 1
+- **Paging.** Only focuses page: a spread (by rows, past its smallest step), a pile, the gathering (by tiers of formations). When a decision is choosing, offered members come first, so page 1
   holds them; `pages.offeredOn` lists any others and the pager says so.
 - **Bounds** (settled; pinned by tests after the slice measures them):
 
@@ -464,8 +464,6 @@ export interface Overflow {
 | My side: offered cards stepping out of stacks and fans | the free places of their tier | the unit's target opens its pile focus, offered lit |
 | The gathering | two tiers of formations at its smallest step (one tier of 7 pairs and 3 unblocked fits at 1.2×, designer §3) | pages by formation |
 | A spread | its rows at its smallest step | pages by row |
-| A held grid (graveyard, exile, library, revealed) | 16 printed cards at ≥ 130 px (two rows of eight at 1180×820) | pages, newest first |
-| The hand | the fan at ≥ 130 px | pages |
 
 ### 1.6 Picking
 
@@ -653,13 +651,10 @@ target, one count marker for the column.
   from the leaf's front, then arrival. Identical cards stay one stack with its marker; unlike cards are never fanned:
   a spread hides nothing. Steps nearer, then rows, then pages.
 - **A pile of mine** (`pile`): its cards as a small sheet, singly, in the pile's order, offered first when choosing.
-- **The plate focus** (`plate`): sections, each its own sub-arrangement: the seat's summary (words from `SeatFacts`),
-  then graveyard, exile and library as held grids, newest first, paged, and an opponent's hand as its count (backs
-  only, or the cards where they are revealed). `SeatFacts` is the read of the combined spec's §6 (force, what is
-  exceptional or absent, and per moment: what can come at me, what can block, the attack, a sweep's price), built from
-  `facts` by by-relevance's `readOf`; at rest the plate shows it as icons.
-- **The hand** (`hand`): held, `order` = `handOrder`, offered first when choosing; a fan across the bottom; the
-  touched card held up at reading size (≥ 250 px) by the chrome. Never stacks.
+- **The plate focus and the hand** are chrome (see Scope). `SeatFacts`, the read of the combined spec's §6 (force,
+  what is exceptional or absent, and per moment: what can come at me, what can block, the attack, a sweep's price),
+  built from `facts` by by-relevance's `readOf`, still comes from here: the plate shows it as icons at rest and words in
+  its focus.
 - **The gathering** (`clash`): formations from `Relations.combat`: each blocked attacker a column (attacker behind,
   its blockers in front in the engine's order, rows far enough apart that a blocker's top never covers its attacker's
   foot); unblocked attackers by controller, defender and `lookKey` as columns standing apart, identical ones a stack
@@ -889,8 +884,9 @@ Each step keeps the old seat view for every consumer not yet moved, and passes t
 8. The side leaves; the template without a reserved middle and its poses (§5.3). Built (Round 6).
 9. My side (`mine`), with the band measured. Built (Round 7): my field on its line, my mana lying in front of it.
 10. Moments and acting on rest containers (light, in-place, the acting rank).
-11. Focus containers one at a time: the gathering (`clash`, replacing `combatRow`; `combatLanes` reads formations),
-    the spread (replacing `leanOf`), the pile and plate focuses (replacing `siftOf`, paging kept), the hand.
+11. Focus containers one at a time: the gathering (`clash`, replacing `combatRow`; built with combat), the spread
+    (replacing `leanOf`) and a pile of mine (replacing `siftOf` for my permanents, paging kept). The hand and the plate
+    focus stay chrome (Scope, Nov 26).
 12. Delete `mat`, `fit`, `fold`, `leanOf`, `combatRow` and the `plan` seat view; the architecture doc's layout section
     takes this contract, and intent.md's "visible count" limit follows whatever the owner settles on the designer's
     proposal (a pile that plainly holds more, opens in one tap, and cues what matters).
