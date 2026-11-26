@@ -74,11 +74,15 @@ export function bandsOf(tiers: readonly TierSpec[]): Band[] {
 /** Rows laid one after another from the anchor edge, each from the one in front of it; memoized for the plan. */
 export class RowPlanner {
   private readonly memo = new Map<string, RowGeo | null>();
+  /** The last band's index: the one a facing container stands on its line. */
+  private readonly last: number;
   constructor(
     private readonly c: Container,
     private readonly s: number,
     private readonly designUnit: number,
+    bands = 1,
   ) {
+    this.last = bands - 1;
     this.frames = [c.frame, ...c.poses.filter((p) => p.shift !== 0).map((p) => ({ ...c.frame, anchor: onFrame(c.frame, 0, p.shift) }))];
   }
 
@@ -105,8 +109,12 @@ export class RowPlanner {
     const stand = band.posture === "stand";
     const strip = band.markers ? SLOT.strip * s : 0;
     const proud = band.proud ? 0.3 * CARD.h * s : 0;
+    // A facing container (my side) stands its last band on its line, and lays the bands before it short of that row's
+    // count strip.
+    const facing = c.facing !== undefined && band.index === this.last ? c.facing : null;
     let v: number;
-    if (!prev) v = SLOT.margin + strip;
+    if (facing !== null && (!prev || prev.band.index !== band.index)) v = facing;
+    else if (!prev) v = SLOT.margin + strip;
     else {
       // What lies or stands in front must not cover this row's feet, from the eye: behind a standing row's tops, behind a
       // lying row's far edge and its proud strip.
@@ -119,6 +127,7 @@ export class RowPlanner {
     const depth = (quarter ? CARD.h : LIE_DEPTH) * s;
     const far = v + Math.max(depth, stand ? CARD.h * s * Math.sin(LEAN) : 0) + proud;
     if (far > c.frame.d + EPS) return null;
+    if (c.facing !== undefined && band.index !== this.last && far > c.facing - SLOT.strip * s - 0.05 * s + EPS) return null;
     // Where its cards would break their floor, or its far edge leave the screen, at rest or in any pose, the space has no
     // row.
     const floor = stand ? c.floors.creature : c.floors.any;

@@ -41,19 +41,22 @@ const mineRun = (r: Omit<Run, "policy" | "container">): ArrangeResult => run({ .
 const me = (o: Parameters<typeof ac>[0]): ArrCard => ac({ controller: ME, ...o });
 const unitOf = (r: ArrangeResult, id: number) => r.fit.units.find((u) => u.members.includes(id as CardId) || u.dressing.includes(id as CardId))!;
 const across = (r: ArrangeResult, id: number): number => unitOf(r, id).cards.find((c) => c.card === unitOf(r, id).top)!.foot.x;
+/** How near me a unit lies (its top's foot, world z): my mana's tier lies in front of my field. */
+const near = (r: ArrangeResult, id: number): number => unitOf(r, id).cards.find((c) => c.card === unitOf(r, id).top)!.foot.z;
+const fieldRow = (r: ArrangeResult) => r.fit.rows.find((x) => x.posture === "stand")!;
+const manaRow = (r: ArrangeResult) => r.fit.rows.find((x) => x.posture === "lie")!;
 
 describe("my side's policy (`mine`)", () => {
-  it("one row: what stands in the middle, works from the left end, mana from the right; nothing over its limits", () => {
+  it("two tiers: my mana lies in front by kind; my field holds what stands with my works at its left; nothing over its limits", () => {
     resetIds();
     const cards = [me({ name: "Bear", power: 2 }), me({ name: "Wurm", power: 6 }), me({ kind: "artifact", name: "Signet Press" }), ...many(3, { kind: "land", name: "Forest", basic: true, controller: ME }), me({ kind: "rock", name: "Sol Ring" })];
     const r = mineRun({ cards });
     expect(r.overflow).toBeNull();
     expect(r.fit.report.violations).toEqual([]);
-    expect(r.fit.rows).toHaveLength(1);
-    const [bear, wurm, press, forest, ring] = [1, 2, 3, 4, 7].map((id) => across(r, id));
-    expect(Math.abs(wurm!)).toBeLessThan(2);
+    expect(r.fit.rows.map((x) => x.posture)).toEqual(["lie", "stand"]);
+    const [bear, wurm, press] = [1, 2, 3].map((id) => across(r, id));
     expect(press!).toBeLessThan(Math.min(bear!, wurm!));
-    expect(Math.min(forest!, ring!)).toBeGreaterThan(Math.max(bear!, wurm!));
+    for (const id of [4, 7]) expect(near(r, id), String(id)).toBeGreaterThan(Math.max(near(r, 1), near(r, 2)) + 1);
     // creatures stand; the rest lie in their places; basics are one block
     for (const id of [1, 2]) expect(unitOf(r, id).cards.at(-1)!.posture).toBe("stand");
     for (const id of [3, 4, 7]) expect(unitOf(r, id).cards.at(-1)!.posture).toBe("lie");
@@ -94,7 +97,7 @@ describe("my side's policy (`mine`)", () => {
     expect(r.overflow).toBeNull();
     expect(r.fit.report.violations).toEqual([]);
     expect(new Set(r.fit.home.keys())).toEqual(new Set(cards.map((c) => c.id)));
-    expect(r.fit.units.length).toBeLessThanOrEqual(r.fit.rows[0]!.places);
+    expect(r.fit.units.filter((u) => u.cards.at(-1)!.posture === "stand" || ["field", "muster", "works"].includes(u.tier)).length).toBeLessThanOrEqual(fieldRow(r).places);
     // nothing shrinks: every card at the table's one size
     expect(r.fit.scale).toBeCloseTo(1.85, 6);
     // my mana keeps its kinds (rocks, utility lands, basics apart) while folding what stands
@@ -116,40 +119,56 @@ describe("my side's policy (`mine`)", () => {
     expect(pile.notable).toContainEqual({ card: lands[9]!.id, cue: "act" });
   });
 
-  it("while the row has room its units are one centred block: works at its left, what stands in the middle, mana at its right", () => {
+  it("while my field has room its units are one centred block: works at its left, what stands in the middle", () => {
     resetIds(100);
     const cards = [me({ id: 1, name: "Bear", power: 2 }), me({ id: 2, name: "Wurm", power: 6 }), me({ id: 3, kind: "artifact", name: "Coat of Arms" }), me({ id: 4, kind: "rock", name: "Sol Ring" }), ...many(3, { kind: "land", name: "Island", basic: true, controller: ME })];
     const r = mineRun({ cards });
-    const xs = r.fit.units.map((u) => u.cards.at(-1)!.foot.x).sort((a, b) => a - b), pitch = 1.85;
+    const xs = [1, 2, 3].map((id) => across(r, id)).sort((a, b) => a - b), pitch = 1.85;
     // contiguous, and centred on the row within a place
     for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeLessThan(pitch * 1.6);
     expect(Math.abs((xs[0]! + xs.at(-1)!) / 2)).toBeLessThan(pitch);
     expect(across(r, 3)).toBeLessThan(Math.min(across(r, 1), across(r, 2)));
-    expect(Math.min(across(r, 4), across(r, cards[4]!.id))).toBeGreaterThan(Math.max(across(r, 1), across(r, 2)));
     // the heaviest in the middle of what stands
     expect(Math.abs(across(r, 2) - (across(r, 1) + across(r, 2)) / 2)).toBeLessThan(pitch);
   });
 
-  it("my mana keeps its kinds while the row has room: basics by kind, rocks and utility lands apart, each named", () => {
+  it("my mana keeps its kinds while its tier has room (basics by kind, rocks and utility lands apart), else one well that names them", () => {
     resetIds();
-    const cards = [
-      ...Array.from({ length: 4 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i })),
-      ...many(5, { kind: "land", name: "Island", basic: true, controller: ME }),
-      ...many(3, { kind: "land", name: "Swamp", basic: true, controller: ME }),
-      ...Array.from({ length: 4 }, (_, i) => me({ kind: "rock", name: `Rock ${i}` })),
-      ...Array.from({ length: 5 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` })),
-    ];
-    const r = mineRun({ cards });
+    // (a full field: nothing of my mana spills into it)
+    const creatures = Array.from({ length: 11 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const rocks = Array.from({ length: 4 }, (_, i) => me({ kind: "rock", name: `Rock ${i}` })), utility = Array.from({ length: 5 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const islands = many(5, { kind: "land", name: "Island", basic: true, controller: ME });
+    const manaOf = (r: ArrangeResult) => r.fit.units.filter((u) => ["rocks", "lands", "basics", "pool"].includes(u.tier));
+    const one = mineRun({ cards: [...creatures, ...islands, ...rocks, ...utility] });
+    expect(one.fit.report.violations).toEqual([]);
+    expect(manaOf(one).map((u) => u.tier).sort()).toEqual(["basics", "lands", "rocks"]);
+    expect(manaOf(one).every((u) => u.facts.kind === "well")).toBe(true);
+    // a second kind of basic: more than the tier's places at this viewport, so all of it is one well, which counts its
+    // lands and rocks; my field is untouched
+    const two = mineRun({ cards: [...creatures, ...islands, ...many(3, { kind: "land", name: "Swamp", basic: true, controller: ME }), ...rocks, ...utility] });
+    expect(two.fit.report.violations).toEqual([]);
+    expect(manaOf(two).map((u) => u.tier)).toEqual(["pool"]);
+    expect(manaOf(two)[0]!.facts).toMatchObject({ kind: "well", lands: 13, rocks: 4 });
+    for (const c of creatures) expect(unitOf(two, c.id).members).toEqual([c.id]);
+    expect(manaRow(two).places).toBe(3);
+  });
+
+  it("what my mana tier cannot hold lies in my field's free places, right of what stands, before anything of it piles", () => {
+    resetIds();
+    const creatures = Array.from({ length: 3 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const rocks = Array.from({ length: 3 }, (_, i) => me({ kind: "rock", name: `Rock ${i}` })), utility = Array.from({ length: 2 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const r = mineRun({ cards: [...creatures, ...rocks, ...utility, ...many(4, { kind: "land", name: "Island", basic: true, controller: ME })] });
     expect(r.fit.report.violations).toEqual([]);
-    const mana = r.fit.units.filter((u) => ["rocks", "lands", "basics", "mana"].includes(u.tier));
-    expect(mana.map((u) => u.tier).sort()).toEqual(["basics", "basics", "lands", "rocks"]);
-    expect(mana.every((u) => u.facts.kind === "well" || u.facts.kind === "card")).toBe(true);
+    expect(r.fit.units.filter((u) => u.kind === "fan")).toEqual([]);
+    const spilled = r.fit.units.filter((u) => u.tier === "spill");
+    expect(spilled.length).toBe(3);
+    for (const u of spilled) expect(u.cards.at(-1)!.foot.x).toBeGreaterThan(Math.max(...creatures.map((c) => across(r, c.id))));
   });
 
   it("what a decision offers steps out of my piles where the row holds it, else its pile opens with it lit", () => {
     resetIds();
     const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
-    const creatures = Array.from({ length: 6 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const creatures = Array.from({ length: 11 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
     const cards = [...lands, ...creatures];
     const rest = mineRun({ cards });
     expect(unitOf(rest, lands[3]!.id).kind).toBe("fan");
@@ -185,12 +204,12 @@ describe("my side's policy (`mine`)", () => {
     const b = mineRun({ cards: [...others, me({ id: 9, kind: "rock", name: "Mind Stone" })], memory: a.fit.memory });
     expect(unitOf(b, 9).tier).toBe("rocks");
     expect(unitOf(b, 9).retyped).toBe(false);
-    expect(across(b, 9)).toBeGreaterThan(Math.max(across(b, 1), across(b, 2)));
+    expect(near(b, 9)).toBeGreaterThan(Math.max(near(b, 1), near(b, 2)) + 1);
     // what was known stays where it was
     for (const id of [1, 2, 3]) expect(unitOf(b, id).slot, String(id)).toEqual(unitOf(a, id).slot);
   });
 
-  it("a table loading (many cards' data arriving at once) deals my row afresh: works left, what stands, mana right", () => {
+  it("a table loading (many cards' data arriving at once) deals my side afresh: works left of what stands, mana in front", () => {
     resetIds(200);
     const known = [me({ name: "Illusion", power: 1, token: true }), me({ name: "Illusion", power: 1, token: true })];
     const real = [me({ name: "Wurm", power: 6 }), me({ name: "Bear", power: 2 }), me({ kind: "artifact", name: "Coat of Arms" }), me({ kind: "rock", name: "Sol Ring" }), me({ kind: "land", name: "Temple" })];
@@ -200,7 +219,8 @@ describe("my side's policy (`mine`)", () => {
     const b = mineRun({ cards: [...known, ...real], memory: a.fit.memory, clock: { turn: 5, phase: "MAIN1" } });
     const x = (n: string) => across(b, real.find((c) => c.name === n)!.id);
     expect(x("Coat of Arms")).toBeLessThan(Math.min(x("Wurm"), x("Bear")));
-    expect(Math.min(x("Sol Ring"), x("Temple"))).toBeGreaterThan(Math.max(x("Wurm"), x("Bear")));
+    const z = (n: string) => near(b, real.find((c) => c.name === n)!.id);
+    expect(Math.min(z("Sol Ring"), z("Temple"))).toBeGreaterThan(Math.max(z("Wurm"), z("Bear")) + 1);
   });
 
   it("a card that taps turns in place: only its turn changes", () => {
@@ -233,10 +253,11 @@ describe("my side's policy (`mine`)", () => {
     expect(digest(mineRun({ cards, memory: m }).fit, cards, null)).toBe(digest(mineRun({ cards, memory: a.fit.memory }).fit, cards, null));
   });
 
-  it("holds its places at every supported viewport: eleven, each face over my floor", () => {
+  it("holds its places at every supported viewport: eleven in my field, each face over my floor, three for my mana", () => {
     for (const vp of VIEWPORTS) {
-      const r = mineRun({ cards: [me({ name: "Bear", power: 2 })], vp });
-      expect(r.fit.rows[0]!.places, `${vp.w}`).toBe(11);
+      const r = mineRun({ cards: [me({ name: "Bear", power: 2 }), ...many(2, { kind: "land", name: "Forest", basic: true, controller: ME })], vp });
+      expect(fieldRow(r).places, `${vp.w}`).toBe(11);
+      expect(manaRow(r).places, `${vp.w}`).toBeGreaterThanOrEqual(3);
       expect(r.fit.report.violations, `${vp.w}`).toEqual([]);
     }
   });

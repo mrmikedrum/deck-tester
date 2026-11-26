@@ -169,7 +169,7 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   const bands = bandsOf(policy.tiers);
   // A container's rows are its geometry's, not its cards': the planner is kept between plans of the same container.
   const geometry = containerKey(c, s, u, bands);
-  const planner = PLANNERS.get(geometry) ?? PLANNERS.set(geometry, new RowPlanner(c, s, u));
+  const planner = PLANNERS.get(geometry) ?? PLANNERS.set(geometry, new RowPlanner(c, s, u, bands.length));
   const tierOf = new Map(policy.tiers.map((t) => [t.id, t]));
   const bandOf = new Map(bands.flatMap((b) => b.tiers.map((t) => [t.id, b] as const)));
   const standingTiers = policy.tiers.filter((t) => t.posture === "stand");
@@ -178,7 +178,9 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   // Precondition (§1.1): the frame holds a tap patch at its anchor, on the safe area and off the keepouts.
   const at = c.projector.project(onFrame(c.frame, 0, SLOT.margin));
   const blocked = c.keepouts.some((k) => k.on === "screen" && at.x >= k.rect.left && at.x <= k.rect.right && at.y >= k.rect.top && at.y <= k.rect.bottom);
-  if (blocked || at.x < c.safe.left || at.x > c.safe.right || at.y < c.safe.top || at.y > c.safe.bottom || !firstRow)
+  // (a facing container has its line even where the space before it holds no row)
+  const someRow = firstRow ?? (c.facing !== undefined && bands.length ? planner.next(null, bands[bands.length - 1]!) : null);
+  if (blocked || at.x < c.safe.left || at.x > c.safe.right || at.y < c.safe.top || at.y > c.safe.bottom || !someRow)
     return containerOverflow(input, policy, cards, seq, next, invalid);
 
   // ---- groups: the policy's, with acting cards and retyped cards out of theirs ----
@@ -188,7 +190,10 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   // ---- the re-sort ----
   const ranking = groups.filter((g) => standingTiers.some((t) => t.id === g.base) && !g.acting).sort((a, b) => b.imp - a.imp || cmp(a.key, b.key));
   const incumbentKeys = new Set(groups.filter((g) => g.members.some((id) => standingTiers.some((t) => t.id === pm?.tiers[pm.held[id] ?? ""]))).map((g) => g.key));
-  const front = new Set(ranking.slice(0, firstRow?.grid ? placesOf(firstRow) : 0).map((g) => g.key));
+  // (the first standing row: a leaf's first row; my field, past my lying band)
+  const standBand = bands.find((b) => b.posture === "stand");
+  const standRow = standBand === bands[0] ? firstRow : standBand && c.facing !== undefined && standBand.index === bands.length - 1 ? planner.next(null, standBand) : null;
+  const front = new Set(ranking.slice(0, standRow?.grid ? placesOf(standRow) : 0).map((g) => g.key));
   const changed =
     groups.some((g) => g.retyped) ||
     ranking.some((ch) => !incumbentKeys.has(ch.key) && front.has(ch.key) && ranking.some((inc) => incumbentKeys.has(inc.key) && !front.has(inc.key) && policy.promote(inc.imp, ch.imp)));
@@ -562,6 +567,16 @@ function walk(
       if (need && moves && g && target && target.posture === "stand" && l) {
         const d = dest(g.key), left: number = (l.excess.get(target.index) ?? 0) - ownUnits(g.key);
         if (d && (l.count.get(d.index) ?? 0) > 0 && left > 0) batch = { step: e.index, band: target, held: wasHeld, budget: left, filled: new Set([...l.count].filter(([, n]) => n > 0).map(([b]) => b)) };
+      }
+    }
+    // A demote that goes only where there is room: not when the band it goes to would overflow with it.
+    if (need && step.op === "demote" && step.ifRoom && g) {
+      const to = typeof step.to === "string" ? step.to : g.creature ? step.to.creature : step.to.other;
+      const moved: State = { ...st, tier: new Map(st.tier).set(g.key, to) };
+      estimates++;
+      if (lay(bands, planner, draftUnits(policy, groups, moved, tierOf, s), tight, null).over.has(bandOf.get(to)!.index)) {
+        need = false;
+        batch = null;
       }
     }
     records.push({ index: e.index, op: step.op, groups: groupsHit, ran: need });

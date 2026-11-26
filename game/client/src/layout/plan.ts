@@ -295,11 +295,11 @@ export function planTable(input: TableInput): TablePlan {
   // My row parted slides toward me (its frame's `away` points at the middle).
   const mineSeatAt = (part: number): SeatPlan => {
     const r = part ? posed(me!.input!, me!.result!, -partShift(part)) : me!.result!;
-    return mineSeat({ result: r, edge: tpl.slots[0]!.z + tpl.slots[0]!.d / 2 - r.fit.frame.anchor.z, board: inputs[0]!.board, cards: me!.input!.cards, projector, reserve });
+    return mineSeat({ result: r, edge: tpl.slots[0]!.z + tpl.slots[0]!.d / 2 - r.fit.frame.anchor.z, facing: me!.input!.container.facing ?? 0, board: inputs[0]!.board, cards: me!.input!.cards, projector, reserve });
   };
   /** How far down my row's tops go on screen (px) when the mats part this far. */
   const myDrop = (part: number): number => {
-    const fit = mineDrawn && part ? me!.result!.fit : null, row = fit?.rows[0];
+    const fit = mineDrawn && part ? me!.result!.fit : null, row = fit?.rows.find((r) => r.posture === "stand");
     if (!fit || !row) return 0;
     const top = (shift: number) => projector.project(onFrame({ ...fit.frame, anchor: onFrame(fit.frame, 0, shift) }, 0, row.v + CH * S_TABLE * Math.sin(LEAN), CH * S_TABLE * Math.cos(LEAN))).y;
     return top(-partShift(part)) - top(0);

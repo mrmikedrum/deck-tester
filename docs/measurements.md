@@ -495,3 +495,7 @@ seat, so it arranges four containers a plan (a real snapshot usually changes one
 On the iPad, earlier runs went 6 to 9 times Node's p90 (its clock is 1 ms, so its worst is about its p90): the dense
 board should come to about 4 to 6 ms worst and the combat of twelve about 5 to 6, under the 8 ms budget; the sequence
 stays over it (about 13). The owner's run (`workbench.html?only=bench`, held in landscape) decides.
+
+After the review (my mana lying in front of my field, mana by kind, zones on my nameplate), the same bench at load
+average about 17, as the app plans: turn 15 0.61 / 1.12 / 2.83; dense 0.84 / 0.93 / 1.31; 40 distinct names 0.45 /
+0.47 / 0.98; the combat of twelve 0.49 / 0.52 / 1.31; the sequence 1.61 / 2.34 / 4.94. Within the noise of the run above.

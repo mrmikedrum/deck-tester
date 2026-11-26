@@ -59,6 +59,7 @@ export function containerKey(c: Container, s: number, du: number, bands: readonl
     JSON.stringify(c.keepouts),
     JSON.stringify(c.floors),
     JSON.stringify(c.safe),
+    c.facing === undefined ? "" : n(c.facing),
     n(s),
     n(du),
     bands.map((x) => `${x.posture}${x.markers ? "m" : ""}${x.proud ? "p" : ""}:${x.tiers.map((t) => t.id).join("+")}`).join("|"),

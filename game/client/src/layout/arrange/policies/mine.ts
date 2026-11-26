@@ -1,35 +1,36 @@
-// `mine` (§2.6): my own side, one row facing theirs. Every untapped creature and planeswalker stands in it, and the
+// `mine` (§2.6): my own side. My field faces theirs: every untapped creature and planeswalker stands in it, and the
 // noncreatures that earn a place (the commander, a battle, a card that binds the table, one with counters, a legendary
-// one), so a deck that barely plays creatures still shows what matters; my works and my mana lie in the same row's places,
-// one centred block while the row has room: works at its left, what stands in its middle (dealt by rank at a re-sort),
-// mana at its right, by kind. What does not fit folds least important first: copies stack, my works fan, my rocks and my
-// utility lands each fan (each a well that names its kind and count), the lightest of what stands goes to a muster, which
-// fans; only a row still full gathers all my mana into one well. Nothing shrinks; a pile holding something I can use says
-// so (the scene's cue).
+// one), so a deck that barely plays creatures still shows what matters; my other works lie in the same row's places, at
+// the left of one centred block (what stands in its middle, dealt by rank at a re-sort). In front of it lies my mana, by
+// kind: basics as blocks, rocks and utility lands each a well that names its kind and count. What does not fit folds
+// least important first: copies stack; mana my mana row cannot hold lies in my field's free places at the block's right,
+// while the field has room; then my rocks and my utility lands each fan; only a mana row still full gathers all my mana
+// into one well; my works fan; the lightest of what stands goes to a muster, which fans, only when the field is full. Nothing shrinks; a pile holding something I can use says so (the scene's cue).
 import type { ArrCard, Group, Policy, TierSpec } from "../contract";
 import { PINNED, anyTapped, collect, creatureWeight, emphasisOf, factsOf, mattersOf, need, promoteRule, seatOf, tidyRule, topOf } from "./common";
 import { kindOf } from "./kinds";
 import { engine, noncreatureWeight } from "./works";
 
 /**
- * One standing band: what stands, its muster, my works, and my mana by kind (rocks, utility lands, basics; all of it as one
- * well, last). A unit that is not presented lies in its place (a land, a rock, a work, a tapped creature turned a quarter);
- * its tier says what folds with what, and which side of the block it keeps to.
+ * From my edge: my mana lying by kind (rocks, utility lands, basics; all of it as one well, last), then my field, on its
+ * line: what stands, its muster and my works (which lie in its places, to the left of what stands).
  */
 export const MINE_TIERS: readonly TierSpec[] = [
+  { id: "rocks", posture: "lie", markers: true },
+  { id: "lands", posture: "lie", markers: true },
+  { id: "basics", posture: "lie", markers: true },
+  { id: "pool", posture: "lie", markers: true },
   { id: "field", posture: "stand", markers: true },
   { id: "muster", posture: "stand", markers: true, proud: true },
   { id: "works", posture: "stand", markers: true, proud: true, from: "left" },
-  { id: "rocks", posture: "stand", markers: true, from: "right" },
-  { id: "lands", posture: "stand", markers: true, from: "right" },
-  { id: "basics", posture: "stand", markers: true, from: "right" },
-  { id: "mana", posture: "stand", markers: true, from: "right" },
+  { id: "spill", posture: "stand", markers: true, from: "right" },
 ];
 
-/** My mana's tiers by kind, and the one they gather into when the row is still full. */
-export const MANA_TIERS = ["rocks", "lands", "basics", "mana"] as const;
+/** My mana's tiers by kind, the one they gather into when their row is still full, and the field's places it may spill
+ *  into (at the block's right) while my field has room. */
+export const MANA_TIERS = ["rocks", "lands", "basics", "pool", "spill"] as const;
 
-/** It stands in my row while untapped: a creature, a planeswalker, a battle, the commander, an engine (works.ts). */
+/** It stands in my field while untapped: a creature, a planeswalker, a battle, the commander, an engine (works.ts). */
 const stands = (c: ArrCard): boolean => {
   const k = kindOf(c);
   return k !== "mana" && (c.commander || k === "creature" || engine(c));
@@ -77,17 +78,21 @@ export const mine: Policy = {
     { op: "stack", where: { tier: "works", stacks: true } },
     { op: "stack", where: { tier: "rocks", stacks: true } },
     { op: "stack", where: { tier: "lands", stacks: true } },
-    { op: "fan", where: { tier: "works" }, show: 6 },
+    // what my mana row cannot hold lies in my field's free places, to the right of what stands, while it has room
+    { op: "demote", where: { tier: "rocks" }, to: "spill", ifRoom: true },
+    { op: "demote", where: { tier: "lands" }, to: "spill", ifRoom: true },
+    { op: "demote", where: { tier: "basics" }, to: "spill", ifRoom: true },
     { op: "fan", where: { tier: "rocks" }, show: 6 },
     { op: "fan", where: { tier: "lands" }, show: 6 },
+    { op: "fan", where: { tier: "pool", gather: ["rocks", "lands", "basics"] }, show: 6 },
+    { op: "fan", where: { tier: "works" }, show: 6 },
     { op: "stack", where: { creatures: true, stacks: true } },
     { op: "demote", where: { tier: "field" }, to: "muster" },
     { op: "fan", where: { tier: "muster" }, show: 6 },
-    { op: "fan", where: { tier: "mana", gather: ["rocks", "lands", "basics"] }, show: 6 },
     { op: "summary", where: { all: true } },
   ],
   matters: mattersOf,
-  facts: (u, ctx) => factsOf(u, ctx, (MANA_TIERS as readonly string[]).includes(u.tier) ? u.tier : "mana"),
+  facts: (u, ctx) => factsOf(u, ctx, (MANA_TIERS as readonly string[]).includes(u.tier) ? u.tier : "pool"),
   seat: seatOf,
   emphasis: emphasisOf,
   acting: "in-place",

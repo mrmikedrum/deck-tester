@@ -140,6 +140,8 @@ export interface MineSeatInput {
   readonly result: ArrangeResult;
   /** How far my edge of the table lies in front of the frame's anchor (world units, along `away`'s opposite). */
   readonly edge: number;
+  /** My field's line (the container's `facing`): the page reaches past it whether or not anything stands there. */
+  readonly facing: number;
   readonly board: SeatBoard;
   readonly cards: readonly ArrCard[];
   readonly projector: Projector;
@@ -160,8 +162,8 @@ export function mineSeat(a: MineSeatInput): SeatPlan {
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
   // Cards no place could hold are reached through the entry: one pile on the row's anchor.
   if (left.length) units.push({ id: `u:entry:${seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(f, 0, 0.2), scale: S_TABLE, posture: "flat" } });
-  // My page is the mat from my edge of the table (the near slot's) to just behind what lies in my row.
-  const v0 = Math.min(0, -a.edge), v1 = (fit.rows[0]?.v ?? 0) + CARD.h * S_TABLE + 0.1;
+  // My page is the mat from my edge of the table (the near slot's) to just behind what lies on my field's line.
+  const v0 = Math.min(0, -a.edge), v1 = a.facing + CARD.h * S_TABLE + 0.1;
   const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + v1) / 2), w: f.w, d: v1 - v0, yaw: 0 }, plate: myPlate(a.projector, a.reserve), zones: [] };
   const folded = fit.units.reduce((t, u) => t + Math.max(0, u.members.length - 1), 0);
   return new Ledger(board.cards.map((c) => c.id)).seal({

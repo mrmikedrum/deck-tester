@@ -491,10 +491,10 @@ container at a time: a container's cards and space in, units, places, pick targe
 (a `Policy`) swappable and no count of rows or places assumed. Every opponent's leaf is the engine's
 (`tableInputOf(model, { engine: { draw: true } })`, as the app plans; `TablePlan.leaves` holds each at rest), on the
 template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row on one line), and so is my side
-(`TablePlan.mine`, the `mine` policy): one row of eleven places on the template's field line (`TableTemplate.mine`), one
-centred block while it has room (works at its left, what stands in its middle, mana at its right as wells by kind). My
-nameplate stands at the screen's foot right of the hand and counts my graveyard, exile and a waiting commander, which
-are not on the table. At rest no middle is held back. **The parting** makes room when something rests on the middle at
+(`TablePlan.mine`, the `mine` policy): my field, eleven places on the template's field line (`TableTemplate.mine`), one
+centred block while it has room (works at its left, what stands in its middle), and in front of it my mana lying as
+wells by kind, in the space the hand and the prompt leave. My nameplate stands at the screen's foot right of the hand
+and counts my graveyard, exile and a waiting commander, which are not on the table. At rest no middle is held back. **The parting** makes room when something rests on the middle at
 table size: every engine leaf slides along its own `away`, and my row toward me, by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
 it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and
 patches parted). `TablePlan.part` says how far. No leaf goes under the chrome along the top (`topChrome`); graveyard and

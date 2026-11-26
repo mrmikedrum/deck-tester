@@ -86,6 +86,12 @@ export interface Container {
   readonly growth: { readonly d: readonly number[] } | "fixed";
   readonly entry: EntryId;
   readonly paging: { readonly page: number } | null;
+  /**
+   * Where the policy's last band stands (v of its first row's feet), for a container laid from my edge toward the middle:
+   * my field stands on its line however many rows the bands before it take, and they fill the space from the anchor up
+   * to it. Absent, every band is laid from the anchor in turn (a leaf).
+   */
+  readonly facing?: number;
 }
 
 export interface FramePose {
@@ -442,7 +448,8 @@ export type FoldStep =
   | { readonly op: "split-spent"; readonly where: Selector; readonly to: TierId }
   | { readonly op: "stack"; readonly where: Selector }
   | { readonly op: "fan"; readonly where: Selector; readonly show: number }
-  | { readonly op: "demote"; readonly where: Selector; readonly to: DemoteTo }
+  /** `ifRoom`: only while the band it goes to has room for it (my mana spilling into free places of my field). */
+  | { readonly op: "demote"; readonly where: Selector; readonly to: DemoteTo; readonly ifRoom?: boolean }
   | { readonly op: "summary"; readonly where: Selector };
 
 /** What a policy sees beyond the cards: who looks, whose they are, what acts. Never the moment, but where it says so. */
