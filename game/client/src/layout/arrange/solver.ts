@@ -255,28 +255,29 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   if (!movable.length) cand = attempt(new Set());
   else {
     const rest = attempt(new Set()), shown = shownIn(rest);
-    const fits = (x: Candidate, out: readonly G[]): boolean => {
+    // (every card rest shows stays where it is, the moment's own included: what is shown is already a tap away)
+    const fits = (x: Candidate): boolean => {
       if (x.unplaced.other.length || x.unplaced.actors.length || x.violations.length || x.units.some((y) => y.kind === "summary")) return false;
-      const moved = new Set(out.flatMap((g) => g.members)), now = shownIn(x);
-      return [...shown].every(([id, at]) => moved.has(id) || now.get(id) === at);
+      const now = shownIn(x);
+      return [...shown].every(([id, at]) => now.get(id) === at);
     };
-    // The acting rank: what rest hides among unlike cards first (a copy in its block is already one tap), then the
-    // policy's importance, then the oldest. The longest prefix that still fits steps out: the first alone (where even it
-    // finds no place, as on most full boards, nothing does), then all, then a halving search between.
-    const hides = new Set(rest.units.filter((y) => y.kind === "fan" || y.kind === "summary").flatMap((y) => y.members));
-    const ranked = [...movable].sort((a, b) => Number(!a.members.some((id) => hides.has(id))) - Number(!b.members.some((id) => hides.has(id))) || b.imp - a.imp || a.arrival - b.arrival || cmp(a.key, b.key));
+    // The acting rank, over what rest hides among unlike cards (under a pile's top, or in a summary): the policy's
+    // importance, then the oldest. The longest prefix that still fits steps out: the first alone (where even it finds no
+    // place, as on most full boards, nothing does), then all, then a halving search between.
+    const hides = new Set(rest.units.flatMap((y) => (y.kind === "summary" ? y.members : y.kind === "fan" ? y.members.filter((id) => id !== y.top) : [])));
+    const ranked = movable.filter((g) => g.members.some((id) => hides.has(id))).sort((a, b) => b.imp - a.imp || a.arrival - b.arrival || cmp(a.key, b.key));
     const keys = (k: number): Set<string> => new Set(ranked.slice(0, k).map((g) => g.key));
-    const first = attempt(keys(1));
-    if (!fits(first, ranked.slice(0, 1))) cand = rest;
+    const first = ranked.length ? attempt(keys(1)) : rest;
+    if (!ranked.length || !fits(first)) cand = rest;
     else if (ranked.length === 1) cand = first;
     else {
       const all = attempt(keys(ranked.length));
-      if (fits(all, ranked)) cand = all;
+      if (fits(all)) cand = all;
       else {
         let lo = 1, hi = ranked.length - 1, best = first;
         while (lo < hi) {
           const k = Math.ceil((lo + hi) / 2), x = attempt(keys(k));
-          if (fits(x, ranked.slice(0, k))) [lo, best] = [k, x];
+          if (fits(x)) [lo, best] = [k, x];
           else hi = k - 1;
         }
         cand = best;

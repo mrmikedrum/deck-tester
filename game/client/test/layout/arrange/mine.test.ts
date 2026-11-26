@@ -187,9 +187,16 @@ describe("my side's policy (`mine`)", () => {
     // acting rank (here the oldest first, all alike), and the rest fold as at rest in a pile that names them
     const all = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(lands.map((l) => l.id)), choosing: true } });
     expect(all.fit.report.violations).toEqual([]);
+    // the pile's top is shown at rest: it stays on top, where it was; what steps out is what it hid, the oldest first
+    const restPile = unitOf(rest, lands[15]!.id), topAt = (r: ArrangeResult, id: CardId) => unitOf(r, id).cards.find((p) => p.card === id)!.foot;
+    expect(unitOf(all, restPile.top!).top).toBe(restPile.top);
+    // (on the table: its height is its pile's, one card thinner)
+    const [a, b] = [topAt(all, restPile.top!), topAt(rest, restPile.top!)];
+    expect([a.x, a.z]).toEqual([b.x, b.z]);
     const out = lands.filter((l) => unitOf(all, l.id).kind === "card");
     expect(out.length).toBeGreaterThan(0);
-    expect(out.map((l) => l.id)).toEqual(lands.slice(0, out.length).map((l) => l.id));
+    const hidden = lands.filter((l) => l.id !== restPile.top);
+    expect(out.map((l) => l.id)).toEqual(hidden.slice(0, out.length).map((l) => l.id));
     const pile = unitOf(all, lands[15]!.id);
     expect(pile.kind).toBe("fan");
     expect(all.fit.attention.some((a) => a.unit === pile.id && a.why === "offered")).toBe(true);
