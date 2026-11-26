@@ -177,11 +177,40 @@ describe("my side's policy (`mine`)", () => {
     for (const l of [lands[3]!, lands[9]!]) expect(unitOf(two, l.id).members, l.name).toEqual([l.id]);
     expect(two.fit.report.violations).toEqual([]);
     expect(two.overflow).toBeNull();
-    // every land offered (a payment): more than the row holds, so they fold as at rest and the pile names them
+    // every land offered (a payment): more than the row holds, so as many as its free places hold step out, in the
+    // acting rank (here the oldest first, all alike), and the rest fold as at rest in a pile that names them
     const all = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(lands.map((l) => l.id)), choosing: true } });
-    const pile = unitOf(all, lands[3]!.id);
+    expect(all.fit.report.violations).toEqual([]);
+    const out = lands.filter((l) => unitOf(all, l.id).kind === "card");
+    expect(out.length).toBeGreaterThan(0);
+    expect(out.map((l) => l.id)).toEqual(lands.slice(0, out.length).map((l) => l.id));
+    const pile = unitOf(all, lands[15]!.id);
     expect(pile.kind).toBe("fan");
     expect(all.fit.attention.some((a) => a.unit === pile.id && a.why === "offered")).toBe(true);
+    // nothing else moved for them: every creature keeps its place
+    for (const c of creatures) expect(unitOf(all, c.id).slot, c.name).toEqual(unitOf(rest, c.id).slot);
+  });
+
+  it("the acting rank: what rest hides among unlike cards steps out before copies already one tap in their block", () => {
+    resetIds(150);
+    const creatures = Array.from({ length: 11 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const islands = many(6, { kind: "land", name: "Island", basic: true, controller: ME });
+    const lands = Array.from({ length: 12 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const rocks = Array.from({ length: 4 }, (_, i) => me({ kind: "rock", name: `Rock ${i}` }));
+    const cards = [...creatures, ...islands, ...lands, ...rocks];
+    const rest = mineRun({ cards });
+    const offered = [...islands, ...lands, ...rocks];
+    const r = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(offered.map((c) => c.id)), choosing: true } });
+    expect(r.fit.report.violations).toEqual([]);
+    const out = offered.filter((c) => unitOf(r, c.id).kind === "card");
+    expect(out.length).toBeGreaterThan(0);
+    expect(out.every((c) => c.name !== "Island")).toBe(true);
+    // every offered card is drawn whole (alone or on top), in its block of copies, or named on the pile that hides it
+    const named = new Set(r.fit.attention.filter((a) => a.why === "offered").flatMap((a) => a.cards));
+    for (const c of offered) {
+      const u = unitOf(r, c.id);
+      expect(u.kind === "card" || u.kind === "stack" || u.top === c.id || named.has(c.id), c.name).toBe(true);
+    }
   });
 
   it("classification follows current types: a stationed spacecraft that becomes a creature stands with the creatures", () => {

@@ -241,11 +241,29 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
     return best!;
   };
   // On my side, while I choose, what the decision offers steps out of the piles it would fold into (§2.6: a land to pay
-  // with is tapped where it lies, not found in a pile), where the space holds them all; where it does not, they fold
-  // as at rest and their pile opens with them lit.
-  const offered = ctx.mine && input.acting.choosing ? new Set(groups.filter((g) => !g.pinned && g.members.some((id) => input.acting.offered.has(id))).map((g) => g.key)) : new Set<string>();
-  let cand = attempt(offered);
-  if (offered.size && (cand.unplaced.other.length || cand.unplaced.actors.length || cand.violations.length || cand.units.some((x) => x.kind === "summary"))) cand = attempt(new Set());
+  // with is tapped where it lies, not found in a pile), as much of it as the space holds, in the acting rank; what does
+  // not fit folds as at rest and its pile opens with it lit.
+  const offered = ctx.mine && input.acting.choosing ? groups.filter((g) => !g.pinned && g.members.some((id) => input.acting.offered.has(id))) : [];
+  const clean = (x: Candidate): boolean => !x.unplaced.other.length && !x.unplaced.actors.length && !x.violations.length && !x.units.some((y) => y.kind === "summary");
+  let cand: Candidate;
+  if (!offered.length) cand = attempt(new Set());
+  else {
+    cand = attempt(new Set(offered.map((g) => g.key)));
+    if (!clean(cand)) {
+      const rest = attempt(new Set());
+      // The acting rank: what rest hides among unlike cards first (a copy in its block is already one tap), then the
+      // policy's importance, then the oldest. The longest prefix that still fits steps out (a bounded halving search).
+      const hides = new Set(rest.units.filter((y) => y.kind === "fan" || y.kind === "summary").flatMap((y) => y.members));
+      const ranked = [...offered].sort((a, b) => Number(!a.members.some((id) => hides.has(id))) - Number(!b.members.some((id) => hides.has(id))) || b.imp - a.imp || a.arrival - b.arrival || cmp(a.key, b.key));
+      let lo = 0, hi = ranked.length - 1, best = rest;
+      while (lo < hi) {
+        const k = Math.ceil((lo + hi) / 2), x = attempt(new Set(ranked.slice(0, k).map((g) => g.key)));
+        if (clean(x)) [lo, best] = [k, x];
+        else hi = k - 1;
+      }
+      cand = best;
+    }
+  }
 
   // ---- poses: the same arrangement, slid along `away` (nothing changes; the audit says what holds) ----
   const poses = (input.auditPoses ? c.poses : []).map((p) => {
