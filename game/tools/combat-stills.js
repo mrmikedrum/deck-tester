@@ -147,7 +147,7 @@ const payment = (v, edit = swept) => decide(v, "pay", "Choose mana to pay {1}{U}
 /** Snap's target: any of Marath's creatures, the Beasts, Elementals and Cat Beasts in their stacks among them. */
 const target = (v) => {
   const m = base().view.players.find((p) => p.name === "Marath").battlefield.filter((c) => /Creature/.test(c.type));
-  return decide(v, "targets", "target for Snap (Snap)", m.map((c) => [c.name, c.id]));
+  return decide(v, "targets", "target for Return target creature to its owner's hand. Untap up to two lands.", m.map((c) => [c.name, c.id]));
 };
 /** Dack's Swords to Plowshares on the stack, aimed at my Meloku; I may respond. */
 /** The turn-15 table at rest in `who`'s first main phase, priority theirs. */
