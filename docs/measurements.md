@@ -499,3 +499,17 @@ stays over it (about 13). The owner's run (`workbench.html?only=bench`, held in 
 After the review (my mana lying in front of my field, mana by kind, zones on my nameplate), the same bench at load
 average about 17, as the app plans: turn 15 0.61 / 1.12 / 2.83; dense 0.84 / 0.93 / 1.31; 40 distinct names 0.45 /
 0.47 / 0.98; the combat of twelve 0.49 / 0.52 / 1.31; the sequence 1.61 / 2.34 / 4.94. Within the noise of the run above.
+
+**The iPad** (Chrome on iPadOS, held in landscape, build dc67eef), median / p90 / worst ms per `planTable`:
+
+| Input | As the app plans | Every engine leaf changed each plan | `mat` alone |
+|---|---|---|---|
+| The design pass's turn 15 | 1 / 1 / 2 | 2 / 4 / 9 | 1 / 1 / 3 |
+| Dense | 1 / 1 / 2 | 2 / 3 / 7 | 1 / 1 / 2 |
+| 40 distinct names | 0 / 1 / 2 | 2 / 3 / 9 | 1 / 1 / 2 |
+| A combat of twelve | 0 / 1 / 2 | 2 / 3 / 5 | 1 / 1 / 3 |
+| 30 snapshots in sequence | 2 / 3 / 6 | 2 / 3 / 5 | 1 / 1 / 2 |
+
+Every input is inside the 8 ms budget as the app plans (dense 2 ms worst, down from 11 with every opponent on the
+engine and `mat` laying out my side). Only the synthetic every-leaf-rebuilt column touches 9 ms at worst, on single
+outliers. The iPad ran far below the 6 to 9 times Node's p90 estimated above.
