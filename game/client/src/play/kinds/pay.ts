@@ -5,7 +5,8 @@
 // adds that pick, as live.js `pickColor` did: the engine takes the same option more than once and activates it once
 // per pick (Crystalline Crawler's two counters pay two colours); its sheet's Take back gives back that source's picks.
 // The only picks refused are those the engine refuses (ManualController's pay decision: at most `max` picks, each an
-// option); Undo takes back the last; Pay sends the picks, Auto-pay (nothing picked) sends [] and Forge pays.
+// option); Undo takes back the last; Pay sends the picks, Auto-pay (nothing picked) sends [] and Forge pays. List shows
+// every source's every option, each with what sets its card apart, to pick from without the table.
 import type { CardId, PayDecision } from "../../protocol";
 import { cardOf } from "../facts";
 import { promptText } from "../text";
@@ -60,6 +61,7 @@ export const pay: Kind<PayDecision> = {
     const { draft } = c;
     const out = [btn("pay", draft.sel.length ? "Pay" : "Auto-pay", () => ({ answer: { answer: [...draft.sel] } }), { tone: "primary" })];
     if (draft.sel.length) out.unshift(btn("undo", "Undo", () => ({ draft: { ...draft, sel: draft.sel.slice(0, -1) } })));
+    out.unshift(btn("list", "List", () => ({ sheet: { k: "sources" } })));
     return out;
   },
   marks(c, m) {
@@ -71,6 +73,14 @@ export const pay: Kind<PayDecision> = {
   },
   sheet(c, open) {
     const { d, draft } = c;
+    if (open.k === "sources") {
+      const items = d.refs.map((r, i): SheetItem => {
+        const fact = cardOf(c.f, r.card);
+        return { ...item(i + 1, d.options[i] ?? "", times(draft.sel, i + 1)), card: fact && r.card !== null ? r.card : null, detail: fact?.asides.join(", ") || null };
+      });
+      const pay = btn("sheet-done", draft.sel.length ? "Pay" : "Auto-pay", () => ({ answer: { answer: [...draft.sel] } }), { tone: "primary", role: "done" });
+      return { kind: "chooser", title: promptText(d, c.f), wide: items.length > 6, items, stepper: null, buttons: draft.sel.length ? [btn("undo", "Undo", () => ({ draft: { ...draft, sel: draft.sel.slice(0, -1) } })), pay] : [pay], carried: null };
+    }
     if (open.k === "mana") {
       const items = open.options.map((o) => {
         const label = d.options[o - 1] ?? "";
@@ -85,6 +95,13 @@ export const pay: Kind<PayDecision> = {
   tap: (c, at) => tapSources(c, at.ids),
   pick(c, o) {
     const open = c.s.sheet;
+    if (open?.k === "sources") {
+      // the list stays up: a one-option source picked already is taken back, anything else is one more pick
+      const card = c.d.refs[o - 1]?.card;
+      if (!Number.isInteger(o) || o < 1 || o > c.d.options.length) return null;
+      const r = card != null && c.draft.sel.includes(o) && optsFor(c.d, card).length === 1 ? takeBack(c, card) : add(c, o);
+      return { ...r, sheet: open };
+    }
     if (!open || open.k !== "mana" || !open.options.includes(o)) return null;
     return add(c, o);
   },

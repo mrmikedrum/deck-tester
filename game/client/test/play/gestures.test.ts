@@ -70,12 +70,17 @@ function wire(env: Raw): { cards: Map<number, Wire>; d: Decision | null; refs: R
 }
 type W = ReturnType<typeof wire>;
 
-/** A card as the wire has it, its id aside: everything sent about it, and what is attached to it (all of that too). */
-function look(w: W, id: number): string {
+/**
+ * A card as the wire has it, its identity aside: every field sent but its id and what it is attached to, and what is
+ * attached to it, each by the same rule, however deep (a cycle cut where it closes).
+ */
+function look(w: W, id: number, seen: ReadonlySet<number> = new Set()): string {
   const c = w.cards.get(id);
   if (!c) return String(id);
-  const bare = (x: Wire) => JSON.stringify(Object.entries(x).filter(([k]) => k !== "id" && k !== "attachedTo").sort(([a], [b]) => a.localeCompare(b)));
-  return JSON.stringify([bare(c), [...w.cards.values()].filter((x) => x.attachedTo === id).map(bare).sort()]);
+  const inner = new Set([...seen, id]);
+  const bare = JSON.stringify(Object.entries(c).filter(([k]) => k !== "id" && k !== "attachedTo").sort(([a], [b]) => a.localeCompare(b)));
+  const dressed = [...w.cards.values()].filter((x) => x.attachedTo === id && !inner.has(x.id)).map((x) => look(w, x.id, inner)).sort();
+  return JSON.stringify([bare, dressed]);
 }
 /** An option as it would play: its ref with every card as it looks, and its label. */
 function canonOpt(w: W, o: number): string {
@@ -178,61 +183,60 @@ function through(t: Table, card: number): Effect[] {
   return fx.some((e) => e.kind === "choose") ? [...fx, ...t.tapCard(card)] : fx;
 }
 
-/** Why option `o` (by its wire ref) cannot be driven to the answer sent, or null when it can. */
+/**
+ * Why option `o` (by its wire ref) cannot be driven to an answer sent with it in, or null when it can: only an answer
+ * sent counts, never picks left in the draft. A pick already made is sent as it stands.
+ */
 function unreached(base: Table, w: W, o: number): string | null {
   const d = w.d, r = w.refs[o - 1] as Record<string, unknown> | undefined;
-  if (!d || !r || draftOf(base).sel.includes(o)) return null; // (picked already: reached)
+  if (!d || !r || !["pay", "targets", "choose", "attack", "block", "play"].includes(d.kind)) return null;
   const card = typeof r["card"] === "number" ? r["card"] : null;
+  if (card === null && !(d.kind === "targets" || d.kind === "choose")) return null;
   const t = base.fork();
   const fx: Effect[] = [];
-  const commit = () => {
-    const b = t.allButtons().find((x) => x.enabled && /^(Pay|Attack \(|Block \(|Done \()/.test(x.label));
-    if (b) fx.push(...t.act({ a: "press", button: b.id }));
-  };
-  switch (d.kind) {
-    case "pay":
-      if (card === null) return null;
-      fx.push(...through(t, card));
-      if (t.p.controls.sheet?.kind === "mana") fx.push(...t.pick(o));
-      commit();
-      break;
-    case "targets":
-    case "choose":
-      if (t.p.controls.sheet?.kind === "chooser") {
-        fx.push(...t.pick(o));
-        const b = t.p.controls.sheet?.buttons.find((x) => x.enabled && x.role === "done");
-        if (b && !fx.some((e) => e.kind === "send")) fx.push(...t.act({ a: "press", button: b.id }));
-      } else if (card !== null) fx.push(...through(t, card));
-      else if (typeof r["player"] === "string") fx.push(...t.tapSeat(r["player"]));
-      if (!fx.some((e) => e.kind === "send")) commit();
-      break;
-    case "attack": {
-      if (card === null) return null;
-      const to = r["to"];
-      if (typeof to === "number") fx.push(...through(t, to));
-      else if (typeof to === "string") fx.push(...t.tapSeat(to));
-      if (!draftOf(t).sel.includes(o)) fx.push(...through(t, card)); // (a pick re-aimed there already has it)
-      commit();
-      break;
+  const sent = () => fx.find((e): e is Extract<Effect, { kind: "send" }> => e.kind === "send");
+  const press = (b: { id: string } | undefined) => void (b && fx.push(...t.act({ a: "press", button: b.id })));
+  const picked = () => draftOf(t).sel.includes(o);
+  if (!picked())
+    switch (d.kind) {
+      case "pay":
+        fx.push(...through(t, card!));
+        if (t.p.controls.sheet?.kind === "mana") fx.push(...t.pick(o));
+        break;
+      case "targets":
+      case "choose":
+        if (t.p.controls.sheet?.kind === "chooser") fx.push(...t.pick(o));
+        else if (card !== null) fx.push(...through(t, card));
+        else if (typeof r["player"] === "string") fx.push(...t.tapSeat(r["player"]));
+        break;
+      case "attack": {
+        const to = r["to"];
+        if (typeof to === "number") fx.push(...through(t, to));
+        else if (typeof to === "string") fx.push(...t.tapSeat(to));
+        if (!picked()) fx.push(...through(t, card!)); // (a pick re-aimed there already has it)
+        break;
+      }
+      case "block":
+        fx.push(...through(t, card!));
+        if (draftOf(t).holding === card && typeof r["blocks"] === "number") fx.push(...through(t, r["blocks"]));
+        break;
+      case "play":
+        fx.push(...through(t, card!));
+        if (fx.some((e) => e.kind === "inspect")) fx.push(...t.pick(o, card!));
+        break;
     }
-    case "block":
-      if (card === null) return null;
-      fx.push(...through(t, card));
-      if (draftOf(t).holding === card && typeof r["blocks"] === "number") fx.push(...through(t, r["blocks"]));
-      commit();
-      break;
-    case "play":
-      if (card === null) return null;
-      fx.push(...through(t, card));
-      if (fx.some((e) => e.kind === "inspect")) fx.push(...t.pick(o, card));
-      break;
-    default:
-      return null;
-  }
-  const send = fx.find((e): e is Extract<Effect, { kind: "send" }> => e.kind === "send");
-  const got = send && "answer" in send.body ? send.body.answer : draftOf(t).sel;
+  // Too few picks to send (a choice of at least two): the others from the list.
+  if ((d.kind === "targets" || d.kind === "choose") && !sent())
+    for (let k = 1; k <= w.refs.length && draftOf(t).sel.length < d.min && !sent(); k++) {
+      if (draftOf(t).sel.includes(k)) continue;
+      if (t.p.controls.sheet?.kind !== "chooser") press(t.allButtons().find((b) => b.label === "List"));
+      fx.push(...t.pick(k));
+    }
+  if (!sent()) press(t.allButtons().find((b) => b.enabled && (b.role === "done" || /^(Pay|Attack \(|Block \()/.test(b.label))));
+  const send = sent();
+  if (!send || !("answer" in send.body)) return `is not sent (picks ${JSON.stringify(draftOf(t).sel)})`;
   const want = canonOpt(w, o);
-  return got.some((x) => x === o || canonOpt(w, x) === want) ? null : `ends in ${JSON.stringify(got)}${send ? " sent" : " picked"}`;
+  return send.body.answer.some((x) => x === o || canonOpt(w, x) === want) ? null : `is not in the answer sent ${JSON.stringify(send.body.answer)}`;
 }
 
 /** The battlefields piled as layout may pile them: runs of three (mixed piles), and by name (copies, in any state). */
@@ -349,6 +353,17 @@ CROWDED.push(
     piles: [[817, 818]],
   },
   {
+    name: "1. twin bears with a Rancor each, Volition Reins on one Rancor",
+    env: () =>
+      bears((mine) => {
+        mine.push({ id: 991, name: "Rancor", type: "Enchantment - Aura", owner: "You", controller: "You", attachedTo: 817 });
+        mine.push({ id: 992, name: "Rancor", type: "Enchantment - Aura", owner: "You", controller: "You", attachedTo: 818 });
+        mine.push({ id: 993, name: "Volition Reins", type: "Enchantment - Aura", owner: "You", controller: "You", attachedTo: 992 });
+      }),
+    piles: [[817, 818]],
+  },
+  { name: "1. twin bears, one my commander", env: () => bears((mine) => void (card011(mine, 818).commander = true)), piles: [[817, 818]] },
+  {
     name: "2. one of two twin attackers picked",
     env: () => bearsAttack([817, 818].flatMap((card) => ["Atraxa", "Dack"].map((to) => ({ card, to })))),
     piles: [[817, 818]],
@@ -402,15 +417,32 @@ describe("a gesture on a group commits only what the player could have meant", (
     expect(t.answers()).toEqual([[2]]);
   });
 
-  it("a choice made after the plan changed: only the card chosen, and only while its group holds it", () => {
+  it("2. a choice made after the plan changed: a card that has left its pile is refused, not taken as a fresh tap", () => {
     const t = new Table();
     t.open(attack037());
     t.pile([[871, 829]]);
     t.drag({ group: "p871", members: [871, 829] as CardId[] }, { seat: "Princess" as never });
-    // replanned: the pile is gone; a tap on 829 is a tap on 829, the drag is not completed with it
-    t.pile([]);
-    t.tapCard(829);
-    t.press("Attack (1)");
-    expect(t.answers()).toEqual([[7]]); // 829 at the first opponent, not at Princess
+    t.pile([]); // replanned: the pile is gone
+    expect(t.tapCard(829)).toEqual([{ kind: "toast", text: "That card has moved: choose again" }]);
+    expect(draftOf(t).sel).toEqual([]);
+  });
+
+  it("2. a pending drag whose chosen card left play goes with the snapshot that says so", () => {
+    const env = attack037([900], twoGideons);
+    const t = new Table();
+    t.open(env);
+    t.pile([[871, 829], [872, 900]]);
+    t.drag({ group: "p871", members: [871, 829] as CardId[] }, { group: "p872", members: [872, 900] as CardId[] });
+    expect(t.tapCard(871).some((e) => e.kind === "choose")).toBe(true); // the attacker chosen; now which planeswalker
+    expect(t.p.controls.choosing).toBe("p872");
+    // the same decision, with 871 gone from the battlefield
+    const gone = structuredClone(env);
+    const me = player(gone["view"] as Raw, "You");
+    me.battlefield = me.battlefield.filter((c) => c.id !== 871);
+    expect(t.open(gone, { continuity: "same", piles: [[872, 900]] })).toContainEqual({ kind: "toast", text: "The table changed: choose again" });
+    expect(t.p.controls.choosing).toBeNull();
+    t.tapCard(900);
+    expect(draftOf(t).sel).toEqual([]); // 871 at 900 is not picked
   });
 });
+

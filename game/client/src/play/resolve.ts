@@ -94,12 +94,28 @@ export function resolve(g: Gesture, d: Decision, f: Facts, draft: Draft, reach: 
     const one = standing(d, f, meant[0]!), name = f.cards[meant[0]!]?.name;
     const twins = meant.every((m) => standing(d, f, m) === one) && at.ids.every((m) => meant.includes(m) || f.cards[m]?.name === name);
     const same = (k: number): boolean => canonical(run({ ...ends, [end]: { ...at, ids: [...at.ids.slice(k), ...at.ids.slice(0, k)] } }), d, f, at.ids) === canonical(run(ends), d, f, at.ids);
-    if (!twins || !at.ids.every((_, k) => k === 0 || same(k))) return { r: { choose: at.group, pending: { gesture: g, end, group: at.group } } };
+    if (!twins || !at.ids.every((_, k) => k === 0 || same(k))) {
+      const cards = Object.values(ends).flatMap((e) => e.ids);
+      return { r: { choose: at.group, pending: { gesture: g, end, group: at.group, members: at.ids, where: Object.fromEntries(cards.map((c) => [c, whereOf(f, c)])) } } };
+    }
   }
   return { r: run(ends) };
 }
 
-/** The pending gesture completed with the card chosen, when it is still a member of its group as drawn now. */
-export function completed(p: Pending, card: CardId, members: readonly CardId[] | undefined): Gesture | null {
-  return members?.includes(card) ? withEnd(p.gesture, p.end, { card }) : null;
+/** Where a card is, as a pending gesture remembers it: its zone and controller ("" when it is gone). */
+export const whereOf = (f: Facts, id: CardId): string => {
+  const c = f.cards[id];
+  return c ? `${c.zone}|${c.controller}` : "";
+};
+
+/** Every card of a pending gesture is where it was. */
+export const still = (p: Pending, f: Facts): boolean => Object.entries(p.where).every(([id, w]) => whereOf(f, +id as CardId) === w);
+
+/**
+ * A tap on a card while a gesture waits: the gesture completed with it ("done"), a card of the group that has left it
+ * since ("stale": refused), or another card altogether ("other": an ordinary tap).
+ */
+export function completed(p: Pending, card: CardId, members: readonly CardId[] | undefined): { done: Gesture } | "stale" | "other" {
+  if (members?.includes(card)) return { done: withEnd(p.gesture, p.end, { card }) };
+  return p.members.includes(card) ? "stale" : "other";
 }

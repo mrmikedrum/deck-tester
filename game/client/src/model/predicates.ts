@@ -5,6 +5,8 @@
 // Facts the wire does not carry are absent, as they were in the live client (live.js `conv` never set them):
 // `becameLand`, `landName`, `transformed`, `goaded`. The offline fixtures had them; the live game never did.
 import type { Card } from "./card";
+import type { CardId } from "../protocol";
+import type { TableModel } from "./table";
 
 /** common.js `typeLine`. */
 export const typeLine = (c: Card): string => c.face.type;
@@ -95,6 +97,30 @@ export const sig = (c: Card): string =>
   [c.name, c.copy ? c.name : "", "", c.tapped, c.faceDown, c.sick, "", JSON.stringify(lookCounters(c)), c.power ?? "", c.toughness ?? ""].join(
     "|",
   );
+
+/**
+ * What sets a card apart from others of its name, in words, for a name a list or a screen reader gives it: tapped, a
+ * token, a commander, whose it is when another player controls it, its counters, power and toughness changed, and what
+ * is attached (each by the same words, a cycle cut where it closes).
+ */
+export function asides(m: TableModel, c: Card, seen: ReadonlySet<CardId> = new Set()): string[] {
+  const out: string[] = [];
+  if (c.tapped) out.push("tapped");
+  if (c.token) out.push("token");
+  if (c.commander) out.push("commander");
+  if (c.owner !== c.controller) out.push(`owned by ${c.owner}`);
+  for (const [k, n] of Object.entries(c.counters)) out.push(`${k} ×${n}`);
+  if (c.loyalty !== null) out.push(`loyalty ${c.loyalty}`);
+  if (c.power !== null && c.toughness !== null && (c.power !== c.face.basePower || c.toughness !== c.face.baseToughness)) out.push(`${c.power}/${c.toughness}`);
+  const inner = new Set([...seen, c.id]);
+  for (const a of m.attachments(c.id)) {
+    const x = m.cards.get(a);
+    if (!x || inner.has(a)) continue;
+    const more = asides(m, x, inner);
+    out.push(`with ${x.face.name}${more.length ? ` (${more.join(", ")})` : ""}`);
+  }
+  return out;
+}
 
 /** A card's role on its seat's page, as h.js named its pieces: what sweeps read their reach by. */
 export type Role = "creature" | "walker" | "mana" | "support";

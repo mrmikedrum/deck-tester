@@ -3,7 +3,7 @@
 // stack's rules (`openStackRules`), the chips of set-aside layers and the Game menu's decks. Pure.
 import type { CardAction, Controls } from "../play";
 import type { CardId } from "../protocol";
-import { abilityText, handOrder, isCreature } from "../model";
+import { abilityText, asides, handOrder, isCreature } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, SiftView, StackRow } from "../chrome";
 import { SIFT_PAGE, siftOf, siftPages } from "../layout";
@@ -176,7 +176,7 @@ export function siftViewOf(model: TableModel, plan: TablePlan, group: string, pa
     top: Math.min(...places.map((q) => q.rect.top)),
     cards: all.ids.slice(from, to).flatMap((id) => {
       const c = model.cards.get(id);
-      return c ? [{ id, label: c.tapped ? `${c.face.name}, tapped` : c.face.name }] : [];
+      return c ? [{ id, label: [c.face.name, ...asides(model, c)].join(", ") }] : [];
     }),
   };
 }

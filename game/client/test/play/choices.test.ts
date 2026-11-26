@@ -12,12 +12,12 @@ describe("pay", () => {
   it("tap sources, then Pay sends them in the order tapped (corpus 011)", () => {
     const t = new Table();
     t.open(PAY);
-    expect(t.buttons()).toEqual(["Auto-pay", "Auto"]);
+    expect(t.buttons()).toEqual(["List", "Auto-pay", "Auto"]);
     // What to pay and for what; the lit sources say where (no list of what has been picked).
     expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose");
     t.tapCard(806);
     t.tapCard(805);
-    expect(t.buttons()).toEqual(["Undo", "Pay", "Auto"]);
+    expect(t.buttons()).toEqual(["List", "Undo", "Pay", "Auto"]);
     expect(t.p.controls.prompt?.headline).toBe("Pay {3}{B} for Thorn of the Black Rose");
     expect(t.p.board.marks.cards.get(806 as CardId)).toBe("selected");
     expect(t.p.board.marks.cards.get(809 as CardId)).toBe("option");
@@ -55,6 +55,25 @@ describe("pay", () => {
     t.tapGroupOf(807); // both picked: never the same source twice
     t.press("Pay");
     expect(t.answers()).toEqual([[3]]);
+  });
+
+  it("List: every source's every option, each with what sets its card apart; picks stay up until Pay (011, an Island another's)", () => {
+    const t = new Table();
+    t.open(withDecision(PAY, { kind: "pay", prompt: "mana to pay {U}{U}", options: ["Island (U)", "Island (U)"], refs: [{ card: 810 }, { card: 816 }], min: 0, max: 2 }, (v) => {
+      const mine = (v["players"] as { battlefield: { id: number; owner: string }[] }[])[0]!.battlefield;
+      mine.find((c) => c.id === 816)!.owner = "Dack";
+    }));
+    t.press("List");
+    const sheet = t.p.controls.sheet!;
+    expect(sheet.items.map((i) => [i.option, i.label, i.detail])).toEqual([
+      [1, "Island (U)", null],
+      [2, "Island (U)", "owned by Dack"],
+    ]);
+    t.pick(2);
+    expect(t.p.controls.sheet?.items.map((i) => i.picked)).toEqual([false, true]);
+    t.pick(1);
+    t.act({ a: "press", button: t.p.controls.sheet!.buttons.find((b) => b.label === "Pay")!.id });
+    expect(t.answers()).toEqual([[2, 1]]);
   });
 
   it("sources of different cards in one pile open it to choose one; a tap there toggles that source", () => {
@@ -186,7 +205,7 @@ describe("pay", () => {
     expect(t.p.controls.sheet?.kind).toBe("mana");
     t.dismiss();
     expect(t.p.controls.sheet).toBeNull();
-    expect(t.buttons()[0]).toBe("Auto-pay");
+    expect(t.buttons()).toContain("Auto-pay");
   });
 });
 

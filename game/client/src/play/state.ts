@@ -30,6 +30,8 @@ export interface Draft {
 export type Sheet =
   | { readonly k: "plays"; readonly title: string; readonly options: readonly number[]; readonly carried: Carried | null }
   | { readonly k: "chooser" }
+  /** pay: every source's every option, to pick from a list (the keyboard's way, and the way past a crowded table). */
+  | { readonly k: "sources" }
   | { readonly k: "mana"; readonly card: CardId; readonly options: readonly number[] }
   | { readonly k: "stack" };
 
@@ -44,6 +46,10 @@ export interface Pending {
   /** Which end of it the group was. */
   readonly end: "at" | "from" | "onto";
   readonly group: HitGroupId;
+  /** The group's members when it opened: a tap on one of them that has left it since is refused, not taken afresh. */
+  readonly members: readonly CardId[];
+  /** Where each card of the gesture was (zone and controller): a snapshot that moves one lets the gesture go. */
+  readonly where: Readonly<Record<number, string>>;
 }
 
 export interface S {

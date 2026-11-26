@@ -15,7 +15,7 @@ import { ctxOf, promptOf, sheetOf } from "./prompt";
 import { cardActionsOf } from "./present";
 import { offTableNames } from "./needs";
 import { groupsOf, reached } from "./reach";
-import { completed, meaningful, resolve } from "./resolve";
+import { completed, meaningful, resolve, still } from "./resolve";
 import { EMPTY_DRAFT, open, reset, seal } from "./state";
 import type { Reached } from "./reach";
 import type { Gesture, S } from "./state";
@@ -130,6 +130,11 @@ function onSnapshot(s: S, e: Extract<Event, { t: "snapshot" }>): Out {
   if (!fresh) {
     // The answer out stays out: only the host's ledger says when it is finished (`settled`).
     let next: S = { ...cur, facts, decision: d, held };
+    // A gesture waiting for a choice whose cards moved (left play, changed hands) goes: it would act on what is gone.
+    if (next.pending && !still(next.pending, facts)) {
+      next = { ...next, pending: null };
+      effects.push({ kind: "toast", text: "The table changed: choose again" });
+    }
     // Auto-pass holds only while the decision still qualifies: the same decision with the table changed under it (a
     // target now aimed at me, a real play on offer) stops it.
     if (next.auto && (!d || !autoArms(d, facts))) {
@@ -190,7 +195,9 @@ function onAct(was: S, e: Extract<Event, { t: "act" }>): Out {
       // A drag let go over nothing has no destination: nothing happens (live.js `H.drag` returned without one).
       if (act.a === "drag" && "nothing" in act.onto) return { state: s, effects: [UNCLAIMED] };
       let g: Gesture = act.a === "tap" ? { a: "tap", at: act.on } : { a: "drag", from: act.from, onto: act.onto };
-      const done = was.pending && act.a === "tap" && "card" in act.on ? completed(was.pending, act.on.card, s.groups.find((x) => x.id === was.pending!.group)?.members) : null;
+      const c0 = was.pending && act.a === "tap" && "card" in act.on ? completed(was.pending, act.on.card, s.groups.find((x) => x.id === was.pending!.group)?.members) : "other";
+      if (c0 === "stale") return { state: s, effects: [{ kind: "toast", text: "That card has moved: choose again" }] };
+      const done = c0 === "other" ? null : c0.done;
       if (done) g = done;
       let cur = s;
       const before: Effect[] = [];

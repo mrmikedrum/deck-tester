@@ -233,6 +233,11 @@ describe("a chooser for a gesture", () => {
     return { r, g };
   };
 
+  it("its cards are named for the keyboard with what sets them apart (whose, tapped, counters, what is attached)", () => {
+    const { r } = opened();
+    expect(r.commits.at(-1)!.view.sift!.cards.map((c) => c.label)).toEqual(["Island", "Island", "Island", "Island", "Island, owned by Atraxa"]);
+  });
+
   it("a new decision closes it, and the gesture goes with it", () => {
     const { r, g } = opened();
     const exile = paying(2, { id: 2, kind: "targets", turn: "T1 main1", prompt: "Exile target land", repeat: false, options: ["Island", "Island"], refs: [{ card: 10 }, { card: 11 }], min: 1, max: 1 });

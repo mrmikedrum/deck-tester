@@ -3,7 +3,7 @@
 // JSON-serialisable while the model (maps, functions) does not.
 import type { CardId, StackId } from "../protocol";
 import type { Card, SeatId, TableModel, Target, Zone } from "../model";
-import { isCreatureSweep, sig, threatens, topOf } from "../model";
+import { asides, isCreatureSweep, threatens, topOf } from "../model";
 
 export interface CardFact {
   /** The card's identity (same-named cards are the same card): "Face-down" face down. */
@@ -14,10 +14,11 @@ export interface CardFact {
   readonly owner: SeatId;
   readonly controller: SeatId;
   readonly tapped: boolean;
-  /** What it is to the eye and the rules beyond its name: tapped, face down (and the face its controller sees), sick,
-   *  counters (loyalty among them), power and toughness, keywords, owner and controller, a token or not, and what is
-   *  attached to it, each as itself. Two cards with the same `state` are interchangeable. */
+  /** All the client knows of it but its identity, what is attached to it included, deeply (`stateOf`): two cards with
+   *  the same `state` are interchangeable. */
   readonly state: string;
+  /** What sets it apart from others of its name, in words (model `asides`): "tapped", "owned by Atraxa", "with Rancor". */
+  readonly asides: readonly string[];
   readonly commander: boolean;
   /** Braced. */
   readonly cost: string;
@@ -70,12 +71,23 @@ export interface Facts {
   readonly floating: string;
 }
 
-/** What tells two same-named cards apart to the eye and the rules (`CardFact.state`): whose, a token or not, the face
- *  its controller sees (a face-down card's), and what is attached, each as itself. */
-function stateOf(m: TableModel, c: Card): string {
-  const one = (x: Card): string => [sig(x), x.owner, x.controller, x.token, x.face.name, [...x.keywords].sort().join(",")].join("|");
-  return JSON.stringify([one(c), m.attachments(c.id).map((a) => m.cards.get(a)).filter((x): x is Card => !!x).map(one).sort()]);
+/**
+ * A card as all the client knows of it, its identity aside (`CardFact.state`): every field of the model's card but its
+ * id and what it is attached to, its face as shown, and what is attached to it, each by the same rule (a cycle cut
+ * where it closes). Two cards with the same `state` are the same card to the eye and the rules.
+ */
+function stateOf(m: TableModel, c: Card, seen: ReadonlySet<CardId> = new Set()): string {
+  const rest = Object.fromEntries(Object.entries(c).filter(([k]) => k !== "id" && k !== "attachedTo"));
+  const inner = new Set([...seen, c.id]);
+  const dressed = m.attachments(c.id).flatMap((a) => {
+    const x = m.cards.get(a);
+    return x && !inner.has(a) ? [stateOf(m, x, inner)] : [];
+  });
+  return JSON.stringify([canon(rest), dressed.sort()]);
 }
+/** Plain data with its keys in order, so equal data reads equal. */
+const canon = (v: unknown): unknown =>
+  Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, canon(x)])) : v;
 
 export function factsOf(m: TableModel): Facts {
   const me = m.viewer.perspective;
@@ -90,6 +102,7 @@ export function factsOf(m: TableModel): Facts {
       controller: c.controller,
       tapped: c.tapped,
       state: stateOf(m, c),
+      asides: asides(m, c),
       commander: c.commander,
       cost: c.face.cost,
       text: c.face.text,
