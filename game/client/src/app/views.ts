@@ -199,12 +199,13 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
   };
 }
 
-/** My cards waiting in the command zone that a play offered now casts: each one's portrait wears the ember, and only its. */
+/** My cards waiting in the command zone that a play offered now casts (a spell, not an ability activated from there):
+ *  each one's portrait wears the ember, and only its. */
 export function castable(model: TableModel, d: AppState["session"]["decision"]): ReadonlySet<number> {
   if (d?.kind !== "play") return new Set();
   const waiting = new Set<number>(model.zone(model.viewer.perspective, "command"));
   const out = new Set<number>();
-  for (const r of d.refs as readonly { readonly card?: number | null }[]) if (r.card != null && waiting.has(r.card)) out.add(r.card);
+  for (const r of d.refs as readonly { readonly card?: number | null; readonly spell?: boolean }[]) if (r.card != null && r.spell && waiting.has(r.card)) out.add(r.card);
   return out;
 }
 

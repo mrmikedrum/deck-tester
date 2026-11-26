@@ -7,6 +7,7 @@ import type { JSX } from "preact";
 import type { LogSheetView, LogStripView, LossRow, RecapView } from "../narrative";
 import type { StackSummaryRow } from "../play";
 import { Pips } from "./pips";
+import type { Send } from "./send";
 
 const STRIP_TONE: Readonly<Record<LogStripView["tone"], string>> = {
   summary: "l-feed-events summary",
@@ -177,18 +178,30 @@ export function LossRecap({
 
 /**
  * The stack summary set into the prompt while two or more items are up: one line each, top first, numbered ("1 Arcane
- * Denial → Swords to Plowshares"); what is aimed at me or mine in the danger ink.
+ * Denial → Swords to Plowshares"); what is aimed at me or mine in the danger ink. A row opens its entry's card in the
+ * inspector, so an entry too deep to show on the table is still read (review: 24 entries).
  */
-export function StackSummary({ rows }: { readonly rows: readonly StackSummaryRow[] }): JSX.Element | null {
+export function StackSummary({ rows, send }: { readonly rows: readonly StackSummaryRow[]; readonly send: Send }): JSX.Element | null {
   if (!rows.length) return null;
   return (
     <ol class="l-stackinfo" aria-label="Stack, top first">
-      {rows.map((r) => (
-        <li key={r.item} class={r.aimed ? "aimed" : undefined}>
-          <span class="l-order">{r.n}</span> {r.title}
-          {r.at ? ` → ${r.at}` : ""}
-        </li>
-      ))}
+      {rows.map((r) => {
+        const line = (
+          <>
+            <span class="l-order">{r.n}</span> {r.title}
+            {r.at ? ` → ${r.at}` : ""}
+          </>
+        );
+        return (
+          <li key={r.item} class={r.aimed ? "aimed" : undefined}>
+            {r.card === null ? line : (
+              <button type="button" class="l-stackrow" data-fk={`stack-row:${r.item}`} onClick={() => send({ t: "open", layer: "inspector", card: r.card })}>
+                {line}
+              </button>
+            )}
+          </li>
+        );
+      })}
     </ol>
   );
 }

@@ -41,9 +41,12 @@ test("every waiting commander's portrait is a finger's target of its own, partne
   const partner = (id, name, owner) => ({ id, name, owner, controller: owner, type: "Legendary Creature - Human Cleric", commander: true, power: 0, toughness: 2 });
   seat("Dack").command.push(partner(9901, "Tymna the Weaver", "Dack"));
   seat("You").command = [partner(9902, "Thrasios, Triton Hero", "You"), partner(9903, "Kraum, Ludevic's Opus", "You")];
+  // (every opponent with a pair: three pairs along the top still fit at 1024 × 768, the smallest supported)
+  seat("Atraxa").command.push(partner(9904, "Ishai, Ojutai Dragonspeaker", "Atraxa"));
+  seat("Princess").command = [partner(9905, "Reyhan, Last of the Abzan", "Princess"), partner(9906, "Vial Smasher the Fierce", "Princess")];
   await page.route("**/partners.json", (route) => route.fulfill({ json: { envelopes: [e], catalog } }));
   await page.goto("/index.html?script=partners.json");
-  await expect(page.locator(".l-plate .cmd")).toHaveCount(5, { timeout: 30_000 });
+  await expect(page.locator(".l-plate .cmd")).toHaveCount(8, { timeout: 30_000 });
   for (const [width, height] of [[1024, 768], [1180, 820], [1210, 834]]) {
     await page.setViewportSize({ width, height });
     await expect.poll(() => page.evaluate(() => window.__deckmaster.state().viewport.w), { timeout: 30_000 }).toBe(width);
@@ -65,5 +68,14 @@ test("every waiting commander's portrait is a finger's target of its own, partne
       }),
     );
     expect(errors, `${width} × ${height}`).toEqual([]);
+    // and the plates, portraits and all, stay on screen without overlapping
+    const plates = await page.locator(".l-plate").evaluateAll((ps) => {
+      const rs = ps.map((p) => p.getBoundingClientRect());
+      return ps.flatMap((p, i) => [
+        ...(rs[i].left < 0 || rs[i].top < 0 || rs[i].right > innerWidth || rs[i].bottom > innerHeight ? [`${p.dataset.plate} off screen`] : []),
+        ...rs.flatMap((o, j) => (j > i && o.left < rs[i].right && rs[i].left < o.right && o.top < rs[i].bottom && rs[i].top < o.bottom ? [`${p.dataset.plate} overlaps ${ps[j].dataset.plate}`] : [])),
+      ]);
+    });
+    expect(plates, `${width} × ${height}`).toEqual([]);
   }
 });

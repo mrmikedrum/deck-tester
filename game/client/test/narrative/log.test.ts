@@ -7,6 +7,7 @@ import { LogSheet, LogStrip, LossRecap, LossSheet, StackSummary } from "../../sr
 import { promptOf } from "../../src/play/prompt";
 import { open } from "../../src/play/state";
 import { Table } from "../play/rig";
+import type { CardId, StackId } from "../../src/protocol";
 import { diff, modelOf } from "../../src/model";
 import type { TableModel } from "../../src/model";
 import * as narrative from "../../src/narrative";
@@ -188,11 +189,22 @@ describe("the stack summary", () => {
     const t = new Table();
     t.open("014-play-opponent-spell-targets-me-stack-targets-card.json");
     const rows = promptOf(open(t.state))!.stack;
-    render(h(StackSummary, { rows }), root);
+    render(h(StackSummary, { rows, send: () => {} }), root);
     expect($("ol")?.getAttribute("aria-label")).toBe("Stack, top first");
     expect(texts(".l-stackinfo li")).toEqual(["1 Doom Blade → Serra Angel", "2 Doom Blade → your Grizzly Bears", "3 Thorn of the Black Rose"]);
     expect($$(".l-stackinfo li").map((e) => e.classList.contains("aimed"))).toEqual([false, true, false]);
-    render(h(StackSummary, { rows: [] }), root);
+    render(h(StackSummary, { rows: [], send: () => {} }), root);
     expect($(".l-stackinfo")).toBeNull();
+    // every row carries the card it came from
+    expect(rows.every((r) => r.card !== null)).toBe(true);
+  });
+  it("a row opens its entry's card, the deepest of 24 too (review: deep entries had no target)", () => {
+    const rows = Array.from({ length: 24 }, (_, i) => ({ item: (500 + i) as StackId, card: (900 + i) as CardId, n: i + 1, title: `Spell ${i + 1}`, at: "", aimed: false }));
+    const sent: unknown[] = [];
+    render(h(StackSummary, { rows, send: (w: unknown) => void sent.push(w) }), root);
+    const buttons = $$(".l-stackinfo button.l-stackrow");
+    expect(buttons).toHaveLength(24);
+    buttons.at(-1)!.click();
+    expect(sent).toEqual([{ t: "open", layer: "inspector", card: 923 }]);
   });
 });

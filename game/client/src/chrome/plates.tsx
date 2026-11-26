@@ -81,7 +81,7 @@ function Portrait({ card, seat, mine, send }: { card: PickedCard & { readonly ca
     // Over the table: the first thing under the finger, past the portrait itself, is the table's canvas.
     const under = (node.ownerDocument.elementsFromPoint?.(e.clientX, e.clientY) ?? []).find((x) => !node.contains(x) && x !== node);
     // (under the decision it was pressed on: a release under a newer one is dropped, as a hand card's is)
-    send({ a: "release", card: card.id as CardId, dy: e.clientY - d.y, pose: { rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, rotation: 0, scale: 1 }, overTable: under?.tagName === "CANVAS" }, { pressed: true });
+    send({ a: "release", card: card.id as CardId, dy: e.clientY - d.y, pose: { rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, rotation: 0, scale: 1 }, overTable: under?.tagName === "CANVAS" }, { pressed: e.pointerId });
   };
   const cancel = (): void => {
     drag.current = null;

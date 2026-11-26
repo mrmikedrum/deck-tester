@@ -242,8 +242,10 @@ describe("my waiting commanders' ember", () => {
   const model = { viewer: { perspective: "You" }, zone: (_: unknown, z: string) => (z === "command" ? [77, 78] : []) } as unknown as Parameters<typeof castable>[0];
   const play = (refs: readonly object[]) => ({ kind: "play", refs }) as unknown as Parameters<typeof castable>[1];
   it("is each card's own, from the plays offered", () => {
-    expect([...castable(model, play([{}, { card: 77, spell: true }, { card: 12 }]))]).toEqual([77]);
-    expect([...castable(model, play([{}, { card: 77 }, { card: 78 }]))].sort()).toEqual([77, 78]);
+    expect([...castable(model, play([{}, { card: 77, spell: true }, { card: 12, spell: true }]))]).toEqual([77]);
+    expect([...castable(model, play([{}, { card: 77, spell: true }, { card: 78, spell: true }]))].sort()).toEqual([77, 78]);
+    // an ability activated from the command zone (Derevi's) is no cast: no ember (review)
+    expect([...castable(model, play([{}, { card: 77, spell: false }, { card: 78 }]))]).toEqual([]);
     expect([...castable(model, { kind: "targets", refs: [{ card: 77 }] } as unknown as Parameters<typeof castable>[1])]).toEqual([]);
     expect([...castable(model, null)]).toEqual([]);
   });

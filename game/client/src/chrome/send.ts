@@ -5,10 +5,11 @@ import type { Act } from "../play";
 import type { Order } from "./view";
 
 /**
- * `pressed`: the end of a gesture that began with a press on the control (a portrait dragged and let go), not a click.
- * It acts under the stop and commit drawn when the control was pressed, and is dropped if the stop has changed since.
+ * `pressed`: the end of a gesture that began with this pointer's press on the control (a portrait dragged and let go),
+ * not a click, by pointer id. It acts under the stop and commit drawn when that pointer pressed, and is dropped if the
+ * stop has changed since.
  */
-export type Send = (what: Act | Order, how?: { readonly pressed?: boolean }) => void;
+export type Send = (what: Act | Order, how?: { readonly pressed?: number }) => void;
 
 /** An order rather than an act: orders carry `t`, acts `a`. */
 export const isOrder = (what: Act | Order): what is Order => "t" in what;

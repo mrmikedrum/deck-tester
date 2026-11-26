@@ -318,8 +318,18 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
   const left = safe.left + PLATE.clearLeft * u, right = w - safe.right - PLATE.edge * u;
   /** A plate's width at `unit`, CSS px, its portraits included. */
   const px = (r: (typeof rows)[number], unit: number): number => r.width * unit + portraitsPx(r.commanders.length, unit);
-  const rowWidth = opponents.reduce((sum, r) => sum + r.width + r.commanders.length * PORTRAIT.w, Math.max(0, opponents.length - 1) * PLATE.gap);
-  const fullUnit = rowWidth ? Math.min(u, Math.max(0, right - left) / rowWidth) : u;
+  // The largest unit up to the design unit at which the row fits across, its portraits at a finger's width at least.
+  const rowPx = (unit: number) => opponents.reduce((sum, r) => sum + px(r, unit), Math.max(0, opponents.length - 1) * PLATE.gap * unit);
+  let fullUnit = u;
+  if (opponents.length && rowPx(u) > right - left) {
+    let lo = 0, hi = u;
+    for (let k = 0; k < 20; k++) {
+      const m = (lo + hi) / 2;
+      if (rowPx(m) <= right - left) lo = m;
+      else hi = m;
+    }
+    fullUnit = lo;
+  }
   let unit = fullUnit;
   let lefts: Map<string, number>;
   // If the cards split the available space into narrow gaps, compact the whole row while retaining its tap height.

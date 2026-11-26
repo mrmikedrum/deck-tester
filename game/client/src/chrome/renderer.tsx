@@ -210,12 +210,18 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
   // before the control's own handler sends) and forgotten once it is done (bubbling back up to the layer).
   let control: ControlPress | null = null;
   let clicking: { readonly pointer: boolean; readonly el: HTMLElement | null } | null = null;
+  /** Each pointer's press on a control, by pointer id: a gesture's end acts under its own press, whatever another finger
+   *  pressed since. */
+  const presses = new Map<number, ControlPress>();
   const onControlDown = (e: PointerEvent): void => {
     const el = controlOf(e.target);
     control = el ? { el, key: controlKey(el), commit: drawn.commit, stop: drawn.stop } : null;
+    if (control) presses.set(e.pointerId, control);
+    else presses.delete(e.pointerId);
   };
-  const onControlCancel = (): void => {
+  const onControlCancel = (e: PointerEvent): void => {
     control = null;
+    presses.delete(e.pointerId);
   };
   const onClickStart = (e: MouseEvent): void => {
     clicking = { pointer: e.detail > 0, el: controlOf(e.target) };
@@ -231,8 +237,9 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
   /** A control's act or order: under what was pressed, for a pointer; under what is drawn now, for the keyboard. */
   const send: Send = (what, how) => {
     // A gesture's end (a drag let go): under what was drawn when its control was pressed, or nothing if the stop moved on.
-    if (how?.pressed) {
-      const p = control;
+    if (how?.pressed !== undefined) {
+      const p = presses.get(how.pressed);
+      presses.delete(how.pressed);
       if (!p || p.stop !== drawn.stop) return;
       return stamped(p.commit, p.stop, originOf(p.el))(what, now());
     }

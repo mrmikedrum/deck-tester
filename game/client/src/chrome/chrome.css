@@ -1433,6 +1433,18 @@
     padding: calc(3 * var(--u)) calc(5 * var(--u));
     border-bottom: 1px solid var(--stackinfo-rule);
   }
+  .l-stackinfo .l-stackrow {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+  }
   .l-order {
     color: var(--ink-2);
     font: 700 calc(11 * var(--u)) var(--ui);

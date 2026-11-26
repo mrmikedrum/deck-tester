@@ -84,8 +84,8 @@ describe("the prompt", () => {
   const TWO = withPrompt({
     context: "Draw a card.",
     stack: [
-      { item: 2 as StackId, n: 1, title: "Arcane Denial", at: "Swords to Plowshares", aimed: false },
-      { item: 1 as StackId, n: 2, title: "Swords to Plowshares", at: "your Herd Baloth", aimed: true },
+      { item: 2 as StackId, card: null, n: 1, title: "Arcane Denial", at: "Swords to Plowshares", aimed: false },
+      { item: 1 as StackId, card: null, n: 2, title: "Swords to Plowshares", at: "your Herd Baloth", aimed: true },
     ],
   });
   it("two or more on the stack: one numbered line each after the headline while the stack layer is up, in the context's place", () => {
