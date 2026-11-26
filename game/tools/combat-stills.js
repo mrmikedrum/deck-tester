@@ -202,12 +202,12 @@ function plays(n, v = 30) {
   return steps;
 }
 
-/** A land-heavy table: every seat's lands of turn 15, Atraxa's creatures gone (one standing row: room for a lands row),
- *  and fifteen more distinct lands of mine. */
+/** A land-heavy table: turn 15 with Atraxa down to her commander, her works and her lands (one standing row: room for
+ *  a row of lands of their own), and fifteen more distinct lands of mine. */
 function landHeavy(v) {
   const e = rest(v);
   const atraxa = e.view.players.find((p) => p.name === "Atraxa");
-  atraxa.battlefield = atraxa.battlefield.filter((c) => !/Creature/.test(c.type) || c.commander).slice(0, 14);
+  atraxa.battlefield = atraxa.battlefield.filter((c) => !/Creature/.test(c.type) || c.commander);
   const me = e.view.players.find((p) => p.name === "You");
   const names = ["Watery Grave", "Breeding Pool", "Overgrown Tomb", "Temple Garden", "Command Tower", "Cavern of Souls", "Ancient Tomb", "Polluted Delta", "Seat of the Synod", "Hallowed Fountain", "Godless Shrine", "Sacred Foundry", "Stomping Ground", "Great Hall of the Citadel", "Thespian's Stage"];
   const all = e.view.players.flatMap((p) => p.battlefield);

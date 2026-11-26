@@ -139,10 +139,14 @@ export function paintBack(canvas: Canvas, env: Pick<FaceEnv, "surfaces">): void 
   drawBack(begin(canvas, FACE_W, FACE_H), env.surfaces);
 }
 
-/** A face's left tenth is plain stock on every face, so a fan shows clean strips, never the first letters of names. */
-const SPINE = Math.round(FACE_W * 0.1);
-/** The right margin, and the top's. */
-const EDGE = 20;
+/**
+ * A face's side margins of plain stock, equal on both sides so a card reads as symmetrical, as a printed one does
+ * (playtest: a left tenth kept blank for fans' strips, beside a narrower right margin, read as a fat left edge). The
+ * content keeps its width; a fan's strips still show stock before the first letters of names.
+ */
+const SPINE = 27;
+/** The right margin: the left's. */
+const EDGE = SPINE;
 const INK = "rgba(26,16,6,.8)";
 const FOOT_H = 100;
 /** A commander's name: gold leaf, in the book's serif. */
@@ -200,9 +204,6 @@ function paintStock(x: Ctx, c: FaceSpec, s: Surfaces): void {
   vig.addColorStop(1, "rgba(0,0,0,.28)");
   x.fillStyle = vig;
   x.fillRect(0, 0, FW, FH);
-  // The spine: the left tenth a shade deeper, so a fan's strips read as stock.
-  x.fillStyle = "rgba(0,0,0,.07)";
-  x.fillRect(0, 0, SPINE - 4, FH);
   if (c.token) {
     x.setLineDash([14, 9]);
     rr(x, 12, 12, FW - 24, FH - 24, 11);
