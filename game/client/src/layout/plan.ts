@@ -192,6 +192,9 @@ export interface HitGroup {
   readonly quad: Quad;
   /** Draw order among the table's groups: larger is drawn over smaller (plates and the stack are hit first anyway). */
   readonly order: number;
+  /** Its top face as drawn, where `quad` is the wider place it owns (an engine unit's slot): a tap on a face reaches that
+   *  face's group first; the place takes only taps on the table around it. */
+  readonly face?: Quad;
 }
 
 export interface HitGroups {
@@ -732,7 +735,10 @@ function hitGroups(plans: readonly SeatPlan[], shapes: readonly Shape[], stack: 
   const byGroup = new Map(shapes.map((s) => [s.group, s]));
   const shape = (id: string) => byGroup.get(id)!;
   for (const p of plans)
-    for (const un of p.units) groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: hitQuad(shape(un.id)), order: shape(un.id).order });
+    for (const un of p.units) {
+      const sh = shape(un.id);
+      groups.push({ id: un.id, kind: un.kind, seat: p.seat, members: un.members, quad: hitQuad(sh), ...(sh.hit ? { face: sh.face } : {}), order: sh.order });
+    }
   for (const p of plans) for (const z of p.fixtures.zones) {
     const id = `zone:${z.zone}:${p.seat}`;
     groups.push({ id, kind: "zone", seat: p.seat, members: [], quad: shape(id).face, order: shape(id).order });
@@ -777,9 +783,19 @@ export function groupById(hits: HitGroups, id: string): HitGroup | undefined {
  * cards meet.
  */
 export function hitTest(plan: TablePlan, p: Point): HitGroup | null {
-  const groups = plan.hits.groups;
-  let best: HitGroup | null = null;
-  for (const g of groups) if ((!best || g.order >= best.order) && inQuad(g.quad, p.x, p.y)) best = g;
-  return best;
+  return topmost(plan.hits.groups, p);
+}
+
+/**
+ * The group a tap at `p` reaches among `groups`, by draw order (a later group wins a tie): first the topmost whose face
+ * is under the point, then, where no face is, the topmost whose place holds it. `quadOf` is where the group is drawn now.
+ */
+function topmost(groups: readonly HitGroup[], p: Point, quadOf: (g: HitGroup, q: Quad) => Quad = (_g, q) => q): HitGroup | null {
+  let face: HitGroup | null = null, place: HitGroup | null = null;
+  for (const g of groups) {
+    if ((!face || g.order >= face.order) && inQuad(quadOf(g, g.face ?? g.quad), p.x, p.y)) face = g;
+    if ((!place || g.order >= place.order) && inQuad(quadOf(g, g.quad), p.x, p.y)) place = g;
+  }
+  return face ?? place;
 }
 

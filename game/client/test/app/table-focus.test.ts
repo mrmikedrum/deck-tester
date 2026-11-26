@@ -482,3 +482,61 @@ describe("the clash, a table layer", () => {
     expect(answerIn(true)).toEqual(answerIn(false));
   });
 });
+
+describe("an opponent's graveyard and exile: in the nameplate's focus, not on the table", () => {
+  const atraxa = seatId("Atraxa");
+  const cardsOf = (n: number, from: number): Json[] => Array.from({ length: n }, (_, i) => ({ id: from + i, name: `Card ${i}`, owner: "Atraxa", controller: "Atraxa", type: "Instant" }));
+  function yard(v: number, decision: Json | null = null, n = 30): Json {
+    const e = board({ v }) as { view: { players: Json[] }; decision: Json | null };
+    const them = e.view.players.find((p) => p["name"] === "Atraxa")!;
+    them["graveyard"] = cardsOf(n, 400);
+    them["exile"] = cardsOf(2, 500);
+    if (decision) e.decision = decision;
+    return e;
+  }
+  const zone = (r: Rig, z: "graveyard" | "exile") => {
+    r.inputs.push({ t: "zone", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa), zone: z });
+    r.frame((r.now += 10));
+  };
+
+  it("lie on no leaf, and open in full from the nameplate: every card, page by page; the sift stays while it has cards", () => {
+    const r = started(yard(1));
+    expect(groups(r).some((g) => g.id === `zone:graveyard:${atraxa}`)).toBe(false);
+    zone(r, "graveyard");
+    expect(layers(r)).toEqual([["sift", `zone:graveyard:${atraxa}`]]);
+    expect(r.state.focus.layers[0]?.restore).toBe(`plate:${atraxa}`);
+    const sift = r.commits.at(-1)!.view.sift!;
+    expect(sift.cards.length).toBe(SIFT_PAGE);
+    // the sixth card (past the nameplate's five) is there to read and choose
+    expect(sift.cards.some((c) => c.id === 405)).toBe(true);
+    r.inputs.push({ t: "siftPage", stamp: { at: r.now, commit: r.state.commit }, group: `zone:graveyard:${atraxa}`, delta: 1 });
+    r.frame((r.now += 10));
+    expect(r.state.focus.layers[0]?.page).toBe(1);
+    expect(r.commits.at(-1)!.view.sift!.cards.length).toBe(30 - SIFT_PAGE);
+    // a later snapshot of the same zone keeps it open
+    r.transport.push(yard(2));
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(layers(r)).toEqual([["sift", `zone:graveyard:${atraxa}`]]);
+    zone(r, "exile");
+    expect(layers(r)).toEqual([["sift", `zone:exile:${atraxa}`]]);
+  });
+
+  it("a choice among an opponent's graveyard is still offered (in the chooser); a spell in an opponent's exile is still castable", () => {
+    const pick = { id: 9, kind: "targets", turn: "T1 main1", prompt: "Exile target card from a graveyard", repeat: false, options: ["Card 5", "Card 6"], refs: [{ card: 405 }, { card: 406 }], min: 1, max: 1 };
+    const r = started(yard(1, pick, 8));
+    const c = play.present(r.state.play).controls;
+    expect(c.sheet?.kind).toBe("chooser");
+    // and the graveyard opens in full from the nameplate, the targets among its cards
+    zone(r, "graveyard");
+    expect(r.commits.at(-1)!.view.sift!.cards.map((x) => x.id)).toEqual(expect.arrayContaining([405, 406]));
+    // casting a card exiled from an opponent (an adventure, a foretold card, a theft) is offered as it was
+    const cast = { id: 10, kind: "play", turn: "T1 main1", prompt: "", repeat: false, options: ["pass", "Card 1 (from exile)"], refs: [{}, { card: 501, spell: true }], min: 1, max: 1 };
+    r.transport.push(yard(2, cast, 8));
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    const shown = play.present(r.state.play).controls;
+    const labels = [...(shown.prompt?.buttons ?? []), ...(shown.sheet && "options" in shown.sheet ? (shown.sheet.options as readonly { label: string }[]) : [])].map((b) => b.label).join(" | ");
+    expect(labels).toMatch(/All plays \(1\)/); // its one play: the card cast from exile
+  });
+});

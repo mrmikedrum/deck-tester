@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { boards, hitTest, planTable, tableInputOf } from "../../../src/layout";
 import type { TablePlan } from "../../../src/layout";
-import { bounds } from "../../../src/layout/shape";
+import { bounds, inQuad } from "../../../src/layout/shape";
 import { ARRANGED } from "../../../src/layout/arrange/adapter";
 import type { TableModel } from "../../../src/model";
 import { modelOf } from "../../../src/model";
@@ -87,6 +87,22 @@ describe("every opponent's leaf, drawn by the engine", () => {
           expect(right, label).toBeCloseTo(12.58, 1);
           for (const [seat, l] of plan.leaves!) expect(l.result!.fit.report.violations, `${label} ${seat}`).toEqual([]);
         }
+  });
+
+  it("a tap on a face reaches that face, never the neighbour whose wider place it is under (review: turn 9)", () => {
+    const plan = planTable(tableInputOf(design.get(9)!, { viewport: VP, engine: { draw: true } }));
+    expect(hitTest(plan, { x: 931, y: 116 })?.id).toBe("u:c1135");
+    // every face's middle, where no face drawn over it covers the point, reaches its own group
+    for (const vp of [VP, { w: 1210, h: 834 }])
+      for (const turn of [4, 9, 15]) {
+        const p = planTable(tableInputOf(design.get(turn)!, { viewport: vp, engine: { draw: true } }));
+        for (const g of p.hits.groups) {
+          if (!g.face) continue;
+          const b = bounds(g.face), mid = { x: (b.l + b.r) / 2, y: (b.t + b.b) / 2 };
+          const over = p.hits.groups.some((o) => o !== g && o.order >= g.order && inQuad(o.face ?? o.quad, mid.x, mid.y));
+          if (!over) expect(hitTest(p, mid)?.id, `${vp.w} turn ${turn} ${g.id}`).toBe(g.id);
+        }
+      }
   });
 
   it("the protocol corpus, memory carried from plan to plan", () => {

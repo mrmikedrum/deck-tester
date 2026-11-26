@@ -18,6 +18,8 @@ export type { PlanSeatOptions, StackEntry, StackAtRest, TableInput, GroupKind, H
 export { LEAN_LIFT, SIFT_PAGE, carry, leanOf, siftOf, siftPages, siftQuad } from "./focus";
 export type { Lean } from "./focus";
 export type { EngineInput, EngineOptions, LeafInput, LeafPlan } from "./arrange/leaves";
+export { NO_DECISION } from "./arrange/moment";
+export type { DecisionFacts } from "./arrange/moment";
 export { clearArrangeCaches } from "./arrange/memo";
 export { CLASH, combatFormOf } from "./arrange/gathering";
 export type { ClashColumn, ClashWing, CombatForm, Defender, Gathering } from "./arrange/gathering";

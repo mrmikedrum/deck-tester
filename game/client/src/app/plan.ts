@@ -4,10 +4,11 @@
 // Planning is pure: a board layout cannot plan yet is reported once and leaves the table unplanned (play then offers
 // every choice in a sheet), never a thrown frame.
 import type { ChromeMode } from "../layout";
-import { planTable, reservations, tableInputOf } from "../layout";
+import { NO_DECISION, planTable, reservations, tableInputOf } from "../layout";
+import type { DecisionFacts } from "../layout";
 import type { TableModel } from "../model";
 import type { BoardCues } from "../play";
-import type { CardId } from "../protocol";
+import type { CardId, Decision } from "../protocol";
 import type { AppState } from "./state";
 import { blockedOf } from "./clash";
 
@@ -31,9 +32,25 @@ function pairsKey(cues: BoardCues): string {
   return [...d.attacks.map((a) => `${a.attacker}>${to(a.defender)}`), ...d.blocks.map((b) => `${b.blocker}|${b.attacker}`)].join(",");
 }
 
-function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
+function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean, d: DecisionFacts): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${blockedOf(model).join(",")}|${settling ? "settling" : ""}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${blockedOf(model).join(",")}|${settling ? "settling" : ""}|${d.kind ?? ""}:${d.options.join(",")}:${d.draft.join(",")}`;
+}
+
+/**
+ * What the layout reads of the decision in hand (layout/arrange `DecisionFacts`): its kind, the cards it offers (an
+ * attacker, a blocker, a target, a card to play or a source to pay with) and my attack draft. A card the decision offers
+ * steps out of a fold where it would hide, and the moment the leaves light follows from it.
+ */
+export function decisionFactsOf(d: Decision | null, cues: BoardCues): DecisionFacts {
+  if (!d) return NO_DECISION;
+  const options = new Set<CardId>();
+  for (const r of ("refs" in d ? (d.refs as readonly unknown[]) : []) ?? []) {
+    const ref = r as { readonly card?: CardId | null; readonly blocks?: CardId };
+    if (ref.card != null) options.add(ref.card);
+  }
+  const draft = d.kind === "attack" ? (cues.combat?.attacks.map((a) => a.attacker) ?? []) : [];
+  return { kind: d.kind, options: [...options].sort((a, b) => a - b), draft };
 }
 
 /** The order the clash first stood its attackers in, kept for the combat (so no column jumps as the table replans). */
@@ -66,7 +83,8 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
     return { state: s.plan || s.planKey ? { ...s, plan: null, planKey: null, reserve } : { ...s, reserve }, error: null };
   }
   const involved = drafted(cues);
-  const key = keyOf(model, s, mode, pairsKey(cues), settling);
+  const decision = decisionFactsOf(s.session.decision, cues);
+  const key = keyOf(model, s, mode, pairsKey(cues), settling, decision);
   if (key === s.planKey) return { state: ordered(s), error: null };
   try {
     const plan = planTable(
@@ -83,7 +101,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         ...(s.focus.combat?.order.length ? { order: s.focus.combat.order } : {}),
         // Every opponent's leaf is the arrangement engine's (docs/game-arrangement-engine.md, steps 6 and 8): its
         // memory rides in the layout memory like any seat's.
-        engine: { draw: true },
+        engine: { draw: true, decision },
       }),
     );
     return { state: ordered({ ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }), error: null };

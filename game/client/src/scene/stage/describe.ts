@@ -379,10 +379,13 @@ export interface SiftCards {
  */
 export function siftCards(model: TableModel, plan: TablePlan, group: string): SiftCards | null {
   const g = plan.hits.groups.find((x) => x.id === group);
-  if (!g) return null;
   const m = /^zone:(graveyard|exile):(.+)$/.exec(group);
   const zone = m ? (m[1] as "graveyard" | "exile") : null;
-  let ids: CardId[] = zone ? [...model.zone(g.seat!, zone)] : [...g.members];
+  // A graveyard or exile is the seat's in the model, whether or not a pile of it lies on the table (an opponent's is in
+  // the nameplate's focus only).
+  const seat = g?.seat ?? (m ? zoneSeat(model, m[2]!) : null);
+  if (!g && (!zone || !seat)) return null;
+  let ids: CardId[] = zone ? [...model.zone(seat!, zone)] : [...g!.members];
   if (!zone) {
     const by = new Map<string, CardId[]>();
     for (const id of ids) {
@@ -395,11 +398,17 @@ export function siftCards(model: TableModel, plan: TablePlan, group: string): Si
   return { ids, tapped: ids.map((id) => (!zone && model.cards.get(id)?.tapped) || false), zone };
 }
 
+/** The seat a zone group names ("zone:<zone>:<seat>"), when the model has it. */
+function zoneSeat(model: TableModel, name: string): SeatId | null {
+  return model.seats.find((x) => String(x.id) === name)?.id ?? null;
+}
+
 /** A sift's pieces: the shade, and one page of the group's cards in rows (`siftCards`'s order). */
 function siftPieces(model: TableModel, plan: TablePlan, group: string, page: number): Piece[] {
   const all = siftCards(model, plan, group);
   if (!all || !all.ids.length) return [];
-  const g = plan.hits.groups.find((x) => x.id === group)!;
+  const g = plan.hits.groups.find((x) => x.id === group);
+  const seat = g?.seat ?? zoneSeat(model, /^zone:(?:graveyard|exile):(.+)$/.exec(group)?.[1] ?? "");
   const zone = all.zone;
   const p = Math.max(0, Math.min(siftPages(all.ids.length) - 1, page));
   const ids = all.ids.slice(p * SIFT_PAGE, (p + 1) * SIFT_PAGE);
@@ -433,7 +442,7 @@ function siftPieces(model: TableModel, plan: TablePlan, group: string, page: num
     out.push({
       id: `sift:${id}`,
       kind: "sift",
-      seat: g.seat,
+      seat,
       members: [],
       face: id,
       pose: screenPose(proj, { rect: pl.rect, rotation: 0, scale: 1 }, SIFT_HEIGHT.cards),

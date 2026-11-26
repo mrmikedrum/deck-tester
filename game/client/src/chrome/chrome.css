@@ -1719,6 +1719,12 @@
     align-items: flex-end;
     row-gap: calc(2 * var(--u));
   }
+  .l-picked button.pc {
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+  }
   .l-picked .pc {
     flex: none;
     width: calc(74 * var(--u));

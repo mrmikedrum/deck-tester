@@ -108,15 +108,14 @@ function Picked({ cards, max, empty, more }: { cards: readonly PickedCard[]; max
   const rest = cards.length - max;
   return (
     <div class="l-picked">
-      {shown.map((c, i) => (
-        <span
-          key={c.id ?? `b${i}`}
-          class={c.image ? "pc" : "pc back"}
-          role="img"
-          aria-label={c.name}
-          style={c.image ? `background-image:url("${c.image}")` : undefined}
-        />
-      ))}
+      {shown.map((c, i) =>
+        more ? (
+          // A card picked up from a zone opens that zone in full (each card its own there, to read or to choose).
+          <button key={c.id ?? `b${i}`} type="button" class={c.image ? "pc" : "pc back"} aria-label={c.name} style={c.image ? `background-image:url("${c.image}")` : undefined} onClick={more} />
+        ) : (
+          <span key={c.id ?? `b${i}`} class={c.image ? "pc" : "pc back"} role="img" aria-label={c.name} style={c.image ? `background-image:url("${c.image}")` : undefined} />
+        ),
+      )}
       {rest > 0 ? (
         more ? (
           <button type="button" class="l-more" onClick={more}>
