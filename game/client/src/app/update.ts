@@ -27,7 +27,7 @@ import type { Gated } from "./catalog";
 import { cancelDeadline, cancelOwned, isLive, setDeadline } from "./deadlines";
 import type { Effect } from "./effects";
 import { effectFault, ingestFault, ingestOk, logEntry } from "./faults";
-import { clashKeyOf, isFighter } from "./clash";
+import { clashKeyOf, isFighter, lifeOf } from "./clash";
 import { close, dismiss, entry, isAside, isOpen, NO_FOCUS_STATE, open, restore, setAside, stackKeyOf, sync, tableTop, top, topKey } from "./focus";
 import { isDeadlineId } from "./ids";
 import { timeOf } from "./msg";
@@ -126,7 +126,7 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const groups = s.plan?.hits.groups;
   const has = (id: string): boolean => groups?.some((g) => g.id === id) ?? false;
   const pages = (id: string): number => siftPages(s.model && s.plan ? (siftCards(s.model, s.plan, id)?.ids.length ?? 0) : 0);
-  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), clash: clashKeyOf(s.model, play.present(s.play).board.combat), groups: has, pages }, origin);
+  const focus = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), clash: clashKeyOf(s.model, play.present(s.play).board.combat), life: () => lifeOf(s.model), blocked: s.model?.combat?.blockers.map((b) => b.attacker) ?? [], groups: has, pages }, origin);
   return focus === s.focus ? s : { ...s, focus };
 }
 

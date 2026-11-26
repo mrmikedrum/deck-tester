@@ -37,6 +37,19 @@ describe("the clash's words", () => {
     expect(plates[1]!.attacking).toBe(true);
   });
 
+  it("after combat damage, the plaque says what was dealt, from the life lost since the clash came up", () => {
+    const m = table("Atraxa", [20, 21].map((id) => ({ id, defender: "You" })));
+    const plan = planTable(tableInputOf(m, { viewport: VP }));
+    const hit = tableOf({
+      active: "Atraxa",
+      phase: "COMBAT_DAMAGE",
+      seats: { You: { life: 33, battlefield: [creature(10, "Guard", "You", 1, 3), creature(11, "Scout", "You", 2, 2), land(19, "Plains", "You")] }, Atraxa: { battlefield: [creature(20, "Raider", "Atraxa", 3), creature(21, "Brute", "Atraxa", 4), creature(22, "Wisp", "Atraxa", 0, 1), land(29, "Plains", "Atraxa")] }, Dack: { battlefield: [creature(30, "Watcher", "Dack", 1, 4), land(39, "Plains", "Dack")] } },
+      combat: { attackers: [20, 21].map((id) => ({ id, defender: "You" })) },
+    });
+    expect(plaqueWords(m, plan.gathering!.wings[0]!, { You: 40 })).toBe("Atraxa attacks You · 7 unblocked");
+    expect(plaqueWords(hit, plan.gathering!.wings[0]!, { You: 40 })).toBe("Atraxa attacks You · 7 dealt");
+  });
+
   it("my attack blocked: \"You attack Atraxa · 2 unblocked\", gold", () => {
     const m = table("You", [10, 11].map((id) => ({ id, defender: "Atraxa" })), [{ id: 20, blocking: 10 }]);
     const plan = planTable(tableInputOf(m, { viewport: VP }));

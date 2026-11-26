@@ -93,9 +93,9 @@ const plus = (a: V3, b: V3, k = 1): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k,
  * attacker's foot, where the card can't hide its start. It lands on the blocker that stopped it, at its foot; on the
  * planeswalker it attacks; or on the front edge of the defender's page at the point nearest its attacker: never on the
  * plaque, which lies behind their whole field, and never in among their cards, where an unassigned attack would read as
- * aimed at one of them. Lanes at one page are spread at least 0.9 apart along its edge; at me the edge lies under my
- * standing row's lean, so they land just past it on the open book, in the nearest gap between my creatures. Lanes side by
- * side fan out 0.3 apart at the edge, and each crests 0.15 higher than the last, so they read as separate strands.
+ * aimed at one of them. Lanes from one seat to one page are a trunk: they land on one point and crest together; trunks
+ * at one page are spread at least 0.9 apart along its edge; at me the edge lies under my
+ * standing row's lean, so they land just past it on the open book, in the nearest gap between my creatures.
  */
 export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: SeatId, combat: CombatPairs | null): LaneSpec[] {
   if (!combat) return [];
@@ -104,6 +104,8 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
   interface Edge {
     readonly lane: number;
     readonly seat: SeatId;
+    /** Whose attack: its trunk is one per attacking seat and defender. */
+    readonly by: SeatId;
     readonly from: V3;
     u: number;
   }
@@ -154,7 +156,7 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
     }
     if (!page || !defSeat) return;
     const c = Math.cos(page.yaw), sn = Math.sin(page.yaw);
-    const e: Edge = { lane, seat: defSeat, from: pos, u: (pos.x - page.pos.x) * c - (pos.z - page.pos.z) * sn };
+    const e: Edge = { lane, seat: defSeat, by: atk.seat, from: pos, u: (pos.x - page.pos.x) * c - (pos.z - page.pos.z) * sn };
     edges.set(defSeat, [...(edges.get(defSeat) ?? []), e]);
     pending.push({ spec, edge: e, to: null });
   });
@@ -166,12 +168,18 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
     // (At me, an attacker standing in the combat row is already at my page's edge: its lane runs on into my page a
     // little, past my front row's tops, so it reads as coming at me rather than as a mark at its foot.)
     const v = onMe ? Math.max(-page.d / 2 - 0.6, ...ls.map((l) => uv(l.from)[1] + LAND_ON_ME)) : page.d / 2 + 0.15;
-    for (const l of ls) l.u = Math.max(-half, Math.min(half, l.u));
-    ls.sort((a, b) => a.u - b.u || a.lane - b.lane);
-    for (let i = 1; i < ls.length; i++) ls[i]!.u = Math.max(ls[i]!.u, ls[i - 1]!.u + 0.9);
-    const over = ls[ls.length - 1]!.u - half;
-    if (over > 0) for (const l of ls) l.u -= over;
-    if (ls[0]!.u < -half) ls.forEach((l, i) => (l.u = ls.length > 1 ? -half + (i * 2 * half) / (ls.length - 1) : 0));
+    // One trunk per attacking seat: its lanes land on one point (their mean), so they gather into one stroke rather than
+    // fanning out as strands; trunks at one page stand at least 0.9 apart.
+    const trunks = [...new Set(ls.map((l) => l.by))].map((by) => {
+      const own = ls.filter((l) => l.by === by);
+      return { own, u: Math.max(-half, Math.min(half, own.reduce((t, l) => t + l.u, 0) / own.length)), lane: Math.min(...own.map((l) => l.lane)) };
+    });
+    trunks.sort((a, b) => a.u - b.u || a.lane - b.lane);
+    for (let i = 1; i < trunks.length; i++) trunks[i]!.u = Math.max(trunks[i]!.u, trunks[i - 1]!.u + 0.9);
+    const over = trunks[trunks.length - 1]!.u - half;
+    if (over > 0) for (const t of trunks) t.u -= over;
+    if (trunks[0]!.u < -half) trunks.forEach((t, i) => (t.u = trunks.length > 1 ? -half + (i * 2 * half) / (trunks.length - 1) : 0));
+    for (const t of trunks) for (const l of t.own) l.u = t.u;
     if (onMe) {
       // One landing on a creature's top would read as aimed at it (as if blocked by it): it lands in the nearest open
       // gap of my front row instead; lanes that come to one gap share it, spread evenly across it.
@@ -197,7 +205,11 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
           gp.ls.push(l);
           gaps.set(key, gp);
         }
-        for (const gp of gaps.values()) gp.ls.forEach((l, i) => (l.u = gp.lo + ((i + 1) * (gp.hi - gp.lo)) / (gp.ls.length + 1)));
+        // (A trunk in a gap lands in its middle; trunks sharing one spread evenly across it.)
+        for (const gp of gaps.values()) {
+          const bys = [...new Set(gp.ls.map((l) => l.by))];
+          gp.ls.forEach((l) => (l.u = gp.lo + ((bys.indexOf(l.by) + 1) * (gp.hi - gp.lo)) / (bys.length + 1)));
+        }
       }
     }
     for (const l of ls) {
@@ -205,7 +217,14 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
       p.to = { at: { x: page.pos.x + l.u * c + v * sn, y: 0, z: page.pos.z - l.u * sn + v * c } };
     }
   }
-  for (const p of pending) if (p.to) out.push({ ...p.spec, to: p.to });
+  // Lanes of one trunk crest together (the first's apex), so they run as one.
+  const crest = new Map<string, number>();
+  for (const p of pending)
+    if (p.edge) {
+      const k = `${p.edge.by}>${p.edge.seat}`;
+      if (!crest.has(k)) crest.set(k, p.spec.apex);
+    }
+  for (const p of pending) if (p.to) out.push({ ...p.spec, ...(p.edge ? { apex: crest.get(`${p.edge.by}>${p.edge.seat}`)! } : {}), to: p.to });
   return out;
 }
 

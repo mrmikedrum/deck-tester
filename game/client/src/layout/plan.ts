@@ -171,6 +171,8 @@ export interface TableInput {
   readonly combatForm?: CombatForm;
   /** Attackers that have had a blocker this combat (the app remembers them): one whose blockers left stays blocked. */
   readonly blocked?: ReadonlySet<CardId>;
+  /** The clash's attackers in the order it first stood them: no column jumps during a combat. */
+  readonly order?: readonly CardId[];
   /** Arrange this seat's leaf with the arrangement engine beside `mat`, recorded in `TablePlan.shadow` (debug only). */
   readonly shadow?: ShadowInput;
 }
@@ -292,6 +294,7 @@ export function planTable(input: TableInput): TablePlan {
             power: (id) => cards.get(id)?.power ?? null,
             twin: (id) => cards.get(id)?.sig ?? String(id),
             ...(input.blocked ? { blocked: input.blocked } : {}),
+            ...(input.order ? { order: input.order } : {}),
             tapped: (id) => tapped.has(id),
           })
         : null;

@@ -39,6 +39,8 @@ export interface GatherInput {
   readonly twin?: (id: CardId) => string;
   /** Attackers that have had a blocker this combat (one whose blockers left stays blocked). */
   readonly blocked?: ReadonlySet<CardId>;
+  /** The attackers' order kept from the combat's first clash (where they stood then); others follow where they stand. */
+  readonly order?: readonly CardId[];
   /** Whether a card is tapped (a fighter taken out of a summary). */
   readonly tapped: (id: CardId) => boolean;
 }
@@ -177,7 +179,11 @@ export function gathering(input: GatherInput): Gathering {
     const s = f.defSeat === null ? order.length : (order.indexOf(f.defSeat) + order.length) % order.length;
     return s * 2 + ("card" in f.defender ? 1 : 0);
   };
-  forms.sort((x, y) => rank(x) - rank(y) || defKey(x.defender).localeCompare(defKey(y.defender)) || stood(x.ks[0]!) - stood(y.ks[0]!) || (x.ks[0]!.id < y.ks[0]!.id ? -1 : 1));
+  const kept0 = (f: Formation): number => {
+    const i = input.order?.indexOf(f.ks[0]!.top) ?? -1;
+    return i < 0 ? Infinity : i;
+  };
+  forms.sort((x, y) => rank(x) - rank(y) || defKey(x.defender).localeCompare(defKey(y.defender)) || kept0(x) - kept0(y) || stood(x.ks[0]!) - stood(y.ks[0]!) || (x.ks[0]!.id < y.ks[0]!.id ? -1 : 1));
   // Twins: unblocked attackers alike (the same look, the same defender) share one column, a stack with its count.
   if (input.twin) {
     const twin = input.twin;

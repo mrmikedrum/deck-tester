@@ -345,6 +345,23 @@ describe("the clash, a table layer", () => {
     expect(r.state.focus.aside).toEqual([]);
   });
 
+  it("an attacker whose blocker left stays blocked for the combat: no brand, and its column keeps its place", () => {
+    const r = started(fight({ v: 1, at: "You", blocks: [[30, 40]] }));
+    const cols = () => r.state.plan!.gathering!.wings[0]!.columns;
+    const order = cols().map((c) => c.attackers[0]);
+    expect(cols().find((c) => c.attackers.includes(40 as CardId))!.slot).toBeNull();
+    // the Guard dies: the engine's combat no longer lists it
+    const gone = fight({ v: 2, at: "You" }) as { view: Json & { players: Json[] } };
+    gone.view.players[0]!["battlefield"] = (gone.view.players[0]!["battlefield"] as Json[]).filter((c) => c["id"] !== 30);
+    r.transport.push(gone);
+    r.frame((r.now += 400));
+    const raider = cols().find((c) => c.attackers.includes(40 as CardId))!;
+    expect(raider.blocked).toBe(true);
+    expect(raider.slot).toBeNull();
+    expect(cols().map((c) => c.attackers[0])).toEqual(order);
+    expect(r.commits.at(-1)!.view.clash!.plaques[0]!.words).toBe("Atraxa attacks You · 4 unblocked");
+  });
+
   it("between opponents: the table form before blocks, the clash once one is blocked", () => {
     const r = started(fight({ v: 1, at: "Dack" }));
     expect(layers(r)).toEqual([]);

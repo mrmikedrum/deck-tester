@@ -31,6 +31,8 @@ export interface TableInputOptions {
   readonly combatForm?: CombatForm;
   /** Attackers that have had a blocker this combat (the app remembers them). */
   readonly blocked?: ReadonlySet<CardId>;
+  /** The clash's attackers in the order it first stood them (the app keeps it for the combat). */
+  readonly order?: readonly CardId[];
   /** Plan the across leaf with the arrangement engine too (debug only; `TablePlan.shadow`). */
   readonly shadow?: ShadowOptions;
 }
@@ -69,6 +71,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     combat,
     ...(o.combatForm ? { combatForm: o.combatForm } : {}),
     ...(o.blocked?.size ? { blocked: o.blocked } : {}),
+    ...(o.order?.length ? { order: o.order } : {}),
     ...(o.shadow && model.seats.length === 4 ? { shadow: shadowInputOf(model, model.seats[2]!.id, involved, o.settling ?? false, { ...o.shadow, memory: o.shadow.memory ?? arrangedMemory(o.memory?.get(model.seats[2]!.id)) }) } : {}),
   };
 }

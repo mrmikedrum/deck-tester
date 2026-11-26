@@ -79,15 +79,19 @@
     color: var(--ink-2);
   }
   .l-what {
+    max-width: 100%;
+    overflow-wrap: anywhere;
     font: 400 calc(19 * var(--u)) / 1.15 var(--serif);
     letter-spacing: 0.005em;
     text-wrap: balance;
     transition: color 0.3s;
   }
+  /* Within the prompt's own box at every size (its padding taken off), a long name breaking rather than spilling out. */
   .l-ctx {
     font: 400 calc(14 * var(--u)) / 1.3 var(--serif);
     color: var(--ink-2);
-    max-width: calc(290 * var(--u));
+    max-width: 100%;
+    overflow-wrap: anywhere;
     text-wrap: pretty;
   }
   /* Back at an earlier position: the cue stands in the headline's place a moment, then the decision is asked again. */

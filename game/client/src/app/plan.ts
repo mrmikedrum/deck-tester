@@ -32,7 +32,14 @@ function pairsKey(cues: BoardCues): string {
 
 function keyOf(model: TableModel, s: AppState, mode: ChromeMode, pairs: string, settling: boolean): string {
   const { w, h, safe } = s.viewport;
-  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${settling ? "settling" : ""}`;
+  return `${model.gen}|${model.rev}|${w}x${h}|${safe.top},${safe.right},${safe.bottom},${safe.left}|${mode}|${pairs}|${asideOf(s) ? "aside" : ""}|${(s.focus.clashBlocked ?? []).join(",")}|${settling ? "settling" : ""}`;
+}
+
+/** The order the clash first stood its attackers in, kept for the combat (so no column jumps as the table replans). */
+function ordered(s: AppState): AppState {
+  const g = s.plan?.gathering;
+  if (!s.focus.clashKey || s.focus.clashOrder?.length || !g?.focus) return s;
+  return { ...s, focus: { ...s.focus, clashOrder: g.wings.flatMap((w) => w.columns.flatMap((c) => c.attackers)) } };
 }
 
 /** The clash set aside: the combat takes the table form until it ends. */
@@ -58,7 +65,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
   }
   const involved = drafted(cues);
   const key = keyOf(model, s, mode, pairsKey(cues), settling);
-  if (key === s.planKey) return { state: s, error: null };
+  if (key === s.planKey) return { state: ordered(s), error: null };
   try {
     const plan = planTable(
       tableInputOf(model, {
@@ -70,12 +77,14 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         involved: new Set(involved),
         combat: cues.combat,
         ...(asideOf(s) ? { combatForm: "table" as const } : {}),
+        ...(s.focus.clashBlocked?.length ? { blocked: new Set(s.focus.clashBlocked) } : {}),
+        ...(s.focus.clashOrder?.length ? { order: s.focus.clashOrder } : {}),
         // The across leaf is the arrangement engine's (docs/game-arrangement-engine.md, step 6): its memory rides in
         // the layout memory like any seat's.
         shadow: { draw: true },
       }),
     );
-    return { state: { ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }, error: null };
+    return { state: ordered({ ...s, plan, planKey: key, layoutMemory: plan.memory, reserve: plan.reserve }), error: null };
   } catch (e) {
     return { state: { ...s, plan: null, planKey: key, reserve }, error: e instanceof Error ? e.message : String(e) };
   }

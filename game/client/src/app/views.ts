@@ -184,7 +184,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
     watch,
     restore: model ? restoreOf(s, model, watch !== null) : null,
     plates: model ? withTallies(platesOf(model, s.plan, board.marks.seats, s.viewport, measure), model, s.plan) : [],
-    clash: model ? clashViewOf(model, s.plan) : null,
+    clash: model ? clashViewOf(model, s.plan, f.clashLife) : null,
     seatFocus: model && seatOpen ? seatFocusOf(model, seatOpen) : null,
   };
 }

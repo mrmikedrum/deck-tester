@@ -42,6 +42,20 @@ function attackDecision() {
 }
 
 const atraxa6 = ATRAXA6.map((id) => [id, "You"]);
+
+/** Combat damage on the owner's fight: Tekuthal's 3 dealt to me, Master of Waves dead under Steel Overseer. */
+const dealt = (v, phase, combat = true) => {
+  const e = fight({ active: "Atraxa", attackers: atraxa6, blockers: BLOCKS4, priority: "Atraxa", phase });
+  const me = e.view.players.find((p) => p.name === "You");
+  me.life = 23;
+  const i = me.battlefield.findIndex((c) => c.id === 1057);
+  me.graveyard = [...(me.graveyard || []), me.battlefield[i]];
+  me.battlefield.splice(i, 1);
+  e.view.combat = combat ? { ...e.view.combat, blockers: e.view.combat.blockers.filter((b) => b.id !== 1057) } : null;
+  e.v = v;
+  return e;
+};
+const rest = (v) => Object.assign(base(), { v });
 const MOMENTS = {
   "attacked-by-six": { what: "Atraxa attacks me with six; no blocks yet, nothing to decide", env: fight({ active: "Atraxa", attackers: atraxa6, priority: "Atraxa" }) },
   "choosing-blocks": {
@@ -63,6 +77,15 @@ const MOMENTS = {
   "split-attack": {
     what: "Atraxa attacks me with three and Dack with two; I block one, Dack blocks one (three rows)",
     env: fight({ active: "Atraxa", attackers: [[1019, "You"], [1041, "You"], [1169, "You"], [1117, "Dack"], [1221, "Dack"]], blockers: [[1089, 1041], [1129, 1117]], priority: "Atraxa" }),
+  },
+  "before-combat": { what: "The table before Atraxa's attack (to compare with home-again)", env: rest(19) },
+  "damage-dealt": {
+    what: "Combat damage: the plaque says what was dealt (3), Master of Waves gone to the graveyard, the blocked column keeps its clasp",
+    envs: [rest(19), fight({ active: "Atraxa", attackers: atraxa6, priority: "Atraxa" }), Object.assign(fight({ active: "Atraxa", attackers: atraxa6, blockers: BLOCKS4, priority: "Atraxa" }), { v: 21 }), dealt(22, "COMBAT_DAMAGE")],
+  },
+  "home-again": {
+    what: "After combat: everyone home, Atraxa's six turned for tapped, Master of Waves gone, life 23",
+    envs: [rest(19), fight({ active: "Atraxa", attackers: atraxa6, priority: "Atraxa" }), Object.assign(fight({ active: "Atraxa", attackers: atraxa6, blockers: BLOCKS4, priority: "Atraxa" }), { v: 21 }), dealt(22, "COMBAT_DAMAGE"), Object.assign(dealt(23, "MAIN2", false), {})],
   },
   "one-attacker": { what: "Atraxa attacks me alone: the same picture, one column", env: fight({ active: "Atraxa", attackers: [[1019, "You"]], priority: "Atraxa" }) },
   "double-block": {
@@ -112,7 +135,7 @@ async function tapCard(page, card) {
       const ctx = await browser.newContext({ viewport: { width: 1210, height: 834 }, deviceScaleFactor: 2, baseURL: url });
       const page = await ctx.newPage();
       page.on("pageerror", (e) => console.error(name, String(e)));
-      await page.route("**/still-scenario.json", (r) => r.fulfill({ json: { catalog: design.catalog, envelopes: [m.env] } }));
+      await page.route("**/still-scenario.json", (r) => r.fulfill({ json: { catalog: design.catalog, envelopes: m.envs ?? [m.env] } }));
       await page.goto("index.html?script=still-scenario.json");
       await page.waitForFunction(() => window.__deckmaster && window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
       await settle(page);

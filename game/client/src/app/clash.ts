@@ -26,10 +26,22 @@ function defenderName(model: TableModel, w: ClashWing): string {
   return c ? shortName(c.face.name) : "a planeswalker";
 }
 
-/** The plaque's words: "Atraxa attacks You · 3 unblocked", "You attack Marath · 9 unblocked". */
-export function plaqueWords(model: TableModel, w: ClashWing): string {
+/**
+ * The plaque's words: "Atraxa attacks You · 3 unblocked", "You attack Marath · 9 unblocked"; once combat damage is dealt,
+ * what it dealt, from the defender's life change since the clash came up ("· 3 dealt"), never from the client's sum.
+ */
+export function plaqueWords(model: TableModel, w: ClashWing, life: Readonly<Record<string, number>> = {}): string {
   const who = String(model.seat(w.attacker)?.name ?? w.attacker);
-  return `${who} ${who === "You" ? "attack" : "attacks"} ${defenderName(model, w)} · ${w.unblocked} unblocked`;
+  const head = `${who} ${who === "You" ? "attack" : "attacks"} ${defenderName(model, w)}`;
+  const was = "seat" in w.defender ? life[String(w.defender.seat)] : undefined;
+  const now = "seat" in w.defender ? model.seat(w.defender.seat)?.life : undefined;
+  if (/DAMAGE|COMBAT_END/.test(model.phase) && was !== undefined && now !== undefined && now < was) return `${head} · ${was - now} dealt`;
+  return `${head} · ${w.unblocked} unblocked`;
+}
+
+/** Each player's life now, by seat. */
+export function lifeOf(model: TableModel | null): Record<string, number> {
+  return Object.fromEntries((model?.seats ?? []).map((s) => [String(s.id), s.life]));
 }
 
 /** A plaque's width on screen (CSS px): its words at 18 design px in the serif, and its padding. */
@@ -63,14 +75,14 @@ export function spreadPlaques<T extends { x: number; w: number }>(ps: readonly T
 }
 
 /** The clash's chrome: null when it is not up. */
-export function clashViewOf(model: TableModel, plan: TablePlan | null): ClashView | null {
+export function clashViewOf(model: TableModel, plan: TablePlan | null, life: Readonly<Record<string, number>> = {}): ClashView | null {
   const g: Gathering | null = plan?.gathering ?? null;
   if (!plan || !g?.focus) return null;
   const me = model.viewer.perspective, u = designUnit(plan.viewport);
   const plaques: ClashView["plaques"][number][] = [], brands: ClashView["brands"][number][] = [], clasps: ClashView["clasps"][number][] = [];
   for (const w of g.wings) {
     const tone = toneOf(w, me), place = placeOf(model, w.attacker);
-    const words = plaqueWords(model, w);
+    const words = plaqueWords(model, w, life);
     plaques.push({ key: `${w.attacker}>${"seat" in w.defender ? w.defender.seat : w.defender.card}`, x: w.plaque.x, y: w.plaque.y, w: plaqueWidth(words, u), words, tone, place });
     for (const c of w.columns) {
       if (c.clasp) clasps.push({ key: c.unit, x: c.clasp.x, y: c.clasp.y });
@@ -100,7 +112,8 @@ export function clashViewOf(model: TableModel, plan: TablePlan | null): ClashVie
  */
 export function withTallies(plates: readonly PlateView[], model: TableModel, plan: TablePlan | null): readonly PlateView[] {
   const g = plan?.gathering;
-  if (!g || !g.wings.length) return plates;
+  // (Once damage is dealt the plaque says what was; the tally, which counts what is coming, gives way.)
+  if (!g || !g.wings.length || /DAMAGE|COMBAT_END/.test(model.phase)) return plates;
   const me = model.viewer.perspective;
   const by = new Map<string, { sum: number; tone: PlateTally["tone"]; place: SeatPlace }>();
   const attacking = new Set(g.wings.map((w) => String(w.attacker)));

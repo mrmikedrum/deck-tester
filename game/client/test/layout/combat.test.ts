@@ -74,7 +74,7 @@ describe("lanes", () => {
     expect(Math.abs(u)).toBeLessThanOrEqual(page.w / 2);
   });
 
-  it("a blocked attack lands at its blocker's foot; one at a planeswalker on the planeswalker; lanes at one page spread 0.9 apart", () => {
+  it("a blocked attack lands at its blocker's foot; one at a planeswalker on the planeswalker; one seat's lanes at a page are a trunk", () => {
     const m = model(BLOCK);
     const draft: CombatPairs = { attacks: [], blocks: [{ blocker: id(818), attacker: id(834) }] };
     const plan = planTable(tableInputOf(m, { viewport: VP, combat: draft }));
@@ -91,12 +91,12 @@ describe("lanes", () => {
     expect(new Set(at872.map((l) => l.id)).size).toBe(2);
     // a blocked attack whose blocker is gone aims at no one
     expect(combatLanes(plan.seats, you, { attacks: [{ attacker: id(834), defender: { seat: you } }], blocks: [{ blocker: id(99999), attacker: id(834) }] })).toEqual([]);
-    // five attacks at one page: their ends stand at least 0.9 apart along its edge (054 has three at Princess)
-    const busy = planTable(tableInputOf(model(BUSY), { viewport: VP }));
-    const at = combatLanes(busy.seats, you, busy.combat).filter((l) => l.defending === seatId("Princess") && "at" in l.to).map((l) => ("at" in l.to ? l.to.at : l.to));
+    // attacks from one seat at one page are a trunk: one landing, one crest (054 has three at Princess)
+    const busy = planTable(tableInputOf(model(BUSY), { viewport: VP, combatForm: "table" }));
+    const at = combatLanes(busy.seats, you, busy.combat).filter((l) => l.defending === seatId("Princess") && "at" in l.to);
     expect(at.length).toBe(3);
-    const page = busy.seats.get(seatId("Princess"))!.fixtures.page, c = Math.cos(page.yaw), s = Math.sin(page.yaw);
-    const us = at.map((p) => ("x" in p ? (p.x - page.pos.x) * c - (p.z - page.pos.z) * s : 0)).sort((a, b) => a - b);
-    for (let i = 1; i < us.length; i++) expect(us[i]! - us[i - 1]!).toBeGreaterThanOrEqual(0.9 - 1e-9);
+    const ends = new Set(at.map((l) => ("at" in l.to ? `${l.to.at.x.toFixed(4)},${l.to.at.z.toFixed(4)}` : "")));
+    expect(ends.size).toBe(1);
+    expect(new Set(at.map((l) => l.apex)).size).toBe(1);
   });
 });

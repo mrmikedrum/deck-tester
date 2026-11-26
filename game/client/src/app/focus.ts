@@ -44,6 +44,12 @@ export interface FocusState {
   readonly stackKey: string;
   /** The combat the clash last came up for: set aside, it stays aside until that combat ends. */
   readonly clashKey?: string;
+  /** Each player's life when the clash came up: after damage its plaques say what was dealt, from the change. */
+  readonly clashLife?: Readonly<Record<string, number>>;
+  /** Attackers the engine has shown blocked in this combat: one whose blockers all left stays blocked. */
+  readonly clashBlocked?: readonly CardId[];
+  /** The clash's attackers in the order it first stood them: kept for the combat, so no column jumps. */
+  readonly clashOrder?: readonly CardId[];
 }
 
 export const NO_FOCUS_STATE: FocusState = { layers: [], aside: [], stackKey: "" };
@@ -127,7 +133,7 @@ export const stackKeyOf = (model: TableModel | null): string => (model ? model.s
  */
 export function sync(
   f: FocusState,
-  o: { sheet: boolean; mulligan: boolean; stack: string; clash?: string; groups?: (id: string) => boolean; pages?: (id: string) => number },
+  o: { sheet: boolean; mulligan: boolean; stack: string; clash?: string; life?: () => Readonly<Record<string, number>>; blocked?: readonly CardId[]; groups?: (id: string) => boolean; pages?: (id: string) => number },
   restore: string | null,
 ): FocusState {
   let next = f;
@@ -149,9 +155,14 @@ export function sync(
   // a spell cast in combat is the focus above it.
   const clash = o.clash ?? "";
   if (clash !== (next.clashKey ?? "")) {
-    next = clash ? { ...open(next, entry("clash")), clashKey: clash } : { ...close(next, "clash"), clashKey: "" };
+    next = clash
+      ? { ...open(next, entry("clash")), clashKey: clash, clashLife: o.life?.() ?? {}, clashBlocked: [], clashOrder: [] }
+      : { ...close(next, "clash"), clashKey: "", clashLife: {}, clashBlocked: [], clashOrder: [] };
     if (clash && isOpen(next, "stack")) next = open(next, next.layers.find((e) => e.layer === "stack")!);
   }
+  const seen = next.clashBlocked ?? [];
+  const more = clash ? (o.blocked ?? []).filter((id) => !seen.includes(id)) : [];
+  if (more.length) next = { ...next, clashBlocked: [...seen, ...more] };
   return next;
 }
 
