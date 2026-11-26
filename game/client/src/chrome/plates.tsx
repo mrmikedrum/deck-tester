@@ -92,7 +92,12 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             aria-label={said}
             aria-expanded={open === p.seat}
             style={`left:${p.x}px;top:${p.y}px;${p.mine ? "transform:translate(-50%,-100%);" : ""}--u:${p.unit}px;--seat:var(--seat-${p.place})`}
-            onClick={() => send(p.out ? { t: "seat", seat: p.seat } : { a: "tap", on: { group: p.group as never, members: [] } })}
+            onClick={(e) => {
+              // (my graveyard's and exile's counts open those zones, whatever else a tap on my plate means: my commander)
+              const zone = (e.target as Element).closest?.("[data-zone]")?.getAttribute("data-zone");
+              if (zone === "graveyard" || zone === "exile") return send({ t: "zone", seat: p.seat, zone });
+              send(p.out ? { t: "seat", seat: p.seat } : { a: "tap", on: { group: p.group as never, members: [] } });
+            }}
           >
             <span class="bronze">
               <i class="sigil" />
@@ -107,7 +112,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             {p.icons.length ? (
               <span class="tab">
                 {p.icons.map((i) => (
-                  <span key={i.kind} class="fig">
+                  <span key={i.kind} class="fig" {...(i.kind === "graveyard" || i.kind === "exile" ? { "data-zone": i.kind } : {})}>
                     <Icon kind={i.kind} none={i.none} />
                     {i.figure}
                   </span>

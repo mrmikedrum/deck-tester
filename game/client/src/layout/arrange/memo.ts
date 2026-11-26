@@ -164,6 +164,7 @@ function policyHash(p: PolicyMemory): string {
   m.num(p.folds.length);
   for (const f of p.folds) m.str(f);
   m.str(p.tidy ? `${p.tidy.turn}|${p.tidy.phase}|${p.tidy.ranking.join(",")}` : "-").str(p.seen ? `${p.seen.turn}|${p.seen.phase}` : "-");
+  m.str((p.guessed ?? []).join(","));
   POLICY_HASH.set(p, (h = `${(m.a >>> 0).toString(36)}.${(m.b >>> 0).toString(36)}`));
   return h;
 }

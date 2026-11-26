@@ -42,4 +42,17 @@ describe("pile labels", () => {
     const out = placeLabels(plan, [ask("a", "Beast", 3)], chars);
     expect(out.has("a")).toBe(false);
   });
+  it("on my side a label stays off a standing neighbour's face, which would hide it: it slides clear or gives way to the chip", () => {
+    const groups = [
+      { id: "pile", kind: "pile", seat: "You", members: [], quad: quad(200, 300, 60, 84), order: 0 },
+      // a standing card beside it, its face reaching over the pile's top-left corner
+      { id: "card", kind: "card", seat: "You", members: [], quad: quad(60, 280, 80, 110), face: quad(150, 250, 80, 110), order: 1 },
+    ];
+    const plan = { hits: { rev: 0, groups } } as unknown as TablePlan;
+    const l = placeLabels(plan, [ask("pile", "Elemental", 5, true)], chars).get("pile");
+    expect(l === undefined || l.slide > 0).toBe(true);
+    // theirs keep the ledger's rule (name strips and feet only)
+    const theirs = { hits: { rev: 0, groups: groups.map((g) => ({ ...g, seat: "Dack" })) } } as unknown as TablePlan;
+    expect(placeLabels(theirs, [ask("pile", "Elemental", 5)], chars).get("pile")?.slide).toBe(0);
+  });
 });

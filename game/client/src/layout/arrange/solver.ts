@@ -194,14 +194,19 @@ function arrangeNow(input: ArrangeInput): ArrangeResult {
   const standBand = bands.find((b) => b.posture === "stand");
   const standRow = standBand === bands[0] ? firstRow : standBand && c.facing !== undefined && standBand.index === bands.length - 1 ? planner.next(null, standBand) : null;
   const front = new Set(ranking.slice(0, standRow?.grid ? placesOf(standRow) : 0).map((g) => g.key));
+  // (a rank reversal among what is seated counts too: a unit dealt below another at the last deal that now outranks it
+  // past the promotion margin)
+  const dealt = new Map((pm?.tidy?.ranking ?? []).map((k, i) => [k, i] as const));
   const changed =
     groups.some((g) => g.retyped) ||
-    ranking.some((ch) => !incumbentKeys.has(ch.key) && front.has(ch.key) && ranking.some((inc) => incumbentKeys.has(inc.key) && !front.has(inc.key) && policy.promote(inc.imp, ch.imp)));
+    ranking.some((ch) => !incumbentKeys.has(ch.key) && front.has(ch.key) && ranking.some((inc) => incumbentKeys.has(inc.key) && !front.has(inc.key) && policy.promote(inc.imp, ch.imp))) ||
+    ranking.some((lo) => dealt.has(lo.key) && ranking.some((hi) => dealt.has(hi.key) && dealt.get(hi.key)! < dealt.get(lo.key)! && policy.promote(hi.imp, lo.imp)));
   // Many cards' data has just arrived (a table loading, its data coming in batches: the first plans had only the
   // snapshot's facts, and kept no place for those cards): deal afresh, as at a re-sort. A card or two landing in play (a
   // land fetched from the library) takes a free place instead.
   // (while cards are in flight the deal waits, and nothing that landed is remembered meanwhile: the next plan deals it)
-  const landedIds = pm ? cards.filter((x) => !x.provisional && prevSeq[x.id] !== undefined && pm.held[x.id] === undefined).map((x) => x.id) : [];
+  const guessed = new Set(pm?.guessed ?? []);
+  const landedIds = cards.filter((x) => !x.provisional && guessed.has(x.id)).map((x) => x.id);
   const loaded = landedIds.length >= Math.max(3, cards.length / 4);
   const tidy = policy.tidy(input.clock, pm?.seen ?? null, changed) || (loaded && !input.clock.settling);
   const forget: ReadonlySet<CardId> = new Set(loaded && input.clock.settling ? landedIds : []);
@@ -518,14 +523,17 @@ function walk(
     }
     return l.over.has(band.index);
   };
-  for (const e of edits) {
+  // (within a step, what the decision offers goes first: into free places before anything else takes them)
+  const order = exempt.size ? [...edits].sort((a, b) => a.index - b.index || Number(!exempt.has(a.group ?? "")) - Number(!exempt.has(b.group ?? ""))) : edits;
+  for (const e of order) {
     const step = e.step;
     let target: Band | null = null, groupsHit: string[];
     if (e.group !== null) {
       const g = gByKey.get(e.group)!;
       const tier = st.tier.get(g.key)!;
       if (st.summary.has(g.key) || st.fan.has(g.key)) continue;
-      if (exempt.has(g.key) && step.op === "demote") continue;
+      // (what a decision offers never folds nor joins a muster; it may spill into free places, which keeps it out)
+      if (exempt.has(g.key) && step.op === "demote" && !step.ifRoom) continue;
       if (!matches(step.where, g, tier, groups, st)) continue;
       if (step.op === "stack" && (st.stacked.has(g.key) || !g.stacks)) continue;
       target = bandOf.get(tier)!;
@@ -892,7 +900,7 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
   for (const x of all) for (const id of x.members) groupImp.set(id, x.imp);
   for (const x of all) {
     // tucked attachments count as hidden when offered or aimed: their strip is no place to choose them
-    const hidden = [...hiddenOf(x), ...x.dressing.filter((d) => input.acting.offered.has(d) || input.acting.involved.has(d))];
+    const hidden = [...hiddenOf(x), ...x.dressing.filter((d) => input.acting.offered.has(d) || input.acting.usable.has(d) || input.acting.involved.has(d))];
     const why = new Map<AttentionWhy, CardId[]>();
     for (const id of hidden) {
       const card = cardOf(id);
@@ -1030,6 +1038,9 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
         folds: walked.ran,
         edits: walked.ran.length,
         tidy: didTidy ? { turn: input.clock.turn, phase: input.clock.phase, ranking } : (pm?.tidy ?? null),
+        // the cards only the snapshot's facts placed (their data to come), and those whose data landed while a deal waited:
+        // the next plan sees them land, once
+        guessed: [...ctx.cards.values()].filter((x) => x.provisional || forget.has(x.id)).map((x) => x.id).sort((a, b) => a - b),
         // (a plan while cards are in flight does not count as seeing its phase: the re-sort it held back comes next)
         seen: input.clock.settling ? (pm?.seen ?? null) : { turn: input.clock.turn, phase: input.clock.phase },
       };
@@ -1088,17 +1099,31 @@ function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemor
       const seq = [...L, ...mid, ...R], c0 = Math.floor((line.length - seq.length) / 2);
       seq.forEach((x, i) => give(x, line[c0 + i]!));
     } else {
-      const us = line.filter((f) => taken.has(key(f))).map((f) => f.u);
-      const lo = us.length ? Math.min(...us) : 0, hi = us.length ? Math.max(...us) : 0, c = (lo + hi) / 2;
+      // Newcomers join their side of the block: a work left of what is placed, mana right of it, what stands between
+      // the works and the mana, nearest the middle of what already stands.
+      const side = (f: string) => [...at.entries()].filter(([k]) => fromOf(units.find((x) => x.key === k)!) === f).map(([, v]) => v.u);
       for (const x of newcomers) {
         if (!keep.has(x.key)) continue;
         const f = fromOf(x), open = line.filter((p) => !taken.has(key(p)));
+        const all = [...at.values()].map((v) => v.u), L = side("left"), C = side("centre"), R = side("right");
+        const lo = all.length ? Math.min(...all) : 0, hi = all.length ? Math.max(...all) : 0;
+        const lmax = L.length ? Math.max(...L) : -Infinity, rmin = R.length ? Math.min(...R) : Infinity;
+        const c = C.length ? (Math.min(...C) + Math.max(...C)) / 2 : Number.isFinite(lmax) && Number.isFinite(rmin) ? (lmax + rmin) / 2 : Number.isFinite(lmax) ? lmax : Number.isFinite(rmin) ? rmin : 0;
         const near = (u: number) => (a: (typeof line)[number], b: (typeof line)[number]) => Math.abs(a.u - u) - Math.abs(b.u - u);
         const p =
           f === "left" ? (open.filter((q) => q.u < lo).sort(near(lo))[0] ?? open.sort(near(lo))[0])
           : f === "right" ? (open.filter((q) => q.u > hi).sort(near(hi))[0] ?? open.sort(near(hi))[0])
-          : open.sort(near(c))[0];
+          : (open.filter((q) => q.u > lmax && q.u < rmin).sort(near(c))[0] ?? open.sort(near(c))[0]);
         if (p) give(x, p);
+      }
+      // Where no free place kept the block's order (a work right of something that stands), its units take the same
+      // places in order: works left, what stands, mana right, each side as it was.
+      const rankOf = (k: string) => ({ left: 0, centre: 1, right: 2 })[fromOf(units.find((x) => x.key === k)!)];
+      const seated = [...at.entries()].sort((a, b) => a[1].u - b[1].u);
+      const want = [...seated].sort((a, b) => rankOf(a[0]) - rankOf(b[0]) || a[1].u - b[1].u);
+      if (want.some(([k], i) => k !== seated[i]![0])) {
+        const places = seated.map(([, v]) => v);
+        want.forEach(([k], i) => at.set(k, places[i]!));
       }
     }
     for (const x of newcomers) if (!at.has(x.key)) left.push(x);
@@ -1127,7 +1152,8 @@ function actionOf(input: ArrangeInput, ctx: PolicyCtx, un: ArrUnit): PickTarget[
   const offered = un.members.filter((id) => input.acting.offered.has(id));
   const role = ctx.mine ? "pile" : "spread";
   const open = { open: { role, from: un.id, page: 0 } } as const;
-  if (un.dressing.some((id) => input.acting.offered.has(id))) return open;
+  // (an attachment I may act on, offered or usable at priority, is reached through its host: the host opens a chooser)
+  if (un.dressing.some((id) => input.acting.offered.has(id) || input.acting.usable.has(id))) return open;
   if (un.kind === "card" && un.top !== null) return input.acting.choosing && offered.length ? { select: un.top } : { inspect: un.top };
   // A block of copies is interchangeable: one target that selects. A block of distinct choices (a well of lands) opens
   // its focus with them offered, so each can be chosen.

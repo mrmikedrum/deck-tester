@@ -78,6 +78,8 @@ export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure:
     const pitch = beside.length ? Math.min(...beside.map((b) => Math.abs((b[0] + b[2]) / 2 - cx))) : 2 * w;
     const room = Math.max(w, pitch) - GAP;
     const want = a.mine ? LABEL_PX.mine : LABEL_PX.theirs;
+    // (on my side a label beside a standing card would be hidden by it, drawn nearer: its neighbours' faces are in the way too)
+    const faces = a.mine ? units.filter((u) => u.id !== a.id && u.seat === g.seat && u.face).map((u) => boxOf(u.face!)) : [];
     let done: PlacedLabel | null = null;
     find: for (const slide of [0, 0.125, -0.125, 0.25, -0.25])
       for (const name of shorter(a.name))
@@ -85,7 +87,7 @@ export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure:
           const tw = measure(labelText(name, a.count, a.tap), px), bw = tw + LABEL_PX.pad * px, bh = LABEL_PX.tall * px;
           if (bw > room) continue;
           const mid = cx + slide * w, box: Box = [mid - bw / 2, card[1] - bh + OVERLAP, mid + bw / 2, card[1] + OVERLAP];
-          if (box[1] < 0 || obstacles.some((o) => o.id !== a.id && meets(o.box, box))) continue;
+          if (box[1] < 0 || obstacles.some((o) => o.id !== a.id && meets(o.box, box)) || faces.some((b) => meets(b, box))) continue;
           obstacles.push({ id: a.id, box });
           done = { name, px, slide };
           break find;

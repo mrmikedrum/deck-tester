@@ -522,6 +522,8 @@ export interface PolicyMemory {
   /** The turn and phase the last plan saw (not counting plans while cards were in flight): a phase change is measured
    *  from it, never from the last re-sort. */
   readonly seen: { readonly turn: number; readonly phase: Phase } | null;
+  /** Cards placed on the snapshot's facts alone at the last plan (their data to come): when they land, the plan knows. */
+  readonly guessed?: readonly CardId[];
 }
 
 /** Plain JSON, versioned. Places and keys, never classifications. */

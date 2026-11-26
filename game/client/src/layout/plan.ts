@@ -421,7 +421,8 @@ export function planTable(input: TableInput): TablePlan {
     .map((p) =>
       [
         p.seat,
-        p.units.map((u) => [u.id, v3s(u.placement.pos), n(u.placement.scale), u.placement.posture, u.placement.frame ? `${v3s(u.placement.frame.right)}/${v3s(u.placement.frame.up)}` : "", u.turn ?? "", u.tapped ? 1 : 0].join(",")).join(";"),
+        // (how many of its cards are tapped too: a well's sign says so)
+        p.units.map((u) => [u.id, v3s(u.placement.pos), n(u.placement.scale), u.placement.posture, u.placement.frame ? `${v3s(u.placement.frame.right)}/${v3s(u.placement.frame.up)}` : "", u.turn ?? "", u.tapped ? 1 : 0, u.members.reduce((t, id) => t + (tapped.has(id) ? 1 : 0), 0)].join(",")).join(";"),
         v3s(p.fixtures.page.pos), n(p.fixtures.page.w, 3), n(p.fixtures.page.d, 3),
         p.fixtures.commander ? `${p.fixtures.commander.card}@${v3s(p.fixtures.commander.placement.pos)}` : "",
         p.fixtures.zones.map((z) => `${z.zone}@${v3s(z.placement.pos)}`).join(","),

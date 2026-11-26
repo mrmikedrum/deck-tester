@@ -223,6 +223,50 @@ describe("my side's policy (`mine`)", () => {
     expect(Math.min(z("Sol Ring"), z("Temple"))).toBeGreaterThan(Math.max(z("Wurm"), z("Bear")) + 1);
   });
 
+  it("review: offered sources spill into my field's free places before falling back to the well", () => {
+    resetIds(300);
+    const creatures = Array.from({ length: 8 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const lands = Array.from({ length: 16 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
+    const offered = new Set(lands.slice(0, 4).map((l) => l.id));
+    const r = mineRun({ cards: [...creatures, ...lands], acting: { offered, choosing: true } });
+    expect(r.fit.report.violations).toEqual([]);
+    for (const id of offered) expect(unitOf(r, id).members, String(id)).toEqual([id]);
+  });
+
+  it("review: cards no place holds do not re-deal my side every plan as if their data had just landed", () => {
+    resetIds(400);
+    // fifteen fighting creatures: four have no place (actors past every place), so no memory of where they were
+    const fighters = Array.from({ length: 15 }, (_, i) => me({ name: `Fighter ${i}`, power: 1 + (i % 4) }));
+    const acting = { involved: new Set(fighters.map((c) => c.id)) };
+    const a = mineRun({ cards: fighters, acting, clock: { turn: 5, phase: "COMBAT_DECLARE_BLOCKERS" } });
+    expect(a.overflow?.reason).toBe("actors");
+    const b = mineRun({ cards: fighters, acting, memory: a.fit.memory, clock: { turn: 5, phase: "COMBAT_DECLARE_BLOCKERS" } });
+    // no deal: the last deal is kept as it was
+    expect(b.fit.memory.policies["mine"]!.tidy).toBe(a.fit.memory.policies["mine"]!.tidy);
+  });
+
+  it("review: a phase change re-sorts when a seated creature now outranks one dealt above it", () => {
+    resetIds(500);
+    const weak = me({ id: 501, name: "Elf", power: 1 }), strong = me({ id: 502, name: "Bear", power: 3 });
+    const a = mineRun({ cards: [weak, strong], clock: { turn: 5, phase: "MAIN1" } });
+    expect(unitOf(a, 502).slot.place).toBe(0);
+    const pumped = { ...weak, power: 9 };
+    const b = mineRun({ cards: [pumped, strong], memory: a.fit.memory, clock: { turn: 5, phase: "MAIN2" } });
+    expect(unitOf(b, 501).slot.place).toBe(0);
+  });
+
+  it("review: creatures arriving after a work keep the work at the block's left", () => {
+    resetIds(610);
+    const work = me({ id: 600, kind: "artifact", name: "Coat of Arms" });
+    const a = mineRun({ cards: [work], clock: { turn: 5, phase: "MAIN1" } });
+    const creatures = Array.from({ length: 4 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
+    const b = mineRun({ cards: [work, ...creatures], memory: a.fit.memory, clock: { turn: 5, phase: "MAIN1" } });
+    expect(across(b, 600)).toBeLessThan(Math.min(...creatures.map((c) => across(b, c.id))));
+    // and the creatures sit together, a place apart
+    const xs = creatures.map((c) => across(b, c.id)).sort((x, y) => x - y);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeLessThan(1.85 * 1.6);
+  });
+
   it("a card that taps turns in place: only its turn changes", () => {
     resetIds();
     const cards = [me({ id: 1, name: "Bear", power: 2 }), me({ id: 2, name: "Wurm", power: 6 }), me({ id: 3, kind: "land", name: "Temple" })];
@@ -291,6 +335,22 @@ describe("my side drawn on the table", () => {
           expect(pickDrawn(plan, new Map(), mid)?.id, `${label} ${u.id} by its face`).toBe(u.id);
         }
       }
+  });
+
+  it("review: the plan's rev follows a well's tapped count", () => {
+    const raw = structuredClone(rawDesign.stages.find((x) => x.turn === 15)!) as unknown as { turn: number; envelope: { view: { players: { name: string; battlefield: { name: string; tapped?: boolean }[] }[] } } };
+    // every Island open, then the last of them (in the well's order) tapped: the order and the top stay, the count does not
+    const plan = (tapLast: boolean) => {
+      const st = structuredClone(raw);
+      const islands = st.envelope.view.players.find((p) => p.name === "You")!.battlefield.filter((c) => c.name === "Island") as { id?: number; tapped?: boolean }[];
+      for (const c of islands) c.tapped = false;
+      if (tapLast) islands.reduce((a, b) => ((a.id ?? 0) > (b.id ?? 0) ? a : b)).tapped = true;
+      return planTable(tableInputOf(designModels({ stages: [st], catalog: rawDesign.catalog } as never).get(15)!, { viewport: IPAD, engine: { draw: true } }));
+    };
+    const open = plan(false), one = plan(true);
+    const well = (p: TablePlan) => p.hits.groups.find((g) => g.kind === "well" && g.members.length === 8)!;
+    expect(well(one).members).toEqual(well(open).members);
+    expect(one.rev).not.toBe(open.rev);
   });
 
   it("no middle held back at rest: my field stands no lower than mat's did; the parting slides it toward me", () => {
