@@ -1198,7 +1198,7 @@ export class GhostPiece {
     this.card.look(0, v.sample.fade, null, 0);
     if (v.flare === null) return;
     if (!this.flare) {
-      // A soft disc of the card's mana light, brighter than white so the bloom takes it (fx.js `burst`, much simplified).
+      // The soft ring of mana light expands as the card flies.
       const lease = this.host.painter.halo("option");
       const geo = new PlaneGeometry(CW * SIZE.flare, CH * SIZE.flare);
       const mat = new MeshBasicMaterial({ map: lease.texture, transparent: true, depthWrite: false, blending: AdditiveBlending });

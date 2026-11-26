@@ -62,8 +62,6 @@ export const faceTone = {
   dim: { grey: 0.42, amount: 0.88 },
 } as const;
 
-/** The post-processing: light brighter than white blooms (spells and arcs; cards and pages never reach it). */
-export const bloom = { strength: 0.75, radius: 0.55, threshold: 1.15 } as const;
 export const tone = { exposure: 0.95, msaaSamples: 2 } as const;
 
 /** The pixel-ratio policy: the renderer at most 2, the composer's targets at most 1.5. */

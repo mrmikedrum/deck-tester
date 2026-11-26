@@ -1,4 +1,4 @@
-// The three.js host: the only owner of the WebGL renderer, the bloom composer and every GPU resource. It is given a
+// The three.js host: the only owner of the WebGL renderer, the composer and every GPU resource. It is given a
 // viewport and a device pixel ratio (never measures the page), builds the camera from layout's projector data, holds the
 // texture and art budgets, and recovers from a lost context by rebuilding everything from the latest description (the
 // owner's `onRebuild`). It draws when told, at the time it is told: it has no loop of its own.
@@ -11,7 +11,6 @@ import {
   PMREMGenerator,
   PerspectiveCamera,
   Scene,
-  Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
@@ -20,7 +19,6 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import type { CameraSpec } from "../../layout/projector";
 import type { Viewport } from "../../layout/types";
 import { colour, materials } from "../../theme";
@@ -53,8 +51,7 @@ const MB = 1024 * 1024;
 export const BUDGETS = { textures: 160 * MB, faces: 96 * MB, art: 64 * MB } as const;
 
 /**
- * Dispose a composer and the passes it was given: the composer frees only its own targets and copy pass, while bloom
- * owns several render targets and materials, and the output pass a material.
+ * Dispose a composer and the passes it was given: the composer frees only its own targets and copy pass.
  */
 export function disposeComposer(composer: EffectComposer): void {
   for (const pass of composer.passes) pass.dispose();
@@ -88,7 +85,7 @@ export interface HostStats {
   readonly rebuilds: number;
   /** Frames drawn since the host was made. */
   readonly frames: number;
-  /** The last frame drawn: its draw calls and triangles (every pass: shadows, the table, the focus, bloom, output). */
+  /** The last frame drawn: its draw calls and triangles (every pass: shadows, the table, the focus, output). */
   readonly calls: number;
   readonly triangles: number;
   /** Cards drawn and the instanced batches they took; sprites likewise; the face atlas's pages and faces. */
@@ -103,9 +100,8 @@ export interface HostStats {
 
 /** The post-processing's settings (`Host.setQuality`). */
 export interface Quality {
-  /** The composer's pixel ratio (its targets: bloom, the focus pass); null is the policy's (`renderSizes`). */
+  /** The composer's pixel ratio (including the focus pass); null is the policy's (`renderSizes`). */
   readonly composerDpr: number | null;
-  readonly bloom: boolean;
   readonly msaa: boolean;
 }
 
@@ -130,9 +126,8 @@ export class Host {
   readonly renderer: WebGLRenderer;
   private composer: EffectComposer;
   private focusPass!: FocusPass;
-  private bloomPass!: UnrealBloomPass;
-  /** The post-processing's settings (the render bench times each): the composer's pixel ratio, bloom, MSAA. */
-  private quality: Quality = { composerDpr: null, bloom: true, msaa: true };
+  /** The post-processing's settings (the render bench times each): the composer's pixel ratio and MSAA. */
+  private quality: Quality = { composerDpr: null, msaa: true };
   private textures: TextureCache;
   private arts: ArtCache;
   private _painter: Painter;
@@ -267,7 +262,7 @@ export class Host {
   }
 
   /**
-   * Draw the scene at time `nowMs`: the rim breathes (holds still under reduced motion), then the composer renders (bloom, tone mapping, output) with the
+   * Draw the scene at time `nowMs`: the rim breathes (holds still under reduced motion), then the composer renders with the
    * delta since the last frame given explicitly (its own clock would read the time behind the caller's back). Art that
    * arrived before this frame has now been painted: it may be evicted again.
    */
@@ -377,7 +372,7 @@ export class Host {
 
   /**
    * The post-processing's settings, for measuring what each costs (the render bench): the composer's pixel ratio (null:
-   * the policy's), bloom on or off, MSAA on or off. The game never changes them.
+   * the policy's) and MSAA on or off. The game never changes them.
    */
   setQuality(q: Partial<Quality>): void {
     const msaa = q.msaa !== undefined && q.msaa !== this.quality.msaa;
@@ -386,7 +381,6 @@ export class Host {
       disposeComposer(this.composer);
       this.composer = this.newComposer();
     }
-    this.bloomPass.enabled = this.quality.bloom;
     this.setViewport(this.viewport, this.dpr);
   }
 
@@ -401,11 +395,6 @@ export class Host {
     // The stack's scrim, and what stands above it (focus-pass.ts).
     this.focusPass = new FocusPass(this.scene, this.camera, colour.stackScrim);
     composer.addPass(this.focusPass);
-    // Light that is brighter than white blooms: the spells and the arcs. Cards and pages never reach it.
-    const b = materials.bloom;
-    this.bloomPass = new UnrealBloomPass(new Vector2(s.width, s.height), b.strength, b.radius, b.threshold);
-    this.bloomPass.enabled = this.quality.bloom;
-    composer.addPass(this.bloomPass);
     composer.addPass(new OutputPass());
     return composer;
   }

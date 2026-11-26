@@ -2,8 +2,8 @@
 // card in danger has a sigil branded into the page at its foot, a card you can act on has embers stirring under it, a
 // card you chose has a pool of gilt under it, a land is a well of its mana's light, a presented card stands lifted on a
 // pale pool (in mist while it is not yet awake), a pile holding something that matters glows and sends up a mote, and a
-// spell ignites as it is cast. Particles are textured points moved by turbulence in the shader, drawn
-// brighter than white so the bloom turns them into light. Everything is seeded (by the card it belongs to) and timed by
+// spell ignites as it is cast. Particles are textured points moved by turbulence in the shader, with their glow in the
+// texture. Everything is seeded (by the card it belongs to) and timed by
 // the frame's `now`, so the same frame draws the same particles. Reduced motion drops the particles and the jitter and
 // holds every breath still. Each effect rides the object it belongs to and is disposed with it.
 import {
@@ -27,7 +27,6 @@ import { batched } from "./batch";
 import type { FxSprite } from "../../theme";
 import type { Lease } from "./textures";
 
-/** Signal brightness over white: what blooms. */
 const HDR = palette.hdr;
 
 /** Tuned numbers of each effect, named (old fx.js inline literals). */
@@ -40,7 +39,7 @@ const FX = {
   /** The pale pool a presented card stands on; the mist at the foot of one not yet awake. */
   pale: { w: 1.45, d: 0.6, at: 0.1, opacity: 0.78 },
   mist: { w: 1.5, d: 0.66, at: 0.1, opacity: 0.7 },
-  emberPool: { w: 1.5, d: 0.62, at: 0.1, opacity: 0.85 },
+  emberPool: { w: 1.6, d: 0.68, at: 0.1, opacity: 0.85 },
   /** "Something in here for you": a few motes rising slowly from a pile, and a low glow under it. */
   mote: { n: 5, size: 7, rise: 0.55, spread: 0.05, speed: 0.12, turb: 0.03, glow: 0.38 },
   burst: { ms: 600, n: 140, size: 14, spread: 0.9 },
@@ -138,7 +137,7 @@ interface EmitterSpec {
   readonly spread?: number;
   readonly speed?: number;
   readonly turb?: number;
-  readonly sprite?: FxSprite;
+  readonly sprite?: "ember" | "streak";
   readonly hdr?: number;
   readonly blending?: "add" | "normal";
 }
@@ -173,22 +172,23 @@ function emitter(kit: FxKit, rand: () => number, o: EmitterSpec): Emitter {
   g.setAttribute("aStart", new BufferAttribute(st, 3));
   g.setAttribute("aDir", new BufferAttribute(dr, 3));
   const hdr = o.hdr ?? HDR;
+  const additive = o.blending !== "normal";
   const m = new ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uSize: { value: (o.size ?? 10) * kit.pixelRatio },
+      uSize: { value: (o.size ?? 10) * kit.pixelRatio * (additive ? 2 : 1) },
       uRise: { value: o.rise ?? 0.5 },
       uSpread: { value: o.spread ?? 0.12 },
       uSpeed: { value: o.speed ?? 0.9 },
       uTurb: { value: o.turb ?? 0.08 },
-      uSprite: { value: kit.map(o.sprite ?? "ember") },
+      uSprite: { value: kit.map(additive ? (o.sprite ?? "ember") : "smoke") },
       uHdr: { value: hdr },
     },
     vertexShader: VERT,
     fragmentShader: FRAG,
     transparent: true,
     depthWrite: false,
-    blending: (o.blending ?? "add") === "add" ? AdditiveBlending : NormalBlending,
+    blending: additive ? AdditiveBlending : NormalBlending,
   });
   const p = new Points(g, m);
   p.frustumCulled = false;
@@ -251,7 +251,6 @@ export function spellFx(kit: FxKit, colours: readonly string[], seed: number, st
     spread: 0.05,
     speed: 0.22,
     turb: 0.08,
-    sprite: "ember",
     hdr: 0.8,
     blending: "normal",
     start: () => {
@@ -472,9 +471,10 @@ const DIR = new Vector3(),
 
 /**
  * A ribbon facing the camera along the points, raised by `dy`; `aU` runs along it in world units (an attack's pulses),
- * `aV` across. Written into the geometry's own buffers: they are made only when the number of points changes.
+ * `aV` across, and `uv` only for a ribbon that samples a texture. Written into the geometry's own buffers: they are made
+ * only when the number of points changes.
  */
-function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0): void {
+function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0, textured = false): void {
   const n = pts.length;
   let pos = g.getAttribute("position") as BufferAttribute | undefined;
   let au = g.getAttribute("aU") as BufferAttribute | undefined;
@@ -482,10 +482,12 @@ function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0
     pos = new BufferAttribute(new Float32Array(n * 6), 3);
     au = new BufferAttribute(new Float32Array(n * 2), 1);
     const vs = new Float32Array(n * 2),
+      uv = textured ? new Float32Array(n * 4) : null,
       idx: number[] = [];
     for (let i = 0; i < n; i++) {
       vs[i * 2] = 1;
       vs[i * 2 + 1] = -1;
+      uv?.set([0.5, 1, 0.5, 0], i * 4);
       if (i < n - 1) {
         const j = i * 2;
         idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2);
@@ -494,6 +496,7 @@ function ribbonGeo(pts: readonly Vector3[], w: number, g: BufferGeometry, dy = 0
     g.setAttribute("position", pos);
     g.setAttribute("aU", au);
     g.setAttribute("aV", new BufferAttribute(vs, 1));
+    if (uv) g.setAttribute("uv", new BufferAttribute(uv, 2));
     g.setIndex(idx);
   }
   const P = pos.array as Float32Array,
@@ -617,6 +620,7 @@ export class Arc implements Effect {
     this.core = new Mesh(new BufferGeometry(), mat(col.clone().lerp(new Color(1, 1, 1), 0.35).multiplyScalar(HDR * 0.45), 0.95));
     this.glow = new Mesh(new BufferGeometry(), mat(col.clone().multiplyScalar(HDR * 0.42), 0.7));
     this.haze = new Mesh(new BufferGeometry(), mat(col2.clone().multiplyScalar(0.6), 0.25));
+    this.haze.material.map = kit.map("pool");
     this.core.renderOrder = this.glow.renderOrder = this.haze.renderOrder = 21;
     const rand = seeded(seed * 2654435761 + 23);
     this.drips = emitter(kit, rand, { n: 30, colours: cols, size: 7, rise: -1.1, spread: 0.06, speed: 0.75, turb: 0.05, sprite: "streak", start: () => new Vector3(), dir: () => new Vector3(0, -1, 0) });
@@ -649,7 +653,7 @@ export class Arc implements Effect {
     const w = this.spec.width ?? 0.0315;
     ribbonGeo(out, w * 0.3, this.core.geometry);
     ribbonGeo(out, w, this.glow.geometry);
-    ribbonGeo(out, w * 1.6, this.haze.geometry);
+    ribbonGeo(out, w * 2.4, this.haze.geometry);
     const ds = this.drips.points.geometry.getAttribute("aStart") as BufferAttribute;
     for (let i = 0; i < ds.count; i++) {
       const p = out[Math.floor(rand() * (n - 1))]!;
@@ -854,7 +858,7 @@ export type StandTone = "pale" | "mist" | "ember";
  */
 export function standFx(kit: FxKit, tone: StandTone): Effect {
   const c = FX[tone === "ember" ? "emberPool" : tone];
-  // Pale and mist are laid on, not added (on cream vellum added white would not show); the ember is light, and blooms.
+  // Pale and mist are laid on so they read over cream vellum. The ember is additive light.
   const m = flatPlane(kit.map("pool"), c.w, c.d, {
     color: tone === "ember" ? new Color(signal.option).multiplyScalar(1.4) : new Color(tone === "pale" ? palette.pale : palette.mist),
     opacity: c.opacity,

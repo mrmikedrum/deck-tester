@@ -5,7 +5,7 @@ import { fx } from "../tokens";
 import { begin } from "./shapes";
 import type { Canvas } from "./shapes";
 
-export type FxSprite = "ember" | "streak" | "wellGlow" | "ash" | "brand" | "brandHeat" | "pool";
+export type FxSprite = "ember" | "streak" | "smoke" | "wellGlow" | "ash" | "brand" | "brandHeat" | "pool";
 
 // ---- value noise (old world.js): a fixed permutation, so the sprites never change --------------------------------------
 const PERM = (() => {
@@ -77,27 +77,19 @@ function paint(canvas: Canvas, size: number, fn: (u: number, v: number) => reado
   x.putImageData(img, 0, 0);
 }
 
-/** An ember: a hot white core, a soft edge with a little noise so no two look stamped. */
-function ember(canvas: Canvas): void {
+/** Additive particles have a soft halo around the old core, painted into the same sprite. */
+function particle(canvas: Canvas, kind: "ember" | "streak" | "smoke"): void {
   paint(canvas, 64, (u, v) => {
-    const d = Math.hypot(u - 0.5, v - 0.5) * 2,
-      n = fbm(u * 6, v * 6, 2) * 0.25;
-    const a = clamp(1 - d - n) ** 1.6,
-      core = clamp(1 - d * 2.4) ** 2,
-      c = 255 * (0.5 + core * 0.5);
-    return [c, c, c, a * 255];
-  });
-}
-/** A streak: the same, stretched, for the crackle round a spell and the drips off an arc. */
-function streak(canvas: Canvas): void {
-  paint(canvas, 64, (u, v) => {
-    const dx = (u - 0.5) * 2,
-      dy = (v - 0.5) * 2 * 4,
-      d = Math.hypot(dx, dy);
-    const a = clamp(1 - d) ** 1.4,
-      core = clamp(1 - d * 2.5) ** 2,
-      c = 255 * (0.55 + core * 0.45);
-    return [c, c, c, a * 255];
+    const streak = kind === "streak", glow = kind !== "smoke";
+    const x = (u - 0.5) * (glow ? 4 : 2), y = (v - 0.5) * (glow ? 4 : 2);
+    const d = Math.hypot(x, y * (streak ? 4 : 1));
+    const noise = streak ? 0 : fbm((x + 1) * 3, (y + 1) * 3, 2) * 0.25;
+    const a = clamp(1 - d - noise) ** (streak ? 1.4 : 1.6);
+    const core = clamp(1 - d * (streak ? 2.5 : 2.4)) ** 2;
+    const c = 255 * mix(streak ? 0.55 : 0.5, 1, core);
+    const halo = glow ? 0.36 * clamp(1 - Math.hypot(x, y * (streak ? 1.6 : 1)) / 2) ** 2 : 0;
+    // The additive shader and blend each multiply by alpha, so their light sums in alpha squared.
+    return [c, c, c, Math.hypot(a, halo * (1 - a)) * 255];
   });
 }
 /**
@@ -191,9 +183,9 @@ function pool(canvas: Canvas): void {
 export function paintFxSprite(canvas: Canvas, kind: FxSprite): void {
   switch (kind) {
     case "ember":
-      return ember(canvas);
     case "streak":
-      return streak(canvas);
+    case "smoke":
+      return particle(canvas, kind);
     case "wellGlow":
       return wellGlow(canvas);
     case "ash":

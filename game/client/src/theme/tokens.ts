@@ -10,7 +10,7 @@ export const signal = {
   option: "#ff8a2a", // ember: what you can act on
   selected: "#f1c86a", // gold leaf: what you chose
   danger: "#ff3a3a", // blood: what is aimed at your things
-  /** On a card's edge, danger is deep blood laid on, never a light: it must not bloom. */
+  /** On a card's edge, danger is deep blood laid on. */
   dangerRim: "#c81e1e",
   /** And chosen is gold leaf, deeper than the pale gilt of the halos, so it stands off a card's cream name strip. */
   giltRim: "#e0a62c",
@@ -122,9 +122,9 @@ export const manaDark = {
 } as const;
 export type ManaKey = keyof typeof mana;
 
-/** The colours of the table's magic: what blooms, and by how much. */
+/** The colours of the table's magic. */
 export const fx = {
-  /** Signal brightness over white: what the bloom pass turns into light. */
+  /** Linear brightness of the additive sparks and arcs before tone mapping. */
   hdr: 2.6,
   /** Embers under a card you can act on: the warm ember of the signal palette, never a mana colour. */
   embers: ["#ffb347", "#ff7a1a", "#ffd58a"],
