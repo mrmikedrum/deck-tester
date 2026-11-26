@@ -1358,7 +1358,7 @@
     box-shadow: 0 0 0 1.5px #1a0f05;
   }
   .l-plate .name {
-    font: 600 calc(19 * var(--u)) var(--ui);
+    font: 400 calc(19 * var(--u)) var(--serif);
     letter-spacing: 0.02em;
     text-shadow: 0 1px 1px #1a0f05;
     white-space: nowrap;
