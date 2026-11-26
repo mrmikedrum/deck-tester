@@ -6,12 +6,10 @@
 // usual shape.
 import type { SeatBoard } from "../board";
 import { Ledger } from "../ledger";
-import { bounds, commanderShape } from "../shape";
 import type { Projector } from "../projector";
-import { topChrome } from "../reservations";
 import type { Reservations } from "../reservations";
 import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
-import { CW, PLATE_S } from "../seat/geometry";
+import { PLATE_S } from "../seat/geometry";
 import type { CardId, SeatId, V3 } from "../types";
 import type { ArrCard, ArrUnit, ArrangeResult, Attention, CardPlace, ContainerMemory, PickTarget } from "./contract";
 import { CARD, LEAN, clearBehind, onFrame } from "./frame";
@@ -56,16 +54,11 @@ export interface ArrangedSeatInput {
   readonly far: number;
   /** How far the arrangement was drawn slid along its `away` (a parting): the fixtures are measured at rest. */
   readonly shift: number;
-  /** How far a parting may slide it (the template's most): a fixture holds at both ends. */
-  readonly reach: number;
   readonly board: SeatBoard;
   readonly cards: readonly ArrCard[];
   readonly projector: Projector;
   readonly reserve: Reservations;
 }
-
-/** The far strip's depth found for an arrangement (its rows and frame decide it), by what lies on the strip. */
-const STRIP_V = new WeakMap<object, Map<string, number>>();
 
 /** An opponent's seat plan from its arrangement. */
 export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
@@ -79,45 +72,12 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const placed = new Set(units.flatMap((u) => [...u.members, ...u.dressing]));
   const left = board.cards.map((c) => c.id).filter((id) => !placed.has(id));
 
-  // Graveyard and exile are not on the leaf (the nameplate's focus holds them; a card bound there flies to the plate).
-  // The commander waiting in the command zone stands at table size behind the rows in use, as deep as keeps its face
-  // wholly clear of the chrome along the top (the nameplates' row, the log strip) at rest and parted at the most (a
-  // parting carries it with the leaf). Where no depth does, it is not on the leaf: the nameplate's focus shows it.
-  const rest = { ...f, anchor: onFrame(f, 0, -a.shift) }, edge = f.w / 2, s = fit.scale;
-  const vp = a.projector.viewport, safe = a.reserve.safe;
-  const top = topChrome(vp, { left: safe.left, top: safe.top, right: vp.w - safe.right, bottom: vp.h - safe.bottom });
-  const commanderAt = (on: typeof f, v: number): Fixtures["commander"] => {
-    if (board.fixtures.commander === undefined) return undefined;
-    const pos = onFrame(on, edge - (CW * S_TABLE) / 2 - SLOT.margin, v);
-    return { card: board.fixtures.commander, placement: { pos, scale: S_TABLE, posture: "stand" } };
-  };
-  const ends = [rest, { ...rest, anchor: onFrame(rest, 0, a.reach) }];
-  const clear = (v: number): boolean =>
-    ends.every((on) => {
-      const c = commanderAt(on, v);
-      if (!c) return true;
-      const b = bounds(commanderShape(a.projector, board.seat, c).face);
-      return b.t >= safe.top && b.l >= safe.left && b.r <= safe.right && top.every((r) => b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom);
-    });
-  // Nearest it may come: behind the rows in use (a standing row's tops, a lying row's far edge and proud strip).
+  // Graveyard, exile and a commander waiting in the command zone are not on the leaf: the nameplate holds them (the
+  // waiting commander as a portrait against it, playtest item 10: at the back of the leaf it read as a permanent), and
+  // a card bound there flies to the plate, as a cast from there flies from it.
+  const rest = { ...f, anchor: onFrame(f, 0, -a.shift) }, s = fit.scale;
+  // Nearest an entry pile may come: behind the rows in use (a standing row's tops, a lying row's far edge and proud strip).
   const behind = fit.rows.reduce((t, r) => Math.max(t, r.posture === "stand" ? clearBehind(a.projector, rest, r.v, s, 2, LEAN) : r.v + LIE_DEPTH * s + 0.3 * CARD.h * s), 0) + 0.1;
-  const key = `${board.fixtures.commander ?? ""}|${a.shift}|${a.reach}|${top.map((r) => r.bottom.toFixed(2)).join(",")}`;
-  let v = STRIP_V.get(fit)?.get(key);
-  if (v === undefined) {
-    v = Number.NaN;
-    if (board.fixtures.commander !== undefined && clear(behind)) {
-      let a0 = behind, b0 = f.d;
-      for (let k = 0; k < 14; k++) {
-        const m = (a0 + b0) / 2;
-        if (clear(m)) a0 = m;
-        else b0 = m;
-      }
-      v = a0;
-    }
-    if (!STRIP_V.has(fit)) STRIP_V.set(fit, new Map());
-    STRIP_V.get(fit)!.set(key, v);
-  }
-  const commander = Number.isNaN(v) ? undefined : commanderAt(f, v);
   // (The plate's own table group lies past the leaf's far edge, out of the way: the nameplate is chrome.)
   const plate = { pos: onFrame(f, 0, f.d + 0.25), scale: PLATE_S, posture: "stand" as const };
   const zones: Fixtures["zones"] = [];
@@ -126,7 +86,7 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   // The page from the front line back (the strip in front of it, for a stack's dice, is the open table's): the template's,
   // never its rows', so a mat neither grows nor shrinks as cards come and go.
   const v0 = SLOT.margin + SLOT.strip * S_TABLE;
-  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw }, plate, zones, ...(commander ? { commander } : {}) };
+  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw }, plate, zones };
   const memory: LayoutMemory = { v: 1, paradigm: ARRANGED, fit: fit.memory };
   const folded = fit.units.reduce((t, u) => t + Math.max(0, u.members.length - 1), 0);
   return new Ledger(board.cards.map((c) => c.id)).seal({

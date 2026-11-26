@@ -169,6 +169,63 @@ const enters = (v) => {
   return e;
 };
 
+/**
+ * The turn-4 table as cards are played one after another, each seat in turn (playtest item 8: the table holds still): a
+ * spell on the stack (held up as the focus), then on the battlefield; a land straight onto it. Cards come from each
+ * seat's turn-9 battlefield, a nonland then a land. `n`: how many plays.
+ */
+function plays(n, v = 30) {
+  const e4 = stage(4), e9 = stage(9), out = [], seats = e4.view.players.map((p) => p.name), used = new Set();
+  for (let k = 0; out.length < n && k < 12; k++)
+    for (const name of seats) {
+      if (out.length >= n) break;
+      const have = new Set(e4.view.players.find((p) => p.name === name).battlefield.map((c) => c.id));
+      const add = e9.view.players.find((p) => p.name === name).battlefield.filter((c) => !have.has(c.id) && !used.has(c.id) && !c.token);
+      const c = add.filter((x) => (k % 2 ? /Land/.test(x.type) : !/Land/.test(x.type)))[0] ?? add[0];
+      if (c) {
+        used.add(c.id);
+        out.push({ name, c });
+      }
+    }
+  const steps = [];
+  const cur = clone(e4);
+  cur.view = { ...cur.view, active: "You", priority: "You", phase: "MAIN1" };
+  for (const { name, c } of out) {
+    if (!/Land/.test(c.type)) {
+      cur.view.stack = [{ id: 90000 + c.id, source: { ...c, zone: "stack" }, controller: name, spell: true, text: c.name, targets: [] }];
+      steps.push({ what: `${name} casts ${c.name}`, env: Object.assign(clone(cur), { v: v++ }) });
+    }
+    cur.view.stack = [];
+    cur.view.players.find((p) => p.name === name).battlefield.push(c);
+    steps.push({ what: `${c.name} enters (${name})`, env: Object.assign(clone(cur), { v: v++ }) });
+  }
+  return steps;
+}
+
+/** A land-heavy table: every seat's lands of turn 15, Atraxa's creatures gone (one standing row: room for a lands row),
+ *  and fifteen more distinct lands of mine. */
+function landHeavy(v) {
+  const e = rest(v);
+  const atraxa = e.view.players.find((p) => p.name === "Atraxa");
+  atraxa.battlefield = atraxa.battlefield.filter((c) => !/Creature/.test(c.type) || c.commander).slice(0, 14);
+  const me = e.view.players.find((p) => p.name === "You");
+  const names = ["Watery Grave", "Breeding Pool", "Overgrown Tomb", "Temple Garden", "Command Tower", "Cavern of Souls", "Ancient Tomb", "Polluted Delta", "Seat of the Synod", "Hallowed Fountain", "Godless Shrine", "Sacred Foundry", "Stomping Ground", "Great Hall of the Citadel", "Thespian's Stage"];
+  const all = e.view.players.flatMap((p) => p.battlefield);
+  for (const n of names) {
+    const c = all.find((x) => x.name === n);
+    if (c) me.battlefield.push({ ...c, id: nextId++, owner: "You", controller: "You" });
+  }
+  return e;
+}
+
+/** My first main phase on turn 4, my commander castable from the command zone (Princess Yue). */
+const myCommanderCastable = (v) => {
+  const e = at(4, v);
+  const yue = e.view.players.find((p) => p.name === "You").command[0];
+  e.decision = { gen: 1, id: 12, turn: "T4 main1", repeat: false, mine: true, kind: "play", prompt: "", options: ["Pass", `${yue.name} (commander)`], refs: [{}, { card: yue.id, spell: true }], min: 1, max: 1 };
+  return e;
+};
+
 const MARATH4 = [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]];
 const MOMENTS = {
   "moment-priority-9": { what: "Turn 9, my main phase: plays lit, an Illusion and a Thopter among them", envs: [at(9, 18), usable9(19)] },
@@ -183,6 +240,10 @@ const MOMENTS = {
   "moment-opponents-attack": { what: "Marath attacks Dack with four, no blocks yet: the rest of the table", envs: [mainOf(18, "Marath"), fight({ active: "Marath", attackers: [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]], phase: "COMBAT_DECLARE_ATTACKERS", priority: "Marath" })] },
   "moment-enters": { what: "A second Wispweaver Angel enters on Dack's side", envs: [rest(19), enters(20)] },
   "turn-4": { what: "Turn 4 at rest: an early board", env: at(4, 19) },
+  "plays": { what: "The turn-4 table as cards are played one after another: a still after each", steps: plays(12) },
+  "commander-castable": { what: "Turn 4, my main phase: my commander castable from its portrait on my plate", env: myCommanderCastable(19) },
+  "commander-inspect": { what: "Turn 4: a tap on Marath's waiting commander reads it", env: at(4, 19), cmd: ["Marath"] },
+  "land-heavy": { what: "A land-heavy table: Atraxa has no creatures but her commander, I have fifteen more lands", env: landHeavy(19) },
   "turn-9": { what: "Turn 9 at rest: a mid board", env: at(9, 19) },
   "turn-15": { what: "Turn 15 at rest: the dense board", env: rest(19) },
   "my-crowded": { what: "My side crowded: twenty more Illusions, a dozen more Elementals, twelve more Islands, six Thopters", env: crowdedSide(19) },
@@ -278,11 +339,28 @@ async function tapCard(page, card) {
       const ctx = await browser.newContext({ viewport: { width: 1210, height: 834 }, deviceScaleFactor: 2, baseURL: url });
       const page = await ctx.newPage();
       page.on("pageerror", (e) => console.error(name, String(e)));
-      await page.route("**/still-scenario.json", (r) => r.fulfill({ json: { catalog: design.catalog, envelopes: m.envs ?? [m.env] } }));
+      const first = m.steps ? [m.steps[0].env] : (m.envs ?? [m.env]);
+      await page.route("**/still-scenario.json", (r) => r.fulfill({ json: { catalog: design.catalog, envelopes: first } }));
       await page.goto("index.html?script=still-scenario.json");
       await page.waitForFunction(() => window.__deckmaster && window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
       await settle(page);
+      // A sequence: a still after each envelope, pushed one at a time as the bridge would.
+      if (m.steps) {
+        for (const [i, st] of m.steps.entries()) {
+          if (i) await page.evaluate((e) => window.__deckmaster.script.push(e), st.env);
+          await settle(page);
+          const file = `${name}-${String(i + 1).padStart(2, "0")}.jpg`;
+          await page.screenshot({ path: path.join(outDir, file), type: "jpeg", quality: 88 });
+          console.log(`${file}: ${st.what}`);
+        }
+        await ctx.close();
+        continue;
+      }
       for (const c of m.taps ?? []) await tapCard(page, c);
+      for (const seat of m.cmd ?? []) {
+        await page.click(`[data-plate="${seat}"] [data-cmd]`);
+        await settle(page, 4000);
+      }
       for (const c of m.hand ?? []) {
         await page.click(`.g-hand [data-id="${c}"]`);
         await settle(page, 4000);

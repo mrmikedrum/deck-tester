@@ -3,8 +3,7 @@ import { underClash } from "../reach";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { boards, hitTest, planTable, tableInputOf, topChrome } from "../../../src/layout";
-import { S_TABLE } from "../../../src/layout/arrange/scale";
+import { boards, hitTest, planTable, tableInputOf } from "../../../src/layout";
 import { pickDrawn } from "../../../src/scene/stage/pick";
 import type { TablePlan } from "../../../src/layout";
 import { bounds, inQuad } from "../../../src/layout/shape";
@@ -117,25 +116,18 @@ describe("every opponent's leaf, drawn by the engine", () => {
     }
   });
 
-  it("a waiting commander stands at table size, wholly clear of the top chrome, at rest and parted (review: turn 4, a spell up)", () => {
+  it("a waiting commander is never on a leaf, at rest or parted: its nameplate holds it (playtest item 10)", () => {
     const raw = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
     const st = structuredClone(raw.stages.find((x) => x.turn === 4)!);
     const spell = { id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [] };
     for (const stack of [[], [spell]]) {
       st.envelope.view = { ...st.envelope.view, stack };
       const m = designModels({ stages: [st], catalog: raw.catalog }).get(4)!;
-      for (const vp of [VP, { w: 1210, h: 834 }]) {
-        const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true } }));
-        if (stack.length) expect(plan.part).toBeGreaterThan(0);
-        const band = topChrome(vp);
-        for (const st2 of m.seats.slice(1)) {
-          const c = plan.seats.get(st2.id)!.fixtures.commander;
-          if (!c) continue;
-          expect(c.placement.scale).toBe(S_TABLE);
-          const g = plan.hits.groups.find((x) => x.id === `command:${st2.id}`)!, b = bounds(g.quad);
-          for (const r of band) expect(b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom, `${vp.w} ${st2.id} ${stack.length} clear of ${JSON.stringify(r)}: ${JSON.stringify(b)}`).toBe(true);
-        }
-      }
+      expect(m.seats.slice(1).every((s2) => m.zone(s2.id, "command").length > 0)).toBe(true);
+      const plan = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+      if (stack.length) expect(plan.part).toBeGreaterThan(0);
+      for (const sp of plan.seats.values()) expect(sp.fixtures.commander, String(sp.seat)).toBeUndefined();
+      expect(plan.hits.groups.filter((g) => g.id.startsWith("command:"))).toEqual([]);
     }
   });
 

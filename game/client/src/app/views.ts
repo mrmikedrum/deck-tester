@@ -193,7 +193,8 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
     recap: model ? narrative.recapView(n) : null,
     watch,
     restore: model ? restoreOf(s, model, watch !== null) : null,
-    plates: model ? withTallies(platesOf(model, s.plan, board.marks.seats, s.viewport, measure), model, s.plan) : [],
+    // (my commander castable now: play marks my seat for it while I hold priority)
+    plates: model ? withTallies(platesOf(model, s.plan, board.marks.seats, s.viewport, measure, s.session.decision?.kind === "play" && board.marks.seats.get(model.viewer.perspective) === "option"), model, s.plan) : [],
     clash: model ? clashViewOf(model, s.plan) : null,
     seatFocus: model && seatOpen ? seatFocusOf(model, seatOpen) : null,
   };

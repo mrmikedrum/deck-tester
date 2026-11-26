@@ -4,7 +4,8 @@
 // lays the summary out in words, one line led by each icon, so the page teaches the plate, with the seat's zones picked
 // up as printed cards. Pure projections; each sends an act for play or an order for the app.
 import type { JSX } from "preact";
-import { useMemo } from "preact/hooks";
+import { useMemo, useRef } from "preact/hooks";
+import type { CardId } from "../protocol";
 import { SEAT_GLYPHS } from "../theme";
 import type { GlyphPart } from "../theme";
 import type { Send } from "./send";
@@ -41,6 +42,69 @@ const WORD: Readonly<Record<IconKind, string>> = {
   command: "in the command zone",
 };
 
+/** How far a portrait moves before a press on it is a drag, CSS px. */
+const DRAG_PX = 6;
+
+/**
+ * A commander waiting in the command zone, as a small framed portrait of its art tucked against its seat's plate (every
+ * seat alike: on the plate, not on the table, it never reads as a permanent). A tap reads it (the plate's click sends it);
+ * mine may also be dragged onto the table to cast it, as a hand card is let go (play's rule: far enough up, over the
+ * table).
+ */
+function Portrait({ card, seat, mine, cast, send }: { card: PickedCard; seat: string; mine: boolean; cast: boolean; send: Send }): JSX.Element {
+  const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+  const el = useRef<HTMLSpanElement>(null);
+  const down = (e: PointerEvent): void => {
+    if (!mine || card.id === null) return;
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+    el.current?.setPointerCapture?.(e.pointerId);
+  };
+  const move = (e: PointerEvent): void => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId || !el.current) return;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (!d.moved && Math.hypot(dx, dy) < DRAG_PX) return;
+    d.moved = true;
+    el.current.classList.add("dragging");
+    el.current.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const up = (e: PointerEvent): void => {
+    const d = drag.current, node = el.current;
+    if (!d || d.id !== e.pointerId || !node) return;
+    drag.current = null;
+    if (!d.moved) return;
+    // (the click the press ends in is not a tap)
+    node.dataset["dragged"] = "1";
+    const r = node.getBoundingClientRect();
+    node.classList.remove("dragging");
+    node.style.transform = "";
+    // Over the table: the first thing under the finger, past the portrait itself, is the table's canvas.
+    const under = node.ownerDocument.elementsFromPoint(e.clientX, e.clientY).find((x) => !node.contains(x) && x !== node);
+    send({ a: "release", card: card.id as CardId, dy: e.clientY - d.y, pose: { rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, rotation: 0, scale: 1 }, overTable: under?.tagName === "CANVAS" });
+  };
+  const cancel = (): void => {
+    drag.current = null;
+    el.current?.classList.remove("dragging");
+    if (el.current) el.current.style.transform = "";
+  };
+  return (
+    <span
+      ref={el}
+      class={["cmd", cast ? "option" : "", card.art ? "" : "bare"].filter(Boolean).join(" ")}
+      data-cmd={card.id ?? ""}
+      title={`${card.name}, ${mine ? "your" : `${seat}'s`} commander in the command zone`}
+      style={card.art ? `background-image:url("${card.art}")` : undefined}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={cancel}
+    >
+      <Icon kind="command" />
+      {card.art ? null : <i class="cmd-name">{card.name}</i>}
+    </span>
+  );
+}
+
 /**
  * Every seat's nameplate: opponents' along the top, mine at the bottom. Always lit, but `inert` under a modal layer
  * of another kind (a menu, a sheet, the inspector): a plate answers decisions, so it is reached only from the table or
@@ -50,7 +114,8 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
   return (
     <div class="l-plates" inert={inert}>
       {plates.map((p) => {
-        const said = p.out ? `${p.name}, out of the game` : `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}${p.tally ? `, ${p.tally.figure.slice(1)} unblocked` : ""}`;
+        const waiting = (p.commanders ?? []).map((c) => `, ${c.name} ${WORD.command}`).join("");
+        const said = p.out ? `${p.name}, out of the game` : `${p.name}, ${p.life} life, ${p.icons.map((i) => `${i.figure} ${WORD[i.kind]}`).join(", ")}${waiting}${p.tally ? `, ${p.tally.figure.slice(1)} unblocked` : ""}`;
         return (
           <button
             key={p.seat}
@@ -65,9 +130,18 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
               // (my graveyard's and exile's counts open those zones, whatever else a tap on my plate means: my commander)
               const zone = (e.target as Element).closest?.("[data-zone]")?.getAttribute("data-zone");
               if (zone === "graveyard" || zone === "exile") return send({ t: "zone", seat: p.seat, zone });
+              // A waiting commander's portrait: that card (to read it; mine, to cast it), unless it was just dragged.
+              const cmd = (e.target as Element).closest?.<HTMLElement>("[data-cmd]");
+              if (cmd) {
+                if (cmd.dataset["dragged"]) return void delete cmd.dataset["dragged"];
+                if (cmd.dataset["cmd"]) return send({ a: "tap", on: { card: Number(cmd.dataset["cmd"]) as CardId } });
+              }
               send(p.out ? { t: "seat", seat: p.seat } : { a: "tap", on: { group: p.group as never, members: [] } });
             }}
           >
+            {(p.commanders ?? []).map((c) => (
+              <Portrait key={c.id ?? c.name} card={c} seat={p.name} mine={p.mine} cast={!!p.cast} send={send} />
+            ))}
             <span class="bronze">
               <i class="sigil" />
               <b class="name">{p.name}</b>

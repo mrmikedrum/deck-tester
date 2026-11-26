@@ -294,7 +294,7 @@ export function planTable(input: TableInput): TablePlan {
   const mineDrawn = !!(input.engine?.draw && me?.result);
   const leafSeat = (k: number, part: number): SeatPlan => {
     const l = leaves.get(input.seats[k]!.seat)!, at = part ? posed(l.input!, l.result!, partShift(part)) : l.result!;
-    return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, reach: partShift(tpl.part.most), board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
+    return arrangedSeat({ result: at, far: tpl.leaf.far, shift: part ? partShift(part) : 0, board: inputs[k]!.board, cards: l.input!.cards, projector, reserve });
   };
   // My row parted slides toward me (its frame's `away` points at the middle).
   const mineSeatAt = (part: number): SeatPlan => {
