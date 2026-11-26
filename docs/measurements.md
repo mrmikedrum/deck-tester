@@ -438,3 +438,22 @@ On the Mac, paired WebKit runs used the same turn-15 fixture at 1180 × 820 and 
 | Rest | 12 / 13 / 15 | 11 / 13 / 14 | 68 → 55 |
 | Highlight | 14 / 15 / 16 | 12 / 14 / 15 | 73 → 60 |
 | Flight | 12 / 13 / 15 | 12 / 13 / 15 | 77 → 64 |
+
+## planTable with every opponent's leaf on the engine — 2026-11-26
+
+`game/tools/bench-plan.mjs` (Node 24, the inputs planned at the iPad held in landscape, 1210 × 834; a loaded Mac, load
+average about 18, so worst cases are noisy), median / p90 / worst ms per `planTable`, as the app plans:
+
+| Input | This baseline | Main (back to back, the same viewport) |
+|---|---|---|
+| The design pass's turn 15 | 0.99 / 1.22 / 2.16 | 0.89 / 1.07 / 1.65 |
+| Dense (four seats, 40 permanents each, a stack of four) | 1.43 / 1.60 / 2.07 | 1.28 / 1.50 / 3.29 |
+| 40 distinct names | 0.76 / 0.81 / 1.12 | 0.70 / 0.82 / 1.18 |
+| A combat of twelve | 0.79 / 0.91 / 1.32 | 0.74 / 0.86 / 1.37 |
+| 30 snapshots in sequence | 1.67 / 2.56 / 5.53 | 0.85 / 1.01 / 1.46 |
+
+A snapshot that changes one seat rebuilds that seat's leaf only (the others are kept by their whole input; a test holds
+it). The sequence's generator changes every seat in nearly every snapshot (in 29 snapshot pairs the left and across
+seats change 29 times, the right 28), so it rebuilds three leaves a plan, where main rebuilt one; a leaf rebuilt from
+scratch costs about 0.3 ms. No timing gate runs in CI (shared runners and a loaded Mac make wall-clock gates flaky). The
+iPad's run (`workbench.html?only=bench`, held in landscape, "Send to Mac") decides the 8 ms budget.

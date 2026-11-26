@@ -476,10 +476,11 @@ or a planeswalker) by the attackers aimed at it, the plaque says what was dealt.
 whose attackers all wait in "more" keeps its wing and tally.
 
 `hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
-by depth, so the stack's top wins where its cards meet), a later group winning a tie. It is what layout tests, the
+by depth, so the stack's top wins where its cards meet), a later group winning a tie; first among the faces drawn
+(`HitGroup.face`), and only where no face is among the wider places an engine unit owns. It is what layout tests, the
 scene's `pick` and the tools use; the scene picks the poses it drew (`pickDrawn`), which at rest equals `hitTest` on the
 committed plan. The app replans only when the plan key changes: gen, model rev, viewport, insets, chrome mode, the
-combat draft's cards and `settling`: cards in flight between zones, while a change set the scene has not taken moves a
+combat draft's cards, the decision in hand (its kind and the cards it offers: `decisionFactsOf`) and `settling`: cards in flight between zones, while a change set the scene has not taken moves a
 card or its last report said `flying`. Pages then hold their shape while cards leave them; the app replans when it turns
 false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
 today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
@@ -494,8 +495,10 @@ At rest no middle is held back. **The parting** makes room when something rests 
 engine leaf slides along its own `away` by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
 it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and
 patches parted). `TablePlan.part` says how far. No leaf goes under the chrome along the top (`topChrome`); graveyard and
-exile are in the nameplate's focus, not on the leaves. The template is tuned for two to four seats: a seat out of the
-game gives its room back (its nameplate a small "Out" chip).
+exile are in the nameplate's focus, not on the leaves (a sift of one reads the zone from the model). The template is
+tuned for one to four seats: the near place is the camera's (the perspective, in the game or not), the others the
+opponents still in it; one out gives its room back (its nameplate a small "Out" chip that opens its focus), and with
+none left the table is the near place alone.
 
 ## play: the decision controller
 
