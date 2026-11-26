@@ -513,3 +513,20 @@ average about 17, as the app plans: turn 15 0.61 / 1.12 / 2.83; dense 0.84 / 0.9
 Every input is inside the 8 ms budget as the app plans (dense 2 ms worst, down from 11 with every opponent on the
 engine and `mat` laying out my side). Only the synthetic every-leaf-rebuilt column touches 9 ms at worst, on single
 outliers. The iPad ran far below the 6 to 9 times Node's p90 estimated above.
+
+## Moments (step 10) — 2026-11-26
+
+`planTable` in Node (`game/tools/bench-plan.mjs`, 1210 × 834, load average about 8), median / p90 / worst ms as the app
+plans, main then this step back to back: the design pass's turn 15 0.61 / 0.78 / 3.27 and 0.60 / 0.75 / 2.24; dense
+0.88 / 1.29 / 3.37 and 0.61 / 0.69 / 1.81 (a spell's target no longer reshuffles its leaf); 40 distinct names 0.45 /
+0.47 / 0.94 and 0.47 / 0.50 / 1.30; the combat of twelve 0.49 / 0.52 / 1.02 and 0.49 / 0.52 / 1.23; 30 snapshots
+1.70 / 2.29 / 4.89 and 1.69 / 2.25 / 4.86. A payment on the turn-15 table (twelve sources offered, 120 different
+offered sets, so no plan is kept): 2.8 / 4.4 / 6.6 on main, 2.7 / 4.3 / 8.2 here; the acting rank tries its first card
+alone and stops there when it finds no place, as on this board.
+
+The render bench (`workbench.html?only=render`, headless WebKit on the Mac, 1180 × 820 at 2×, 240 frames a moment),
+median / p90 / worst ms, main then this step: at rest 7 / 11 / 14 and 9 / 12 / 14; a highlight 9 / 12 / 15 and
+10 / 13 / 15; a flight 10 / 13 / 16 and 10 / 13 / 18 (the variants moved as much either way: run-to-run noise). New
+rows, the engine's table as the app draws it: at rest 10 / 13 / 15 (89 draw calls), in a moment's light (a fight
+between opponents, a newcomer's news) 8 / 11 / 14 (91). The light is instance data on the cards and a pool or mote
+where one was: no measurable cost. The iPad's run decides.
