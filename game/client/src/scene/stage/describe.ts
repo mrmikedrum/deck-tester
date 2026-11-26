@@ -506,6 +506,7 @@ function unitPiece(
   const members = [...u.members, ...u.dressing];
   // The moment's light: what it leaves out goes a little darker (never darker than a dim already is).
   const dim = u.light === "down" && !u.fighting ? Math.max(fade, DIM.down) : fade;
+  const news = !!input.news?.some((id) => u.members.includes(id));
   const top = model.cards.get(u.top);
   const mark = strongest(u.members.map(markOf));
   const pose = unitPose(plan.projector, u.placement, u.tapped);
@@ -541,9 +542,9 @@ function unitPiece(
     seed: u.members[0] ?? 0,
     sick: !!top && top.sick && model.active === seat,
     // A pile with an option or a danger inside it signals it, or what the engine finds hidden there that answers the
-    // moment; a card another player has just put down is news, alone or in a pile.
-    cue: (u.members.length > 1 ? (mark === "option" ? "act" : mark === "danger" ? "threat" : (u.cue ?? null)) : null) ?? (input.news?.some((id) => u.members.includes(id)) ? "news" : null),
-    light: u.fighting ? null : (u.light ?? null),
+    // moment; a card another player has just put down is news, alone or in a pile, and the lamp is on it.
+    cue: (u.members.length > 1 ? (mark === "option" ? "act" : mark === "danger" ? "threat" : (u.cue ?? null)) : null) ?? (news ? "news" : null),
+    light: u.fighting ? null : (u.light ?? (news ? "forward" : null)),
   };
   return {
     id: u.id,

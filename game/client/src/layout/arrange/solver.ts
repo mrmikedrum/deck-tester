@@ -115,6 +115,8 @@ interface Edit {
   readonly step: FoldStep;
   /** The group it takes (fan and summary take a tier's or everything at the time they run). */
   readonly group: string | null;
+  /** A demote into a standing tier that takes a group back where it sat last plan: before anything else there. */
+  readonly back?: boolean;
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -459,7 +461,7 @@ function compile(policy: Policy, groups: readonly G[], incumbents: ReadonlySet<s
     const asc = [...free].sort((a, b) => a.imp - b.imp || cmp(a.key, b.key));
     const into = step.op === "demote" && typeof step.to === "string" && standing.has(step.to) ? step.to : null;
     const order = into !== null ? [...asc.filter((g) => seatedIn.get(g.key) === into), ...asc.filter((g) => seatedIn.get(g.key) !== into)] : step.op === "demote" ? weakestFirst(asc, incumbents, policy) : asc;
-    for (const g of order) out.push({ id: `${index}:${step.op}:${g.key}`, index, step, group: g.key });
+    for (const g of order) out.push({ id: `${index}:${step.op}:${g.key}`, index, step, group: g.key, ...(into !== null && seatedIn.get(g.key) === into ? { back: true } : {}) });
   });
   return out;
 }
@@ -556,8 +558,11 @@ function walk(
     }
     return l.over.has(band.index);
   };
-  // (what the moment steps out takes its turn with the rest: it never takes a place from what rest shows)
-  for (const e of edits) {
+  // (within a step, what the moment steps out goes next after what goes back where it sat last plan: into free places
+  // before anything else takes them, never a place rest gave another)
+  const rank = (e: Edit): number => (e.back ? 0 : exempt.has(e.group ?? "") ? 1 : 2);
+  const order = exempt.size ? [...edits].sort((a, b) => a.index - b.index || rank(a) - rank(b)) : edits;
+  for (const e of order) {
     const step = e.step;
     let target: Band | null = null, groupsHit: string[];
     if (e.group !== null) {
@@ -825,9 +830,10 @@ interface Packed {
 
 /** Pack units left to right across a lying band's rows and their intervals, each run centred; null when they do not
  *  fit. `less` world units of room are held back from the first interval. */
-function packBand(rows: readonly RowGeo[], units: readonly U[], less = 0): Packed[] | null {
+/** `tail`: the last units lie after the run, which is centred without them; null where they then run off its span. */
+function packBand(rows: readonly RowGeo[], units: readonly U[], less = 0, tail = 0): Packed[] | null {
   const spans = rows.flatMap((row, k) => row.intervals.map((iv, interval) => ({ row, k, interval, lo: iv.lo, hi: iv.hi })));
-  const runs: U[][] = spans.map(() => []), used = spans.map(() => 0);
+  const runs: U[][] = spans.map(() => []), used = spans.map(() => 0), extra = spans.map(() => 0);
   let i = 0, budget = less;
   for (const x of units) {
     while (i < spans.length && x.width > spans[i]!.hi - spans[i]!.lo - used[i]! - budget + EPS) {
@@ -836,9 +842,11 @@ function packBand(rows: readonly RowGeo[], units: readonly U[], less = 0): Packe
     }
     if (i >= spans.length) return null;
     runs[i]!.push(x);
-    used[i]! += x.width;
+    if (units.indexOf(x) >= units.length - tail) extra[i]! += x.width;
+    else used[i]! += x.width;
   }
   const out: Packed[] = [];
+  for (let n = 0; n < spans.length; n++) if (extra[n]! > 0 && (spans[n]!.lo + spans[n]!.hi) / 2 + used[n]! / 2 + extra[n]! > spans[n]!.hi + EPS) return null;
   runs.forEach((run, n) => {
     const sp = spans[n]!;
     let u0 = (sp.lo + sp.hi) / 2 - used[n]! / 2;
@@ -889,10 +897,13 @@ function place(input: ArrangeInput, policy: Policy, ctx: PolicyCtx, bands: reado
       for (const [k, v] of placed.at) slots.set(k, { band: b, ...v });
       for (const x of placed.left) (x.pinned ? actors : other).push(...x.members, ...x.dressing);
     } else {
-      const units = ordered(b, walked.exempt.size ? [...here.filter((x) => !x.groups.every((k) => walked.exempt.has(k))), ...here.filter((x) => x.groups.every((k) => walked.exempt.has(k)))] : here);
+      // (what the moment steps out lies after what rest shows, which keeps its places: the run is not centred again)
+      const out = here.filter((x) => walked.exempt.size > 0 && x.groups.every((k) => walked.exempt.has(k)));
+      const units = ordered(b, out.length ? [...here.filter((x) => !out.includes(x)), ...out] : here);
       let n = units.length;
-      while (n > 0 && packBand(rows, units.slice(0, n)) === null) n--;
-      for (const p of packBand(rows, units.slice(0, n)) ?? []) slots.set(p.key, { row: p.row, band: b, ref: { row: p.k, interval: p.interval, place: p.place }, u: p.u, w: p.w });
+      const pack = (k: number) => packBand(rows, units.slice(0, k), 0, Math.max(0, k - (units.length - out.length)));
+      while (n > 0 && pack(n) === null) n--;
+      for (const p of pack(n) ?? []) slots.set(p.key, { row: p.row, band: b, ref: { row: p.k, interval: p.interval, place: p.place }, u: p.u, w: p.w });
       for (const x of here) if (!slots.has(x.key)) (x.pinned ? actors : other).push(...x.members, ...x.dressing);
     }
   }
@@ -1172,11 +1183,13 @@ function gridPlace(rows: readonly RowGeo[], units: readonly U[], pm: PolicyMemor
 /** Members not drawn as their own face: under a stack's top, under a fan's top (its spines are blank), in a summary. */
 const NONE: ReadonlySet<CardId> = new Set();
 
-/** The cards a candidate shows, each a tap away (alone, on top of a pile, or in a block of its copies), and where. */
+/** The cards a candidate shows, each a tap away (alone, on top of a pile, or in a block of its copies), and where its
+ *  unit's top lies on the table. */
 function shownIn(x: Candidate): Map<CardId, string> {
   const out = new Map<CardId, string>();
   for (const un of x.units) {
-    const at = `${un.tier}|${un.slot.row}|${un.slot.interval}|${un.slot.place}`;
+    const foot = (un.cards.find((p) => p.card === un.top) ?? un.cards[0])?.foot;
+    const at = `${un.tier}|${foot ? `${foot.x.toFixed(3)},${foot.z.toFixed(3)}` : ""}`;
     if (un.kind === "card" || un.kind === "stack") for (const id of un.members) out.set(id, at);
     else if (un.top !== null) out.set(un.top, at);
   }

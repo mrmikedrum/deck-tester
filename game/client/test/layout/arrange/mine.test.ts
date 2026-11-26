@@ -174,11 +174,15 @@ describe("my side's policy (`mine`)", () => {
     const cards = [...lands, ...creatures];
     const rest = settled({ cards });
     expect(unitOf(rest, lands[3]!.id).kind).toBe("fan");
-    // a target among my lands: it lies on its own, where it can be tapped
+    // two targets among my lands: my mana row holds the pile in its middle place, so one whole place is free after it;
+    // the first in the acting rank (the oldest: they weigh the same) lies there, the other is named on the pile
     const two = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set([lands[3]!.id, lands[9]!.id]), choosing: true } });
-    for (const l of [lands[3]!, lands[9]!]) expect(unitOf(two, l.id).members, l.name).toEqual([l.id]);
+    expect(unitOf(two, lands[3]!.id).members).toEqual([lands[3]!.id]);
+    expect(two.fit.attention).toContainEqual({ unit: unitOf(two, lands[9]!.id).id, cards: [lands[9]!.id], why: "offered" });
     expect(two.fit.report.violations).toEqual([]);
     expect(two.overflow).toBeNull();
+    // the pile did not move to make room
+    expect(unitOf(two, lands[0]!.id).cards[0]!.foot).toEqual(unitOf(rest, lands[0]!.id).cards[0]!.foot);
     // every land offered (a payment): more than the row holds, so as many as its free places hold step out, in the
     // acting rank (here the oldest first, all alike), and the rest fold as at rest in a pile that names them
     const all = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(lands.map((l) => l.id)), choosing: true } });
@@ -193,9 +197,8 @@ describe("my side's policy (`mine`)", () => {
     for (const c of creatures) expect(unitOf(all, c.id).slot, c.name).toEqual(unitOf(rest, c.id).slot);
   });
 
-  it("the acting rank: what rest hides among unlike cards takes a free place before copies already one tap in their block", () => {
+  it("no room without moving something: the Island block and a pile of lands centred in three places stay as they are, lit", () => {
     resetIds(150);
-    // my field full; my mana tier's three places hold a pile of utility lands and the Island block: one is free
     const creatures = Array.from({ length: 11 }, (_, i) => me({ name: `Creature ${i}`, power: 2 + i }));
     const islands = many(6, { kind: "land", name: "Island", basic: true, controller: ME });
     const lands = Array.from({ length: 12 }, (_, i) => me({ kind: "land", name: `Utility land ${i}` }));
@@ -204,9 +207,7 @@ describe("my side's policy (`mine`)", () => {
     const offered = [...islands, ...lands];
     const r = mineRun({ cards, memory: rest.fit.memory, acting: { offered: new Set(offered.map((c) => c.id)), choosing: true } });
     expect(r.fit.report.violations).toEqual([]);
-    // the oldest utility land (all weigh the same) takes the free place; the Islands stay one block
-    expect(offered.filter((c) => unitOf(r, c.id).kind === "card").map((c) => c.name)).toEqual(["Utility land 0"]);
-    expect(unitOf(r, islands[0]!.id).kind).toBe("stack");
+    for (const u of rest.fit.units) expect(r.fit.units.find((x) => x.id === u.id)?.cards.map((p) => p.foot), u.id).toEqual(u.cards.map((p) => p.foot));
     // every offered card is drawn whole (alone or on top), in its block of copies, or named on the pile that hides it
     const named = new Set(r.fit.attention.filter((a) => a.why === "offered").flatMap((a) => a.cards));
     for (const c of offered) {
