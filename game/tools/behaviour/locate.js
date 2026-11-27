@@ -1,25 +1,23 @@
-// Where a thing is on screen, for the behaviour suite and the recorder's gestures: the one place either looks inside the
-// client. The current client is read through `window.__h`, the new entry through `window.__deckmaster`.
 // ---- The one locator: where a thing is on screen -----------------------------------------------------------------------
 // {card: id}  a card on the table or on the stack (a pile counts for any of its cards)
-// {plate: pid} a player's life plate ("you","ana","bo","cy"); in the new entry, its nameplate in the chrome
+// {plate: pid} a player's life plate ("you","ana","bo","cy")
 // {stack: id} a spell on the stack, by its card id
 // {hand: id}  a card in the hand fan (DOM)
-// {pile: pid} the biggest pile on a player's side (the most cards; new entry only)
-// {open: true} open table nearest the middle of the screen: nothing there to pick, clear of the stack (new entry only)
-// {sifted: id} a card laid out in an open sift (new entry only): a tap there acts on that card alone
+// {pile: pid} the biggest pile on a player's side (the most cards)
+// {open: true} open table nearest the middle of the screen: nothing there to pick, clear of the stack
+// {sifted: id} a card laid out in an open sift: a tap there acts on that card alone
 // {place: id} a card's place off its drawn face (the arrangement engine's target: a tapped card lying turned in a slot
-//             a standing card's height wide is reached there too); the current client has no places: its card
-// Returns a screen point (CSS px) where a tap hits that thing, verified against the client's own picking (pickAt).
-async function locate(page, what, isNew) {
-  const pt = await page.evaluate(isNew ? locateNew : locateOld, what);
+//             a standing card's height wide is reached there too).
+// Returns a screen point (CSS px) where a tap hits that thing, verified against the client's own picking.
+async function locate(page, what) {
+  const pt = await page.evaluate(point, what);
   if (!pt) throw new Error("cannot locate " + JSON.stringify(what));
   return pt;
 }
 
-// The new entry: the committed plan's hit groups (their quads on screen), checked against its own picking and against
+// Locator inputs: the committed plan's hit groups (their quads on screen), checked against its own picking and against
 // what the page has on top at the point (the canvas, not the hand or a panel).
-function locateNew(w) {
+function point(w) {
   const dm = window.__deckmaster, W = innerWidth, H = innerHeight;
   if (w.place != null) {
     const g = dm.hits().find(x => x.members.includes(w.place)), face = g && dm.scene.faces()[g.id];
@@ -92,7 +90,7 @@ function locateNew(w) {
     : g.members.includes(w.card);
   const groups = dm.hits().filter(wanted).sort((a, b) => b.order - a.order);
   // Where it rests, then where it is drawn now (a card still on its way, as a fighter stepping out to the combat row):
-  // the scene picks what it drew, as the current client's locator searched its pieces' boxes as they stood.
+  // Verify the point against what the scene drew.
   const boxes = dm.scene.boxes ? dm.scene.boxes() : [];
   const regions = groups.flatMap(g => {
     const xs = g.quad.map(p => p.x), ys = g.quad.map(p => p.y), drawn = boxes.find(o => o.id === g.id);
@@ -107,55 +105,6 @@ function locateNew(w) {
       if (hit && hit.id === g.id) hits.push([x, y]);
     }
     if (hits.length) {                                       // the hit nearest the middle of the hits: away from edges
-      const cx = hits.reduce((a, p) => a + p[0], 0) / hits.length, cy = hits.reduce((a, p) => a + p[1], 0) / hits.length;
-      hits.sort((p, q) => Math.hypot(p[0] - cx, p[1] - cy) - Math.hypot(q[0] - cx, q[1] - cy));
-      return { x: hits[0][0], y: hits[0][1] };
-    }
-  }
-  return null;
-}
-
-// The current client: its pieces' boxes on screen, checked against its own picking (pickAt).
-function locateOld(w) {
-  const h = window.__h;
-  if (w.place != null) w = { card: w.place };
-  if (w.hand != null) {
-    const c = document.querySelector(`.g-hand .hcard[data-id="${w.hand}"]`);
-    if (!c) return null;
-    const r = c.getBoundingClientRect();
-    for (let f = 0.06; f < 1; f += 0.04) for (const g of [0.5, 0.35, 0.65, 0.2, 0.8]) {
-      const x = r.left + r.width * f, y = r.top + r.height * g, top = document.elementFromPoint(x, y);
-      if (top && top.closest(".hcard") === c) return { x, y };
-    }
-    return null;
-  }
-  const match = pick => !!pick && (
-    (w.card != null && ((pick.type === "card" && pick.id === w.card) || (pick.type === "pile" && pick.ids.includes(w.card)) || (pick.stack && pick.id === w.card))) ||
-    (w.stack != null && pick.stack && pick.id === w.stack) ||
-    (w.plate != null && pick.type === "plate" && pick.pid === w.plate));
-  // Candidate regions: the box of the piece, of the stack face, or of a whole plate; then a grid search inside.
-  const boxes = [];
-  const T = h.T, W = innerWidth, H = innerHeight;
-  const scr = v => { const p = v.clone().project(h.cam); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * H]; };
-  for (const pc of Object.values(h.pieces())) {
-    const wanted = w.plate != null ? (pc.role === "plate" && pc.pid === w.plate) : (w.card != null && pc.ids && pc.ids.includes(w.card));
-    if (!wanted || !pc.obj.visible) continue;
-    pc.obj.updateWorldMatrix(true, true);
-    const b = new T.Box3().setFromObject(pc.obj), pts = [];
-    for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) pts.push(scr(new T.Vector3(x, y, z)));
-    boxes.push({ l: Math.min(...pts.map(p => p[0])), r: Math.max(...pts.map(p => p[0])), t: Math.min(...pts.map(p => p[1])), b: Math.max(...pts.map(p => p[1])) });
-  }
-  const sid = w.stack != null ? w.stack : w.card;
-  if (sid != null && h.stackAt) { const s = h.stackAt(sid); if (s) boxes.push({ l: s.left, r: s.right, t: s.top, b: s.bottom }); }
-  for (const b of boxes) {
-    const hits = [];
-    for (let i = 0; i <= 12; i++) for (let j = 0; j <= 12; j++) {
-      const x = b.l + (b.r - b.l) * (0.05 + 0.9 * i / 12), y = b.t + (b.b - b.t) * (0.05 + 0.9 * j / 12);
-      if (x < 2 || y < 2 || x > W - 2 || y > H - 2) continue;
-      const hit = h.pickAt(x, y);
-      if (hit && match(hit.pick)) hits.push([x, y]);
-    }
-    if (hits.length) {                                     // the hit nearest the middle of the hits: away from edges
       const cx = hits.reduce((a, p) => a + p[0], 0) / hits.length, cy = hits.reduce((a, p) => a + p[1], 0) / hits.length;
       hits.sort((p, q) => Math.hypot(p[0] - cx, p[1] - cy) - Math.hypot(q[0] - cx, q[1] - cy));
       return { x: hits[0][0], y: hits[0][1] };

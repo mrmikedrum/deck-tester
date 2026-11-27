@@ -1,12 +1,12 @@
-// Writes tests/fixtures/boards/design-pass.json: the design pass's game (tools/boards.js) at turns 4, 9 and 15 as
+// Writes tests/fixtures/boards/design-pass.json: the design pass's game (tools/fixtures/boards.js) at turns 4, 9 and 15 as
 // snapshot envelopes, with the catalog entries of every card on them, so the new client's tests, its Node bench
 // (bench-plan.mjs) and the workbench's bench page plan exactly the same tables.
 //
 //   node tools/design-boards.js
 const { writeFileSync, mkdirSync } = require("node:fs");
 const { resolve } = require("node:path");
-const { BOARDS } = require("./boards.js");
-const CARDS = global.window.CARDS;
+const { BOARDS } = require("./fixtures/boards.js");
+const CARDS = require("./fixtures/cards.json");
 
 const TURNS = [4, 9, 15];
 const stages = BOARDS.filter((b) => TURNS.includes(b.turn)).map((b) => ({

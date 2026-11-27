@@ -1,5 +1,5 @@
 """The game bridge (deckmaster/game.py) without Forge: answers and their status, the build stamp, the client log, and
-serving and building the new client at /next/. The engine is stubbed at `engine.request`."""
+serving and building the client at /. The engine is stubbed at `engine.request`."""
 import http.client
 import json
 import os
@@ -756,13 +756,13 @@ class Server:
         return r.status, json.loads(data)
 
 
-class NextClientServingTest(unittest.TestCase):
+class ClientServingTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         root = pathlib.Path(self.tmp.name)
         self.dist = root / "dist"
         (self.dist / "assets").mkdir(parents=True)
-        (self.dist / "index.html").write_text("<!doctype html><title>next</title>")
+        (self.dist / "index.html").write_text("<!doctype html><title>Deckmaster</title>")
         (self.dist / "assets" / "index-B8eTv0QL.js").write_text("console.log(1)")
         (self.dist / "build.json").write_text('{"build": "c84102cd92eb"}\n')
         self.log = game.ClientLog(root / "clientlog.jsonl")
@@ -770,19 +770,26 @@ class NextClientServingTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_next_serves_the_build_with_long_caching_only_for_hashed_assets(self):
+    def test_root_serves_the_build_with_long_caching_only_for_hashed_assets(self):
         with Server(self.dist, self.log) as s:
-            status, headers, data = s.get("/next/")
-            self.assertEqual((status, data, headers["Cache-Control"]), (200, b"<!doctype html><title>next</title>", "no-store"))
-            status, headers, _ = s.get("/next/assets/index-B8eTv0QL.js")
+            status, headers, data = s.get("/")
+            self.assertEqual((status, data, headers["Cache-Control"]), (200, b"<!doctype html><title>Deckmaster</title>", "no-store"))
+            status, headers, _ = s.get("/assets/index-B8eTv0QL.js")
             self.assertEqual((status, headers["Cache-Control"]), (200, "public, max-age=31536000, immutable"))
             self.assertIn("javascript", headers["Content-Type"])
-            status, headers, _ = s.get("/next")
-            self.assertEqual((status, headers["Location"]), (301, "/next/"))
-            self.assertEqual(s.get("/next/missing.js")[0], 404)
-            self.assertEqual(s.get("/next/../../../deckmaster/game.py")[0], 404)
+            self.assertEqual(s.get("/missing.js")[0], 404)
+            self.assertEqual(s.get("/../../../deckmaster/game.py")[0], 404)
 
-    def test_the_new_clients_relative_api_reaches_the_bridge_and_carries_the_build(self):
+    def test_old_entrypoints_redirect_and_preserve_query(self):
+        with Server(self.dist, self.log) as s:
+            for path in ("/next", "/next/", "/live.html"):
+                with self.subTest(path=path):
+                    status, headers, _ = s.get(path + "?debug=1")
+                    self.assertEqual((status, headers["Location"]), (302, "/?debug=1"))
+            for path in ("/next/assets/index-B8eTv0QL.js", "/offline.html", "/src/app/main.ts"):
+                self.assertEqual(s.get(path)[0], 404)
+
+    def test_the_client_api_carries_the_build(self):
         with Server(self.dist, self.log) as s:
             status, _, data = s.get("/next/api/view?v=5")   # a cursor from before a restart: answered at once
             env = json.loads(data)
@@ -852,9 +859,9 @@ class NextClientServingTest(unittest.TestCase):
             self.assertEqual(s.post_raw("/api/clientlog", str(len(body) - 1), body)[0], 400)   # read exactly: cut JSON
         self.assertEqual(len(self.log.path.read_text().splitlines()), 1)
 
-    def test_without_a_build_next_says_how_to_make_one(self):
+    def test_without_a_build_root_says_how_to_make_one(self):
         with Server(pathlib.Path(self.tmp.name) / "nothing", self.log) as s:
-            status, _, data = s.get("/next/")
+            status, _, data = s.get("/")
             self.assertEqual(status, 404)
             self.assertIn(b"npm run build", data)
 
@@ -867,6 +874,7 @@ class BuildOnStartTest(unittest.TestCase):
         (client / "src" / "protocol").mkdir(parents=True)
         (client / "src" / "protocol" / "index.ts").write_text("export {};\n")
         (client / "index.html").write_text("<!doctype html>")
+        (self.game / "package.json").write_text("{}")
         (self.game / "package-lock.json").write_text("{}")
         (self.game / "vite.config.mts").write_text("export default {};")
         (client / "test" / "model").mkdir(parents=True)
@@ -929,7 +937,9 @@ class BuildOnStartTest(unittest.TestCase):
         self.assertEqual(self.ensure(), "built")
         (self.game / "package-lock.json").write_text('{"lockfileVersion": 3}')
         self.assertEqual(self.ensure(), "built")
-        self.assertEqual((self.dist / "index.html").read_text(), "build 4")
+        (self.game / "package.json").write_text('{"scripts": {"build": "vite build"}}')
+        self.assertEqual(self.ensure(), "built")
+        self.assertEqual((self.dist / "index.html").read_text(), "build 5")
 
     def test_the_workbench_inputs_make_the_stamp(self):
         # the workbench's motion page bundles the protocol corpus and a test catalog (import.meta.glob)

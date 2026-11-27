@@ -2,7 +2,7 @@
 
     python3 game/tools/equiv.py BEFORE AFTER
 
-Per clip: which frames' telemetry differs (every object's place, size, opacity and texture, from track.json) and by
+Per clip: which frames' telemetry differs (screen positions and card sizes from track.json) and by
 how much, and the lowest PSNR over every frame and still (needs ffmpeg). Two runs of unchanged code differ by a
 fraction of a pixel on a frame or two, and a CSS animation can start a frame apart (PSNR near 27 dB on one frame),
 so judge differences against that, and re-record to see whether they move.
@@ -22,20 +22,20 @@ def psnr(a, b):
 
 
 def telemetry(a, b):
-    """Frames whose objects differ, and the largest numeric difference, ignoring texture ids (random per run)."""
+    """Frames whose objects differ, and the largest numeric difference."""
     frames, worst = set(), 0.0
 
-    def walk(x, y, i, key=""):
+    def walk(x, y, i):
         nonlocal worst
         if isinstance(x, dict) and isinstance(y, dict):
             for k in set(x) | set(y):
                 if k not in x or k not in y:
                     frames.add(i)
-                elif k != "tex":
-                    walk(x[k], y[k], i, k)
+                else:
+                    walk(x[k], y[k], i)
         elif isinstance(x, list) and isinstance(y, list) and len(x) == len(y):
             for u, v in zip(x, y):
-                walk(u, v, i, key)
+                walk(u, v, i)
         elif x != y:
             frames.add(i)
             if isinstance(x, (int, float)) and isinstance(y, (int, float)):

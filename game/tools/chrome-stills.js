@@ -1,7 +1,7 @@
-// Stills of the chrome's choices and plates on the built new entry, at the iPad's 1210x834 and 2x: the card sheet
+// Stills of the chrome's choices and plates on the built client, at the iPad's 1210x834 and 2x: the card sheet
 // (a library search of 5 and 40 cards, choose one and choose two, a 62-card tutor's pages, a graveyard choice), the
 // payment's list, the nameplate focus (mine and an opponent's), the plates at rest and in a combat. The engine is the
-// behaviour harness's mock (shoot.js boards); card images come from .deckmaster/cache/cards.
+// behaviour harness's mock (fixture views); card images come from .deckmaster/cache/cards.
 //   npm run build && node tools/chrome-stills.js <outdir> [name,name]
 const fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
@@ -9,8 +9,7 @@ const { serve } = require("./serve.js");
 
 const [outDir = "chrome-stills", onlyArg] = process.argv.slice(2);
 const only = onlyArg ? new Set(onlyArg.split(",")) : null;
-process.env.BEHAVIOUR_CLIENT = "new";
-const { Table, snapshot, withDecision, find, clone, sleep } = require("./behaviour/harness.js");
+const { Table, snapshot, withDecision, find, clone, sleep, CARDS } = require("./behaviour/harness.js");
 
 // Cards from the library: ids the table does not hold, so the sheet shows them by name, with Forge's details (their text).
 let hidden = 5000;
@@ -99,13 +98,12 @@ const SHOTS = {
 
 (async () => {
   fs.mkdirSync(outDir, { recursive: true });
-  const { base, server } = await serve(0, { dist: true });
+  const { base, server } = await serve();
   const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
   const ctx = await browser.newContext({ viewport: { width: 1210, height: 834 }, deviceScaleFactor: 2, hasTouch: true, baseURL: base });
   const page = await ctx.newPage();
   const t = new Table(page);
   await t.install();
-  const { CARDS } = require("./behaviour/harness.js");
   await t.boot(snapshot("theirs"));
   let gen = 2000;
   for (const [name, shot] of Object.entries(SHOTS)) {

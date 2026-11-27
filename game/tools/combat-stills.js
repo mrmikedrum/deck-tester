@@ -336,7 +336,7 @@ async function tapCard(page, card) {
   const [outDir = "combat-stills", onlyArg] = process.argv.slice(2);
   const only = onlyArg ? new Set(onlyArg.split(",")) : null;
   fs.mkdirSync(outDir, { recursive: true });
-  const { base: url, server } = await serve(0, { dist: true });
+  const { base: url, server } = await serve();
   const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
   try {
     for (const [name, m] of Object.entries(MOMENTS)) {

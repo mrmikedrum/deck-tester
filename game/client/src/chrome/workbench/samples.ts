@@ -1,5 +1,5 @@
 // Sample chrome views for the workbench and the tests: play's Controls as play presents them for the old client's
-// fixtures (tools/shoot.js `STATES.main`: turn 9, my main phase, seven cards in hand), built by hand.
+// fixtures (tools/fixtures/states.js `STATES.main`: turn 9, my main phase, seven cards in hand), built by hand.
 import type { LogSheetView, LogStripView, LossRow, RecapView } from "../../narrative";
 import type { Button, Controls, PromptView, SheetView, StopId } from "../../play";
 import type { CardId } from "../../protocol";
@@ -28,7 +28,7 @@ const card = (id: number, name: string, cost: string | null, rules: string | nul
   playable,
 });
 
-/** The fixture's hand (shoot.js `board().P.You.hand`), in hand order. */
+/** The fixture's hand (the mocked bridge's `You.hand`), in hand order. */
 export const HAND: readonly HandCard[] = [
   card(120, "Island", null, null, true),
   card(121, "Snap", "{1}{U}", "Return target creature to its owner's hand. Untap up to two lands."),

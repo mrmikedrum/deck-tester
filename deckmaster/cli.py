@@ -393,7 +393,7 @@ def main(argv=None) -> int:
     hosting.set_defaults(run=host_table)
 
     playing = commands.add_parser("game", help="serve the game client: you play one seat in a browser, Jev pilots the others")
-    playing.add_argument("--port", type=int, default=8765, help="the web port (open /live.html on it)")
+    playing.add_argument("--port", type=int, default=8765, help="the web port")
     playing.add_argument("--table-port", type=int, default=36799, help="the first of the ports Forge's table lobby uses")
     playing.add_argument("--deck", default="blue-moon-combat-revision", help="your deck, from the deck database")
     playing.add_argument("--opponents", default="eternities-living-worlds-iii,eternities-assimilation-iii,dack-cedh",

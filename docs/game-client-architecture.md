@@ -1,12 +1,19 @@
 # Game client architecture
 
-The design of the rebuilt game client (`game/client/`): the stack, the layers, every seam's interface, and how a
-snapshot becomes frames. It was decided up front, before code, from seven competing designs of the hard seams and an
-evaluation of the stack, then reviewed adversarially by Codex (Nov 23). [The migration plan](game-client-migration.md)
-says how we get here. When the migration ships, this page becomes the client's section of
-[architecture](architecture.md).
+The client lives in `game/client/src/`. The [game server](architecture.md#the-game-a-person-at-a-table)
+owns the bridge to Forge.
 
-The types below are the contract. Names may sharpen in code; shapes and rules change only by editing this page first.
+## Serving the client
+
+`deckmaster game` serves the Vite build at `/`, with immutable caching for fingerprinted assets.
+`/next`, `/next/` and `/live.html` temporarily redirect to `/`, preserving the query. The bridge
+also serves `/next/api/` and `/next/cache/` for pages still open at the previous address.
+
+The server checks `dist/.stamp` on start. The stamp hashes Vite's build inputs and the Node version.
+Builds run in staging and publish on success. A failed build or a host without Node serves the last
+build if present. Vite embeds the content hash of the inputs in the browser bundle and writes it
+to `dist/build.json`. One package and lockfile cover the client and its tools. Vite's development
+server proxies `/api` and `/cache` to the bridge.
 
 ## What it must be
 
@@ -72,7 +79,7 @@ game/
       app/        state, update, frame loop, effects, the answer ledger, card data, moments, focus, faults, notice, debug
       fixtures/   typed boards and plays from the captured corpus
     test/         Vitest suites mirror src/
-  tools/          reel, packet, equiv, the behaviour suite (Playwright)
+  tools/          browser behaviour suite, fixture tools and visual recordings
 ```
 
 Import rules (lint):
@@ -339,10 +346,9 @@ export function playerViewer(snap: Snapshot): Viewer | null;   // today's bridge
 Seats come from `pilots`, not array positions: the engine drops a player who loses from `players` (the viewer
 included, after which `players[0]` is someone else), so a seat keeps its place and id for the whole game.
 
-Presentation predicates live here, named and tested against the old client's own expressions (`predicates.ts`:
-`isLand`, `isCreature`, `isManaRock`, `isSpecialLand`, `typeWord`, `sig`, `handOrder`...; `readings.ts`: `sweepHits`,
-`sweepHarms`, `isCounterspell`, `threatens`, `alarming`, the log line readers): they shape how things look and read,
-never what is legal. One deliberate difference: a card's type line is its own, where the old DB kept one per name.
+Presentation predicates in `predicates.ts` classify and order cards. Readings in `readings.ts` identify threats,
+sweeps and other events for display. These shape how the game looks and reads. Forge decides what is legal.
+A card's current type line comes from its own battlefield state.
 
 **The delta.** Each model the app accepts is diffed against the previous one, and the result is queued in order, so a
 push and a pop that arrive in one frame are both shown:
@@ -585,8 +591,7 @@ recapped(s, recaps, model); dismissRecap(s); toast(s, text, level, at); expire(s
 logStripView, logSheetView, recapView, lossReport, watching   // what the chrome and the prompt show
 ```
 
-`narrative/` tells the game as the old client did (live.js `recordLog`, `feed`, `noteLosses`, `status`'s watching).
-Pure, with no clock, it is part of `AppState`. Each change set the app queues is narrated as it is queued: Forge's new
+`narrative/` is part of `AppState` and reads no clock. Each change set the app queues is narrated as it is queued: Forge's new
 log lines under the turn's heading, a result read from the zones ("Serra Angel went to the graveyard"), and my
 permanents gone on someone else's turn (the losses). What must be seen before it is told (those lines, the losses, the
 cards coming into my hand, a spell on its way to the stack) waits on a **notice** for that set, which also gives the
@@ -885,8 +890,8 @@ four), and enforced at cutover:
 | play | event tables → cues, controls and effects for every kind; stops and time-ordering races |
 | scene | `describe` laws and goldens; ordering, backlog and pile counts on a recording host with fake frames |
 | app | whole sessions headless: scripted transport, fake scene and chrome; faults; epochs; the scheduler (time order and its tie rule, waking, deadlines made during a fold) |
-| behaviour | Playwright on the real page: gestures in, `/api/answer` bodies and timing out; the same specs on either client (`BEHAVIOUR_CLIENT=new` for the built entry, where a test whose lane has not landed calls `pending` naming the lane); CI runs the `@cast` subset on the new entry on Chromium and WebKit ([README](../game/tools/behaviour/README.md)) |
-| look | recordings and the layout audit at the end of a phase; `ENTRY=new node tools/reel.js` records on the new entry (`?script`), its audit measuring the drawn table through `__deckmaster`; `node --test "tools/*.test.js"` holds the packet's verdict |
+| behaviour | Playwright sends real gestures through the built page and checks answer bodies and timing against a mocked bridge. `npm run check` includes Chromium and the WebKit `@cast` subset. See the [suite README](../game/tools/behaviour/README.md). |
+| look | Stills and frame-exact recordings for visual changes. See [LOOK.md](../game/LOOK.md). |
 
 ## Adding things later
 
@@ -898,8 +903,8 @@ four), and enforced at cutover:
 | An opponent-board arrangement within a seat | a `SeatLayout` adapter |
 | A rule set for grouping, ordering and folding cards | a `Policy` in `layout/arrange/policies/` ([the engine](game-arrangement-engine.md) §2) |
 | A table-wide arrangement | `planTable` and adapters |
-| 2, 3, 5 or 6 seats, or portrait | the plan's prerequisite in [migration](game-client-migration.md) phase 3, then `TableTemplate` and `reservations`, then tuning |
+| 2, 3, 5 or 6 seats, or portrait | Update seat and viewport assumptions across scene and chrome, then add a table template and tune reservations. |
 | Spectators | `Viewer` from the bridge |
 | Several people at one table | server-owned seat identity, per-viewer views and answer authorisation in the bridge; `Viewer` here |
-| A transport beyond long polling | a `Transport` adapter, after the transport prerequisite in [migration](game-client-migration.md) phase 3 |
+| A transport beyond long polling | a `Transport` adapter with continuity and answer-ledger tests |
 | A new kind of flight | a departure destination and a causality row |

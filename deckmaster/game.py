@@ -4,10 +4,10 @@ You sit in seat one, answering every decision from the browser; Jev and the deck
 table engine. Card art comes from Scryfall, cached in .deckmaster/cache/cards/ and served from here, so the board's
 canvases stay same-origin.
 
-    bin/deckmaster game [--port 8765]     then open http://<this machine>:<port>/live.html
+    bin/deckmaster game [--port 8765]     then open http://<this machine>:<port>/
 
-The rebuilt client (game/client/src, TypeScript) is served from its build at /next/, rebuilt on start when stale. The
-protocol both clients read is in docs/architecture.md ("The game's protocol").
+The TypeScript client (game/client/src) is built on start when stale and served at /.
+The browser protocol is in docs/architecture.md ("The game's protocol").
 """
 import collections
 import hashlib
@@ -34,7 +34,7 @@ from . import decks, engine, model, table
 ROOT = Path(__file__).resolve().parent.parent
 GAME = ROOT / "game"
 CLIENT = GAME / "client"
-DIST = CLIENT / "dist"   # the new client's build, served at /next/
+DIST = CLIENT / "dist"
 CACHE = engine.HOME / "cache" / "cards"
 CLIENTLOG = engine.HOME / "clientlog.jsonl"
 BENCH = engine.HOME / "bench"   # the workbench's timing results (game/client/src/scene/workbench/bench.ts)
@@ -282,7 +282,7 @@ def snapshot(reply, gen, pilots):
 
 def envelope(snap, version, error, build=None):
     """What /api/view sends: the snapshot (with its answer status) plus its version, the bridge's last error and the
-    client build served at /next/."""
+    client build served at /."""
     out = {"answer": None}
     out.update(snap)
     out.update(v=version, error=snap.get("error", error), build=build)
@@ -543,12 +543,12 @@ def cards(names):
             return {n: CARDS[n] for n in names}
 
 
-# ---- The new client: its build, its log ----------------------------------------------------------------------------
+# ---- The client: its build, its log ----------------------------------------------------------------------------
 
 # Relative to game/, with `node --version`: what a build depends on. The same list as vite.config.mts's BUILD_INPUTS,
 # the workbench's bundled inputs (its import.meta.glob of the protocol corpus, a test catalog and the design pass's boards)
 # included.
-STAMP_INPUTS = ("client/src", "client/index.html", "client/workbench.html", "client/public", "package-lock.json",
+STAMP_INPUTS = ("client/src", "client/index.html", "client/workbench.html", "client/public", "package.json", "package-lock.json",
                 "vite.config.mts", "../tests/fixtures/protocol", "client/test/model/catalog.json",
                 "../tests/fixtures/boards")
 
@@ -575,12 +575,12 @@ def client_stamp(node_version):
 
 
 def ensure_client(run=subprocess.run, which=shutil.which, say=lambda line: print(line, flush=True)):
-    """Build the new client into game/client/dist when its stamp is stale: into a staging directory, published only
+    """Build the client into game/client/dist when its stamp is stale: into a staging directory, published only
     when the build succeeds. Without Node, or when the build fails, what is there is served. Returns what happened:
     "current", "built", "no node" or "failed"."""
     node, npm = which("node"), which("npm")
     if not node or not npm:
-        say("The new client (/next/) can't be rebuilt: Node isn't installed. " +
+        say("The client can't be rebuilt: Node isn't installed. " +
             ("Serving its last build." if (DIST / "index.html").exists() else "It has no build to serve."))
         return "no node"
     version = run([node, "--version"], capture_output=True, text=True).stdout
@@ -590,13 +590,13 @@ def ensure_client(run=subprocess.run, which=shutil.which, say=lambda line: print
         return "current"
     staging, retired = DIST.with_name("dist.staging"), DIST.with_name("dist.old")
     shutil.rmtree(staging, ignore_errors=True)
-    say("Building the new client for /next/ ...")
+    say("Building the game client ...")
     built = run([npm, "run", "build", "--", "--outDir", str(staging)], cwd=str(GAME), capture_output=True, text=True)
     if built.returncode != 0 or not (staging / "index.html").is_file():
         shutil.rmtree(staging, ignore_errors=True)
         tail = "\n".join((built.stdout + built.stderr).strip().splitlines()[-15:])
-        say(f"The new client's build failed (is `npm ci` done in game/?); /next/ serves "
-            f"{'its last build' if (DIST / 'index.html').exists() else 'nothing'}.\n{tail}")
+        say(f"The client build failed (is `npm ci` done in game/?). Serving "
+            f"{'its last build' if (DIST / 'index.html').exists() else 'no client'}.\n{tail}")
         return "failed"
     (staging / ".stamp").write_text(stamp + "\n")
     shutil.rmtree(retired, ignore_errors=True)
@@ -604,7 +604,7 @@ def ensure_client(run=subprocess.run, which=shutil.which, say=lambda line: print
         DIST.rename(retired)
     staging.rename(DIST)
     shutil.rmtree(retired, ignore_errors=True)
-    say("The new client is built.")
+    say("The game client is built.")
     return "built"
 
 
@@ -612,7 +612,7 @@ _BUILD = {"mtime": None, "build": None}
 
 
 def client_build():
-    """The build id of the client served at /next/ (dist/build.json, written by the Vite build), or None."""
+    """The build id of the client (dist/build.json, written by the Vite build), or None."""
     f = DIST / "build.json"
     try:
         mtime = f.stat().st_mtime_ns
@@ -782,10 +782,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(404, {"error": "not found"})
         return self.send(200, f.read_bytes(), mimetypes.guess_type(str(f))[0] or "application/octet-stream", cache)
 
-    def next_client(self, rel):
-        """/next/...: the new client's build. Its hashed assets never change, so they may be cached for good."""
+    def client(self, rel):
+        """Serve the built client, with immutable caching for fingerprinted assets."""
         if not (DIST / "index.html").is_file():
-            return self.send(404, b"The new client isn't built: run bin/deckmaster game with Node installed, or "
+            return self.send(404, b"The game client isn't built. Run "
                                   b"(cd game && npm ci && npm run build).\n", "text/plain; charset=utf-8")
         return self.file(DIST, rel or "index.html",
                          "public, max-age=31536000, immutable" if rel.startswith("assets/") else None)
@@ -811,13 +811,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(url.query)
-        if url.path == "/next":
-            return self.send(301, b"", "text/plain", headers=[("Location", "/next/")])
-        if url.path.startswith("/next/"):
-            rel = url.path[len("/next/"):]
-            if not rel.startswith(("api/", "cache/")):   # the new client's relative api/ and cache/ reach the same server
-                return self.next_client(rel)
-            url = url._replace(path="/" + rel)
+        if url.path in ("/next", "/next/", "/live.html"):
+            target = urllib.parse.urlunsplit(("", "", "/", url.query, ""))
+            return self.send(302, b"", "text/plain", headers=[("Location", target)])
+        # Open pages from before the cutover still poll here and can prompt the player to reload.
+        if url.path.startswith(("/next/api/", "/next/cache/")):
+            url = url._replace(path=url.path[len("/next"):])
         if url.path == "/api/view":
             v, snap = TABLE.wait(int(q.get("v", ["0"])[0]))
             return self.send(200, envelope(snap, v, TABLE.error, client_build()))
@@ -830,13 +829,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, cards(names))
         if url.path == "/api/decks":
             return self.send(200, [d.slug for d in decks.all_decks()])
-        path = url.path.lstrip("/") or "live.html"
-        if path.startswith(LEGACY_PRINT):
-            large = large_print_path(path)
+        if url.path.startswith("/" + LEGACY_PRINT):
+            large = large_print_path(url.path[1:])
             if (CACHE / large).is_file():
                 return self.file(CACHE, large)
-        root, rel = (CACHE, path[len("cache/"):]) if path.startswith("cache/") else (CLIENT, path)
-        return self.file(root, rel)
+        if url.path.startswith("/cache/"):
+            return self.file(CACHE, url.path[len("/cache/"):])
+        return self.client(url.path[1:])
 
     def do_POST(self):
         url = urllib.parse.urlparse(self.path)
@@ -904,9 +903,8 @@ def safe_open(gen, me, others, seed, mana):
 
 
 def fixture_faces():
-    """The card faces the client's offline boards use (data.js), with the cache files their images are read from."""
-    line = next(l for l in (CLIENT / "data.js").read_text().splitlines() if l.startswith("window.CARDS = "))
-    cards = json.loads(line[len("window.CARDS = "):].rstrip(";"))
+    """Card faces with local image paths used by the browser tools and workbench."""
+    cards = json.loads((GAME / "tools" / "fixtures" / "cards.json").read_text())
     return [f for c in cards.values() for f in c["faces"] if f.get("img")]
 
 
@@ -985,13 +983,14 @@ def serve(args):
     ARGS = args
     engine.use_table()
     load_cards()
-    if args.start:
-        gen = TABLE.begin()
-        threading.Thread(target=safe_open, args=(gen, args.deck, args.opponents.split(","), args.seed, "creatures"),
-                         daemon=True).start()
-    threading.Thread(target=ensure_client, daemon=True).start()   # /next/ serves its last build until a new one is done
     server = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     server.daemon_threads = True
-    print(f"Deckmaster game: http://{lan_address()}:{args.port}/live.html  (the first game takes about a minute to start)", flush=True)
-    print(f"The new client, in progress: http://{lan_address()}:{args.port}/next/", flush=True)
-    server.serve_forever()
+    with server:
+        ensure_client()
+        if args.start:
+            gen = TABLE.begin()
+            threading.Thread(target=safe_open, args=(gen, args.deck, args.opponents.split(","), args.seed, "creatures"),
+                             daemon=True).start()
+        print(f"Deckmaster game: http://{lan_address()}:{server.server_port}/"
+              "  (the first game takes about a minute to start)", flush=True)
+        server.serve_forever()

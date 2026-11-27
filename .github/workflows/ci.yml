@@ -41,18 +41,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      - name: Old client scripts parse
-        run: for f in client/*.js tools/*.js; do node --check "$f"; done
-      - name: Tools' tests (the packet's layout verdict)
-        run: node --test "tools/*.test.js"
-      - name: Every file the old pages load exists
-        run: |
-          node -e '
-          const fs = require("fs"), path = require("path"); let bad = 0;
-          for (const h of ["live.html", "offline.html"])
-            for (const m of fs.readFileSync("client/" + h, "utf8").matchAll(/(?:src|href)="([^"]+)"/g))
-              if (!/^https?:/.test(m[1]) && !fs.existsSync(path.join("client", m[1]))) { console.log(h + ": missing " + m[1]); bad++; }
-          process.exit(bad ? 1 : 0);'
+      - name: Client tools' tests
+        run: node --test tools/*.test.js
       # The browser behaviour suite runs locally (`npm run check` in game/): GitHub's runners render in software,
       # too slowly for it, and the client's targets are iPad and desktop browsers.
 

@@ -1,12 +1,11 @@
-// The camera zoom's trial (`?zoom`, the new entry only): a long press on a card zooms the camera onto it; while zoomed,
+// The camera zoom's trial (`?zoom`): a long press on a card zooms the camera onto it; while zoomed,
 // and while the camera is still on its way back, a real click on the prompt's pass button sends nothing. Back at the
 // table, the next click passes. A long press on a seat's page raised by its nameplate's Board zooms to that seat.
-const { Table, test, expect, NEW, snapshot, withDecision, locate, sleep } = require("./harness.js");
+const { Table, test, expect, snapshot, withDecision, locate, sleep } = require("./harness.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
 
 test.describe("the camera zoom's trial", () => {
-  test.skip(!NEW, "the zoom is the new entry's");
   test("zoomed in, the prompt's button only brings the table back: no answer is sent", async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true, deviceScaleFactor: 1, baseURL: process.env.BEHAVIOUR_BASE });
     const t = new Table(await ctx.newPage());

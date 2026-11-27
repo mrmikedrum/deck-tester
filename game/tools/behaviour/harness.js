@@ -1,24 +1,17 @@
 // Black-box harness for the game client. The seam is HTTP: /api/view is a long poll the test feeds snapshots into,
 // /api/answer (and /api/new, /api/override) are recorded. Input is real touch/mouse input. The only things that look
 // inside the client are in `locate` (and `boot`'s readiness checks): when debug hooks change, change those.
-// BEHAVIOUR_CLIENT=new runs the same specs on the built new entry (client/dist/index.html, `npx vite build`), which is
-// looked into only through its tools' surface, `window.__deckmaster`. A test the new entry cannot pass yet, because the
-// lane that builds it has not landed, says so with `pending(reason)` and is skipped there, never deleted.
 const { test: base, expect } = require("@playwright/test");
 const path = require("path");
 const { CLOCK } = require("./clock.js");
-const { locate: locateOn } = require("./locate.js");
-const { STATES, CARDS } = require("../shoot.js");
+const { locate } = require("./locate.js");
+const { STATES, CARDS } = require("../fixtures/states.js");
 
 const clone = v => JSON.parse(JSON.stringify(v));
-// Which client is under test: the current one (live.html) or the new entry (index.html, built).
-const NEW = process.env.BEHAVIOUR_CLIENT === "new";
-// Skip the calling test (or describe block) on the new entry, with the reason it cannot pass there yet.
-const pending = reason => base.skip(NEW, "new entry: " + reason);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ---- Snapshots in the engine's real shape: { state, gen, view, decision, pilots } -----------------------------------
-// The mocks in shoot.js omit decision.turn/mine/repeat; fill them. `turn` is a string (the engine's turnLabel).
+// The mocks in states.js omit decision.turn/mine/repeat; fill them. `turn` is a string (the engine's turnLabel).
 function snapshot(stateName) {
   const s = clone(STATES[stateName]);
   const out = { state: "playing", gen: 1, view: s.view, decision: null, pilots: {} };
@@ -28,8 +21,8 @@ function snapshot(stateName) {
 function decision(view, d) {
   return Object.assign({ kind: "play", turn: "T" + view.turn + " main", prompt: "", options: [], refs: undefined, min: 1, max: 1, repeat: false, mine: view.active === "You" }, d);
 }
-// The fields the engine always sends and shoot.js's hand-written mocks leave out (tests/fixtures/protocol/index.json,
-// "shapes"): the new entry decodes envelopes strictly, the current client ignores what it does not read. A decision's
+// The fields the engine always sends and states.js's hand-written mocks leave out (tests/fixtures/protocol/index.json,
+// "shapes"): the client decodes envelopes strictly. A decision's
 // id is the bridge's: the same decision (game and key) keeps its id when it is sent again.
 const ids = new Map();
 function engineShape(body) {
@@ -50,7 +43,7 @@ function engineShape(body) {
   }
   const d = body.decision;
   // The engine asks for at most as many as it offers (ManualController: attack and block ask `0..options.size()`); the
-  // mocks' `max: 99` is a shape the new entry refuses as inconsistent.
+  // mocks' `max: 99` is a shape the client refuses as inconsistent.
   if (d && !d.repeat && Array.isArray(d.options) && d.options.length && d.max > d.options.length) d.max = d.options.length;
   if (d && d.id == null) { const k = `${body.gen}|${keyOf(d)}`; if (!ids.has(k)) ids.set(k, ids.size + 1); d.id = ids.get(k); }
   return body;
@@ -89,9 +82,7 @@ function opponentSpell(view, name = "Swords to Plowshares", targets, controller 
 // implementation the client's keyOf must agree with.
 const keyOf = d => [d.kind, d.turn, d.prompt || "", String((d.options || []).length)].concat((d.options || []).slice(0, 6)).join("|");
 
-// The new entry takes input in its next frame (its loop drains what the handlers queued), where the current client
-// answers inside the handler. So that a click is answered at the same virtual time on both, once each input event has
-// been handled the frame it asked for runs at once: the virtual clock's animation frames, without advancing it.
+// Drain each input on a frame at the same virtual time.
 const INPUT_FRAME = () => {
   for (const type of ["click", "pointerdown", "pointerup", "pointercancel", "keydown"])
     window.addEventListener(type, () => queueMicrotask(() => { if (window.__clock && window.__clock.frozen) window.__clock.step(0); }));
@@ -107,7 +98,7 @@ class Table {
   }
   async install() {
     await this.page.addInitScript(CLOCK);
-    if (NEW) await this.page.addInitScript(INPUT_FRAME);
+    await this.page.addInitScript(INPUT_FRAME);
     await this.page.route("**/api/**", route => this.route(route).catch(() => {}));
   }
   async route(route) {
@@ -121,9 +112,8 @@ class Table {
     if (name === "answer" || name === "new" || name === "override") {
       let body = null; try { body = JSON.parse(req.postData() || "null"); } catch (e) { body = req.postData(); }
       const raw = body;
-      // The new entry's answers carry the decision's id and the game's gen besides the key (the stronger identity of
-      // docs/game-client-migration.md, phase 1): checked here, then left out so the specs compare what both clients send.
-      if (NEW && name === "answer" && body && typeof body === "object") {
+      // Assert the wire identity separately from the choices the specs compare.
+      if (name === "answer" && body && typeof body === "object") {
         const { id, gen, ...rest } = body;
         const d = this.snapshot && this.snapshot.decision;
         if (typeof id !== "number" || typeof gen !== "number") this.protocolErrors.push("answer without id and gen: " + JSON.stringify(body));
@@ -153,20 +143,19 @@ class Table {
   }
   // `mayStep`: if the client is stuck on one of its own timers (art that is slow to load is waited for up to 1,200 ms),
   // nudge the virtual clock. Tests that measure from the push forbid it.
-  // The new entry takes a snapshot in its next frame, not in the fetch callback: there its animation frames run at the
+  // The client takes a snapshot in its next frame. Animation frames run at the
   // same virtual time (step(0)) until it asks again, so even a push that may not move the clock is taken at once.
   async settle(mayStep = true) {
     // A board rebuild under software rendering can take several seconds on a loaded runner.
     const deadline = performance.now() + 30_000;
     for (let i = 0; !this.idle && performance.now() < deadline; i++) {
       await sleep(15);
-      if (NEW && this.frozen) await this.catchUp();
+      if (this.frozen) await this.catchUp();
       if (mayStep && this.frozen && i > 100 && i % 10 === 0) await this.step(100);
     }
     if (!this.idle) throw new Error("the client never asked for the next snapshot");
   }
-  // On the new entry, replies that have come back (card data) are taken at the current virtual time before it moves on,
-  // as the current client takes them in their fetch callbacks: frames at the same time until none is outstanding.
+  // Drain card data replies at the current virtual time before advancing.
   async catchUp() {
     for (let i = 0; i < 100; i++) {
       const out = await this.page.evaluate(() => { window.__clock.step(0); return window.__deckmaster.outstanding().cards; });
@@ -176,27 +165,25 @@ class Table {
   }
   // Advance the virtual clock in chunks, letting the page's fetches reach the routes between chunks.
   async step(ms, chunk = 250) {
-    if (NEW && this.frozen) await this.catchUp();
+    if (this.frozen) await this.catchUp();
     for (let left = ms; left > 0; left -= chunk) {
       this.vnow = await this.page.evaluate(c => window.__clock.step(c), Math.min(chunk, left));
       await sleep(12);
     }
     return this.vnow;
   }
-  // `query`: the page's own switches (the new entry's `?zoom` trial).
+  // `query`: the page's own switches (the `?zoom` trial).
   async boot(snap, query = "") {
     this.queue.push(engineShape(Object.assign({}, clone(snap), { v: ++this.v, error: null })));
-    await this.page.goto("/" + (process.env.BEHAVIOUR_ENTRY || (NEW ? "index.html" : "live.html")) + query);
+    await this.page.goto("/" + query);
     const T0 = Date.now(); const lap = m => process.env.BEHAVIOUR_TIMING && console.log(m, Date.now() - T0);
-    if (NEW) {                                               // the scene can draw and the first snapshot is taken
-      await this.page.waitForFunction(() => window.__deckmaster, null, { timeout: 30000 });
-      await this.page.evaluate(() => window.__deckmaster.ready);
-      await this.page.waitForFunction(() => window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
-    } else await this.page.waitForFunction(() => window.__h && window.Live && window.Live.snap && window.Live.snap.view, null, { timeout: 30000 });
+    await this.page.waitForFunction(() => window.__deckmaster, null, { timeout: 30000 });
+    await this.page.evaluate(() => window.__deckmaster.ready);
+    await this.page.waitForFunction(() => window.__deckmaster.seats().length > 0, null, { timeout: 30000 });
     lap("ready");
     await sleep(1500);                                       // real time: fonts, art, the first tweens
     await this.settle(); lap("settled");
-    if (NEW) await this.page.waitForFunction(() => window.__deckmaster.settled(), null, { timeout: 30000 });
+    await this.page.waitForFunction(() => window.__deckmaster.settled(), null, { timeout: 30000 });
     await this.page.evaluate(() => window.__clock.freeze());
     this.frozen = true; this.snapshot = this.queue.length ? null : this.snapshot;
     await this.step(1200);
@@ -272,13 +259,10 @@ class Table {
   sheet() { return this.page.locator(".l-sheet"); }
 }
 
-// ---- The one locator: where a thing is on screen (locate.js, shared with the recorder) ------------------------------
-const locate = (page, what) => locateOn(page, what, NEW);
-
 // ---- Playwright fixtures ------------------------------------------------------------------------------------------------
 // Booting the client costs ~15 s (three.js, fonts, software rendering), so a worker boots it once and every test gets
 // a fresh game on that page: a snapshot with a new `gen` resets the client's whole game state. `table.open(snap)` is
-// that snapshot (a name from shoot.js STATES, or a snapshot object); the clock is frozen from the first boot on.
+// that snapshot (a name from states.js STATES, or a snapshot object); the clock is frozen from the first boot on.
 const test = base.extend({
   rig: [async ({ browser }, use) => {
     const stills = process.env.PLAYTEST_STILLS;
@@ -307,4 +291,4 @@ const test = base.extend({
   },
 });
 
-module.exports = { Table, test, expect, NEW, pending, engineShape, snapshot, decision, withDecision, find, inHand, opponentSpell, keyOf, locate, clone, sleep, STATES, CARDS };
+module.exports = { Table, test, expect, engineShape, snapshot, decision, withDecision, find, inHand, opponentSpell, keyOf, locate, clone, sleep, STATES, CARDS };

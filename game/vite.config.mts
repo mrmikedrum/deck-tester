@@ -18,6 +18,7 @@ const BUILD_INPUTS = [
   "client/index.html",
   "client/workbench.html",
   "client/public",
+  "package.json",
   "package-lock.json",
   "vite.config.mts",
   "../tests/fixtures/protocol",

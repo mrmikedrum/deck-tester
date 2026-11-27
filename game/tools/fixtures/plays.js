@@ -1,7 +1,7 @@
 // Game moments for motion review, each a few live views in a row, starting from the turn-9 board of boards.js: a
 // creature cast and resolving, a counter war, tokens arriving into piles, a combat with deaths, a board wipe.
 const { BOARDS } = require("./boards.js");
-const CARDS = window.CARDS;
+const CARDS = require("./cards.json");
 
 let nextId = 5000;
 const clone = v => JSON.parse(JSON.stringify(v));

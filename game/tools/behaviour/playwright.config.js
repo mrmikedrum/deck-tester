@@ -1,5 +1,4 @@
-// Behaviour tests for the game client, serving game/client with tools/serve.js on a free port (client/dist, the built new
-// entry, with BEHAVIOUR_CLIENT=new). Chromium by default; BEHAVIOUR_BROWSERS=chromium,webkit runs each spec on both.
+// Chromium by default. Set BEHAVIOUR_BROWSERS=chromium,webkit to run both.
 const { defineConfig } = require("@playwright/test");
 const os = require("os"), path = require("path");
 
@@ -18,7 +17,7 @@ module.exports = defineConfig({
   timeout: 60000,
   expect: { timeout: 5000 },
   fullyParallel: false,
-  workers: 3,
+  workers: 2,
   retries: 0,
   reporter: [["list"]],
   use: {

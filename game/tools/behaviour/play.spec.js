@@ -1,7 +1,6 @@
 // 2. `play` decisions: Pass, dragging a hand card up, tapping glowing permanents, direct mana, rapid input, cancelled drags.
 //    (also d. duplicate input, e. pointer cancellation, b. mana activation)
-const { test, expect, NEW, snapshot, withDecision, find, inHand, opponentSpell, sleep, locate, pending } = require("./harness.js");
-const { label } = require("./labels.js");
+const { test, expect, snapshot, withDecision, find, inHand, opponentSpell, sleep, locate } = require("./harness.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
 const passLabel = async t => (await t.page.locator(".l-buttons .l-pass").first().innerText()).trim();
@@ -16,8 +15,8 @@ test.describe("the pass button", () => {
     ["attackers aimed at me", s => withDecision(s, { ...PASS }, v => {
       v.active = "Marath"; v.phase = "COMBAT_DECLARE_ATTACKERS";
       v.combat = { attackers: [{ id: find(s, "Marath", "Herd Baloth").id, defender: "You" }], blockers: [] };
-    }), label("Pass toward blocks")],
-    ["an opponent's spell on the stack", s => withDecision(s, { ...PASS }, v => { v.active = "Dack"; opponentSpell(v, "Swords to Plowshares", [find(s, "Marath", "Herd Baloth").id]); }), label("Pass priority")],
+    }), "To blocks"],
+    ["an opponent's spell on the stack", s => withDecision(s, { ...PASS }, v => { v.active = "Dack"; opponentSpell(v, "Swords to Plowshares", [find(s, "Marath", "Herd Baloth").id]); }), "OK"],
   ];
   for (const [name, make, label] of cases) {
     test(`${name}: "${label}" sends [1]`, { tag: "@cast" }, async ({ table }) => {
@@ -29,16 +28,14 @@ test.describe("the pass button", () => {
   }
   test("with plays on offer the pass button keeps its label and the plays get their own button", { tag: "@cast" }, async ({ table }) => {
     await table.open("main");
-    await expect.poll(() => table.buttons()).toEqual([label("Choose a play (6)"), label("Let Forge decide"), "To combat"]);
+    await expect.poll(() => table.buttons()).toEqual(["All plays (6)", "Auto", "To combat"]);
     await table.press("To combat");
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
-  // Discrepancy with the doc's wording: with a spell on the stack AND a "Let Forge decide" button (an option exists, or the
-  // spell is mine) the pass button is labelled plain "Pass", not "Pass priority". (The new entry: "Resolve", a choice.)
-  test("an opponent's spell and a response on offer: the pass button reads \"Pass\"", { tag: "@cast" }, async ({ table }) => {
+  test("an opponent's spell and a response on offer: the pass button reads \"Resolve\"", { tag: "@cast" }, async ({ table }) => {
     const s = snapshot("threat");
     await table.open(s);
-    expect(await passLabel(table)).toBe(label("Pass", "Resolve"));
+    expect(await passLabel(table)).toBe("Resolve");
     await table.pass();
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
@@ -111,16 +108,12 @@ test.describe("tapping what glows", () => {
   test("the commander plays from its portrait on my plate", async ({ table }) => {
     const s = snapshot("main");
     await table.open(s);
-    if (NEW) {
-      await table.page.locator(".l-plate.mine .cmd").tap();
-      await table.step(100);
-    }
-    else await table.click(await locate(table.page, { plate: "you" }));
+    await table.page.locator(".l-plate.mine .cmd").tap();
+    await table.step(100);
     await table.page.locator(".l-actions button").first().click();
     expect((await table.answered(1))[0].answer).toEqual([7]);
   });
   test("tapping my nameplate opens my focus even when I can cast my commander", async ({ table }) => {
-    test.skip(!NEW, "My nameplate focus belongs to the new entry");
     const s = snapshot("main");
     await table.open(s);
     await table.page.locator(".l-plate.mine .bronze").tap();
@@ -134,7 +127,6 @@ test.describe("tapping what glows", () => {
   });
   for (const zone of ["graveyard", "exile"]) {
     test(`my plate's ${zone} count opens that zone`, async ({ table }) => {
-      test.skip(!NEW, "My zone counts belong to the new entry");
       const s = snapshot("main"), mine = s.view.players[0];
       mine.exile = [{ ...mine.graveyard[0], id: 9900 }];
       await table.open(s);
@@ -145,9 +137,9 @@ test.describe("tapping what glows", () => {
       expect(table.answers()).toEqual([]);
     });
   }
-  test("\"Choose a play\" lists everything; the list never sends by itself", async ({ table }) => {
+  test("\"All plays\" lists everything; the list never sends by itself", async ({ table }) => {
     await table.open("main");
-    await table.press(label("Choose a play (6)"));
+    await table.press("All plays (6)");
     expect(await table.sheetTitle()).toBe("Everything you can play");
     expect(await table.sheet().locator("button.l-opt").count()).toBe(6);
     expect(table.answers()).toEqual([]);
@@ -158,7 +150,6 @@ test.describe("tapping what glows", () => {
 
 test.describe("an attachment I can use", () => {
   test("an Equipment with Equip available is reached through its creature: a tap opens both, the Equipment's play is there", async ({ table }) => {
-    test.skip(!NEW, "The arrangement engine's host chooser belongs to the new entry");
     const s = snapshot("main");
     const host = find(s, "You", "Master of Waves");
     s.view.players.find((p) => p.name === "You").battlefield.push({ id: 990, name: "Swiftfoot Boots", type: "Artifact - Equipment", text: "Equip {1}", cost: "2", attachedTo: host.id, owner: "You", controller: "You" });
@@ -174,11 +165,9 @@ test.describe("an attachment I can use", () => {
 
 test.describe("mana abilities", () => {
   const mana = s => withDecision(s, { kind: "play", prompt: "", options: ["Pass", "Mystic Sanctuary: {T}: Add {U}."], refs: [{}, { card: find(s, "You", "Mystic Sanctuary").id, spell: false, mana: true }], min: 1, max: 1 });
-  // (In the new entry Mystic Sanctuary may lie in a pile of my lands, which holds still while I have priority: then a
-  // tap opens the pile, a second the land.)
+  // When Mystic Sanctuary is in a pile, tap the pile first, then the land.
   const tapSanctuary = async (table, s) => {
     const id = find(s, "You", "Mystic Sanctuary").id;
-    if (!NEW) return table.click(await locate(table.page, { card: id }));
     await table.tapCard(id);
     if (await table.page.locator(".l-actions button").count()) return;
     await table.step(1500); // the pile opens

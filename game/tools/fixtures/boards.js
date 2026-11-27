@@ -1,7 +1,7 @@
 // One game's boards from turn 2 to turn 15, for judging layout as a game fills the table. Each stage is a live view
 // (the bridge's shape) with every seat's battlefield grown from the stage before: lands, rocks, creatures, support,
 // token swarms, tapped cards and counters. Ids stay stable between stages, so a card that stays put is the same card.
-global.window = global.window || {}; require("../client/data.js"); const CARDS = window.CARDS;
+const CARDS = require("./cards.json");
 
 const NAMES = ["You", "Marath", "Atraxa", "Dack"];
 // What each seat has on the battlefield at each stage, as [name, count, options]. Later stages list everything.

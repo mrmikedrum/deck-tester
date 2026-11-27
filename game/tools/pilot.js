@@ -11,7 +11,7 @@ const pw = require("playwright"), http = require("http");
   const errors = [];
   page.on("pageerror", e => errors.push(String(e.stack || e)));
   page.on("console", m => { if (m.type() === "error" || m.type() === "warning") errors.push(m.text()); });
-  await page.goto((process.env.GAME || "http://localhost:8765/") + "live.html");
+  await page.goto(process.env.GAME || "http://localhost:8765/");
   http.createServer(async (req, res) => {
     const u = new URL(req.url, "http://x"), q = Object.fromEntries(u.searchParams);
     let body = ""; req.on("data", c => (body += c)); await new Promise(r => req.on("end", r));
