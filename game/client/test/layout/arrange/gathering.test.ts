@@ -26,7 +26,7 @@ const unitOf = (plan: TablePlan, card: number): Unit => {
   throw new Error(`no unit for ${card}`);
 };
 const drawn = (m: TableModel, o: { combat?: CombatPairs | null; viewport?: { w: number; h: number } } = {}) =>
-  planTable(tableInputOf(m, { viewport: o.viewport ?? VP, ...(o.combat ? { combat: o.combat } : {}), engine: { draw: true } }));
+  planTable(tableInputOf(m, { viewport: o.viewport ?? VP, ...(o.combat ? { combat: o.combat } : {}), engine: {} }));
 const box = (plan: TablePlan, card: number) => bounds(plan.hits.groups.find((g) => g.id === unitOf(plan, card).id)!.quad);
 const midX = (plan: TablePlan, card: number) => (box(plan, card).l + box(plan, card).r) / 2;
 const centre = (q: readonly { readonly x: number; readonly y: number }[]) => ({ x: q.reduce((t, p) => t + p.x, 0) / q.length, y: q.reduce((t, p) => t + p.y, 0) / q.length });
@@ -99,7 +99,7 @@ describe("the clash", () => {
   it("attackers keep the order they stood in; blockers come to them", () => {
     const m = turn15(ATRAXA6.map((a) => [a, "You"] as const));
     // where they stood on their page in this combat (the table form: each its own unit, at home)
-    const rest = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", engine: { draw: true } }));
+    const rest = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", engine: {} }));
     const stood = [...ATRAXA6].sort((a, b) => midX(rest, a) - midX(rest, b));
     const plan = drawn(m);
     expect([...ATRAXA6].sort((a, b) => midX(plan, a) - midX(plan, b))).toEqual(stood);
@@ -261,7 +261,7 @@ describe("the table form", () => {
     const m = turn15([]);
     const rest = drawn(m);
     const draft: CombatPairs = { attacks: [1089, 1057].map((a) => ({ attacker: id(a), defender: { seat: m.seats[1]!.id } })), blocks: [] };
-    const plan = planTable(tableInputOf(m, { viewport: VP, combat: draft, memory: rest.memory, engine: { draw: true } }));
+    const plan = planTable(tableInputOf(m, { viewport: VP, combat: draft, memory: rest.memory, engine: {} }));
     expect(plan.gathering!.form).toBe("table");
     expect(unitOf(plan, 1089).fighting).toBeFalsy();
     expect(unitOf(plan, 1089).placement).toEqual(unitOf(rest, 1089).placement);
@@ -374,8 +374,8 @@ describe("duels in the parted middle (a fight between opponents)", () => {
     const rest = drawn(turn15(MARATH, [], "Marath"));
     drawn(turn15(MARATH, [[1024, 1015]], "Marath"));
     const m = turn15([], [], "Marath");
-    const before = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
-    const after = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+    const before = planTable(tableInputOf(m, { viewport: VP, engine: {} }));
+    const after = planTable(tableInputOf(m, { viewport: VP, engine: {} }));
     expect(after.rev).toBe(before.rev);
     expect(after.part).toBe(0);
     expect(rest.part).toBe(0);
@@ -386,7 +386,7 @@ describe("duels in the parted middle (a fight between opponents)", () => {
     const plan = drawn(many);
     expect(plan.crowded).toBe(true);
     expect(plan.gathering!.form).toBe("clash");
-    const aside = planTable(tableInputOf(many, { viewport: VP, combatForm: "table", engine: { draw: true } }));
+    const aside = planTable(tableInputOf(many, { viewport: VP, combatForm: "table", engine: {} }));
     expect(aside.crowded).toBe(true);
     expect(aside.gathering!.form).toBe("table");
     for (const c of [1015, 1024]) expect(unitOf(aside, c).fighting, String(c)).toBeFalsy();
@@ -394,7 +394,7 @@ describe("duels in the parted middle (a fight between opponents)", () => {
 
   it("set aside (the app's combatForm), a fight at me stays home", () => {
     const m = turn15(ATRAXA6.map((a) => [a, "You"] as const), BLOCKS4);
-    const plan = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", engine: { draw: true } }));
+    const plan = planTable(tableInputOf(m, { viewport: VP, combatForm: "table", engine: {} }));
     expect(plan.gathering!.form).toBe("table");
     for (const a of ATRAXA6) expect(unitOf(plan, a).fighting).toBeFalsy();
   });

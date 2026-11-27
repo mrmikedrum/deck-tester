@@ -8,15 +8,12 @@ owns how everything looks; this page says where things are, which cards form a u
 facts each unit carries, and when something hidden matters.
 
 Code: `game/client/src/layout/arrange/` (paths below are under `game/client/src/` unless they say otherwise). Read with
-[the client's architecture](game-client-architecture.md) ("layout"), [the design goals](../game/tools/look/intent.md),
-and today's layout code it replaces in steps (`layout/seat.ts`, `layout/plan.ts`, `layout/seat/{fit,fold,geometry,mat}.ts`,
-`layout/focus.ts`, `layout/combat.ts`, `play/reach.ts`, `scene/stage/pick.ts`, `model/predicates.ts`).
+[the client's architecture](game-client-architecture.md) ("layout") and [the design goals](../game/tools/look/intent.md).
+The old layout (`mat`, `fit`, `fold`, the lean-in and the sift) is gone (Round 10); §6.3 says what replaced what.
 
-**Status:** the first slice's steps 1 to 6 are built (§6.1), and steps 8 to 10 (§6.2): every opponent's leaf and my
-side are drawn, tapped and audited through the engine on the no-middle template (two to four seats), the mats part for
-duels and the stack set aside, a fight is gathered as the clash or as duels (the combat part of step 11, brought forward), and
-moments light the table in place. The focuses are still the old layout's. What building changed from this design, and
-why, is in "Round 3" to "Round 9" below; where they differ, the code and those rounds win.
+**Status:** built, every step (§6.1, §6.2): every seat, the gathering, moments, a pile opened and a seat's spread run on
+the engine, and the old layout is deleted. What building changed from this design, and why, is in "Round 3" to "Round
+10" below; where they differ, the code and those rounds win.
 
 ## Changes after review
 
@@ -176,6 +173,19 @@ The owner's first real game: mats grew, shrank and shifted as cards were played;
 | **Flights and faces** | A card joining a pile comes in from the side it came from, never past where it rests (it came from the table's middle). A face's side margins are equal (27 px each, the content's width kept). | The first card played overshot my row and came back; the face's blank left tenth beside a narrower right margin read as a fat left edge. |
 | **Review** | A lying band laid as it lay last plan: each unit back in its remembered row and interval, where it lay, before newcomers fill holes (a departure moved a work from the second row to the first). The stack set aside is placed after the gathering, beside or above the duels' row, and a card that still meets the row spills. A portrait's drag acts under the stop it was pressed on; each glows only when a play casts that card; each shows at least 44 px. | The code review of the first build. |
 | **Not built** | A standing band still takes its rows before the lands' break (a second standing row of one work keeps lands sharing the back row); rocks share my mana row with my lands. | Ordering's, not the break stage's. |
+
+### Round 10: the focuses and the cutover (steps 11 and 12, Nov 26)
+
+| What | Built | Why |
+|---|---|---|
+| **One sheet for both focuses** (`sheet.ts`) | A pile opened (any seat's, a graveyard or exile, the clash's "more") and a seat's spread are the same container: cards square to the camera at `S_table`, carried nearer by step (2 to 1.2 times a table card where they came from: my field line for mine, a leaf's front for anyone else's): every tier and break run on rows of their own, else every tier, else as many tier breaks then run breaks as still fit at 1.2 (the break stage's rule), else pages at 1.2. A caption stands over its tier's first card; a tier carried onto the next row (wrapped, or a break run inside it) starts under its caption, or, where there is no room to, says it again at that row's start, so it never reads as the tier before (a new page says it again too). The policy stage is `policies/sheet.ts`. Not `arrange` itself, whose solver is built for rest containers. | The spread's tiers and a pile's single cards are one layout question; one size and no shrinking hold by construction. |
+| **The spread is a sheet, not the leaf lifted** | Over the shade, like a pile, with captions and counts as chrome; the table does not move (the lean-in slid the page across aside). At turn 15 two or three tiers start their own rows and the rest share one, rather than paging; the lands' tier says Mana when rocks lie in it. | A turn-15 leaf has 30 to 40 units: tiers each on their own rows paged three times. |
+| **The hand goes away under a sheet** | The spread too (the sift already did); the prompt stays and rows beside it are shorter. | The room a turn-15 spread needs on one page. |
+| **Drawn over the table** | Sheet cards skip the depth test (their slab is convex, its back faces culled). | At step 1.2 a sheet's depth can fall behind the table at the screen's foot. |
+| **Arranged on demand** | `sheetOf(model, plan, focus, page)`, kept per plan; the plan key does not take the focus or page (the checklist's), and the plan carries the decision the sheet reads (`TablePlan.decision`). Opening the first sheet switches the chrome to `sifting` (the hand away), which is in the plan key: the table is planned once more then, every place the same (a hidden hand keeps its reservation). | Paging or switching sheets never replans the table. |
+| **Picking is the engine's targets** | Each sheet card carries its target (region and members) to the scene, which moves the region with the card as drawn; a stack of copies is a group (`sheet:<top>`) that play is told of with the plan's groups, so its twins rule chooses among them. A block offers both its ends, so identical attackers stand apart while I choose. | A spread rebuilt its own pick quads, and a stack's tap sent its top: a blocker could be put on the wrong twin. |
+| **Never empty** | A spread with nothing to show is not offered and closes when its board empties; its page is kept to its pages as a pile's is. A seat the engine cannot arrange is one entry pile whose group reaches every card, attachments included. | An empty spread left the hand away with nothing on screen. |
+| **Deleted** | `mat`, `fit`, `fold`, the seat-layout seam, the fold-harder rounds and last resort, the commander-beside-plaque and zone-pile fixtures and the scene's drawing of them (`ZoneView`, flights to a pile), `leanOf`, `siftOf`, the carried coordinates of the lean-in, the combat row's leftovers. | |
 
 ## 0. Shape of the thing
 
@@ -912,12 +922,10 @@ Each step keeps the old seat view for every consumer not yet moved, and passes t
 8. The side leaves; the template without a reserved middle and its poses (§5.3). Built (Round 6).
 9. My side (`mine`), with the band measured. Built (Round 7): my field on its line, my mana lying in front of it.
 10. Moments and acting on rest containers (light, in-place, the acting rank). Built (Round 8).
-11. Focus containers one at a time: the gathering (`clash`, replacing `combatRow`; built with combat), the spread
-    (replacing `leanOf`) and a pile of mine (replacing `siftOf` for my permanents, paging kept). The hand and the plate
-    focus stay chrome (Scope, Nov 26).
-12. Delete `mat`, `fit`, `fold`, `leanOf`, `combatRow` and the `plan` seat view; the architecture doc's layout section
-    takes this contract, and intent.md's "visible count" limit follows whatever the owner settles on the designer's
-    proposal (a pile that plainly holds more, opens in one tap, and cues what matters).
+11. Focus containers: the gathering (`clash`; built with combat), the spread and a pile. Built (Round 10). The hand and
+    the plate focus stay chrome (Scope, Nov 26).
+12. Delete the old layout; the architecture doc's layout section describes the engine. Built (Round 10). intent.md's
+    "visible count" limit still follows the owner's answer to the designer's proposal.
 
 **Cutover checklist** (every step): fixtures and their pick priority; focus dismissal and restoration; the stack at
 rest, its spill, ability entries and `hits.up`; aim lanes from the right pieces; home-to-gathering transfers and

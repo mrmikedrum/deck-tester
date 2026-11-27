@@ -1,18 +1,15 @@
 // Poses from layout's placements: where a piece's middle is and how it is turned, by the same posture rules layout
 // measures its quads with (layout/shape.ts `frameOf`), so what the scene draws at rest is what hit testing reaches.
 // Ported from old h.js `layout` (standees lean back by the camera's pitch, a tapped one further; flat cards are propped
-// up a little), `zoneLean` (a pile propped from its near edge), `buildStack` (cards facing the camera) and `restOf`/
-// `onPile` (where a card lands on a pile). Pure.
+// up a little), `buildStack` (cards facing the camera) and `restOf`. Pure.
 import { STACK_POSE, STAND_OFF, TILT } from "../../layout";
 import type { Placement, Point, Posture, Projector, Quad, Rect, V3 } from "../../layout";
-import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { CH, CW, TAP_LEAN, TH } from "../../layout/geometry";
 import type { ScreenPose } from "../../play";
-import { materials } from "../../theme";
 import { PATH, add, scaled, v3 } from "./motion";
 import type { Pose } from "./types";
 
 // Layout's posture rules (layout/shape.ts `TILT`, `STAND_OFF`), shared so what is drawn is what a tap reaches.
-const { slab } = materials;
 /** A stack card's foot stands at least this far over the table. */
 const STACK_CLEAR = 0.02;
 /**
@@ -21,8 +18,6 @@ const STACK_CLEAR = 0.02;
  */
 export const PAGE_Y = 0.0004;
 export const PAGE_TOP = 0.0009;
-/** A zone pile's block under its top card: its height by its count (a library of 67 the tallest thing on its leaf). */
-export const pileHeight = (n: number): number => Math.min(slab.zoneCap, Math.max(0, n - 1) * slab.zoneStep);
 
 /** The pose of a card standing in `posture` with its foot at `pos`: its middle half a card up its face. */
 export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
@@ -49,22 +44,6 @@ export function unitPose(proj: Projector, p: Placement, tapped: boolean): Pose {
   const up = v3(0, Math.sin(delta), -Math.cos(delta));
   // (It rests on the page: its middle half its thickness over the page's top, a hair over where layout measured its face.)
   return { pos: add(add(p.pos, v3(0, PAGE_TOP + 0.5 * TH * s, 0)), scaled(up, 0.5 * s)), rx: delta - Math.PI / 2, ry: 0, s };
-}
-
-/** A zone pile: the box sits at its placement; the view props an opponent's up from its near edge. */
-export function zonePose(p: Placement): Pose {
-  return { pos: v3(p.pos.x, p.pos.y + PAGE_TOP, p.pos.z), rx: 0, ry: 0, s: p.scale };
-}
-
-/** Where a card lands on a pile of `n` cards (h.js `onPile`): on top, at the pile's size, propped as the pile is. */
-export function onPile(pile: Pose, n: number, mine: boolean): Pose {
-  const lean = mine ? 0 : PILE_LEAN,
-    s = pile.s;
-  const h = s * (pileHeight(n + 1) + slab.depth),
-    half = (s * CH) / 2,
-    c = Math.cos(lean),
-    sn = Math.sin(lean);
-  return { pos: add(pile.pos, v3(0, h * c + half * sn, half * (1 - c) + h * sn)), rx: -Math.PI / 2 + lean, ry: 0, s };
 }
 
 /** The plaque stands at its placement, a little off the page; the view leans it back by the camera's pitch. */

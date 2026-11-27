@@ -25,7 +25,7 @@ import {
   stackPose,
 } from "../../src/scene/stage";
 import { STACK_POSE } from "../../src/layout";
-import { CH } from "../../src/layout/seat/geometry";
+import { CH } from "../../src/layout/geometry";
 import { corpusSteps } from "./corpus";
 import type { FlightPlan, Sample, ScheduleInput } from "../../src/scene/stage";
 
@@ -37,7 +37,7 @@ function flight(over: Partial<FlightPlan> & Pick<FlightPlan, "key">): FlightPlan
     card: id(1),
     departure: true,
     origin: { from: "piece", piece: "c1" },
-    dest: { to: "pile", piece: "zone:graveyard:A" },
+    dest: { to: "piece", piece: "c9" },
     face: null,
     token: false,
     motion: "depart",

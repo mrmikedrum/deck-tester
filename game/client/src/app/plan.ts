@@ -13,9 +13,9 @@ import type { AppState } from "./state";
 import { blockedOf } from "./clash";
 import { stackKeyOf, tableTop } from "./focus";
 
-/** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sift too. */
+/** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sheet too (a pile, a seat's spread). */
 export function chromeMode(s: AppState, cues: BoardCues): ChromeMode {
-  if (s.focus.layers.some((f) => f.layer === "sift")) return "sifting";
+  if (s.focus.layers.some((f) => f.layer === "sift" || f.layer === "lean")) return "sifting";
   return cues.handAway ? "mulligan" : "normal";
 }
 
@@ -49,6 +49,8 @@ export function decisionFactsOf(d: Decision | null, cues: BoardCues): DecisionFa
   for (const r of ("refs" in d ? (d.refs as readonly unknown[]) : []) ?? []) {
     const ref = r as { readonly card?: CardId | null; readonly blocks?: CardId };
     if (ref.card != null) options.add(ref.card);
+    // (a block names both ends: the attacker is as much a choice as the blocker, so twins of it stand apart)
+    if (ref.blocks != null) options.add(ref.blocks);
   }
   const draft = d.kind === "attack" ? (cues.combat?.attacks.map((a) => a.attacker) ?? []) : [];
   return { kind: d.kind, options: [...options].sort((a, b) => a - b), draft };
@@ -68,7 +70,7 @@ const asideOf = (s: AppState): boolean => s.focus.aside.some((e) => e.layer === 
 /**
  * The stack held up as the table's focus: its layer is the topmost table layer, or a new item is about to bring it up
  * (focus.ts `sync` opens it for every new stack, after the plan is made). Held, it floats over the table and the mats
- * do not part for it; set aside (or under a sift or a lean-in) it rests in the middle at table size, and they do.
+ * do not part for it; set aside (or under a sheet: a sift, a spread) it rests in the middle at table size, and they do.
  */
 export function stackHeldOf(s: AppState, model: TableModel): boolean {
   if (!model.stack.length) return false;
@@ -113,7 +115,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         ...(s.focus.combat?.order.length ? { order: s.focus.combat.order } : {}),
         // Every opponent's leaf is the arrangement engine's (docs/game-arrangement-engine.md, steps 6 and 8): its
         // memory rides in the layout memory like any seat's.
-        engine: { draw: true, decision },
+        engine: { decision },
         stackHeld: stackHeldOf(s, model),
       }),
     );

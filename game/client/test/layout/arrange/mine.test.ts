@@ -30,6 +30,8 @@ const VIEWPORTS: readonly Viewport[] = [
   { w: 1366, h: 1024 },
 ];
 const IPAD = VIEWPORTS[0]!;
+/** Where the old layout (`mat`, deleted) stood my field row's tops on the iPad, design px: the engine's stand no lower. */
+const MAT_FIELD_TOP = 416.6;
 const rawDesign = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../../../tests/fixtures/boards/design-pass.json"), "utf8")) as { stages: { turn: number; envelope: { view: Record<string, unknown> } }[]; catalog: unknown };
 const design = designModels(rawDesign as never);
 
@@ -383,7 +385,7 @@ describe("my side's policy (`mine`)", () => {
 });
 
 describe("my side drawn on the table", () => {
-  const planned = (turn: number, vp: Viewport): TablePlan => planTable(tableInputOf(design.get(turn)!, { viewport: vp, engine: { draw: true } }));
+  const planned = (turn: number, vp: Viewport): TablePlan => planTable(tableInputOf(design.get(turn)!, { viewport: vp, engine: {} }));
 
   it("the design pass's tables: my seat plan is the engine's, every card held, every unit reached in its place and by its face", () => {
     for (const vp of VIEWPORTS)
@@ -392,8 +394,7 @@ describe("my side drawn on the table", () => {
         const seat = m.viewer.perspective, sp = plan.seats.get(seat)!;
         expect(sp.memory.paradigm, label).toBe(ARRANGED);
         // my graveyard, exile and waiting commander are the nameplate's, not the table's
-        expect(sp.fixtures.zones, label).toEqual([]);
-        expect(sp.fixtures.commander, label).toBeUndefined();
+        expect(plan.hits.groups.filter((g) => g.seat === seat && g.kind !== "plate" && g.members.some((id) => m.cards.get(id)?.zone !== "battlefield")), label).toEqual([]);
         expect(plan.mine!.result!.fit.report.violations, label).toEqual([]);
         expect(plan.violations, label).toEqual([]);
         const mineIds = boards(m).find((b) => b.seat === seat)!.board.cards.map((c) => c.id);
@@ -420,7 +421,7 @@ describe("my side drawn on the table", () => {
       const islands = st.envelope.view.players.find((p) => p.name === "You")!.battlefield.filter((c) => c.name === "Island") as { id?: number; tapped?: boolean }[];
       for (const c of islands) c.tapped = false;
       if (tapLast) islands.reduce((a, b) => ((a.id ?? 0) > (b.id ?? 0) ? a : b)).tapped = true;
-      return planTable(tableInputOf(designModels({ stages: [st], catalog: rawDesign.catalog } as never).get(15)!, { viewport: IPAD, engine: { draw: true } }));
+      return planTable(tableInputOf(designModels({ stages: [st], catalog: rawDesign.catalog } as never).get(15)!, { viewport: IPAD, engine: {} }));
     };
     const open = plan(false), one = plan(true);
     const well = (p: TablePlan) => p.hits.groups.find((g) => g.kind === "well" && g.members.length === 8)!;
@@ -428,22 +429,23 @@ describe("my side drawn on the table", () => {
     expect(one.rev).not.toBe(open.rev);
   });
 
-  it("no middle held back at rest: my field stands no lower than mat's did; the parting slides it toward me", () => {
+  it("no middle held back at rest: my field stands no lower than the old layout's did; the parting slides it toward me", () => {
     for (const turn of [9, 15]) {
       const m = design.get(turn)!, u = designUnit(IPAD);
-      const engine = planned(turn, IPAD), mat = planTable(tableInputOf(m, { viewport: IPAD, engine: { draw: true, mine: false } }));
-      expect(engine.fieldTop, `turn ${turn}`).toBeLessThanOrEqual(mat.fieldTop + 2 * u);
+      // (the old layout's field row's tops stood 416.6 design px down at turns 9 and 15)
+      const engine = planned(turn, IPAD);
+      expect(engine.fieldTop / u, `turn ${turn}`).toBeLessThanOrEqual(MAT_FIELD_TOP + 2);
       expect(engine.part).toBe(0);
       // the stack set aside parts the mats: my row slides toward me as the leaves slide away
       const raw = structuredClone(rawDesign.stages.find((x) => x.turn === turn)!);
       raw.envelope.view = { ...raw.envelope.view, stack: [{ id: 9001, source: { id: 9001, name: "Swords to Plowshares", owner: "Dack", controller: "Dack", type: "Instant", zone: "stack" }, controller: "Dack", spell: true, text: "Swords to Plowshares", targets: [] }] };
-      const parted = planTable(tableInputOf(designModels({ stages: [raw], catalog: rawDesign.catalog }).get(turn)!, { viewport: IPAD, engine: { draw: true } }));
+      const parted = planTable(tableInputOf(designModels({ stages: [raw], catalog: rawDesign.catalog }).get(turn)!, { viewport: IPAD, engine: {} }));
       expect(parted.part).toBeGreaterThan(0);
       expect(parted.fieldTop, `turn ${turn} parted`).toBeGreaterThan(engine.fieldTop + 4 * u);
       expect(parted.violations, `turn ${turn} parted`).toEqual([]);
       // nothing of mine reaches under the hand or the prompt
       const reserve = engine.reserve.items.map((i) => i.rect);
-      for (const g of engine.hits.groups.filter((x) => x.seat === m.viewer.perspective && x.kind !== "plate" && x.kind !== "zone")) {
+      for (const g of engine.hits.groups.filter((x) => x.seat === m.viewer.perspective && x.kind !== "plate")) {
         const b = bounds(g.quad);
         for (const r of reserve) expect(b.r <= r.left || b.l >= r.right || b.b <= r.top || b.t >= r.bottom, `${turn} ${g.id}`).toBe(true);
       }
@@ -455,7 +457,7 @@ describe("goldens: my side", () => {
   it("the design pass's turns 4, 9 and 15, a crowded side and a creature-light one", async () => {
     const parts: string[] = [];
     for (const turn of [4, 9, 15]) {
-      const plan = planTable(tableInputOf(design.get(turn)!, { viewport: IPAD, engine: { draw: true } }));
+      const plan = planTable(tableInputOf(design.get(turn)!, { viewport: IPAD, engine: {} }));
       const l = plan.mine!;
       parts.push(`== mine, turn ${turn} (${l.input!.cards.length} permanents)\n${digest(l.result!.fit, l.input!.cards, l.result!.overflow)}`);
     }

@@ -33,7 +33,7 @@ export interface TableInputOptions {
   readonly blocked?: ReadonlySet<CardId>;
   /** The clash's attackers in the order it first stood them (the app keeps it for the combat). */
   readonly order?: readonly CardId[];
-  /** Lay every opponent's leaf out with the arrangement engine (`TablePlan.leaves`); drawn when `draw` (the app). */
+  /** What the arrangement engine is told beyond the model: the decision in hand, memory, a forced policy. */
   readonly engine?: EngineOptions;
   /** The stack is held up as the table's focus (`TableInput.stackHeld`): the mats do not part for it. */
   readonly stackHeld?: boolean;
@@ -69,8 +69,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
   // The near place is the camera's: the perspective's seat, whether or not it is still in the game (out, its board is
   // empty and its plate says so). The other places are the opponents still in the game: one out gives its room back
   // (its plate stays, a chip). With none left the game is over and the table is the near place alone.
-  // (`mat` alone, as tests and the bench plan it, keeps every seat in its four-seat template.)
-  const seats = boards(model).filter((b, i) => i === 0 || !o.engine || !model.seat(b.seat)?.out);
+  const seats = boards(model).filter((b, i) => i === 0 || !model.seat(b.seat)?.out);
   return {
     viewport: o.viewport,
     ...(o.safe ? { safe: o.safe } : {}),
@@ -86,7 +85,7 @@ export function tableInputOf(model: TableModel, o: TableInputOptions): TableInpu
     // Forge's verdict on each attacker (it holds when the blockers leave), and any the app adds.
     ...(blocked.size ? { blocked } : {}),
     ...(o.order?.length ? { order: o.order } : {}),
-    ...(o.engine && seats.length <= 4 ? { engine: engineInputOf(model, seats, fighting, aimed, o.settling ?? false, o.engine, o.memory ?? null) } : {}),
+    engine: engineInputOf(model, seats, fighting, aimed, o.settling ?? false, o.engine ?? {}, o.memory ?? null),
   };
 }
 
@@ -97,6 +96,5 @@ function engineInputOf(model: TableModel, seats: TableInput["seats"], involved: 
     const m = o.memory?.has(seat) ? (o.memory.get(seat) ?? null) : arrangedMemory(memory?.get(seat));
     return leafInputOf(model, seat, involved, settling, { ...o, memory: m }, board, aimed);
   };
-  // My side too, unless asked to keep `mat`'s (the comparisons and the bench's "mat alone").
-  return { leaves: seats.slice(1).map(inputOf), ...(seats[0] && o.mine !== false ? { mine: inputOf(seats[0]) } : {}), draw: !!o.draw };
+  return { leaves: seats.slice(1).map(inputOf), ...(seats[0] ? { mine: inputOf(seats[0]) } : {}) };
 }

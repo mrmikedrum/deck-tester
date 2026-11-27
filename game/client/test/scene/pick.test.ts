@@ -53,8 +53,9 @@ describe("picking what was drawn", () => {
           for (const g of step.plan.hits.groups) {
             const d = view.drawn.get(g.id);
             if (!d?.pickable || g.kind === "plate") continue;
-            const q = movedQuad(step.plan.projector, g.quad, d);
-            const c = centre(q), home = centre(g.quad);
+            // (a tap on its face as drawn: a face is reached before any wider place around another)
+            const q = movedQuad(step.plan.projector, g.face ?? g.quad, d);
+            const c = centre(q), home = centre(g.face ?? g.quad);
             if (Math.hypot(c.x - home.x, c.y - home.y) < 40) continue;
             const got = pickDrawn(step.plan, view.drawn, c);
             // Where it is seen, it (or a group drawn over it) is reached; at rest, layout would have reached something else.

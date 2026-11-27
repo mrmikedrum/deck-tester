@@ -130,6 +130,7 @@ async function main(): Promise<void> {
           involved: new Set(),
           stack: [],
           seats: fx.boards,
+          engine: fx.engine,
         }),
       face: (u, s) => {
         const e = fx.entries.get(u.top);

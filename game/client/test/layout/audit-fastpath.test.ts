@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { planTable } from "../../src/layout/plan";
 import { GRID_ONLY } from "../../src/layout/shape";
 import type { TableInput } from "../../src/layout/plan";
-import { benchInputs, planMatOnly } from "../../src/scene/workbench/bench-inputs";
+import { benchInputs, planFrame } from "../../src/scene/workbench/bench-inputs";
 import { SUPPORTED, stress } from "./boards";
 
 // The layout audit tries a geometric square before its cell grid (shape.ts): a square it finds is one the grid finds
@@ -30,9 +30,9 @@ describe("the audit's geometric first pass changes no plan", () => {
     for (const input of benchInputs(design))
       for (const f of input.frames.slice(0, 5)) {
         GRID_ONLY.on = true;
-        const grid = planMatOnly(f, null);
+        const grid = planFrame(f, null);
         GRID_ONLY.on = false;
-        const fast = planMatOnly(f, null);
+        const fast = planFrame(f, null);
         expect(fast.rev, input.name).toBe(grid.rev);
         expect(fast.violations, input.name).toEqual(grid.violations);
       }

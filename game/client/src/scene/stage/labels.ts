@@ -5,15 +5,14 @@
 // (smaller to 11 px, then its qualifiers dropped, then its name ellipsized to five letters; the count never), then slid
 // along its card's top edge by up to a quarter of a card; failing all, it gives way to the count chip on the card's
 // face, which cannot collide. Pure: positions are the plan's quads at rest.
-import { TITLE_PX } from "../../layout";
 import type { HitGroup, TablePlan } from "../../layout";
 import type { SeatId } from "../../model";
 
-/** Text sizes (CSS px): mine, theirs, the floor; and a sign's height over its text's (the painted sign's canvas). Layout's,
- * which keeps the room above a pile for its title. */
-export const LABEL_PX = TITLE_PX;
+/** Text sizes (CSS px, like a finger: they never scale with the design unit): mine, theirs, the floor; a sign's height
+ * and padding over its text's (the painted sign's canvas); how far it overlaps its card's top edge. */
+export const LABEL_PX = { mine: 13, theirs: 12, floor: 11, tall: 96 / 60, pad: 52 / 60, overlap: 3 } as const;
 /** A label may overlap its own card's top edge by this much, and meet anything else by no more than this (px). */
-const OVERLAP = TITLE_PX.overlap, MEET = 2;
+const OVERLAP = LABEL_PX.overlap, MEET = 2;
 /** Between a label and the next unit in its row (px). */
 const GAP = 6;
 
@@ -79,7 +78,7 @@ export const labelText = (name: string, count: number, tap: string | null): stri
 /** Places every ask's label (in order: mine first, then by seat), or leaves it to the count chip (absent from the map). */
 export function placeLabels(plan: TablePlan, asks: readonly LabelAsk[], measure: Measure = estimate): Map<string, PlacedLabel> {
   const groups = new Map(plan.hits.groups.map((g) => [g.id, g]));
-  const units = plan.hits.groups.filter((g) => g.kind !== "plate" && g.kind !== "zone" && g.kind !== "stack");
+  const units = plan.hits.groups.filter((g) => g.kind !== "plate" && g.kind !== "stack");
   const obstacles: { id: string; box: Box }[] = units.flatMap((g) => strips(drawn(g)).map((box) => ({ id: g.id, box })));
   const placed = new Map<string, PlacedLabel>();
   const order = [...asks].sort((a, b) => Number(b.mine) - Number(a.mine));

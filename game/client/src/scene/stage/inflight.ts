@@ -15,7 +15,7 @@ import type { PathSpec } from "./animator";
 import { plain, sampleOf } from "./actors";
 import type { Actors } from "./actors";
 import { DURATION, FLIGHT_LIMIT, PATH, v3 } from "./motion";
-import { atPlate, handPose, onPile, screenPose } from "./poses";
+import { atPlate, handPose, screenPose } from "./poses";
 import { LOOK } from "./types";
 import type { Description, FlightPlan, FlightSnapshot, GhostView, MomentId, Sample } from "./types";
 
@@ -131,7 +131,7 @@ export class Flights {
     const out = new Map<string, Set<CardId>>();
     for (const f of this.flights.values()) {
       const d = f.plan.dest;
-      if (f.plan.card === null || (d.to !== "pile" && d.to !== "piece")) continue;
+      if (f.plan.card === null || (d.to !== "piece")) continue;
       const s = out.get(d.piece);
       if (s) s.add(f.plan.card);
       else out.set(d.piece, new Set([f.plan.card]));
@@ -229,21 +229,20 @@ export class Flights {
     return this.board.plan()!.projector;
   }
 
-  /** Where a flight sets off: the piece it left as it is now (the top of a zone pile), the hand, a plate, its maker. */
+  /** Where a flight sets off: the piece it left as it is now, the hand, a plate, its maker. */
   private originSample(f: FlightState): Sample {
     const o = f.plan.origin;
     const actors = this.board.actors;
     const desc = this.board.desc();
     const destScale = () => {
       const d = f.plan.dest;
-      const p = d.to === "pile" || d.to === "piece" ? desc?.pieces.get(d.piece) : undefined;
+      const p = d.to === "piece" ? desc?.pieces.get(d.piece) : undefined;
       return p?.pose.s ?? 1;
     };
     if (o.from === "piece") {
       const a = actors.get(o.piece);
       const base = a?.actor.now ?? (desc?.pieces.get(o.piece) ? sampleOf(desc.pieces.get(o.piece)!) : null);
       if (base) {
-        if (a?.piece.kind === "zone" && a.piece.draw.t === "zone") return plain({ ...base, ...onPile(base, Math.max(0, a.shown.length - 1), a.piece.draw.mine) });
         if (a?.piece.kind === "plate") return plain({ ...base, ...atPlate(base, PATH.entrySize) });
         return plain(base);
       }
@@ -271,11 +270,7 @@ export class Flights {
   private destSample(f: FlightState): Sample {
     const d = f.plan.dest;
     const actors = this.board.actors;
-    if (d.to === "pile") {
-      const a = actors.get(d.piece);
-      if (a && a.piece.draw.t === "zone") return plain({ ...a.actor.now, ...onPile(a.actor.now, a.shown.length, a.piece.draw.mine) });
-    }
-    if (d.to === "pile" || d.to === "piece") {
+    if (d.to === "piece") {
       const a = actors.get(d.piece);
       if (a?.piece.kind === "plate") return plain({ ...a.actor.now, ...atPlate(a.actor.now, PATH.plateSize) });
       if (a) return plain(a.actor.now);
@@ -291,7 +286,6 @@ export class Flights {
   }
 
   private pathOf(f: FlightState, from: Sample): PathSpec {
-    const d = f.plan.dest;
     const proj = this.proj();
     const actors = this.board.actors;
     switch (f.plan.motion) {
@@ -327,7 +321,6 @@ export class Flights {
         return { k: "flight", lift: 0, rise: 0, arc: PATH.arc, ease: f.big ? "cubic" : "out3", settle: f.big ? PATH.settleBig : 1, shrinkFrom: f.big ? 0 : PATH.shrinkFrom };
       case "depart":
       case "return": {
-        const pile = d.to === "pile";
         const o = f.plan.origin.from === "piece" ? actors.get(f.plan.origin.piece) : undefined;
         const standee = o?.piece.draw.t === "unit" && o.piece.draw.posture === "stand";
         const rise = f.lift > 0 && (o?.shown.length ?? 0) > 1 ? PATH.rise + PATH.pileRise * from.s : PATH.rise;
@@ -335,10 +328,10 @@ export class Flights {
           k: "flight",
           lift: f.lift,
           rise,
-          arc: standee && !pile ? PATH.standeeArc * from.s : PATH.arc,
+          arc: standee ? PATH.standeeArc * from.s : PATH.arc,
           ease: "out2",
-          settle: pile ? PATH.settlePile : 1,
-          shrinkFrom: pile ? 0 : PATH.shrinkFrom,
+          settle: 1,
+          shrinkFrom: PATH.shrinkFrom,
         };
       }
     }

@@ -2,9 +2,8 @@
 // layer still decide how the table looks; hover lifts the hit group under a mouse pointer; reduced motion shortens even
 // a look's change.
 import { describe as group, expect, it } from "vitest";
-import { leanOf } from "../../src/layout";
-import { leanedUnitAt } from "../../src/layout/focus";
-import { bounds, unitShape } from "../../src/layout/shape";
+import { sheetOf } from "../../src/layout";
+import { bounds } from "../../src/layout/shape";
 import { DURATION, NO_FOCUS, SCRIM, Stage, describe, paced, poseQuad } from "../../src/scene/stage";
 import type { FocusTop } from "../../src/scene/stage";
 import type { BoardCues } from "../../src/play";
@@ -27,7 +26,7 @@ group("focus below the top", () => {
     expect(scrim(top("sheet"))).toBe(0);
     expect(scrim(NO_FOCUS)).toBe(0);
   });
-  it("the topmost table layer decides (a lean-in over the stack)", () => {
+  it("the topmost table layer decides (a seat's spread over the stack)", () => {
     const seat = [...stacked.plan.seats.keys()].find((s) => s !== stacked.model.viewer.perspective)!;
     const lean = { layer: "lean" as const, seat, group: null };
     const a = describe({ model: stacked.model, plan: stacked.plan, cues: NO_CUES, focus: { ...NO_FOCUS, layer: "lean", seat }, hover: null });
@@ -87,28 +86,24 @@ group("reduced motion", () => {
   });
 });
 
-group("leaning in, as drawn", () => {
-  // The lean-in's solver measures its grown cards on quads it rebuilds (layout focus.test.ts); this measures the poses the
-  // stage hands the view: every unit on a leaned side seat is drawn where the solver put it, grown and carried.
-  const step = steps.reduce((a, b) => (sideUnits(b) > sideUnits(a) ? b : a));
-  function sideUnits(s: (typeof steps)[number]): number {
-    const seats = [...s.plan.seats.keys()];
-    // (a table of four still: a seat out of the game gives its side back)
-    if (seats.length < 4) return -1;
-    return [1, 3].reduce((n, i) => n + (s.plan.seats.get(seats[i]!)?.units.length ?? 0), 0);
-  }
+group("a sheet, as drawn", () => {
+  // The engine's sheet (layout focus.test.ts, arrange/sheet.test.ts) as the stage hands it to the view: each card at the
+  // table's mesh size where the sheet put its face, and the table under it where the plan put it.
+  const step = steps.reduce((a, b) => (b.plan.seats.size > a.plan.seats.size || (b.plan.seats.size === a.plan.seats.size && b.plan.hits.groups.length > a.plan.hits.groups.length) ? b : a));
   const seats = [...step.plan.seats.keys()];
-  for (const i of [1, 3])
-    it(`seat ${i}: each card's corners are where the solver grew and carried it`, () => {
-      const seat = seats[i]!, l = leanOf(step.plan, seat)!, proj = step.plan.projector;
+  const rest = describe({ model: step.model, plan: step.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
+  for (const i of [1, 2, 3])
+    it(`seat ${i}'s spread: each card's corners are the sheet's, and nothing on the table moves`, () => {
+      const seat = seats[i]!, proj = step.plan.projector;
       const d = describe({ model: step.model, plan: step.plan, cues: NO_CUES, focus: { ...NO_FOCUS, layer: "lean", seat }, hover: null });
-      const units = step.plan.seats.get(seat)!.units;
-      expect(units.length).toBeGreaterThan(1);
-      for (const u of units) {
-        const p = d.pieces.get(u.id)!;
-        const drawn = bounds(poseQuad(proj, p.pose, -p.look.tap * (Math.PI / 2)));
-        const solved = bounds(unitShape(proj, seat, u, false, leanedUnitAt(proj, l, u, l.grow)).face);
-        for (const k of ["l", "r", "t", "b"] as const) expect(drawn[k], `${u.id} ${k}`).toBeCloseTo(solved[k], 0);
+      const sh = sheetOf(step.model, step.plan, { kind: "spread", seat })!;
+      expect(sh.places.length).toBeGreaterThan(0);
+      for (const pl of sh.places) {
+        const p = d.pieces.get(`sift:${pl.top}`)!;
+        expect(p.pose.s).toBe(sh.scale);
+        const drawn = bounds(poseQuad(proj, p.pose, pl.turn === "notch" ? -Math.PI / 12 : 0)), solved = bounds(pl.quad);
+        for (const k of ["l", "r", "t", "b"] as const) expect(drawn[k], `${pl.top} ${k}`).toBeCloseTo(solved[k], 0);
       }
+      for (const [id, p] of rest.pieces) expect(d.pieces.get(id)?.pose, id).toEqual(p.pose);
     });
 });

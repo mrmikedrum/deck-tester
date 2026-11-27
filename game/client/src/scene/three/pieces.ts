@@ -1,8 +1,8 @@
 // The stage's pieces as three.js objects: a unit (its top card, the copies under it, its title sign and chips; a standee
 // in its ash on its shadow, Auras and Equipment peeking out from behind it; a well of its mana's light under its signed
-// lands), a zone pile (a box of cards with the top one face up and its sign), a plate's place, a stack card (sleeved in its
+// lands), a plate's place, a stack card (sleeved in its
 // owner's colour on its drop shadow, its mana crackling off its rim, igniting as it is cast) with its owner's tag, a
-// page (its turn's edge handed over in 300 ms), a sifted card and the sift's shade, and a flying card (a ghost) with its
+// page (its turn's edge handed over in 300 ms), a card on a sheet and the sheet's shade, and a flying card (a ghost) with its
 // flare. A mark brings its effect: embers under what you can act on, gilt under what you chose, the sigil under what is
 // in danger. Each is built for a `form`, patched for its `mods` and posed every frame from the stage's sample. Ported
 // from old h.js `cardMesh`, `standee`/`flat`/`well`, `zonePile`/`zoneLean`, `banner`, `buildStack`, `sift` and the floors;
@@ -19,12 +19,12 @@ import {
   RepeatWrapping,
 } from "three";
 import type { Material, Object3D, Texture } from "three";
-import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { CH, CW, TAP_LEAN, TH } from "../../layout/geometry";
 import { STAND_OFF } from "../../layout";
 import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";
 import type { ActorView, Draw, GhostView, Sample } from "../stage/types";
-import { pileHeight, siftRoll } from "../stage/poses";
+import { siftRoll } from "../stage/poses";
 import { LABEL_PX } from "../stage/labels";
 import { SIFT_SHADE } from "../stage/describe";
 import { createCard, setLook, setSignal } from "./cards";
@@ -56,10 +56,6 @@ const SIZE = {
   tag: { w: 0.62, h: 0.2, y: -CH / 2 - 0.02 },
   /** The plaque (static table: 3.2 x 0.8, standing 0.42 up). */
   plate: { w: 3.2, h: 0.8, y: 0.42 },
-  /** A zone pile's sign: above the pile, propped up 0.5 from flat, narrow enough for two side by side. */
-  zoneSignTilt: 0.5,
-  /** Exile's top card lies a little turned (`zoneLean`). */
-  exileTurn: 0.12,
   /** The flare where a card burns out or an ability is done: how big it grows. */
   flare: 1.6,
   /** A well's lands lie a little proud of the page, its pool under them; at most this many show (h.js `well`). */
@@ -674,97 +670,6 @@ function countChip(host: Host, sign: string, on: Object3D): Decal {
   return chip;
 }
 
-// ---- a zone pile ----------------------------------------------------------------------------------------------------
-
-class ZoneView implements PieceView {
-  readonly group = new Group();
-  private readonly lean = new Group();
-  private readonly body = new Group();
-  private readonly block: Block;
-  private readonly contact: Contact;
-  private top: CardPart | null = null;
-  private sign: Decal | null = null;
-  private chip: Decal | null = null;
-  private key = "";
-
-  constructor(
-    private readonly host: Host,
-    v: ActorView,
-  ) {
-    const d = v.draw as Extract<Draw, { t: "zone" }>;
-    // h.js `zoneLean`: propped from its near edge for an opponent, so its top card and count read across the table.
-    this.lean.position.z = CH / 2;
-    this.lean.rotation.x = d.mine ? 0 : PILE_LEAN;
-    this.body.position.z = -CH / 2;
-    this.lean.add(this.body);
-    this.group.add(this.lean);
-    // The cards under the top one: a block of stock, its height its count, its strata on its walls.
-    this.block = new Block(host, false);
-    this.contact = new Contact(host);
-    this.patch(v);
-  }
-
-  patch(v: ActorView): void {
-    const d = v.draw as Extract<Draw, { t: "zone" }>;
-    const n = v.shown;
-    const h = pileHeight(n);
-    if (!this.top) {
-      this.top = new CardPart(this.host, v.face);
-      this.top.obj.group.rotation.x = -Math.PI / 2;
-      if (d.zone === "exile") this.top.obj.group.rotation.z = SIZE.exileTurn;
-      this.body.add(this.top.obj.group);
-      this.top.obj.group.add(this.block.mesh, this.contact.mesh);
-    } else this.top.face(v.face);
-    // The top card's stock rests on the block, the block on the vellum.
-    this.top.obj.group.position.y = h + slab.depth - TH / 2;
-    this.block.set(Math.max(0, n - 1), h);
-    this.block.mesh.position.z = TH / 2 - slab.depth;
-    this.contact.mesh.position.z = TH / 2 - slab.depth - h - 0.002;
-    const word = d.zone === "graveyard" ? "Graveyard" : "Exile";
-    const key = `${word} ${n}|${d.colour}`;
-    if (key === this.key) return;
-    this.key = key;
-    const lease = this.host.painter.sign({ text: `${word} ${n}`, colour: d.colour, sub: null });
-    if (this.sign) this.sign.set(lease);
-    else {
-      this.sign = new Decal(lease, 1, 1, { renderOrder: 6 });
-      this.body.add(this.sign.mesh);
-    }
-    if (this.sign) labelled(this.sign, lease, [SIGN_FONT.text], LABEL_PX.theirs);
-    // Both signs take the size the longer word fits at, so their counts read alike (h.js: "Graveyard 00").
-    const ref = this.host.painter.sign({ text: "Graveyard 00", colour: d.colour, sub: null });
-    const w = lease.width * SIGN_U,
-      hh = lease.height * SIGN_U,
-      k = Math.min(1, (CW + 0.3) / Math.max(w, ref.width * SIGN_U));
-    ref.release();
-    this.sign.mesh.scale.set(w * k, hh * k, 1);
-    this.sign.mesh.rotation.x = -Math.PI / 2 + SIZE.zoneSignTilt;
-    this.sign.mesh.position.set(0, h + 0.06, d.mine ? 0.3 : 0.12);
-    this.chip?.mesh.removeFromParent();
-    this.chip?.dispose();
-    this.chip = countChip(this.host, `${n}`, this.top.obj.body);
-    this.chip.mesh.visible = false;
-    this.sign.mesh.userData[SIGN_ALTS] = { line: null, chip: this.chip.mesh } satisfies SignAlts;
-  }
-
-  front(): Mesh | null {
-    return this.top?.obj.front ?? null;
-  }
-
-  look(v: ActorView): void {
-    this.top?.look(0, v.sample.fade, v.mark, v.sample.glow, false, v.hl?.flat ?? 0);
-    this.sign?.tone(1 - 0.8 * v.sample.fade);
-  }
-
-  dispose(): void {
-    this.top?.dispose();
-    this.sign?.dispose();
-    this.chip?.dispose();
-    this.block.dispose();
-    this.contact.dispose();
-  }
-}
-
 // ---- a plate --------------------------------------------------------------------------------------------------------
 
 /** A plaque standing at its placement, leaned back by the camera's pitch, drawn over everything on the table. */
@@ -1166,8 +1071,6 @@ export function createPiece(env: PieceEnv, v: ActorView): PieceView | null {
   switch (v.draw.t) {
     case "unit":
       return new UnitView(env, v);
-    case "zone":
-      return new ZoneView(env.host, v);
     case "plate":
       return new PlateAnchor();
     case "stack":

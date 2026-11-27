@@ -5,10 +5,8 @@ import type { FloorRow } from "../../../src/layout/arrange/scale";
 import { momentKey, momentOf, stanceOf } from "../../../src/layout/arrange/moment";
 import { arrCardOf } from "../../../src/layout/arrange/card";
 import { pinhole } from "../../../src/layout/projector";
-import { makeGeo } from "../../../src/layout/seat/geometry";
 import { cardMiddle } from "../../../src/layout/shape";
 import { tableTemplate } from "../../../src/layout/template";
-import { reservations } from "../../../src/layout/reservations";
 import { designUnit } from "../../../src/layout/types";
 import type { CardId } from "../../../src/layout/types";
 import { seatId } from "../../../src/model";
@@ -24,11 +22,15 @@ const close = (a: { x: number; y: number; z: number }, b: { x: number; y: number
 };
 
 describe("frame geometry: on the level table, today's geometry (goldens)", () => {
-  const g = makeGeo(proj, reservations(VP, "normal"), 56);
   for (const slot of tpl.slots)
-    it(`${slot.position}: a point of the frame is mat's toWorld at the same depth from the fixed edge`, () => {
-      const f = slotFrame(slot);
-      for (const [a, depth] of [[0, 0], [-2.5, 1.3], [3.1, 4.4], [0.7, slot.d]] as const) close(onFrame(f, a, depth), g.toWorld(slot, a, slot.d / 2 - depth));
+    it(`${slot.position}: a point of the frame lies on its slot, from the fixed edge; the frame is orthonormal`, () => {
+      const f = slotFrame(slot), c = Math.cos(slot.yaw), sn = Math.sin(slot.yaw);
+      // the slot's own axes: across turned by its yaw, depth from its fixed edge toward the middle of the table
+      const toWorld = (a: number, depth: number) => {
+        const lv = slot.d / 2 - depth;
+        return { x: slot.x + a * c + lv * sn, y: 0, z: slot.z - a * sn + lv * c };
+      };
+      for (const [a, depth] of [[0, 0], [-2.5, 1.3], [3.1, 4.4], [0.7, slot.d]] as const) close(onFrame(f, a, depth), toWorld(a, depth));
       // orthonormal and right-handed
       const { across: x, away: y, normal: n } = f;
       expect(x.x * y.x + x.y * y.y + x.z * y.z).toBeCloseTo(0, 12);

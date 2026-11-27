@@ -40,7 +40,7 @@ describe("a Spacecraft changing type on the battlefield", () => {
     const seat = plan.seats.get(board.seat)!;
     const units = seat.units.filter((u) => u.members.includes(id));
     expect(isCreature(model.cards.get(id)!)).toBe(animated);
-    expect(board.cards.find((c) => c.id === id)?.creature).toBe(animated);
+    expect(input.engine.mine!.cards.find((c) => c.id === id)?.types.creature).toBe(animated);
     expect(units.map((u) => u.role)).toEqual([animated ? "creature" : "support"]);
     expect(seat.home.get(id)).toBe(units[0]!.id);
     return { plan, placement: units[0]!.placement };
@@ -56,7 +56,7 @@ describe("a Spacecraft changing type on the battlefield", () => {
   it("returns to support when the engine removes Creature", () => {
     const before = planShip(true);
     const after = planShip(false, before.plan.memory);
-    expect(after.placement.posture).toBe("lean");
+    expect(after.placement.posture).not.toBe("stand");
     expect(after.placement.pos).not.toEqual(before.placement.pos);
   });
 

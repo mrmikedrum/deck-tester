@@ -1,6 +1,6 @@
 // The chrome's other layers and fixtures: the opening hand over a dimmed table (live.js `mulligan`), the Game menu with
 // its new game form (live.js `menu`), the hand as a list (`handSheet`), and the fixtures always on the table's edge:
-// the Game button, the chips of set-aside layers and the back bar of a lean-in. (Looking at the hand is a focus: a tap
+// the Game button, the chips of set-aside layers, and a sheet's caption bar and words. (Looking at the hand is a focus: a tap
 // on one of my cards holds it up, chrome/inspector.tsx.) Pure projections; each
 // sends an act for play or an order for the app.
 import type { JSX } from "preact";
@@ -225,21 +225,9 @@ export function Chips({ chips, send }: { chips: readonly ChipView[]; send: Send 
   );
 }
 
-/** Leaning in on a seat: whose side this is, and the way back. */
-export function BackBar({ text, send }: { text: string; send: Send }): JSX.Element {
-  return (
-    <div class="l-back" data-focus="">
-      <span>{text}</span>
-      <button type="button" onClick={() => send({ t: "dismiss" })}>
-        Back to the table
-      </button>
-    </div>
-  );
-}
-
 /**
- * A sift up (h.js `sift`'s caption), just above its cards: what the pile is and how many, the way back; and, for a pile
- * bigger than a page, its pages.
+ * A sheet up (a pile, or a seat's spread), just above its cards: what it is and how many, the way back; and, for one
+ * bigger than a page, its pages. Its tiers' captions and its stacks' counts stand where its cards are.
  */
 export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Element {
   return (
@@ -261,7 +249,7 @@ export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Ele
           </button>
         </span>
       ) : null}
-      <Close label="Put back" send={send} />
+      <Close label={view.close} send={send} />
       {/* For the keyboard: each card fanned, as a tap on it (shown while one has focus). */}
       <span class="cards" role="group" aria-label="Cards">
         {view.cards.map((c) => (
@@ -270,6 +258,24 @@ export function SiftBar({ view, send }: { view: SiftView; send: Send }): JSX.Ele
           </button>
         ))}
       </span>
+    </div>
+  );
+}
+
+/** A sheet's words on the table: each tier's caption over its first card, each stack's count on its corner. */
+export function SheetMarks({ view }: { view: SiftView }): JSX.Element {
+  return (
+    <div class="l-marks" aria-hidden="true">
+      {view.captions.map((c) => (
+        <span key={`${c.text}@${c.x.toFixed(0)},${c.y.toFixed(0)}`} class="cap" style={`left:${c.x.toFixed(1)}px;top:${c.y.toFixed(1)}px`}>
+          {c.text}
+        </span>
+      ))}
+      {view.counts.map((c) => (
+        <span key={`${c.x.toFixed(0)},${c.y.toFixed(0)}`} class="count" style={`left:${c.x.toFixed(1)}px;top:${c.y.toFixed(1)}px`}>
+          {c.text}
+        </span>
+      ))}
     </div>
   );
 }

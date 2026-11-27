@@ -157,8 +157,7 @@
   .l-hand-view,
   .l-stackchip,
   .l-sift .pager button,
-  .l-pager button,
-  .l-back button {
+  .l-pager button {
     position: relative;
     min-height: 44px;
     padding: 0 calc(16 * var(--u));
@@ -196,8 +195,7 @@
   .l-hand-view:active,
   .l-stackchip:active,
   .l-sift .pager button:active:not(:disabled),
-  .l-pager button:active:not(:disabled),
-  .l-back button:active {
+  .l-pager button:active:not(:disabled) {
     transform: translateY(2px);
     box-shadow: var(--plaque-press), var(--btn-edge), var(--btn-pressed);
   }
@@ -977,24 +975,40 @@
     inset: auto;
     flex: none;
   }
-  .l-back {
-    pointer-events: auto;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 6px 6px 6px 18px;
-    border-radius: 4px 12px 4px 12px;
+  /* A sheet's words where its cards are: a tier's caption over its first card's top-left (24 CSS px a line, never
+     scaled down), a stack's count on its face's foot-right corner. */
+  .l-marks {
+    position: absolute;
+    inset: 0;
+    z-index: 29;
+    pointer-events: none;
+  }
+  .l-marks .cap {
+    position: absolute;
+    transform: translateY(-100%);
+    line-height: 24px;
+    font: italic 400 16px / 24px var(--serif);
+    letter-spacing: 0.04em;
+    color: var(--sheet);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+    white-space: nowrap;
+  }
+  .l-marks .count {
+    position: absolute;
+    transform: translate(calc(-100% - 4px), calc(-100% - 4px));
+    min-width: 28px;
+    padding: 1px 7px;
+    border-radius: 11px;
     background: var(--sheet);
     color: var(--ink);
     box-shadow: var(--sheet-shadow);
-    font: italic 400 calc(18 * var(--u)) var(--serif);
-    letter-spacing: 0.02em;
+    font: 600 15px / 20px var(--ui);
+    text-align: center;
   }
 
   .l-menu:focus-visible,
   .l-hand-view:focus-visible,
   .l-stackchip:focus-visible,
-  .l-back button:focus-visible,
   .tile:focus-visible {
     outline: 3px solid var(--sig-selected);
     outline-offset: 2px;

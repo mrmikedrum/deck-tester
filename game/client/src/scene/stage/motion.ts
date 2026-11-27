@@ -66,8 +66,7 @@ export const PATH = {
   /** A standing card arcs over its neighbours' tops (`CH * s0 * 0.7`); anything else a little (`0.6`). */
   standeeArc: 0.7,
   arc: 0.6,
-  /** It lies down and takes the pile's size in the first part of its way (`settle = pile ? .55 : big ? .8 : 1`). */
-  settlePile: 0.55,
+  /** A big card takes its size in the first part of its way (`settle = big ? .8 : 1`). */
   settleBig: 0.8,
   /** It starts shedding its size a quarter of the way in, unless it lands on a pile or was big (`smooth(.25, settle)`). */
   shrinkFrom: 0.25,
@@ -110,15 +109,12 @@ export const PATH = {
 
 /** How the table dims (h.js `targets`): out of focus is dimmer and greyer, never dark. */
 export const DIM = {
-  /** Another seat while I lean in on one (`0.55`); my own things then (`0.45`). */
-  leanOther: 0.55,
-  leanMine: 0.45,
   /** The others' things on another player's turn (`soft`: `0.4`). */
   soft: 0.4,
   /** What a moment leaves out (the arrangement engine's `down`: the attacking seat's creatures that stay home): its light
    *  goes out, a little, never dark. */
   down: 0.3,
-  /** The table itself under a sift (`tableMesh` colour 0.42). */
+  /** The table itself under a sheet (a pile, a seat's spread: `tableMesh` colour 0.42). */
   table: 0.42,
   /** A chosen card lifts off its page (`t.lift = 0.1`). */
   selectedLift: 0.1,

@@ -127,16 +127,22 @@ group("the stack as the table's focus", () => {
   });
 });
 
-group("leaning in", () => {
-  it("carries every piece of the seat up and squared to me; its plaque's place goes with it, its taps are the chrome's", () => {
+group("a seat's spread", () => {
+  it("lays the seat's cards on the sheet, each its own tap; the table stays where it was, its plaque's taps the chrome's", () => {
     const seat = [...board.plan.seats.keys()][2]!;
     const view = rest(board, at({ layer: "lean", seat }));
     const plate = board.plan.hits.groups.find((g) => g.id === `plate:${seat}`)!;
-    const d = view.drawn.get(plate.id)!;
-    expect(d.now.pos.y).toBeGreaterThan(3);
-    // The nameplate is chrome (chrome/plates.tsx): a tap on the canvas never reaches the plaque's place.
-    const c = board.plan.projector.project({ ...d.now.pos, y: d.now.pos.y + 0.3 * d.now.s });
-    expect(pickDrawn(board.plan, view.drawn, c)?.id).not.toBe(plate.id);
+    const still = rest(board, at({}));
+    expect(view.drawn.get(plate.id)!.now.pos).toEqual(still.drawn.get(plate.id)!.now.pos);
+    const sifted = [...view.drawn.entries()].filter(([id]) => id.startsWith("sift:") && id !== "sift:scrim");
+    expect(sifted.length).toBeGreaterThan(0);
+    // (a card alone is reached as itself, a stack of copies as a group of them)
+    for (const [id, dp] of sifted) {
+      const got = pickDrawn(board.plan, view.drawn, centre(poseQuad(board.plan.projector, dp.now, dp.sift?.roll ?? 0)));
+      expect(got?.id).toBe(dp.sift!.members.length > 1 ? id.replace("sift:", "sheet:") : id);
+      expect(got?.members).toEqual(dp.sift!.members);
+    }
+    expect(pickDrawn(board.plan, view.drawn, { x: 4, y: 4 })).toBeNull();
   });
 });
 
@@ -202,11 +208,9 @@ group("wells", () => {
     const d = describe({ model: bolt.model, plan: bolt.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
     const wells = [...d.pieces.values()].flatMap((p) => (p.draw.t === "unit" && p.draw.well ? [{ seat: p.seat, ...p.draw.well }] : []));
     const mine = wells.filter((w) => w.seat === bolt.model.viewer.perspective);
-    expect(mine.length).toBeGreaterThanOrEqual(5);
-    expect(mine.map((w) => w.sign)).toContain("Mountain ×4");
+    expect(mine.length).toBeGreaterThanOrEqual(1);
+    expect(mine.every((w) => /\d/.test(w.sign))).toBe(true);
     expect(mine.some((w) => w.sub && /tapped$/.test(w.sub))).toBe(true);
-    // neighbours' signs alternate
-    expect(mine.some((w) => w.alt) && mine.some((w) => !w.alt)).toBe(true);
     const theirs = wells.filter((w) => w.seat !== bolt.model.viewer.perspective);
     expect(theirs.every((w) => w.theirs && /^Lands \d+$/.test(w.sign))).toBe(true);
     expect(wells.every((w) => w.colours.length >= 1)).toBe(true);

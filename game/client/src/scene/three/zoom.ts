@@ -3,7 +3,7 @@
 // little from the right, so cards show their thickness and their shadows; any tap or Escape brings it back (the app's).
 // Pure: the composition from the plan and what was drawn, and the ease between two cameras on the frame's clock.
 import type { TablePlan, V3, Viewport } from "../../layout";
-import { CH } from "../../layout/seat/geometry";
+import { CH } from "../../layout/geometry";
 import { materials } from "../../theme";
 import { drawnPage } from "../stage/pick";
 import type { DrawnPiece } from "../stage/pick";

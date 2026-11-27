@@ -24,7 +24,7 @@ function table(edit: (view: Record<string, unknown>, players: Player[]) => void,
   const st = structuredClone(raw.stages.find((s) => s.turn === 15)!);
   edit(st.envelope.view, st.envelope.view["players"] as Player[]);
   const model = designModels({ stages: [st], catalog: raw.catalog } as never).get(15)!;
-  return planTable(tableInputOf(model, { viewport: IPAD, engine: { draw: true }, ...(after ? { memory: after.memory } : {}) }));
+  return planTable(tableInputOf(model, { viewport: IPAD, engine: {}, ...(after ? { memory: after.memory } : {}) }));
 }
 const unitsOf = (p: TablePlan, seat: string): readonly Unit[] => p.seats.get(seat as SeatId)!.units;
 const unitWith = (p: TablePlan, seat: string, id: number): Unit => unitsOf(p, seat).find((u) => u.members.includes(id as never))!;

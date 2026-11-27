@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { Euler, Matrix4, Vector3 } from "three";
 import { planTable, tableInputOf } from "../../src/layout";
-import { CH, CW, TH } from "../../src/layout/seat/geometry";
+import { CH, CW, TH } from "../../src/layout/geometry";
 import { designModels } from "../../src/scene/workbench/bench-inputs";
 import { PAGE_TOP, unitPose } from "../../src/scene/stage/poses";
 import type { Pose } from "../../src/scene/stage/types";
@@ -30,7 +30,7 @@ describe("cards on the engine's leaf", () => {
   for (const turn of [4, 9, 15])
     it(`turn ${turn}: lying ones rest on the page's top, standing ones stand out of it`, () => {
       const m = design.get(turn)!;
-      const plan = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+      const plan = planTable(tableInputOf(m, { viewport: VP, engine: {} }));
       const units = [...plan.seats.values()].flatMap((sp) => sp.units).filter((u) => u.placement.frame && !u.fighting);
       expect(units.length).toBeGreaterThan(0);
       for (const u of units) {

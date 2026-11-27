@@ -15,7 +15,7 @@ import type { Target } from "./types";
 export const groupsOf = (hits: HitGroups): Group[] =>
   [...hits.groups, ...(hits.up ?? []).filter((u) => !hits.groups.some((g) => g.id === u.id))].map((g) => ({ id: g.id, kind: g.kind, seat: g.seat, members: [...g.members] }));
 
-/** A target as cards and a seat: a plate is its seat, a pile its members, a zone pile nothing a decision reads. */
+/** A target as cards and a seat: a plate is its seat, a pile its members. */
 export interface Reached {
   readonly ids: readonly CardId[];
   readonly seat: SeatId | null;
@@ -34,7 +34,6 @@ export function reached(t: Target, groups: readonly Group[], f: Facts): Reached 
   const g = groups.find((x) => x.id === t.group);
   if (!g || g.members.length !== t.members.length || g.members.some((m, i) => m !== t.members[i])) return null;
   if (g.kind === "plate") return { ids: [], seat: g.seat, table: true };
-  if (g.kind === "zone") return { ids: [], seat: null, table: true };
   return { ids: g.members, seat: null, table: true, group: g.id };
 }
 
@@ -47,7 +46,7 @@ export function onTable(d: TargetsDecision | ChooseDecision, f: Facts, groups: r
       if (zone !== "battlefield" && zone !== "stack") return false;
       // (an attachment offered on its host is reached through the host's group, whose chooser holds both)
       const host = f.cards[r.card]?.attachedTo;
-      return groups.some((x) => x.kind !== "plate" && x.kind !== "zone" && (x.members.includes(r.card!) || (host != null && x.members.includes(host))));
+      return groups.some((x) => x.kind !== "plate" && (x.members.includes(r.card!) || (host != null && x.members.includes(host))));
     }
     return r.player !== null && groups.some((g) => g.kind === "plate" && g.seat === r.player);
   });

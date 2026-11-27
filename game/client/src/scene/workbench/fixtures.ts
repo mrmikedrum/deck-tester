@@ -1,7 +1,9 @@
 // Hand-built boards and faces for the workbench: a handful of real cards (art in the bridge's cache) laid out as a
-// four-seat table. Each card has a `FaceSpec` for the painters and a `BoardCard` for layout; model/ will derive both
-// from a Card later (the gap this file stands in for is the mapping listed in the lane report).
-import type { BoardCard, CardId, SeatBoard, SeatId } from "../../layout";
+// four-seat table. Each card has a `FaceSpec` for the painters, and a `BoardCard` and the engine's `ArrCard` for layout
+// (what a model's card gives them in play).
+import type { BoardCard, CardId, EngineInput, LeafInput, SeatBoard, SeatId } from "../../layout";
+import type { ArrCard } from "../../layout/arrange/contract";
+import { REST } from "../../layout/arrange/moment";
 import { faceSpec, seat as seatColours } from "../../theme";
 import type { FaceSpec, FrameKey, SeatPlace } from "../../theme";
 
@@ -112,39 +114,41 @@ let nextId = 1;
 const cid = (n: number): CardId => n as CardId;
 
 function boardCard(e: Entry, id: number): BoardCard {
-  const land = e.kind === "land",
-    creature = e.kind === "creature";
+  return { id: cid(id), sig: `${e.name}|${e.tapped ?? false}|${e.power ?? ""}/${e.toughness ?? ""}`, tapped: e.tapped ?? false, power: e.kind === "creature" ? (e.power ?? 1) : null, attachedTo: null };
+}
+
+/** A card as the arrangement engine reads it (arrange/card.ts reads a model's card the same way). */
+function arrCardOf(e: Entry, id: CardId, seat: SeatId): ArrCard {
+  const k = e.kind, creature = k === "creature", land = k === "land";
+  const types = { creature, land, artifact: k === "artifact" || k === "rock", enchantment: k === "enchantment", planeswalker: k === "walker", battle: false };
+  const power = creature ? (e.power ?? 1) : null, toughness = creature ? (e.toughness ?? 1) : null;
   return {
-    id: cid(id),
+    id,
+    controller: seat,
+    owner: seat,
     name: e.name,
     cardKey: e.name,
-    sig: `${e.name}|${e.tapped ?? false}|${e.power ?? ""}/${e.toughness ?? ""}`,
-    land,
-    creature,
-    planeswalker: e.kind === "walker",
-    artifact: e.kind === "artifact" || e.kind === "rock",
-    enchantment: e.kind === "enchantment",
-    manaRock: e.kind === "rock",
-    specialLand: false,
-    treasure: false,
-    basic: land && !e.name.includes(" "),
-    typeWord: land
-      ? "Land"
-      : creature
-        ? "Creature"
-        : e.kind === "walker"
-          ? "Planeswalker"
-          : e.kind === "enchantment"
-            ? "Enchantment"
-            : "Artifact",
-    legendary: e.commander === true || e.kind === "walker",
+    lookKey: `${e.name}|${k}|${power ?? ""}/${toughness ?? ""}|${(e.keywords ?? []).join(",")}`,
+    types,
+    subtypes: [],
+    supertypes: { legendary: e.commander === true || k === "walker", basic: e.basic ?? (land && !e.name.includes(" ")) },
     token: e.token ?? false,
     commander: e.commander ?? false,
+    copy: false,
+    faceDown: false,
+    manaSource: land || k === "rock" || (e.mana?.length ?? 0) > 0,
     tapped: e.tapped ?? false,
-    power: creature ? (e.power ?? 1) : null,
-    toughness: creature ? (e.toughness ?? 1) : null,
+    sick: false,
+    power,
+    toughness,
+    loyalty: k === "walker" ? Number(e.loyalty ?? 0) : null,
+    defense: null,
     keywords: e.keywords ?? [],
+    counters: 0,
     attachedTo: null,
+    reach: "self",
+    manaValue: 0,
+    produces: e.mana ?? [],
   };
 }
 
@@ -155,6 +159,8 @@ export interface Fixture {
   readonly names: ReadonlyMap<SeatId, { readonly name: string; readonly life: number }>;
   readonly boards: readonly { readonly seat: SeatId; readonly board: SeatBoard }[];
   readonly entries: ReadonlyMap<CardId, { readonly entry: Entry; readonly seat: SeatId }>;
+  /** Every seat as the arrangement engine is given it. */
+  readonly engine: EngineInput;
 }
 
 const basics = (n: number, name: string, mana: string, frame: FrameKey = "L"): Entry[] =>
@@ -223,30 +229,38 @@ const OPP: Entry[][] = [
 export function fixture(): Fixture {
   nextId = 1;
   const entries = new Map<CardId, { entry: Entry; seat: SeatId }>();
+  const arr = new Map<SeatId, ArrCard[]>();
   const boards = [YOU, ...OPP].map((list, i) => {
     const seat = SEAT_IDS[i] as SeatId;
     const cards = list.map((e) => {
       const bc = boardCard(e, nextId++);
       entries.set(bc.id, { entry: e, seat });
+      arr.set(seat, [...(arr.get(seat) ?? []), arrCardOf(e, bc.id, seat)]);
       return bc;
     });
-    return {
-      seat,
-      board: {
-        seat,
-        mine: i === 0,
-        cards,
-        fixtures: { graveyard: i + 1, exile: i === 1 ? 2 : 0, commandZone: false },
-      } satisfies SeatBoard,
-    };
+    return { seat, board: { seat, mine: i === 0, cards } satisfies SeatBoard };
   });
+  // Every seat on the engine, at rest, nothing acting.
+  const me = boards[0]!.seat;
+  const leaf = (seat: SeatId): LeafInput => ({
+    seat,
+    viewer: me,
+    cards: arr.get(seat) ?? [],
+    involved: new Set(),
+    offered: new Set(),
+    choosing: false,
+    moment: REST,
+    clock: { turn: 6, phase: "MAIN1", active: me, settling: false },
+    memory: null,
+  });
+  const engine: EngineInput = { leaves: boards.slice(1).map((b) => leaf(b.seat)), mine: leaf(me) };
   const names = new Map<SeatId, { name: string; life: number }>(
     SEAT_IDS.map((id, i) => [
       id as SeatId,
       { name: ["You", "Ana", "Bo", "Cy"][i] ?? id, life: [40, 23, 31, 18][i] ?? 40 },
     ]),
   );
-  return { names, boards, entries };
+  return { names, boards, entries, engine };
 }
 
 export const seatColour = (id: (typeof SEAT_IDS)[number]): string => seatColours[SEAT_PLACES[id]];

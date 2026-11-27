@@ -3,7 +3,7 @@
 // no neighbour's edge is traced. A plaque is struck on its top edge from above; a spell on the stack gets a short arch
 // out of the top of the one that answers it. Pure: points in the world from the two pieces' samples as they are now.
 import type { Projector, V3 } from "../../layout";
-import { CH } from "../../layout/seat/geometry";
+import { CH } from "../../layout/geometry";
 import { add, scaled, v3 } from "./motion";
 import type { Sample } from "./types";
 

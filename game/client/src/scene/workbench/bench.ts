@@ -1,13 +1,13 @@
 // The bench page (`workbench.html?only=bench`): `planTable` timed in this browser on the same named inputs as the Node
-// bench (tools/bench-plan.mjs): as the app plans (every opponent leaf drawn by the arrangement engine, a fight gathered), with
-// the leaves arranged from scratch every plan, and with mat alone. It is how the 8 ms budget is
+// bench (tools/bench-plan.mjs): as the app plans (every seat on the arrangement engine, a fight gathered), with the leaves
+// arranged from scratch every plan, and with every opponent's spread opened on the plan. It is how the 8 ms budget is
 // measured on the iPad (docs/game-arrangement-engine.md §7.3): open it there from the Home Screen or Safari, wait for
 // "Done", and press "Send to Mac": the results go back to the machine serving the page (POST api/bench, kept under
 // .deckmaster/bench/). Over plain http on the network a browser offers no clipboard or share sheet, so the page also
 // shows the results in a box to select by hand, and offers Copy and Share only where the browser has them.
 import { after, frame, now } from "../../platform";
 import type { TablePlan } from "../../layout";
-import { VIEWPORT, WARM, benchInputs, course, planFrame, planFrameChanged, planMatOnly } from "./bench-inputs";
+import { VIEWPORT, WARM, benchInputs, course, planFrame, planAndSpreads, planFrameChanged } from "./bench-inputs";
 import type { Frame, Named } from "./bench-inputs";
 
 const design = import.meta.glob<unknown>("../../../../../tests/fixtures/boards/design-pass.json", { import: "default" });
@@ -30,10 +30,11 @@ interface Row {
   readonly input: string;
   readonly what: string;
   readonly plans: number;
-  readonly withShadow: Stats;
+  readonly asPlanned: Stats;
   /** The same, as if every leaf's cards had just changed (what the engine keeps between plans forgotten). */
   readonly leafChanged: Stats;
-  readonly matOnly: Stats;
+  /** The plan, then every opponent's spread opened on it. */
+  readonly spreads: Stats;
   readonly engine: { readonly units: number; readonly candidates: number; readonly audits: number; readonly overflow: number; readonly errors: number };
 }
 
@@ -49,7 +50,7 @@ interface EngineDid {
 }
 /** What the engine did in a plan (kept instead of the plan: holding hundreds of plans would time the collector). */
 const did = (p: TablePlan): EngineDid => {
-  const ls = [...(p.leaves?.values() ?? []), ...(p.mine ? [p.mine] : [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
+  const ls = [...p.leaves.values(), ...(p.mine ? [p.mine] : [])], fs = ls.flatMap((l) => (l.result ? [l.result.fit] : []));
   const sum = (f: (x: (typeof fs)[number]) => number) => fs.reduce((t, x) => t + f(x), 0);
   return { units: sum((f) => f.units.length), candidates: sum((f) => f.report.candidates), audits: sum((f) => f.report.audits + f.report.poses.length), overflow: ls.some((l) => !!l.result?.overflow), error: ls.some((l) => !!l.error) };
 };
@@ -126,19 +127,19 @@ export async function bench(root: HTMLElement): Promise<void> {
   const run = async () => {
     const rows: Row[] = [];
     const table = $("b-table");
-    table.innerHTML = `<tr><th align=left>input</th><th>as the app plans: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>leaves changed: median</th><th>worst</th><th>batch mean</th><th>mat only: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
+    table.innerHTML = `<tr><th align=left>input</th><th>as the app plans: median</th><th>p90</th><th>worst</th><th>batch mean</th><th>leaves changed: median</th><th>worst</th><th>batch mean</th><th>and every spread: median</th><th>worst</th><th>batch mean</th><th>engine units</th><th>candidates</th><th>audits</th></tr>`;
     for (const input of inputs) {
       $("b-status").textContent = `Timing ${input.name} (${input.what})…`;
       await wait(50);
-      const on = await time(input, planFrame), changed = await time(input, planFrameChanged), off = await time(input, planMatOnly);
+      const on = await time(input, planFrame), changed = await time(input, planFrameChanged), spreads = await time(input, planAndSpreads);
       const most = (g: (d: EngineDid) => number) => Math.max(0, ...on.plans.map(g));
       const row: Row = {
         input: input.name,
         what: input.what,
         plans: on.plans.length,
-        withShadow: on.stats,
+        asPlanned: on.stats,
         leafChanged: changed.stats,
-        matOnly: off.stats,
+        spreads: spreads.stats,
         engine: {
           units: most((d) => d.units),
           candidates: most((d) => d.candidates),
@@ -151,7 +152,7 @@ export async function bench(root: HTMLElement): Promise<void> {
       const over = (x: number) => (x > 8 ? ` style="color:#e06a4f"` : "");
       table.insertAdjacentHTML(
         "beforeend",
-        `<tr><td>${row.input}</td><td align=right${over(row.withShadow.median)}>${ms(row.withShadow.median)}</td><td align=right${over(row.withShadow.p90)}>${ms(row.withShadow.p90)}</td><td align=right${over(row.withShadow.worst)}>${ms(row.withShadow.worst)}</td><td align=right>${ms(row.withShadow.batchMean)}</td><td align=right${over(row.leafChanged.median)}>${ms(row.leafChanged.median)}</td><td align=right${over(row.leafChanged.worst)}>${ms(row.leafChanged.worst)}</td><td align=right>${ms(row.leafChanged.batchMean)}</td><td align=right>${ms(row.matOnly.median)}</td><td align=right>${ms(row.matOnly.worst)}</td><td align=right>${ms(row.matOnly.batchMean)}</td><td align=right>${row.engine.units}</td><td align=right>${row.engine.candidates}</td><td align=right>${row.engine.audits}</td></tr>`,
+        `<tr><td>${row.input}</td><td align=right${over(row.asPlanned.median)}>${ms(row.asPlanned.median)}</td><td align=right${over(row.asPlanned.p90)}>${ms(row.asPlanned.p90)}</td><td align=right${over(row.asPlanned.worst)}>${ms(row.asPlanned.worst)}</td><td align=right>${ms(row.asPlanned.batchMean)}</td><td align=right${over(row.leafChanged.median)}>${ms(row.leafChanged.median)}</td><td align=right${over(row.leafChanged.worst)}>${ms(row.leafChanged.worst)}</td><td align=right>${ms(row.leafChanged.batchMean)}</td><td align=right>${ms(row.spreads.median)}</td><td align=right>${ms(row.spreads.worst)}</td><td align=right>${ms(row.spreads.batchMean)}</td><td align=right>${row.engine.units}</td><td align=right>${row.engine.candidates}</td><td align=right>${row.engine.audits}</td></tr>`,
       );
     }
     last = { userAgent: navigator.userAgent, screen: { w: screen.width, h: screen.height, dpr: devicePixelRatio }, viewport: VIEWPORT, clockResolutionMs: res, plansPerInput: PLANS, budgetMs: 8, rows };

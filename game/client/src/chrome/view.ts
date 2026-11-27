@@ -49,7 +49,7 @@ export interface CardLook {
   readonly cost?: string | null;
 }
 
-/** The focus layers (the app's focus stack): the table's own (the stack, a lean-in, a sift) and the chrome's. */
+/** The focus layers (the app's focus stack): the table's own (the stack, the clash, a seat's spread, a pile opened) and the chrome's. */
 export type ChromeLayer = "stack" | "clash" | "lean" | "sift" | "sheet" | "inspector" | "mulligan" | "menu" | "hand" | "log" | "losses" | "seat";
 
 /** A plate's icons, in a fixed order: total power on the table, open mana, cards in hand (and fliers in a focus). */
@@ -225,12 +225,17 @@ export interface GameRequest {
   readonly mana: "creatures" | "always" | "auto";
 }
 
-/** A sift up (h.js `sift`'s caption): what the pile is, how many, and its pages when it has more than fit at once. */
+/**
+ * A sheet up (a pile opened, or a seat's spread): what it is, how many, its pages when it has more than fit at once, its
+ * tiers' captions and its stacks' counts where the cards are on screen.
+ */
 export interface SiftView {
-  /** The hit group sifted: its pager says which sift it pages. */
+  /** The hit group sifted ("spread:<seat>" for a spread): its pager says which sheet it pages. */
   readonly group: string;
-  /** "Ana's graveyard ×12", "Forest ×5". */
+  /** "Ana's graveyard ×12", "Forest ×5", "Ana's board". */
   readonly title: string;
+  /** The way back: "Put back" for a pile, "Back to the table" for a spread. */
+  readonly close: string;
   readonly tapped: number;
   /** From 0, of `pages`; one page has no pager. */
   readonly page: number;
@@ -241,8 +246,12 @@ export interface SiftView {
   readonly top: number;
   /** The chooser play opened this sift for (its revision), or null: a card chosen here says so. */
   readonly chooser: number | null;
-  /** The cards on this page, in the order fanned, each as a control for the keyboard: choosing one is a tap on it. */
+  /** The cards on this page, in the order laid out, each as a control for the keyboard: choosing one is a tap on it. */
   readonly cards: readonly { readonly id: CardId; readonly label: string }[];
+  /** A spread's tier captions ("Ready", "Tapped", "Works", "Lands"), each at its foot-left on screen, CSS px. */
+  readonly captions: readonly { readonly text: string; readonly x: number; readonly y: number }[];
+  /** A stack's count ("×12") at its face's foot-right corner on screen, CSS px. */
+  readonly counts: readonly { readonly text: string; readonly x: number; readonly y: number }[];
 }
 
 /** "Your hand" as a list (live.js `handSheet`): every card, what it costs, whether it has a play now. */
@@ -288,10 +297,8 @@ export interface ChromeView {
   readonly handSheet: HandSheetView | null;
   /** The stack, top first, for its rules sheet. */
   readonly stack: readonly StackRow[];
-  /** A sift up: its caption, with the way back and its pages; null otherwise. */
+  /** A sheet up (a pile, or a seat's spread): its caption, with the way back and its pages; null otherwise. */
   readonly sift: SiftView | null;
-  /** Leaning in on a seat: "Ana's side", with the way back; null otherwise. */
-  readonly back: string | null;
   /** The stack layer is up (not set aside): the prompt carries the stack summary instead of its context. */
   readonly stackOpen: boolean;
   /** The strip at the top left: the turn and what just happened (hidden before a turn has an active player). */
@@ -330,7 +337,7 @@ export type Order =
   | { readonly t: "seat"; readonly seat: string }
   /** From a nameplate focus: one of that seat's zones, opened in full (its sift). */
   | { readonly t: "zone"; readonly seat: string; readonly zone: "graveyard" | "exile" }
-  /** Another page of the sift up: `delta` pages on (negative: back). */
+  /** Another page of the sheet up: `delta` pages on (negative: back). */
   | { readonly t: "siftPage"; readonly group: string; readonly delta: number }
   | { readonly t: "newGame"; readonly req: GameRequest };
 

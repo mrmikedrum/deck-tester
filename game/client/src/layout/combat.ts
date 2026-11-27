@@ -4,7 +4,7 @@
 // gathering's (arrange/gathering.ts). Pure, in the plan's terms: units, placements, the projector.
 import type { TableModel } from "../model";
 import type { SeatPlan, Unit } from "./seat";
-import { CH, CW } from "./seat/geometry";
+import { CH, CW } from "./geometry";
 import type { CardId, SeatId, V3 } from "./types";
 
 /** Attacks and blocks as layout takes them: plain ids (play's combat draft has this shape; layout never imports play). */
@@ -39,18 +39,13 @@ export function mergeCombat(engine: CombatPairs | null, draft: CombatPairs | nul
 export const fighters = (c: CombatPairs | null): Set<CardId> =>
   new Set(c ? [...c.attacks.map((a) => a.attacker), ...c.blocks.map((b) => b.blocker)] : []);
 
-/** Unit ids in the fight: the attackers' and blockers' own units (mat gives each fighter a unit of its own). */
+/** Unit ids in the fight: the attackers' and blockers' own units (the engine gives each fighter a unit of its own). */
 export function fightUnits(plans: readonly SeatPlan[], want: ReadonlySet<CardId>): Map<CardId, { unit: Unit; seat: SeatId }> {
   const out = new Map<CardId, { unit: Unit; seat: SeatId }>();
   for (const p of plans)
     for (const u of p.units)
       if (u.role === "creature") for (const id of u.members) if (want.has(id) && !out.has(id)) out.set(id, { unit: u, seat: p.seat });
   return out;
-}
-
-/** The ids of the units a combat row would move: what the seats' audit leaves to the composed one. */
-export function rowUnits(plans: readonly SeatPlan[], cards: ReadonlySet<CardId>): Set<string> {
-  return cards.size ? new Set([...fightUnits(plans, cards).values()].map((f) => f.unit.id)) : new Set();
 }
 
 // ---- lanes ------------------------------------------------------------------------------------------------------------
@@ -166,7 +161,7 @@ export function combatLanes(plans: ReadonlyMap<SeatId, SeatPlan>, perspective: S
     const c = Math.cos(page.yaw), sn = Math.sin(page.yaw), half = Math.max(0.3, page.w / 2 - 0.6);
     // The front edge, from the page's middle: theirs faces the table's middle at their fixed edge; mine is its far edge.
     const uv = (p: V3): [number, number] => [(p.x - page.pos.x) * c - (p.z - page.pos.z) * sn, (p.x - page.pos.x) * sn + (p.z - page.pos.z) * c];
-    // (At me, an attacker standing in the combat row is already at my page's edge: its lane runs on into my page a
+    // (At me, an attacker standing in the clash is already at my page's edge: its lane runs on into my page a
     // little, past my front row's tops, so it reads as coming at me rather than as a mark at its foot.)
     const v = onMe ? Math.max(-page.d / 2 - 0.6, ...ls.map((l) => uv(l.from)[1] + LAND_ON_ME)) : page.d / 2 + 0.15;
     // One trunk per attacking seat: its lanes land on one point (their mean), so they gather into one stroke rather than

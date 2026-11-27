@@ -20,20 +20,21 @@ const tabs = (m: ReturnType<typeof tableOf>) => {
 };
 
 group("a pile's title tab", () => {
-  it("copies of a creature: its name and count (the ready and the tapped lie apart, each titled)", () => {
-    const beasts = Array.from({ length: 6 }, (_, i) => token(100 + i, "Beast", "Dack", 4, 4, { tapped: i < 2 }));
-    expect(tabs(tableOf({ active: "You", seats: { Dack: { battlefield: beasts } } })).sort()).toEqual([
-      ["Beast 2", null],
-      ["Beast 4", null],
-    ]);
+  it("copies of a creature: its name and count, never a round \"×n\"", () => {
+    const beasts = Array.from({ length: 24 }, (_, i) => token(100 + i, "Beast", "Dack", 4, 4, { tapped: i < 6 }));
+    const t = tabs(tableOf({ active: "You", seats: { Dack: { battlefield: beasts } } }));
+    expect(t.length).toBeGreaterThan(0);
+    for (const [title] of t) expect(title).toMatch(/^(Beast )?\d+$/);
+    expect(t.some(([title]) => /^Beast \d+$/.test(title ?? ""))).toBe(true);
   });
-  it("unlike creatures folded: what it holds by name, most first", () => {
+  it("unlike creatures folded: copies stacked under their name; a fan by its count, what it holds by name, most first", () => {
     const many = [
       ...Array.from({ length: 30 }, (_, i) => token(200 + i, "Elemental", "Dack", 3, 3, { tapped: i < 5 })),
       ...Array.from({ length: 20 }, (_, i) => token(300 + i, "Beast", "Dack", 4, 4)),
       ...Array.from({ length: 12 }, (_, i) => token(400 + i, `Spirit ${i}`, "Dack", 1, 1)),
     ];
     const t = tabs(tableOf({ active: "You", seats: { Dack: { battlefield: many } } }));
-    expect(t.some(([title, sub]) => /\d+$/.test(title ?? "") && /^Elemental \d+ · Beast \d+( · \d+ tapped)?$/.test(sub ?? "")), JSON.stringify(t)).toBe(true);
+    expect(t, JSON.stringify(t)).toEqual(expect.arrayContaining([["Beast 20", null], ["Elemental 25", null]]));
+    expect(t.some(([title, sub]) => /^\d+$/.test(title ?? "") && /^Elemental 5\b/.test(sub ?? "")), JSON.stringify(t)).toBe(true);
   });
 });

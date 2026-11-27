@@ -13,7 +13,7 @@ const plan = (dest: string): FlightPlan => {
     card,
     departure: false,
     origin: { from: "plate", seat: "A" as never },
-    dest: { to: "pile", piece: dest },
+    dest: { to: "piece", piece: dest },
     face: null,
     token: false,
     motion: "depart",

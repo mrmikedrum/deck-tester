@@ -9,6 +9,7 @@ import type { CardId } from "../../src/protocol";
 import { NO_FOCUS, Stage, describe as describeTable } from "../../src/scene/stage";
 import type { ActorView } from "../../src/scene/stage";
 import { catalog, rawCorpus, viewerOf } from "../model/fixtures";
+import { groupsOf, onTable } from "../../src/play/reach";
 import { NO_CUES } from "./corpus";
 
 const RANCOR = 826 as CardId;
@@ -65,15 +66,34 @@ describe("dressing", () => {
   });
 
   it("review: a lone host says when its attachment is offered, and wears the newcomer light when its Aura is new", () => {
-    const plan = planTable(tableInputOf(after, { viewport: VP, engine: { draw: true, decision: { kind: "targets", options: [RANCOR], draft: [] } } }));
+    const plan = planTable(tableInputOf(after, { viewport: VP, engine: { decision: { kind: "targets", options: [RANCOR], draft: [] } } }));
     const host = [...plan.seats.values()].flatMap((p) => p.units).find((u) => u.dressing.includes(RANCOR))!;
     expect(host.members.length).toBe(1);
     expect(host.cue).toBe("act");
-    const rest = planTable(tableInputOf(after, { viewport: VP, engine: { draw: true } }));
+    const rest = planTable(tableInputOf(after, { viewport: VP, engine: {} }));
     const d = describeTable({ model: after, plan: rest, cues: NO_CUES, focus: NO_FOCUS, hover: null, news: [RANCOR] });
     const piece = [...d.pieces.values()].find((p) => p.draw.t === "unit" && p.members.includes(RANCOR))!;
     expect(piece.draw).toMatchObject({ cue: "news", light: "forward" });
     const offered = describeTable({ model: after, plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
     expect([...offered.pieces.values()].find((p) => p.draw.t === "unit" && p.members.includes(RANCOR))!.draw).toMatchObject({ cue: "act" });
+  });
+
+  it("a seat the engine could not arrange is one entry pile that reaches every card, an Aura on its host included", () => {
+    const input = tableInputOf(after, { viewport: VP, engine: { decision: { kind: "targets", options: [RANCOR], draft: [] } } });
+    // (a card the engine cannot read makes its arrangement throw: the plan records it and falls back) on the seat Rancor
+    // is drawn on (its host's)
+    const breaks = <T extends { cards: readonly { id: CardId }[] }>(l: T): T => (l.cards.some((c) => c.id === RANCOR) ? { ...l, cards: l.cards.map((c, i) => (i === 0 ? { ...c, types: undefined as never } : c)) } : l);
+    const engine = { ...input.engine, leaves: input.engine.leaves.map(breaks), ...(input.engine.mine ? { mine: breaks(input.engine.mine) } : {}) };
+    const plan = planTable({ ...input, engine });
+    const seat = [...plan.seats.values()].find((p) => p.home.has(RANCOR))!.seat;
+    expect(plan.leaves.get(seat)?.error ?? plan.mine?.error).toBeTruthy();
+    const sp = plan.seats.get(seat)!, me = seat;
+    expect(sp.units.map((u) => u.id)).toEqual([`u:entry:${me}`]);
+    // the Aura the decision offers is reached through the entry pile's group, so the choice stays on the table
+    const g = plan.hits.groups.find((x) => x.id === `u:entry:${me}`)!;
+    expect(g.members).toContain(RANCOR);
+    const facts = { cards: Object.fromEntries([...after.cards.values()].map((c) => [c.id, { zone: c.zone, attachedTo: c.attachedTo, controller: c.controller }])) } as never;
+    const d = { kind: "targets", refs: [{ card: RANCOR, player: null }] } as never;
+    expect(onTable(d, facts, groupsOf(plan.hits))).toBe(true);
   });
 });

@@ -1,6 +1,11 @@
 import type { BoardCard, SeatBoard } from "../../src/layout/board";
 import type { StackEntry, TableInput } from "../../src/layout/plan";
 import type { CardId, SeatId } from "../../src/layout/types";
+import type { ArrCard } from "../../src/layout/arrange/contract";
+import type { EngineInput, LeafInput } from "../../src/layout/arrange/leaves";
+import { REST } from "../../src/layout/arrange/moment";
+import { arrangedMemory } from "../../src/layout/arrange/adapter";
+import type { LayoutMemory } from "../../src/layout/seat";
 
 /** Ids for hand-written boards: the layout takes the model's branded ids. */
 export const cid = (n: number): CardId => n as CardId;
@@ -33,9 +38,33 @@ export const resetIds = (n = 1): void => {
   nextId = n;
 };
 
-type CardInput = Omit<Partial<BoardCard>, "id" | "attachedTo"> & { name: string; id?: number; attachedTo?: number | null };
+/** A hand-written permanent: the board's facts and the type flags the engine's card is read from (`arrOf`). */
+export interface TestCard extends BoardCard {
+  readonly name: string;
+  readonly cardKey: string;
+  readonly land: boolean;
+  readonly creature: boolean;
+  readonly planeswalker: boolean;
+  readonly artifact: boolean;
+  readonly enchantment: boolean;
+  readonly manaRock: boolean;
+  readonly specialLand: boolean;
+  readonly treasure: boolean;
+  readonly basic: boolean;
+  readonly typeWord: string;
+  readonly legendary: boolean;
+  readonly token: boolean;
+  readonly commander: boolean;
+  readonly toughness: number | null;
+  readonly keywords: readonly string[];
+}
+export interface TestBoard extends SeatBoard {
+  readonly cards: readonly TestCard[];
+}
 
-export function card(o: CardInput): BoardCard {
+type CardInput = Omit<Partial<TestCard>, "id" | "attachedTo"> & { name: string; id?: number; attachedTo?: number | null };
+
+export function card(o: CardInput): TestCard {
   const { id: given, attachedTo, ...rest } = o;
   const id = cid(given ?? nextId++);
   return {
@@ -65,8 +94,8 @@ export function card(o: CardInput): BoardCard {
 }
 
 /** `n` permanents of a plausible mix, deterministic in `seed`. */
-export function randomBoard(seed: number, n: number, seat: string, mine: boolean): SeatBoard & { seat: SeatId } {
-  const rnd = prng(seed), cards: BoardCard[] = [];
+export function randomBoard(seed: number, n: number, seat: string, mine: boolean): TestBoard & { seat: SeatId } {
+  const rnd = prng(seed), cards: TestCard[] = [];
   const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rnd() * xs.length)]!;
   for (let i = 0; i < n; i++) {
     const r = rnd(), tapped = rnd() < 0.3;
@@ -101,7 +130,63 @@ export function randomBoard(seed: number, n: number, seat: string, mine: boolean
   // an aura or two on creatures, to exercise dressing
   const hosts = cards.filter((c) => c.creature && !c.token);
   if (hosts.length > 2) cards.push(card({ name: "Aura", typeWord: "Aura", enchantment: true, attachedTo: hosts[0]!.id }));
-  return { seat: sid(seat), mine, cards, fixtures: { graveyard: Math.floor(rnd() * 3), exile: Math.floor(rnd() * 2), commandZone: rnd() < 0.5 } };
+  return { seat: sid(seat), mine, cards };
+}
+
+/** A hand-written card as the arrangement engine reads it (arrange/card.ts reads a model's card the same way). */
+export function arrOf(c: TestCard, seat: SeatId): ArrCard {
+  const creature = c.creature && !c.land ? true : c.creature, land = c.land;
+  const types = { creature, land, artifact: c.artifact || c.manaRock, enchantment: c.enchantment, planeswalker: c.planeswalker, battle: false };
+  return {
+    id: c.id,
+    controller: seat,
+    owner: seat,
+    name: c.name,
+    cardKey: c.cardKey,
+    lookKey: `${c.name}|${Object.entries(types).filter(([, v]) => v).map(([k]) => k[0]).join("")}|${c.power ?? ""}/${c.toughness ?? ""}|${[...c.keywords].sort().join(",")}`,
+    types,
+    subtypes: [],
+    supertypes: { legendary: c.legendary || c.commander, basic: c.basic },
+    token: c.token,
+    commander: c.commander,
+    copy: false,
+    faceDown: false,
+    manaSource: land || c.manaRock || c.treasure,
+    tapped: c.tapped,
+    sick: false,
+    power: creature ? c.power : null,
+    toughness: creature ? c.toughness : null,
+    loyalty: c.planeswalker ? 4 : null,
+    defense: null,
+    keywords: c.keywords,
+    counters: 0,
+    attachedTo: c.attachedTo,
+    reach: "self",
+    manaValue: 2,
+    produces: land || c.manaRock ? ["G"] : [],
+  };
+}
+
+/** Every seat of a hand-written table as the engine is given it: the first seat mine, nothing acting but `involved`, each
+ *  seat's memory what the last plan's layout memory carries (as `tableInputOf` hands it on). */
+export function engineOf(
+  seats: readonly { readonly seat: SeatId; readonly board: SeatBoard }[],
+  involved: ReadonlySet<CardId> = new Set(),
+  o: { readonly memory?: ReadonlyMap<SeatId, LayoutMemory> | null; readonly settling?: boolean } = {},
+): EngineInput {
+  const me = seats[0]!.seat;
+  const leaf = ({ seat, board }: { seat: SeatId; board: SeatBoard }): LeafInput => ({
+    seat,
+    viewer: me,
+    cards: (board.cards as readonly TestCard[]).map((c) => arrOf(c, seat)),
+    involved,
+    offered: new Set(),
+    choosing: false,
+    moment: REST,
+    clock: { turn: 6, phase: "MAIN1", active: me, settling: o.settling ?? false },
+    memory: arrangedMemory(o.memory?.get(seat)),
+  });
+  return { leaves: seats.slice(1).map(leaf), mine: leaf(seats[0]!) };
 }
 
 export const SUPPORTED = [
@@ -117,5 +202,5 @@ export function stress(seed: number, n: number, depth: number, vp: { w: number; 
   const involved = new Set<CardId>();
   for (const { board } of seats) board.cards.filter((c) => c.creature).slice(0, 2).forEach((c) => involved.add(c.id));
   const stack: StackEntry[] = Array.from({ length: depth }, (_, i) => ({ key: `s${i}`, card: cid(9000 + i), ability: i % 3 === 1, answers: i % 5 === 4 }));
-  return { viewport: vp, mode: "normal", seats, involved, settling: false, memory: null, stack, ...more };
+  return { viewport: vp, mode: "normal", seats, involved, settling: false, memory: null, stack, engine: engineOf(seats, involved), ...more };
 }

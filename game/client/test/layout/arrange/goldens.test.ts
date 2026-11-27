@@ -95,7 +95,7 @@ describe("the corpus's eliminations on the engine's table", () => {
     const seen = (n: string) => {
       const snap = corpusSnapshot(n);
       const model = modelOf(snap, catalog, viewerOf())!;
-      const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", engine: { draw: true } }));
+      const plan = planTable(tableInputOf(model, { viewport: VP, mode: "normal", engine: {} }));
       return { seats: [...plan.seats.keys()].map(String), leaves: [...plan.leaves!.keys()].map(String), out: model.seats.filter((s) => s.out).map((s) => String(s.id)) };
     };
     const two = seen("049-play-two-players.json"), one = seen("050-over-one-player.json");

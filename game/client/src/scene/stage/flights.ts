@@ -35,7 +35,6 @@ function destOf(ctx: PlanContext, card: CardId, was: Card | null, now: Card | nu
   const home = ctx.desc.home.get(card);
   const piece = home ? ctx.desc.pieces.get(home) : undefined;
   if (piece) {
-    if (piece.kind === "zone") return { to: "pile", piece: piece.id };
     if (piece.kind === "hidden") return piece.seat === me ? { to: "hand" } : { to: "nowhere", how: "plate", seat: piece.seat };
     return { to: "piece", piece: piece.id };
   }
@@ -85,7 +84,7 @@ export function planFlights(set: ChangeSet, ctx: PlanContext): FlightPlan[] {
     // A card bound for a graveyard or exile off the table (an opponent's: the nameplate's focus holds them), a discard or
     // a mill, is shown on its way to its owner's plate.
     const offTable = dest.to === "nowhere" && dest.how === "plate" && (now?.zone === "graveyard" || now?.zone === "exile");
-    if (dest.to !== "pile" && dest.to !== "piece" && !offTable) continue;
+    if (dest.to !== "piece" && !offTable) continue;
     const moment = ctx.moments.find((x) => x.card === card) ?? null;
     const mine = m.from === "hand" || moment !== null;
     const seat = now?.controller ?? now?.owner ?? ctx.desc.perspective;
@@ -124,13 +123,13 @@ export function planFlights(set: ChangeSet, ctx: PlanContext): FlightPlan[] {
   return drafts.map((d) => {
     const { phase, cohort } = order({ ...d, distance: 0 });
     const from = d.origin.from === "piece" || d.origin.from === "maker" ? ctx.poseOf(d.origin.piece) : null;
-    const to = d.dest.to === "pile" || d.dest.to === "piece" ? ctx.poseOf(d.dest.piece) : null;
+    const to = d.dest.to === "piece" ? ctx.poseOf(d.dest.piece) : null;
     let rank = 0;
     if (d.departure && d.origin.from === "piece") {
       const shown = ctx.shownOf(d.origin.piece);
       const leaving = drafts.filter((x) => x.departure && x.origin.from === "piece" && x.origin.piece === (d.origin as { piece: string }).piece);
       if (shown.length > 1 && leaving.length >= shown.length && d.card === shown[0]) rank = 1;
-    } else if (!d.departure && (d.dest.to === "pile" || d.dest.to === "piece")) rank = joinCount.get(d.dest.piece) ?? 0;
+    } else if (!d.departure && (d.dest.to === "piece")) rank = joinCount.get(d.dest.piece) ?? 0;
     return { ...d, phase, cohort, rank, distance: from && to ? dist(from.pos, to.pos) : 0 };
   });
 }
@@ -145,7 +144,7 @@ export function handOffFlights(held: readonly MomentView[], ctx: PlanContext): F
   for (const m of held) {
     const now = ctx.model.cards.get(m.card) ?? null;
     const dest = destOf(ctx, m.card, null);
-    if (!now || (dest.to !== "pile" && dest.to !== "piece")) continue;
+    if (!now || (dest.to !== "piece")) continue;
     const draft: Omit<FlightPlan, "phase" | "cohort"> = {
       key: `c${m.card}`,
       card: m.card,

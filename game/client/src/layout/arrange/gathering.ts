@@ -14,7 +14,7 @@ import type { CombatPairs } from "../combat";
 import type { Projector } from "../projector";
 import type { SeatPlan, Unit, UnitId } from "../seat";
 import type { Quad } from "../shape";
-import { CH, CW } from "../seat/geometry";
+import { CH, CW } from "../geometry";
 import type { CardId, Point, SeatId, V3 } from "../types";
 import { S_TABLE } from "./scale";
 import { LEAN } from "./frame";

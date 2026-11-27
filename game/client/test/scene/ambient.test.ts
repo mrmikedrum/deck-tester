@@ -16,10 +16,12 @@ const modelFrom = (env: unknown): TableModel => {
   if (!r.ok) throw new Error(r.error.summary);
   return modelOf(r.value, catalog, viewerOf())!;
 };
-/** 009 (one Island, Princess's, on the whole table), its Island tapped or not. */
+/** 009 (one Island, Princess's, on the whole table), made four (a well of them), tapped or not. */
 const island = (tapped: boolean): TableModel => {
   const env = structuredClone(rawCorpus.get("009-play-commander-zone.json")!) as Raw;
-  for (const c of env.view.players[3]!.battlefield) c["tapped"] = tapped;
+  const bf = env.view.players[3]!.battlefield, first = bf[0]!;
+  bf.push(...[1, 2, 3].map((k) => ({ ...first, id: 9000 + k })));
+  for (const c of bf) c["tapped"] = tapped;
   return modelFrom(env);
 };
 

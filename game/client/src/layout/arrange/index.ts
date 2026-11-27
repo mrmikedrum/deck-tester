@@ -1,5 +1,5 @@
 // The arrangement engine (docs/game-arrangement-engine.md): one container's cards in, where they go out, with the rules
-// (the policy) swappable without touching the rest. The first slice plans the across leaf in the shadow of `mat`.
+// (the policy) swappable without touching the rest. Every seat's rest container, the sheets and the gathering.
 export * from "./contract";
 export { arrange, posed } from "./solver";
 export { arrCard, arrCardOf, typesOf } from "./card";

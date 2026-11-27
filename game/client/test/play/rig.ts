@@ -112,8 +112,6 @@ export function hitsFor(m: TableModel | null, piles: readonly (readonly number[]
       if (piled.has(id)) continue;
       groups.push({ id: `c${id}`, kind: "card", seat: s.id, members: [id], quad: QUAD as unknown as HitGroup["quad"], order: 0 });
     }
-    const gy = m.zone(s.id, "graveyard");
-    if (gy.length) groups.push({ id: `zone:graveyard:${s.id}`, kind: "zone", seat: s.id, members: gy, quad: QUAD as unknown as HitGroup["quad"], order: 0 });
   }
   for (const p of piles) {
     const first = p[0] as CardId;

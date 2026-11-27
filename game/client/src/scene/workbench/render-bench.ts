@@ -146,10 +146,9 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   const planB = planTable(tableInputOf(b, { viewport: VIEWPORT, memory: planA.memory }));
   // The engine's table at rest, and in a moment: a fight between opponents (its attackers lit, the attacking seat's
   // others with their light out) with one newcomer's news.
-  const engine = { draw: true } as const;
-  const planR = planTable(tableInputOf(a, { viewport: VIEWPORT, memory: null, engine }));
+  const planR = planTable(tableInputOf(a, { viewport: VIEWPORT, memory: null }));
   const c = modelFrom(inFight(t.envelope), t.catalog);
-  const planC = planTable(tableInputOf(c, { viewport: VIEWPORT, memory: planR.memory, engine }));
+  const planC = planTable(tableInputOf(c, { viewport: VIEWPORT, memory: planR.memory }));
   const news = [...c.cards.values()].filter((x) => x.zone === "battlefield" && x.controller !== c.viewer.perspective).slice(-1).map((x) => x.id);
   let alt: { model: TableModel; plan: typeof planA; news?: readonly CardId[] } | null = null;
   const canvas = root.querySelector<HTMLCanvasElement>("#stage")!;

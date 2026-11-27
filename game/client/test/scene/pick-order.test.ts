@@ -73,7 +73,7 @@ describe("picking where cards overlap", () => {
     const { drawn: table, over } = overlapping(false);
     // Two sifted cards drawn in the same place, the second over the first.
     const o = table.get(over.id)!;
-    const sifted = (card: number): DrawnPiece => ({ now: o.now, rest: o.now, pickable: true, sift: { card: card as CardId, seat: null, roll: 0 } });
+    const sifted = (card: number): DrawnPiece => ({ now: o.now, rest: o.now, pickable: true, sift: { card: card as CardId, seat: null, roll: 0, members: [card as CardId], region: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }] } });
     const drawn = new Map([...table, ["sift:1", sifted(1)], ["sift:2", sifted(2)]]);
     const point = { x: o.now.pos.x, y: o.now.pos.y, z: o.now.pos.z };
     const one = { id: "sift:1", point },

@@ -9,7 +9,7 @@ import type { Card, TableModel } from "../model";
 import * as play from "../play";
 import type { Carried } from "../play";
 import type { FocusTop, HighlightRequest, HighlightTone, MomentView, SceneFrame, SceneReport } from "../scene/stage/types";
-import { focusTopOf, isOpen, tableTop, top } from "./focus";
+import { focusTopOf, isOpen, sheetFocusOf, tableTop } from "./focus";
 import { feedWidthOf, platesOf, seatFocusOf } from "./seats";
 import { chipViewsOf, handSheetOf, inspectorOf, menuOf, mulliganOf, siftViewOf, stackRowsOf } from "./layers";
 import { sceneHas } from "./moments";
@@ -96,7 +96,7 @@ function handOf(s: AppState, model: TableModel, scene: SceneReport | null): Hand
   const top = model.stack[model.stack.length - 1];
   return {
     cards: cards.map((c) => handCard(c, board.marks.hand.has(c.id))),
-    away: board.handAway || isOpen(s.focus, "sift") || isOpen(s.focus, "mulligan") || choosingCards(s, model),
+    away: board.handAway || isOpen(s.focus, "sift") || isOpen(s.focus, "lean") || isOpen(s.focus, "mulligan") || choosingCards(s, model),
     respond: !!top && top.controller !== me && board.marks.hand.size > 0,
     carried,
     // The cards that last came into my hand (live.js `lastHandArrivals`) glow as they join the fan.
@@ -159,11 +159,9 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
   const toast = n.toasts[n.toasts.length - 1] ?? null;
   const f = s.focus;
   const inspected = f.layers.find((e) => e.layer === "inspector")?.card ?? null;
-  const lean = top(f)?.layer === "lean" ? top(f)?.seat : null;
   const seatOpen = f.layers.find((e) => e.layer === "seat")?.seat ?? null;
-  // The sift's caption shows while the table shows the sift: a spell that took the table since hides it with its cards.
-  const table = tableTop(f);
-  const sifted = table?.layer === "sift" ? table : undefined;
+  // A sheet's caption shows while the table shows the sheet: a spell that took the table since hides it with its cards.
+  const sheet = sheetFocusOf(tableTop(f));
   const watch = narrative.watching(n, model, settlingOf(s));
   return {
     commit: s.commit,
@@ -182,8 +180,7 @@ export function chromeView(s: AppState, scene: SceneReport | null = null, measur
     menu: isOpen(f, "menu") ? menuOf(s) : null,
     handSheet: model && isOpen(f, "hand") ? handSheetOf(model, board.marks.hand, n.fresh) : null,
     stack: model && controls.sheet?.kind === "stack" ? stackRowsOf(model) : [],
-    sift: model && s.plan && sifted?.group != null ? siftViewOf(model, s.plan, sifted.group, sifted.page, sifted.choosing ?? null) : null,
-    back: model && lean ? `${model.seat(lean)?.name ?? String(lean)}'s side` : null,
+    sift: model && s.plan && sheet ? siftViewOf(model, s.plan, sheet.focus, sheet.page, sheet.choosing) : null,
     newGame: offersNewGame(s),
     stackOpen: isOpen(f, "stack"),
     log: narrative.logStripView(n, model),

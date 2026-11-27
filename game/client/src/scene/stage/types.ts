@@ -3,7 +3,7 @@
 // Pure types: no three.js.
 import type { ChangeSet, MomentKind, ReadingId, SeatId, TableModel } from "../../model";
 import type { CardId } from "../../protocol";
-import type { Point, Rect, TablePlan, V3 } from "../../layout";
+import type { Point, Quad, Rect, TablePlan, V3 } from "../../layout";
 import type { BoardCues, CommitId, Mark, Ms, ScreenPose } from "../../play";
 import type { ChipSpec, FaceSpec, PlateSpec, SeatPlace } from "../../theme";
 import type { DrawnPiece } from "./pick";
@@ -192,10 +192,10 @@ export const LOOK: Look = { fade: 0, lift: 0, tap: 0, glow: 0, alpha: 1, w: 0, d
 // ---- what describe produces --------------------------------------------------------------------------------------------
 
 /**
- * What a piece is: a layout unit, a zone pile, a plate, a stack entry, a page, a hidden count (a hand), or a sifted card
+ * What a piece is: a layout unit, a plate, a stack entry, a page, a hidden count (a hand), or a card on a sheet
  * (a pile's card fanned out in front of the camera, and the scrim behind them).
  */
-export type PieceKind = "unit" | "zone" | "plate" | "stack" | "page" | "hidden" | "sift";
+export type PieceKind = "unit" | "plate" | "stack" | "page" | "hidden" | "sift";
 
 /** A mana well's sign and light (old h.js `well`): what it says, its colours, and whether every land in it is spent. */
 export interface WellLook {
@@ -264,7 +264,6 @@ export type Draw =
       /** The moment's light on it: a brighter pool where it answers the moment, its light out where it is left out. */
       readonly light: "forward" | "down" | null;
     }
-  | { readonly t: "zone"; readonly zone: "graveyard" | "exile"; readonly mine: boolean; readonly colour: string }
   | { readonly t: "plate"; readonly spec: PlateSpec }
   | {
       readonly t: "stack";
@@ -284,8 +283,12 @@ export type Draw =
     }
   | { readonly t: "page"; readonly place: SeatPlace; readonly mine: boolean; readonly seed: number; readonly turn: boolean }
   | { readonly t: "hidden" }
-  /** A pile's card fanned out in a sift: `from` is the pile it came from (it flies out of it and back into it). */
-  | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string }
+  /**
+   * A card on a sheet (a pile opened, a seat's spread): `from` is where it rests on the table (it flies out of it and back
+   * into it); `members` the cards its place stands for (copies stacked: more than one) and `region` its target on screen
+   * as the engine computed it at rest (layout `sheetOf`), which a tap reaches.
+   */
+  | { readonly t: "sift"; readonly card: CardId; readonly tapped: boolean; readonly from: string; readonly members: readonly CardId[]; readonly region: Quad }
   /** The shade a sift lays over the table, and the vellum behind its cards (a screen rect, CSS px). */
   | { readonly t: "scrim"; readonly back: Rect; readonly screen: { readonly w: number; readonly h: number } };
 
@@ -294,7 +297,7 @@ export interface Piece {
   readonly id: string;
   readonly kind: PieceKind;
   readonly seat: SeatId | null;
-  /** Every card it draws or counts, in order (the top/shown card last for a zone pile, first for a unit). */
+  /** Every card it draws or counts, in order (the top/shown card first for a unit). */
   readonly members: readonly CardId[];
   /** The card whose face it shows (a unit's top, a stack entry's source); a zone shows its last arrived member. */
   readonly face: CardId | null;
@@ -308,7 +311,7 @@ export interface Piece {
   /** Its cards are at the 44 px floor on screen (`SMALL_FACE_PX`): they wear the small face (theme `FaceSpec.small`). */
   readonly small?: boolean;
   readonly draw: Draw;
-  /** Shown only while it holds an arrived card (a unit, a zone pile, a spell on the stack). */
+  /** Shown only while it holds an arrived card (a unit, a spell on the stack). */
   readonly needsMembers: boolean;
   /** It stands in the combat row (layout `Unit.fighting`): it steps out to the fight and home again along the middle. */
   readonly fight?: boolean;
@@ -376,7 +379,6 @@ export interface Description {
 
 /** Where a card that moved goes: a pile, the piece it becomes, my hand, or nowhere (it burns out, or goes to a plate). */
 export type Dest =
-  | { readonly to: "pile"; readonly piece: string }
   | { readonly to: "piece"; readonly piece: string }
   | { readonly to: "hand" }
   | { readonly to: "nowhere"; readonly how: "burn" | "fizzle" | "plate"; readonly seat: SeatId | null };

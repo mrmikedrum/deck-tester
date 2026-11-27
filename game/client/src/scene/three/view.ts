@@ -17,7 +17,7 @@ import { CARD } from "./cards";
 import type { CardState } from "./cards";
 import { COVERS, GROUND, GhostPiece, LABEL, SIGN_ALTS, artWanted, createPiece, placeGroup } from "./pieces";
 import type { LabelTag, SignAlts } from "./pieces";
-import { CW } from "../../layout/seat/geometry";
+import { CW } from "../../layout/geometry";
 import { LABEL_PX } from "../stage/labels";
 import type { Clock, PieceEnv, PieceView } from "./pieces";
 

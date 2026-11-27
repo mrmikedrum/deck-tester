@@ -1,10 +1,10 @@
 // The arrangement engine's timing inputs (docs/game-arrangement-engine.md §7.3), shared by the Node bench
 // (tools/bench-plan.mjs) and the workbench's bench page (`workbench.html?only=bench`) so both time exactly the same
-// tables. Every input goes the app's way: a snapshot decoded, a model, `tableInputOf` with the opponents' leaves on the engine, and
+// tables. Every input goes the app's way: a snapshot decoded, a model, `tableInputOf` (every seat on the engine), and
 // `planTable`, with memory carried from one plan to the next. Pure: no DOM, no clock (the callers time it).
 import { decodeCatalog, modelOf, playerViewer } from "../../model";
 import type { TableModel } from "../../model";
-import { clearArrangeCaches, planTable, tableInputOf } from "../../layout";
+import { clearArrangeCaches, planTable, sheetOf, tableInputOf } from "../../layout";
 import type { TablePlan } from "../../layout";
 import { decodeSnapshot } from "../../protocol";
 
@@ -20,7 +20,7 @@ export interface Named {
   readonly frames: readonly Frame[];
 }
 
-/** One plan of `f`, carrying the last plan's memory (mat's and the engine's). */
+/** One plan of `f`, as the app plans it, carrying the last plan's memory. */
 export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
   return planTable(
     tableInputOf(f.model, {
@@ -28,8 +28,6 @@ export function planFrame(f: Frame, prev: TablePlan | null): TablePlan {
       mode: "normal",
       memory: prev?.memory ?? null,
       settling: f.settling,
-      // as the app plans: every opponent leaf drawn by the engine (its memory rides in the layout memory), fights gathered
-      engine: { draw: true },
     }),
   );
 }
@@ -47,9 +45,12 @@ export function planFrameChanged(f: Frame, prev: TablePlan | null): TablePlan {
   return planFrame(f, prev);
 }
 
-/** The same frame planned by `mat` alone (its combat row too), memory carried the same way. */
-export function planMatOnly(f: Frame, prev: TablePlan | null): TablePlan {
-  return planTable(tableInputOf(f.model, { viewport: VIEWPORT, mode: "normal", memory: prev?.memory ?? null, settling: f.settling }));
+/** The same plan, then every opponent's spread opened on it ("See X's board", each arranged afresh on the new plan): what
+ *  a sheet costs over the plan. */
+export function planAndSpreads(f: Frame, prev: TablePlan | null): TablePlan {
+  const plan = planFrame(f, prev);
+  for (const seat of plan.seats.keys()) if (seat !== f.model.viewer.perspective) sheetOf(f.model, plan, { kind: "spread", seat });
+  return plan;
 }
 
 /** Plans to warm the JIT before timing, in every runner. */

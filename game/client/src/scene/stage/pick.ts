@@ -4,9 +4,9 @@
 // seats' plates, which the chrome draws and takes the taps of): the same groups, the same draw order, the same stable ids. A piece that shows none of its cards (they are in flight to it, or
 // the chrome still holds them) is not pickable; a card in flight has no group. Pure.
 import { inQuad } from "../../layout";
+import { poseQuad } from "./poses";
 import type { HitGroup, Point, Projector, Quad, SeatId, TablePlan, V3 } from "../../layout";
 import type { CardId } from "../../protocol";
-import { poseQuad } from "./poses";
 import type { Sample } from "./types";
 
 /**
@@ -21,12 +21,15 @@ export interface DrawnPiece {
   readonly up?: boolean;
   /** Stepped out of the light (a highlight): drawn over everything else on the table, so reached first. */
   readonly above?: boolean;
-  /** A sifted card: its card, whose it is, and its turn as drawn (poses `siftRoll`). */
-  readonly sift?: { readonly card: CardId; readonly seat: SeatId | null; readonly roll: number };
+  /** A card on a sheet: its card, whose it is, its turn as drawn (poses `siftRoll`), and the engine's target for its
+   *  place (the cards it stands for, its region at rest). */
+  readonly sift?: { readonly card: CardId; readonly seat: SeatId | null; readonly roll: number; readonly members: readonly CardId[]; readonly region: Quad };
 }
 
-/** The id a sifted card's hit group has: "sift:<card>". A tap on it acts on that card, as on the table. */
+/** The id a sheet card's hit group has: "sift:<card>", a tap on it the card itself, as on the table; a stack of copies
+ *  on a sheet is "sheet:<top>", a group of them (play's twins rule picks among them). */
 export const siftGroupId = (card: CardId): string => `sift:${card}`;
+export const sheetGroupId = (card: CardId): string => `sheet:${card}`;
 
 /**
  * The highest group in draw order under `p`, its quad moved to where its piece was drawn (`hitTest` at rest). While the
@@ -77,10 +80,14 @@ type Sifted = DrawnPiece & { readonly sift: NonNullable<DrawnPiece["sift"]> };
 /** The sifted cards as drawn, in draw order (the later over the earlier). */
 const siftedOf = (drawn: ReadonlyMap<string, DrawnPiece>): Sifted[] => [...drawn.values()].filter((d): d is Sifted => !!d.sift);
 
-/** A sifted card's group: one card, measured where it was drawn, over everything on the table. */
+/**
+ * A sheet card's group, over everything on the table: the engine's target for its place (its region, the cards it stands
+ * for) once the card stands there; while it is still flying in, turning as it rises, its face as drawn.
+ */
 function siftGroup(plan: TablePlan, d: Sifted, i: number): HitGroup {
-  const quad = poseQuad(plan.projector, { ...d.now, pos: { ...d.now.pos, y: d.now.pos.y + d.now.lift } }, d.sift.roll);
-  return { id: siftGroupId(d.sift.card), kind: "card", seat: d.sift.seat, members: [d.sift.card], quad, order: 1e6 + i };
+  const a = d.rest, b = d.now, still = a.pos.x === b.pos.x && a.pos.y === b.pos.y && a.pos.z === b.pos.z && a.s === b.s && a.lift === b.lift && a.rx === b.rx && a.ry === b.ry;
+  const quad = still ? d.sift.region : poseQuad(plan.projector, { ...b, pos: { ...b.pos, y: b.pos.y + b.lift } }, d.sift.roll), stack = d.sift.members.length > 1;
+  return { id: stack ? sheetGroupId(d.sift.card) : siftGroupId(d.sift.card), kind: stack ? "pile" : "card", seat: d.sift.seat, members: [...d.sift.members], quad, order: 1e6 + i };
 }
 
 /** Whether a sift is open: then only its cards are reached (`pickDrawn`, `pickHit`). */

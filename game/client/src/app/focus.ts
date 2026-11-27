@@ -1,15 +1,16 @@
 // Focus: one ordered stack of typed layers, top last (docs/game-client-architecture.md, "input, focus and access").
-// Each entry is a layer with its subject (the inspector's card, a lean-in's seat, a sift's group), whether the player
+// Each entry is a layer with its subject (the inspector's card, a spread's seat, a sift's group), whether the player
 // may dismiss it, and where keyboard focus returns when it goes. Play keeps owning its choice draft and whether its
 // sheet may close: the stack holds a `sheet` entry while play presents a sheet, and dismissing it asks play. Pure.
 //
 // One rule for every way out, Escape, a tap outside (a sheet's scrim, an unclaimed tap on the table) and the ✕: the top
 // layer goes. The stack layer and the mulligan are set aside rather than closed (they stand for something still true
-// on the table); a set-aside layer shows a chip that restores it. The table's layers (the stack, a lean-in, a sift)
+// on the table); a set-aside layer shows a chip that restores it. The table's layers (the stack, the clash, a seat's spread, a sift)
 // always sit under the chrome's (a sheet, the inspector, the mulligan, the menu, the hand's list, the log, the loss
 // report): a new layer goes on top of its own tier.
 import type { SeatId, TableModel } from "../model";
 import type { CardId } from "../protocol";
+import type { SheetFocus } from "../layout";
 import type { FocusLayer, FocusTop, TableLayer, TableLayerId } from "../scene/stage/types";
 
 /** The scene's focus layers, and three of the chrome's own the scene sees as a sheet: the log ("What happened"), the
@@ -20,11 +21,11 @@ export interface FocusEntry {
   readonly layer: LayerId;
   /** The inspector's card. */
   readonly card: CardId | null;
-  /** A lean-in's seat. */
+  /** A seat's spread ("lean": "See X's board"). */
   readonly seat: SeatId | null;
-  /** A sift's hit group. */
+  /** A sift's hit group: the pile opened. */
   readonly group: string | null;
-  /** A sift's page (layout `SIFT_PAGE` cards each), from 0. */
+  /** A sheet's page (a pile's or a spread's, as the engine pages it), from 0. */
   readonly page: number;
   /** Escape, a tap outside or ✕ may take it down (a sheet: play says, when asked). */
   readonly dismissible: boolean;
@@ -84,7 +85,7 @@ export const topKey = (f: FocusState): string | null => {
   const t = top(f);
   return t ? `${t.layer}|${t.card}|${t.seat}|${t.group}${t.layer === "stack" ? `|${f.stackKey}` : ""}` : null;
 };
-/** The topmost table layer open (the stack, a lean-in, a sift): the one the scene draws the table from, whatever chrome
+/** The topmost table layer open (the stack, the clash, a spread, a sift): the one the scene draws the table from, whatever chrome
  * layer is over it (scene `tableFocus` of `focusTopOf`). */
 export const tableTop = (f: FocusState): FocusEntry | null => f.layers.filter((e) => TABLE.has(e.layer)).at(-1) ?? null;
 export const isOpen = (f: FocusState, layer: LayerId): boolean => f.layers.some((e) => e.layer === layer);
@@ -191,11 +192,18 @@ function combatSync(f: FocusState, c: CombatSight | undefined): FocusState {
   return next;
 }
 
+/** A sheet past its first page says which; every other layer has none. */
+const siftPage = (e: FocusEntry): { page?: number } => ((e.layer === "sift" || e.layer === "lean") && e.page > 0 ? { page: e.page } : {});
+
+/** The sheet a table layer shows (a pile opened, a seat's spread), its page and the chooser it serves; null for others. */
+export function sheetFocusOf(e: FocusEntry | null): { focus: SheetFocus; page: number; choosing: number | null } | null {
+  if (e?.layer === "sift" && e.group !== null) return { focus: { kind: "pile", group: e.group }, page: e.page, choosing: e.choosing ?? null };
+  if (e?.layer === "lean" && e.seat !== null) return { focus: { kind: "spread", seat: e.seat }, page: e.page, choosing: null };
+  return null;
+}
+
 /** What the scene is handed: the top entry and its subject (the log and the loss report are sheets to it), and every
  * table layer open, bottom first, whatever chrome layer is over them (the topmost decides how the table looks). */
-/** A sift past its first page says which; every other layer has none. */
-const siftPage = (e: FocusEntry): { page?: number } => (e.layer === "sift" && e.page > 0 ? { page: e.page } : {});
-
 export function focusTopOf(f: FocusState): FocusTop {
   const table: TableLayer[] = f.layers
     .filter((e) => TABLE.has(e.layer))
