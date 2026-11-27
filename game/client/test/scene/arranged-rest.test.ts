@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { Euler, Matrix4, Vector3 } from "three";
 import { planTable, tableInputOf } from "../../src/layout";
-import { CH, CW, TH } from "../../src/layout/seat/geometry";
+import { CH, CW, TH } from "../../src/layout/geometry";
 import { designModels } from "../../src/scene/workbench/bench-inputs";
 import { PAGE_TOP, unitPose } from "../../src/scene/stage/poses";
 import type { Pose } from "../../src/scene/stage/types";

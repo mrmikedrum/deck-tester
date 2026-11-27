@@ -269,7 +269,6 @@ export function view(more: Partial<ChromeView> = {}, w = 1180, h = 820): ChromeV
     handSheet: null,
     stack: [],
     sift: null,
-    back: null,
     newGame: false,
     stackOpen: false,
     log: NO_LOG,

@@ -3,7 +3,7 @@ import type { Placement, Posture, SeatPlan, Unit } from "./seat";
 import type { CardId, Point, Rect, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 import { FLOOR, TAP_PX } from "./board";
-import { CH, CW, PILE_LEAN, TAP_LEAN } from "./seat/geometry";
+import { CH, CW, PILE_LEAN, TAP_LEAN } from "./geometry";
 import { hasSquare } from "./arrange/audit";
 
 /** Audit with the cell grid alone (tests show the geometric first pass changes no verdict). */

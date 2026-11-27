@@ -323,12 +323,28 @@ describe("the stack's rules and the fixtures", () => {
     expect($(".l-sheet h3")?.textContent).toBe("Stack rules · first to last");
     expect(texts(".l-rules > b")).toEqual(["Swords to Plowshares · Dack", "Phantasmal Image · You"]);
   });
-  it("a chip restores its layer; the back bar goes back to the table", () => {
-    show({ chips: [{ layer: "stack", label: "Stack 2" }], back: "Ana's side", layers: [{ layer: "lean", restore: null }] });
+  it("a chip restores its layer; a seat's spread names its board, captions its tiers, counts its stacks, and goes back", () => {
+    const spread = {
+      group: "spread:Ana",
+      title: "Ana's board",
+      close: "Back to the table",
+      tapped: 0,
+      page: 0,
+      pages: 1,
+      range: null,
+      top: 200,
+      chooser: null,
+      cards: [{ id: 5 as CardId, label: "Beast ×4" }],
+      captions: [{ text: "Ready", x: 40, y: 200 }],
+      counts: [{ text: "×4", x: 140, y: 340 }],
+    };
+    show({ chips: [{ layer: "stack", label: "Stack 2" }], sift: spread, layers: [{ layer: "lean", restore: null }] });
     expect(texts(".l-stackchip")).toEqual(["Stack 2"]);
-    expect($(".l-back span")?.textContent).toBe("Ana's side");
+    expect($(".l-sift b")?.textContent).toBe("Ana's board");
+    expect(texts(".l-marks .cap")).toEqual(["Ready"]);
+    expect(texts(".l-marks .count")).toEqual(["×4"]);
     click($(".l-stackchip"));
-    click($(".l-back button"));
+    click($('.l-sift [aria-label="Back to the table"]') ?? $(".l-sift .g-close"));
     expect(orders()).toEqual([{ t: "restore", layer: "stack" }, { t: "dismiss" }]);
   });
 });

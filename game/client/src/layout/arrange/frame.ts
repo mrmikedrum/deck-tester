@@ -2,7 +2,7 @@
 // lies on it, and its face on screen. No level-table assumption: a frame may be tilted or lifted (a spread brought
 // nearer), and everything here works in its own axes.
 import type { Projector } from "../projector";
-import { CH, CW, TH } from "../seat/geometry";
+import { CH, CW, TH } from "../geometry";
 import type { Quad } from "../shape";
 import type { SeatSlot } from "../template";
 import type { Point, V3 } from "../types";

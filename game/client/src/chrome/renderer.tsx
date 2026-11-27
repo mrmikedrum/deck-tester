@@ -26,7 +26,7 @@ import { HandMotion, progress, running, sameScreen } from "./frame";
 import { Hand } from "./hand";
 import { Inspector } from "./inspector";
 import { LogSheet, LogStrip, LossSheet } from "./log";
-import { BackBar, Chips, GameButton, HandList, Menu, Mulligan, SiftBar } from "./layers";
+import { Chips, GameButton, HandList, Menu, Mulligan, SheetMarks, SiftBar } from "./layers";
 import { Plates, SeatFocus } from "./plates";
 import { Clash } from "./clash";
 import { Prompt, WaitingPrompt } from "./prompt";
@@ -420,12 +420,12 @@ export function chromeRenderer(root: HTMLElement, ports: ChromePorts): ChromeRen
               ) : null}
               <GameButton send={send} />
               {view.waiting === null ? <LogStrip view={view.log} width={view.logWidth} onOpen={() => send({ t: "open", layer: "log", card: null })} /> : null}
-              {view.chips.length || view.back !== null ? (
+              {view.chips.length ? (
                 <div class="l-corner">
                   <Chips chips={view.chips} send={send} />
-                  {view.back !== null ? <BackBar text={view.back} send={send} /> : null}
                 </div>
               ) : null}
+              {view.sift !== null ? <SheetMarks view={view.sift} /> : null}
               {view.sift !== null ? <SiftBar view={view.sift} send={send} /> : null}
             </div>
             {modals.map((l) => (

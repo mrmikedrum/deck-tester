@@ -25,7 +25,7 @@ import {
   stackPose,
 } from "../../src/scene/stage";
 import { STACK_POSE } from "../../src/layout";
-import { CH } from "../../src/layout/seat/geometry";
+import { CH } from "../../src/layout/geometry";
 import { corpusSteps } from "./corpus";
 import type { FlightPlan, Sample, ScheduleInput } from "../../src/scene/stage";
 

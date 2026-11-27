@@ -127,16 +127,17 @@ group("the stack as the table's focus", () => {
   });
 });
 
-group("leaning in", () => {
-  it("carries every piece of the seat up and squared to me; its plaque's place goes with it, its taps are the chrome's", () => {
+group("a seat's spread", () => {
+  it("lays the seat's cards on the sheet, each its own tap; the table stays where it was, its plaque's taps the chrome's", () => {
     const seat = [...board.plan.seats.keys()][2]!;
     const view = rest(board, at({ layer: "lean", seat }));
     const plate = board.plan.hits.groups.find((g) => g.id === `plate:${seat}`)!;
-    const d = view.drawn.get(plate.id)!;
-    expect(d.now.pos.y).toBeGreaterThan(3);
-    // The nameplate is chrome (chrome/plates.tsx): a tap on the canvas never reaches the plaque's place.
-    const c = board.plan.projector.project({ ...d.now.pos, y: d.now.pos.y + 0.3 * d.now.s });
-    expect(pickDrawn(board.plan, view.drawn, c)?.id).not.toBe(plate.id);
+    const still = rest(board, at({}));
+    expect(view.drawn.get(plate.id)!.now.pos).toEqual(still.drawn.get(plate.id)!.now.pos);
+    const sifted = [...view.drawn.entries()].filter(([id]) => id.startsWith("sift:") && id !== "sift:scrim");
+    expect(sifted.length).toBeGreaterThan(0);
+    for (const [id, dp] of sifted) expect(pickDrawn(board.plan, view.drawn, centre(poseQuad(board.plan.projector, dp.now, dp.sift?.roll ?? 0)))?.id).toBe(id);
+    expect(pickDrawn(board.plan, view.drawn, { x: 4, y: 4 })).toBeNull();
   });
 });
 

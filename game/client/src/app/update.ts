@@ -9,7 +9,7 @@
 // or teardown reaches it as a snapshot event, never as a reset to `initial`.
 import type { ZoomRequest } from "../scene/stage/types";
 import { diff, modelOf, playerViewer } from "../model";
-import { groupById, siftPages } from "../layout";
+import { groupById, pileCards, sheetOf } from "../layout";
 import type { HitGroup } from "../layout";
 import type { ChangeSet, TableModel } from "../model";
 import * as narrative from "../narrative";
@@ -17,7 +17,6 @@ import * as play from "../play";
 import type { Ms } from "../platform";
 import type { CardId, ClientLogEntry, CommitId, Continuity, Decision, Snapshot } from "../protocol";
 import { mustNotMiss } from "../scene/stage/backlog";
-import { siftCards } from "../scene/stage/describe";
 import type { Recap, SceneReport } from "../scene/stage/types";
 import type { TransportEvent } from "../transport";
 import { answerOutcome, observeAnswer, openAnswer, restartAnswers, settledSince, supersedeAnswer, withdrawAnswer } from "./answers";
@@ -28,7 +27,7 @@ import { cancelDeadline, cancelOwned, isLive, setDeadline } from "./deadlines";
 import type { Effect } from "./effects";
 import { effectFault, ingestFault, ingestOk, logEntry } from "./faults";
 import { CLASH_MORE, combatSightOf, isFighter } from "./clash";
-import { close, dismiss, entry, isAside, isOpen, NO_FOCUS_STATE, open, restore, setAside, stackKeyOf, sync, tableTop, top, topKey } from "./focus";
+import { close, dismiss, entry, isAside, isOpen, NO_FOCUS_STATE, open, restore, setAside, sheetFocusOf, stackKeyOf, sync, tableTop, top, topKey } from "./focus";
 import { isDeadlineId } from "./ids";
 import { timeOf } from "./msg";
 import type { InputMsg, Msg } from "./msg";
@@ -125,8 +124,12 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const mulligan = live && c.prompt?.style === "overlay" && !c.prompt.busy;
   const groups = s.plan?.hits.groups;
   // A graveyard or exile is there while it has cards, on the table or not (an opponent's lives in the nameplate's focus).
-  const has = (id: string): boolean => (groups?.some((g) => g.id === id) ?? false) || (!!s.model && !!s.plan && (siftCards(s.model, s.plan, id)?.zone ?? null) !== null && (siftCards(s.model, s.plan, id)?.ids.length ?? 0) > 0);
-  const pages = (id: string): number => siftPages(s.model && s.plan ? (siftCards(s.model, s.plan, id)?.ids.length ?? 0) : 0);
+  const zoneHas = (id: string): boolean => {
+    const z = s.model && s.plan ? pileCards(s.model, s.plan, id) : null;
+    return !!z?.zone && z.ids.length > 0;
+  };
+  const has = (id: string): boolean => (groups?.some((g) => g.id === id) ?? false) || zoneHas(id);
+  const pages = (id: string): number => (s.model && s.plan ? (sheetOf(s.model, s.plan, { kind: "pile", group: id })?.pages.count ?? 1) : 1);
   const synced = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat, s.plan), groups: has, pages }, origin);
   // A lean-in on a seat that has left the table (out of the game) goes with it.
   const leaning = synced.layers.find((e) => e.layer === "lean");
@@ -306,7 +309,7 @@ function sifts(s: AppState, g: HitGroup): boolean {
  * set aside first; a tap on a sifted card then acts on that card alone. */
 function chooseFrom(tx: Tx, group: string, rev: number): void {
   // (a graveyard or exile may be off the table: the model holds it)
-  const g = tx.s.plan ? (groupById(tx.s.plan.hits, group) ?? (tx.s.model && siftCards(tx.s.model, tx.s.plan, group)?.zone ? { id: group } : undefined)) : undefined;
+  const g = tx.s.plan ? (groupById(tx.s.plan.hits, group) ?? (tx.s.model && pileCards(tx.s.model, tx.s.plan, group)?.zone ? { id: group } : undefined)) : undefined;
   if (!g || (top(tx.s.focus)?.layer === "sift" && top(tx.s.focus)?.group === g.id)) return;
   // (A drag's other end, after its first was chosen: that sift gives way to this one.)
   const f = isOpen(tx.s.focus, "sift") ? close(tx.s.focus, "sift") : tx.s.focus;
@@ -672,13 +675,15 @@ function input(s: AppState, m: InputMsg): Step {
       return done(tx);
     }
     case "siftPage": {
-      // A big pile is sifted a page at a time (layout `SIFT_PAGE`): the page turns, never past either end. Only the sift
-      // the table shows (a spell that took the table since leaves it be), and only the one whose pager was pressed.
-      const t = tableTop(s.focus);
-      const e = t?.layer === "sift" && t.group === m.group ? t : undefined;
-      const cards = e?.group != null && s.model && s.plan ? siftCards(s.model, s.plan, e.group) : null;
-      if (!e || !cards) return done(tx);
-      const page = Math.max(0, Math.min(siftPages(cards.ids.length) - 1, e.page + m.delta));
+      // A sheet bigger than the room it has is shown a page at a time (as the engine pages it): the page turns, never past
+      // either end. Only the sheet the table shows (a spell that took the table since leaves it be), and only the one
+      // whose pager was pressed: a pile by its group, a spread by "spread:<seat>".
+      const e = tableTop(s.focus);
+      const sheet = sheetFocusOf(e);
+      const key = sheet ? (sheet.focus.kind === "pile" ? sheet.focus.group : `spread:${sheet.focus.seat}`) : null;
+      const count = sheet && key === m.group && s.model && s.plan ? (sheetOf(s.model, s.plan, sheet.focus, sheet.page)?.pages.count ?? 0) : 0;
+      if (!e || !count) return done(tx);
+      const page = Math.max(0, Math.min(count - 1, e.page + m.delta));
       if (page !== e.page) tx.s = { ...s, focus: { ...s.focus, layers: s.focus.layers.map((x) => (x === e ? { ...x, page } : x)) } };
       return done(tx);
     }

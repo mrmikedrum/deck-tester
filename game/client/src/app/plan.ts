@@ -13,9 +13,9 @@ import type { AppState } from "./state";
 import { blockedOf } from "./clash";
 import { stackKeyOf, tableTop } from "./focus";
 
-/** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sift too. */
+/** The chrome's mode for layout's reservations: the mulligan puts the hand away, a sheet too (a pile, a seat's spread). */
 export function chromeMode(s: AppState, cues: BoardCues): ChromeMode {
-  if (s.focus.layers.some((f) => f.layer === "sift")) return "sifting";
+  if (s.focus.layers.some((f) => f.layer === "sift" || f.layer === "lean")) return "sifting";
   return cues.handAway ? "mulligan" : "normal";
 }
 

@@ -10,6 +10,7 @@
 // report): a new layer goes on top of its own tier.
 import type { SeatId, TableModel } from "../model";
 import type { CardId } from "../protocol";
+import type { SheetFocus } from "../layout";
 import type { FocusLayer, FocusTop, TableLayer, TableLayerId } from "../scene/stage/types";
 
 /** The scene's focus layers, and three of the chrome's own the scene sees as a sheet: the log ("What happened"), the
@@ -20,11 +21,11 @@ export interface FocusEntry {
   readonly layer: LayerId;
   /** The inspector's card. */
   readonly card: CardId | null;
-  /** A lean-in's seat. */
+  /** A seat's spread ("lean": "See X's board"). */
   readonly seat: SeatId | null;
-  /** A sift's hit group. */
+  /** A sift's hit group: the pile opened. */
   readonly group: string | null;
-  /** A sift's page (layout `SIFT_PAGE` cards each), from 0. */
+  /** A sheet's page (a pile's or a spread's, as the engine pages it), from 0. */
   readonly page: number;
   /** Escape, a tap outside or ✕ may take it down (a sheet: play says, when asked). */
   readonly dismissible: boolean;
@@ -191,11 +192,18 @@ function combatSync(f: FocusState, c: CombatSight | undefined): FocusState {
   return next;
 }
 
+/** A sheet past its first page says which; every other layer has none. */
+const siftPage = (e: FocusEntry): { page?: number } => ((e.layer === "sift" || e.layer === "lean") && e.page > 0 ? { page: e.page } : {});
+
+/** The sheet a table layer shows (a pile opened, a seat's spread), its page and the chooser it serves; null for others. */
+export function sheetFocusOf(e: FocusEntry | null): { focus: SheetFocus; page: number; choosing: number | null } | null {
+  if (e?.layer === "sift" && e.group !== null) return { focus: { kind: "pile", group: e.group }, page: e.page, choosing: e.choosing ?? null };
+  if (e?.layer === "lean" && e.seat !== null) return { focus: { kind: "spread", seat: e.seat }, page: e.page, choosing: null };
+  return null;
+}
+
 /** What the scene is handed: the top entry and its subject (the log and the loss report are sheets to it), and every
  * table layer open, bottom first, whatever chrome layer is over them (the topmost decides how the table looks). */
-/** A sift past its first page says which; every other layer has none. */
-const siftPage = (e: FocusEntry): { page?: number } => (e.layer === "sift" && e.page > 0 ? { page: e.page } : {});
-
 export function focusTopOf(f: FocusState): FocusTop {
   const table: TableLayer[] = f.layers
     .filter((e) => TABLE.has(e.layer))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CH, CW, TH } from "../../src/layout/seat/geometry";
+import { CH, CW, TH } from "../../src/layout/geometry";
 import {
   canonical,
   counterChip,

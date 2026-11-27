@@ -1,9 +1,9 @@
 // The table's focus layers as layout places them: the stack as the focus (large in the open middle, clear of what it
-// aims at and of the plaques), and my mana wells, one per kind of land, never folded or overlapping when some are spent.
+// aims at and of the plaques), my mana wells, one per kind of land, never folded or overlapping when some are spent, and
+// the sheets: a seat's spread and a pile opened.
 import { describe, expect, it } from "vitest";
-import { LEAN_LIFT, carry, leanOf, planTable, siftOf, siftQuad, tableInputOf } from "../../src/layout";
-import { leanedUnitAt } from "../../src/layout/focus";
-import { bounds, unitShape } from "../../src/layout/shape";
+import { SHEET_ROOM, pileCards, planTable, sheetOf, tableInputOf } from "../../src/layout";
+import { bounds } from "../../src/layout/shape";
 import { designUnit } from "../../src/layout/types";
 import type { Quad } from "../../src/layout/shape";
 import { modelOf } from "../../src/model";
@@ -95,72 +95,32 @@ describe("my wells", () => {
   });
 });
 
-describe("leaning in", () => {
-  const { plan, model } = planOf("023-play-monarch.json");
+describe("\"See X's board\": a seat's spread", () => {
+  const model = modelOf(corpusSnapshot("023-play-monarch.json"), catalog, viewerOf())!;
+  const plan = planTable(tableInputOf(model, { viewport: VP, engine: { draw: true } }));
   const seats = [...plan.seats.keys()];
-  const pageQuad = (seat: (typeof seats)[number], l: ReturnType<typeof leanOf>) => {
-    const f = plan.seats.get(seat)!.fixtures.page, c = Math.cos(f.yaw), s = Math.sin(f.yaw);
-    return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
-      const lu = (a! * f.w) / 2, lv = (b! * f.d) / 2, p = { x: f.pos.x + lu * c + lv * s, y: 0, z: f.pos.z - lu * s + lv * c };
-      return plan.projector.project(l && l.seat === seat ? carry(l, p) : l?.slide?.seat === seat ? { ...p, x: p.x + l.slide.dx } : p);
-    }) as unknown as Quad;
-  };
-  it("not on my own seat", () => expect(leanOf(plan, model.viewer.perspective)).toBeNull());
   for (const i of [1, 2, 3])
-    it(`seat ${i}: its page comes up larger, squared to me, above my creatures and under the top bar`, () => {
-      const l = leanOf(plan, seats[i]!)!;
-      expect(l.to.y).toBe(LEAN_LIFT);
-      const q = bounds(pageQuad(seats[i]!, l)), r = bounds(pageQuad(seats[i]!, null));
-      expect((q.r - q.l) * (q.b - q.t)).toBeGreaterThan(1.1 * (r.r - r.l) * (r.b - r.t));
-      expect(q.t).toBeGreaterThanOrEqual(65);
-      const mine = plan.seats.get(seats[0]!)!.units.filter((u) => u.role === "creature").map((u) => plan.hits.groups.find((g) => g.id === u.id)!);
-      for (const g of mine) expect(q.b, g.id).toBeLessThanOrEqual(bounds(g.quad).t);
-      // a side page never covers the page across's cards (that page slides aside)
-      if (i !== 2) {
-        const across = plan.hits.groups.filter((g) => g.seat === seats[2]);
-        for (const g of across) {
-          const moved = g.quad.map((p) => ({ x: p.x + (l.slide ? plan.projector.project({ x: l.slide.dx, y: 0, z: plan.seats.get(seats[2]!)!.fixtures.page.pos.z }).x - plan.projector.project({ x: 0, y: 0, z: plan.seats.get(seats[2]!)!.fixtures.page.pos.z }).x : 0), y: p.y })) as unknown as Quad;
-          expect(meets(pageQuad(seats[i]!, l), moved), g.id).toBe(false);
-        }
-      }
+    it(`seat ${i}: every permanent on the sheet, each face larger than the table's and under the nameplates, the table unmoved`, () => {
+      const sh = sheetOf(model, plan, { kind: "spread", seat: seats[i]! })!;
+      const home = [...plan.seats.get(seats[i]!)!.home.keys()].sort((a, b) => a - b);
+      const shown = Array.from({ length: sh.pages.count }, (_, p) => sheetOf(model, plan, { kind: "spread", seat: seats[i]! }, p)!.places.flatMap((x) => [...x.cards])).flat();
+      expect(shown.sort((a, b) => a - b)).toEqual(home);
+      const u = designUnit(VP);
+      for (const p of sh.places) expect(bounds(p.quad).t).toBeGreaterThanOrEqual(SHEET_ROOM.top * u - 1);
+      // nearer than the table: each face taller than any table card of that seat
+      const tallest = Math.max(...plan.hits.groups.filter((g) => g.seat === seats[i]).map((g) => bounds(g.face ?? g.quad).b - bounds(g.face ?? g.quad).t));
+      for (const p of sh.places) expect(bounds(p.quad).b - bounds(p.quad).t).toBeGreaterThan(tallest);
     });
-  it("its cards then grow where they stand, up to 1.35, each keeping clear of the others and of the plaque (h.js LEAN_GROW)", () => {
-    const u = designUnit(plan.viewport);
-    for (const i of [1, 2, 3]) {
-      const l = leanOf(plan, seats[i]!)!;
-      expect(l.grow, `seat ${i}`).toBeGreaterThanOrEqual(1);
-      expect(l.grow).toBeLessThanOrEqual(1.35);
-      const sp = plan.seats.get(seats[i]!)!;
-      const boxAt = (g: number) =>
-        sp.units.map((un) => bounds(unitShape(plan.projector, seats[i]!, un, false, leanedUnitAt(plan.projector, l, un, g)).face));
-      const gap = (a: ReturnType<typeof bounds>, b: ReturnType<typeof bounds>) => Math.max(b.l - a.r, a.l - b.r, b.t - a.b, a.t - b.b) / u;
-      const rest = boxAt(1), grown = boxAt(l.grow);
-      for (let a = 0; a < rest.length; a++)
-        for (let b = a + 1; b < rest.length; b++) {
-          const d = gap(rest[a]!, rest[b]!);
-          if (d >= 0) expect(gap(grown[a]!, grown[b]!), `seat ${i}`).toBeGreaterThanOrEqual(Math.min(6, d) - 1e-6);
-        }
-    }
-    // the page across (Dack's) has the room: its cards grow the whole way
-    expect(leanOf(plan, seats[2]!)!.grow).toBeCloseTo(1.35, 2);
-  });
 });
 
-describe("a sift", () => {
-  it("fans a pile in rows, inside the screen, each card at least 44 px wide up to 27 cards; tapped ones turned", () => {
-    for (const n of [1, 3, 6, 7, 14, 27]) {
-      const places = siftOf(VP, Array.from({ length: n }, (_, i) => i % 3 === 0));
-      expect(places).toHaveLength(n);
-      for (const p of places) {
-        expect(p.rect.left).toBeGreaterThanOrEqual(0);
-        expect(p.rect.right).toBeLessThanOrEqual(VP.w);
-        expect(p.rect.top).toBeGreaterThanOrEqual(0);
-        expect(p.rect.bottom).toBeLessThanOrEqual(VP.h);
-        expect(p.rect.right - p.rect.left, `${n}`).toBeGreaterThanOrEqual(44);
-      }
-      expect(places.filter((p) => p.turn !== 0)).toHaveLength(Math.ceil(n / 3));
-      // no two overlap
-      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) expect(meets(siftQuad(places[i]!), siftQuad(places[j]!))).toBe(false);
-    }
+describe("a pile opened", () => {
+  it("its cards singly, in the pile's order, like cards together, ready before tapped", () => {
+    const model = modelOf(corpusSnapshot("023-play-monarch.json"), catalog, viewerOf())!;
+    const plan = planTable(tableInputOf(model, { viewport: VP, engine: { draw: true } }));
+    const g = plan.hits.groups.find((x) => (x.kind === "pile" || x.kind === "well") && x.members.length > 1)!;
+    const sh = sheetOf(model, plan, { kind: "pile", group: g.id })!;
+    expect(sh.places.every((p) => p.cards.length === 1)).toBe(true);
+    expect([...sh.cards].sort((a, b) => a - b)).toEqual([...g.members].sort((a, b) => a - b));
+    expect(sh.cards).toEqual(pileCards(model, plan, g.id)!.ids);
   });
 });

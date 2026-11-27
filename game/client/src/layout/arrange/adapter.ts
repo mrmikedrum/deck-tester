@@ -9,7 +9,7 @@ import { Ledger } from "../ledger";
 import type { Projector } from "../projector";
 import type { Reservations } from "../reservations";
 import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
-import { PLATE_S } from "../seat/geometry";
+import { PLATE_S } from "../geometry";
 import type { CardId, SeatId, V3 } from "../types";
 import type { ArrCard, ArrUnit, ArrangeResult, Attention, CardPlace, ContainerMemory, PickTarget } from "./contract";
 import { CARD, LEAN, clearBehind, onFrame } from "./frame";

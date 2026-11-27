@@ -5,7 +5,7 @@
 // `onPile` (where a card lands on a pile). Pure.
 import { STACK_POSE, STAND_OFF, TILT } from "../../layout";
 import type { Placement, Point, Posture, Projector, Quad, Rect, V3 } from "../../layout";
-import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/geometry";
 import type { ScreenPose } from "../../play";
 import { materials } from "../../theme";
 import { PATH, add, scaled, v3 } from "./motion";

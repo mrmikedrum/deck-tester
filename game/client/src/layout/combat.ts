@@ -4,7 +4,7 @@
 // gathering's (arrange/gathering.ts). Pure, in the plan's terms: units, placements, the projector.
 import type { TableModel } from "../model";
 import type { SeatPlan, Unit } from "./seat";
-import { CH, CW } from "./seat/geometry";
+import { CH, CW } from "./geometry";
 import type { CardId, SeatId, V3 } from "./types";
 
 /** Attacks and blocks as layout takes them: plain ids (play's combat draft has this shape; layout never imports play). */

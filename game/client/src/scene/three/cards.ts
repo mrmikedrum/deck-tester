@@ -430,10 +430,15 @@ outgoingLight = mix(outgoingLight, diffuseColor.rgb, vLook.z);
 outgoingLight += rimGlow_;
 #include <opaque_fragment>`;
 
-/** The lit card material for one atlas page (its faces), opaque or drawn in the transparent pass (a sift's cards). */
+/**
+ * The lit card material for one atlas page (its faces), opaque or drawn in the transparent pass: a sheet's cards (a pile
+ * opened, a seat's spread), over its shade and the whole table. They stand at the table's mesh size, as near the eye as
+ * their size on screen says, which at the screen's foot can be under the table's own depth: so they skip the depth test
+ * (a slab is convex and its back faces are culled, so it still draws itself right, and a sheet's cards never overlap).
+ */
 function cardMaterial(page: Texture, back: Texture, grain: Texture, time: { value: number }, transparent: boolean): MeshStandardMaterial {
   const f = slab.face;
-  const m = new MeshStandardMaterial({ roughness: f.roughness, metalness: 0, envMapIntensity: f.env, bumpMap: grain, bumpScale: f.grain, transparent });
+  const m = new MeshStandardMaterial({ roughness: f.roughness, metalness: 0, envMapIntensity: f.env, bumpMap: grain, bumpScale: f.grain, transparent, depthTest: !transparent });
   const uniforms = { uFaces: { value: page }, uBack: { value: back }, uStock: { value: new Color(slab.stock) }, uTime: time };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uniforms);

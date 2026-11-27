@@ -260,6 +260,8 @@ export interface TablePlan {
   readonly part: number;
   /** A fight between opponents whose duels do not fit the middle, however far the mats part: the app raises the clash. */
   readonly crowded: boolean;
+  /** The decision up, as the focus sheets read it: what it offers, and whether it is choosing cards (not priority). */
+  readonly decision: { readonly offered: ReadonlySet<CardId>; readonly choosing: boolean };
 }
 
 function fnv(s: string): number {
@@ -440,7 +442,13 @@ export function planTable(input: TableInput): TablePlan {
     .join("\n");
   const screen = `${quads(hits.groups.map((g) => g.quad))}\n${quads(hits.groups.flatMap((g) => (g.face ? [g.face] : [])))}\n${quads(stack.map((x) => x.quad))}\n${quads(stackUp.map((x) => x.quad))}`;
   const gathered = c.gathered ? JSON.stringify([c.gathered.form, c.gathered.step, c.gathered.extent, c.gathered.duels, c.gathered.moreAt, c.gathered.wings.map((w) => [w.attacker, w.defender, w.plaque, w.w, w.unblocked, w.walker, w.tallyAt, w.columns.map((col) => [col.unit, col.attackers, col.blockers, col.x, col.w, col.clasp, col.slot, col.power, col.blocked])]), c.gathered.more]) : "";
-  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${gathered}\n${part}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop: fieldTop + myDrop(part), ...(input.engine ? { leaves } : {}), ...(me ? { mine: me } : {}), part, crowded };
+  return { rev: fnv(`${placement}\n${hits.rev}\n${screen}\n${gathered}\n${part}`), viewport: vp, projector, reserve, seats, memory, hits, stack, stackUp, violations: v, combat, blocked: input.blocked ?? new Set(), gathering: c.gathered, fieldTop: fieldTop + myDrop(part), ...(input.engine ? { leaves } : {}), ...(me ? { mine: me } : {}), part, crowded, decision: decisionOf(input) };
+}
+
+/** What the decision up offers, and whether it is choosing cards: priority's plays are usable, not chosen. */
+function decisionOf(input: TableInput): TablePlan["decision"] {
+  const d = input.engine?.mine ?? input.engine?.leaves[0];
+  return { offered: d?.offered ?? new Set(), choosing: !!d?.decision && d.decision !== "play" };
 }
 
 /** A clash shape over a face of my field row or over the chrome: the clash must leave both uncovered. */

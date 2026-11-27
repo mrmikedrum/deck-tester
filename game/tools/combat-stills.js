@@ -226,6 +226,15 @@ const myCommanderCastable = (v) => {
   return e;
 };
 
+/** My crowded side, a ready Illusion of mine in the pile of them (the pile a tap opens). */
+const CROWDED = crowdedSide(19);
+const myIllusion = CROWDED.view.players.find((p) => p.name === "You").battlefield.find((c) => c.name === "Illusion" && !c.tapped).id;
+/** My crowded side, a target to choose among my creatures: every Illusion and Elemental of mine, inside their piles. */
+const crowdedTarget = (v) => {
+  const mine = CROWDED.view.players.find((p) => p.name === "You").battlefield.filter((c) => /Creature/.test(c.type));
+  return decide(v, "targets", "target for Return target creature to its owner's hand.", mine.map((c) => [`${c.name} (${c.id})`, c.id]), { edit: (e) => (e.view.players = clone(CROWDED.view.players)) });
+};
+
 const MARATH4 = [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]];
 const MOMENTS = {
   "moment-priority-9": { what: "Turn 9, my main phase: plays lit, an Illusion and a Thopter among them", envs: [at(9, 18), usable9(19)] },
@@ -239,6 +248,10 @@ const MOMENTS = {
   "moment-threat": { what: "Dack's first main phase, before attacks: what can come at me", envs: [rest(18), mainOf(19, "Dack")] },
   "moment-opponents-attack": { what: "Marath attacks Dack with four, no blocks yet: the rest of the table", envs: [mainOf(18, "Marath"), fight({ active: "Marath", attackers: [[1015, "Dack"], [1064, "Dack"], [1105, "Dack"], [1157, "Dack"]], phase: "COMBAT_DECLARE_ATTACKERS", priority: "Marath" })] },
   "moment-enters": { what: "A second Wispweaver Angel enters on Dack's side", envs: [rest(19), enters(20)] },
+  "pile-mine": { what: "My crowded side: the pile of my Illusions tapped open", env: clone(CROWDED), taps: [myIllusion] },
+  "pile-choosing": { what: "A target among my creatures: a pile of unlike creatures of mine tapped, the options in it", envs: [clone(CROWDED), crowdedTarget(20)], mixed: "You" },
+  "spread-marath": { what: "Turn 15: Marath's nameplate, then \"See Marath's board\"", env: rest(19), board: ["Marath"] },
+  "spread-atraxa": { what: "Turn 15: Atraxa's nameplate, then \"See Atraxa's board\"", env: rest(19), board: ["Atraxa"] },
   "turn-4": { what: "Turn 4 at rest: an early board", env: at(4, 19) },
   "plays": { what: "The turn-4 table as cards are played one after another: a still after each", steps: plays(12) },
   "commander-castable": { what: "Turn 4, my main phase: my commander castable from its portrait on my plate", env: myCommanderCastable(19) },
@@ -362,8 +375,23 @@ async function tapCard(page, card) {
         continue;
       }
       for (const c of m.taps ?? []) await tapCard(page, c);
+      if (m.mixed) {
+        // A pile of that seat's holding unlike cards (a fan), tapped in its middle.
+        const env = (m.envs ?? [m.env]).at(-1), names = new Map(env.view.players.flatMap((p) => p.battlefield).map((c) => [c.id, c.name]));
+        const gs = await page.evaluate((seat) => window.__deckmaster.hits().filter((h) => h.seat === seat && h.kind === "pile" && h.members.length > 1), m.mixed);
+        const g = gs.find((h) => new Set(h.members.map((id) => names.get(id))).size > 1);
+        if (!g) throw new Error(`no mixed pile of ${m.mixed}`);
+        await page.mouse.click(g.quad.reduce((t, q) => t + q.x, 0) / 4, g.quad.reduce((t, q) => t + q.y, 0) / 4);
+        await settle(page, 4000);
+      }
       for (const seat of m.cmd ?? []) {
         await page.click(`[data-plate="${seat}"] [data-cmd]`);
+        await settle(page, 4000);
+      }
+      for (const seat of m.board ?? []) {
+        await page.click(`[data-plate="${seat}"]`);
+        await settle(page, 4000);
+        await page.click(`[data-fk="board:${seat}"]`);
         await settle(page, 4000);
       }
       for (const c of m.hand ?? []) {

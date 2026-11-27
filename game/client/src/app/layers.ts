@@ -6,9 +6,8 @@ import type { CardId } from "../protocol";
 import { abilityTargetNames, abilityText, asides, handOrder, isCreature, stackValues } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
 import type { ChipView, HandSheetView, InspectorView, MenuView, MulliganView, SiftView, StackRow } from "../chrome";
-import { SIFT_PAGE, siftOf, siftPages } from "../layout";
-import type { TablePlan } from "../layout";
-import { siftCards } from "../scene/stage/describe";
+import { sheetOf } from "../layout";
+import type { SheetFocus, TablePlan } from "../layout";
 import type { SeatPlace } from "../theme";
 import type { FocusState } from "./focus";
 import type { AppState } from "./state";
@@ -151,36 +150,45 @@ export function menuOf(s: AppState): MenuView {
   return { decks: d ? (d.list ?? (d.error ? [] : null)) : null, error: d?.error ?? null, last: s.session.lastGame, ...(playing ? { inProgress: true } : {}) };
 }
 
+const CAPTION: Readonly<Record<string, string>> = { ready: "Ready", tapped: "Tapped", works: "Works", lands: "Lands" };
+
 /**
- * The caption of a sift up (h.js `sift`): a graveyard or exile by whose it is, a pile by its one name or its kind, with
- * how many and how many are tapped; its pages when it has more than `SIFT_PAGE`. Null when the plan has no such group.
+ * The caption of a sheet up: a pile (h.js `sift`) by whose graveyard or exile it is, or by its one name or its kind, with
+ * how many and how many are tapped; a seat's spread by whose board it is; its pages when its cards do not fit at once,
+ * and where the rest of what the decision offers is. Null when there is nothing to show.
  */
-export function siftViewOf(model: TableModel, plan: TablePlan, group: string, page: number, chooser: number | null = null): SiftView | null {
-  const all = siftCards(model, plan, group);
-  if (!all || !all.ids.length) return null;
-  const n = all.ids.length;
-  const seat = all.seat;
-  const whose = seat === model.viewer.perspective ? "Your" : `${seatName(model, seat)}'s`;
-  const cards = all.ids.map((id) => model.cards.get(id)).filter((c): c is Card => c !== undefined);
-  const names = new Set(cards.map((c) => c.face.name));
-  const kind = cards.every((c) => /\bLand\b/.test(c.face.type)) ? "lands" : cards.every(isCreature) ? "creatures" : "cards";
-  const what = all.zone ? `${whose} ${all.zone}` : names.size === 1 ? [...names][0]! : `${whose} ${kind}`;
-  const title = n > 1 ? `${what} ×${n}` : what;
-  const pages = siftPages(n), p = Math.max(0, Math.min(pages - 1, page));
-  const from = p * SIFT_PAGE, to = Math.min(n, from + SIFT_PAGE);
-  const places = siftOf(plan.viewport, all.tapped.slice(from, to));
+export function siftViewOf(model: TableModel, plan: TablePlan, focus: SheetFocus, page: number, chooser: number | null = null): SiftView | null {
+  const sh = sheetOf(model, plan, focus, page);
+  if (!sh || !sh.places.length) return null;
+  const n = sh.cards.length;
+  const whose = sh.seat === model.viewer.perspective ? "Your" : `${seatName(model, sh.seat)}'s`;
+  const cards = sh.cards.map((id) => model.cards.get(id)).filter((c): c is Card => c !== undefined);
+  let title: string;
+  if (focus.kind === "spread") title = sh.seat === model.viewer.perspective ? "Your board" : `${whose} board`;
+  else {
+    const names = new Set(cards.map((c) => c.face.name));
+    const kind = cards.every((c) => /\bLand\b/.test(c.face.type)) ? "lands" : cards.every(isCreature) ? "creatures" : "cards";
+    const what = sh.zone ? `${whose} ${sh.zone}` : names.size === 1 ? [...names][0]! : `${whose} ${kind}`;
+    title = n > 1 ? `${what} ×${n}` : what;
+  }
+  const shown = sh.places.flatMap((p) => p.cards), first = sh.cards.indexOf(shown[0]!);
+  const pages = sh.pages.count, p = sh.pages.current;
+  const elsewhere = sh.pages.offeredOn.length ? ` · choices on ${sh.pages.offeredOn.map((k) => k + 1).join(", ")}` : "";
   return {
-    group,
+    group: focus.kind === "pile" ? focus.group : `spread:${focus.seat}`,
     title,
-    tapped: all.tapped.filter(Boolean).length,
+    close: focus.kind === "spread" ? "Back to the table" : "Put back",
+    tapped: sh.zone || focus.kind === "spread" ? 0 : cards.filter((c) => c.tapped).length,
     page: p,
     pages,
-    range: pages > 1 ? `${from + 1}–${to} of ${n}` : null,
-    top: Math.min(...places.map((q) => q.rect.top)),
+    range: pages > 1 ? `${first + 1}–${first + shown.length} of ${n}${elsewhere}` : null,
+    top: sh.box.top,
     chooser,
-    cards: all.ids.slice(from, to).flatMap((id) => {
-      const c = model.cards.get(id);
-      return c ? [{ id, label: [c.face.name, ...asides(model, c)].join(", ") }] : [];
+    cards: sh.places.flatMap((pl) => {
+      const c = model.cards.get(pl.top);
+      return c ? [{ id: pl.top, label: [c.face.name + (pl.cards.length > 1 ? ` ×${pl.cards.length}` : ""), ...asides(model, c)].join(", ") }] : [];
     }),
+    captions: sh.captions.map((c) => ({ text: CAPTION[c.kind]!, x: c.at.x, y: c.at.y })),
+    counts: sh.places.flatMap((pl) => (pl.count ? [{ text: `×${pl.count.n}`, x: pl.count.at.x, y: pl.count.at.y }] : [])),
   };
 }
