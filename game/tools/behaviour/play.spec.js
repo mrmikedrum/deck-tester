@@ -108,23 +108,43 @@ test.describe("tapping what glows", () => {
     expect(await table.page.locator(".l-actions button").count()).toBe(0);
     expect(table.answers()).toEqual([]);
   });
-  test("the commander plays from my plate", async ({ table }) => {
+  test("the commander plays from its portrait on my plate", async ({ table }) => {
     const s = snapshot("main");
     await table.open(s);
-    await table.click(await locate(table.page, { plate: "you" }));
+    if (NEW) {
+      await table.page.locator(".l-plate.mine .cmd").tap();
+      await table.step(100);
+    }
+    else await table.click(await locate(table.page, { plate: "you" }));
     await table.page.locator(".l-actions button").first().click();
     expect((await table.answered(1))[0].answer).toEqual([7]);
   });
-  test("my plate's graveyard count opens my graveyard, though a tap on my plate casts my commander", async ({ table }) => {
-    test.skip(!NEW, "My graveyard is counted on my nameplate in the new entry");
+  test("tapping my nameplate opens my focus even when I can cast my commander", async ({ table }) => {
+    test.skip(!NEW, "My nameplate focus belongs to the new entry");
     const s = snapshot("main");
     await table.open(s);
-    await table.page.locator('.l-plate.mine [data-zone="graveyard"]').click();
+    await table.page.locator(".l-plate.mine .bronze").tap();
     await table.step(600);
-    await expect(table.page.locator(".l-sift")).toBeVisible();
-    expect(await table.page.locator(".l-actions button").count()).toBe(0);
+    const focus = table.page.getByRole("dialog", { name: "You" });
+    await expect(focus).toBeVisible();
+    await expect(focus.locator(".lines")).toContainText("mana sources untapped");
+    await expect(focus.locator(".zones h4")).toHaveText([/Graveyard/, /Exile/, /Command/, /Library/]);
+    await expect(table.page.locator(".l-actions button")).toHaveCount(0);
     expect(table.answers()).toEqual([]);
   });
+  for (const zone of ["graveyard", "exile"]) {
+    test(`my plate's ${zone} count opens that zone`, async ({ table }) => {
+      test.skip(!NEW, "My zone counts belong to the new entry");
+      const s = snapshot("main"), mine = s.view.players[0];
+      mine.exile = [{ ...mine.graveyard[0], id: 9900 }];
+      await table.open(s);
+      await table.page.locator(`.l-plate.mine [data-zone="${zone}"]`).tap();
+      await table.step(600);
+      await expect(table.page.locator(".l-sift")).toContainText(new RegExp(zone, "i"));
+      await expect(table.page.locator(".l-actions button")).toHaveCount(0);
+      expect(table.answers()).toEqual([]);
+    });
+  }
   test("\"Choose a play\" lists everything; the list never sends by itself", async ({ table }) => {
     await table.open("main");
     await table.press(label("Choose a play (6)"));

@@ -496,7 +496,10 @@ template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row
 (`TablePlan.mine`, the `mine` policy): my field, eleven places on the template's field line (`TableTemplate.mine`), one
 centred block while it has room (works at its left, what stands in its middle), and in front of it my mana lying as
 wells by kind, in the space the hand and the prompt leave. My nameplate stands at the screen's foot right of the hand
-and counts my graveyard and exile, which are not on the table. A commander waiting in the command zone is on no leaf: every seat's nameplate carries its portrait (a tap reads it; mine casts by a tap or a drag). At rest no middle is held back. **The parting** makes room when something rests on the middle at
+and shows power, open mana sources and hand count, followed by shortcuts to my graveyard and exile when they hold cards.
+Every seat's nameplate carries the portrait of each waiting commander. A tap on the portrait reads the card and offers
+any legal cast. I can also drag my portrait onto the table to cast it. At rest no middle is held back.
+**The parting** makes room when something rests on the middle at
 table size: every engine leaf slides along its own `away`, and my row toward me, by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
 it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and
 patches parted). `TablePlan.part` says how far. No leaf goes under the chrome along the top (`topChrome`); graveyard and
@@ -779,8 +782,9 @@ up an unclaimed tap on a fighter reads it and anywhere else sets the clash aside
 player's own: play's `inspect`, a tap play left on a hand card or a lone card (a sifted card is the card itself: its
 hit group, `sift:<card>`, is aimed at as the card), the Game button, View hand, the log strip, and the loss notice or
 the log's losses line. A tap play left on a pile, a well or a summary of more than one card, or on a graveyard or exile
-with cards in it, opens its sift (the stack set aside first), unless a sift is on top; on another seat's plate it leans
-in on that seat, and a second tap sits back (not while sifting). A sift goes when its group leaves the plan's hit groups,
+with cards in it, opens its sift (the stack set aside first), unless a sift is on top. Play can use any seat's plate to
+answer a player-target decision. An unclaimed tap on a plate toggles that seat's nameplate focus while no sift is open.
+From an opponent's focus, the board button leans in on their seat. A sift goes when its group leaves the plan's hit groups,
 and opening or closing one replans (the chrome's mode is `sifting`). An answer sent closes the inspector and the hand's list, and a new stop the
 inspector. The scene is handed the top entry and its subject (`focusTop`; the log and the loss report are sheets to it),
 and `table`: every table layer open, bottom first, whatever chrome layer is over them, so the table keeps the look of

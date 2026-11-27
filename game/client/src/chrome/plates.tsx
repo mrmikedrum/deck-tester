@@ -128,7 +128,7 @@ export function Plates({ plates, open, inert, send }: { plates: readonly PlateVi
             aria-expanded={open === p.seat}
             style={`left:${p.x}px;top:${p.y}px;${p.mine ? "transform:translate(-50%,-100%);" : ""}--u:${p.unit}px;--seat:var(--seat-${p.place})`}
             onClick={(e) => {
-              // (my graveyard's and exile's counts open those zones, whatever else a tap on my plate means: my commander)
+              // My graveyard and exile counts open those zones directly.
               const zone = (e.target as Element).closest?.("[data-zone]")?.getAttribute("data-zone");
               if (zone === "graveyard" || zone === "exile") return send({ t: "zone", seat: p.seat, zone });
               // A waiting commander's portrait: that card (to read it; mine, to cast it), unless it was just dragged.

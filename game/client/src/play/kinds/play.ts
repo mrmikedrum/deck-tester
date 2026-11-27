@@ -1,6 +1,6 @@
 // play: what I may do with priority. Option 1 is pass. Hand cards with a play glow and are played by dragging them up
-// 90 px (one play sends, several open a sheet named for the card, none toasts); a glowing permanent or my plate (for
-// the commander) opens the inspector with its plays as buttons; "Choose a play" lists everything. Mana abilities
+// 90 px (one play sends, several open a sheet named for the card, none toasts); a glowing permanent or a commander
+// portrait opens the inspector with its plays as buttons; "Choose a play" lists everything. Mana abilities
 // light their permanent but are not plays: not counted, not listed, never a reason to stop auto-pass.
 // The pass button's label by phase and the auto-pass decoration are assembled in prompt.ts.
 import type { CardId, PlayDecision } from "../../protocol";
@@ -89,7 +89,6 @@ export const play: Kind<PlayDecision> = {
       if (!card || r.card === null) continue;
       if (card.zone === "hand") m.hand(r.card);
       else if (card.zone === "battlefield") m.card(r.card, "option");
-      else if (card.commander) m.seat(c.f.me, "option");
     }
   },
   sheet(c, open) {
@@ -104,10 +103,10 @@ export const play: Kind<PlayDecision> = {
       carried: open.carried,
     };
   },
-  // live.js `tapDecision`: a tap looks; the card's plays are buttons on it. My plate means my commander.
+  // A tap on a card opens its inspector, with any legal plays as buttons.
   tap(c, at) {
     // (a group of copies: the first with a play)
-    const id = at.seat !== null ? (at.seat === c.f.me ? c.f.commander : null) : (at.ids.find((x) => optsFor(c.d, x).length) ?? at.ids[0]);
+    const id = at.ids.find((x) => optsFor(c.d, x).length) ?? at.ids[0];
     if (id == null || (!optsFor(c.d, id).length && !cardOf(c.f, id)?.commander)) return null;
     return { inspect: id };
   },

@@ -70,10 +70,11 @@ test("floating mana stays visible from priority through payment", async ({ table
   expect((await table.answered(1))[0].answer).toEqual([]);
 });
 
-test("tapping the nameplate inspects an uncastable commander", async ({ table }) => {
+test("tapping the portrait inspects an uncastable commander", async ({ table }) => {
   const s = snapshot("main"), commander = s.view.players[0].command[0];
   await table.open(withDecision(s, { options: ["pass"], refs: [{}] }));
-  await table.tapPlate("you");
+  await table.page.locator(".l-plate.mine .cmd").tap();
+  await table.step(100);
   await expect(table.page.locator(".inspector")).toBeVisible();
   await expect(table.page.locator(".inspector")).toContainText(commander.name);
   await expect(table.page.locator(".l-actions button")).toHaveCount(0);

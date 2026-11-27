@@ -34,6 +34,18 @@ export const PORTRAIT = { w: 52, tuck: 6, tap: 44 } as const;
  *  tucked under the bronze. */
 export const portraitsPx = (n: number, unit: number): number => (n ? n * Math.max(PORTRAIT.tap + PORTRAIT.tuck * unit, PORTRAIT.w * unit) - PORTRAIT.tuck * unit : 0);
 
+/** Fit a width that grows with the unit but can include fixed-pixel tap targets. */
+function fitUnit(px: (unit: number) => number, span: number, unit: number): number {
+  if (px(unit) <= span) return unit;
+  let lo = 0, hi = unit;
+  for (let k = 0; k < 20; k++) {
+    const m = (lo + hi) / 2;
+    if (px(m) <= span) lo = m;
+    else hi = m;
+  }
+  return lo;
+}
+
 /** A plate's width in design units, including the life box's padding and the name's letter spacing (chrome.css); its
  *  portraits are `portraitsPx`'s. */
 export function plateWidth(name: string, life: number, icons: readonly IconView[], measure: Measure = estimate, out = false): number {
@@ -233,9 +245,8 @@ export function summaryOf(model: TableModel, seat: SeatId): Tally {
   return t;
 }
 
-/** My nameplate's icons: my graveyard and exile once anything is there (a commander waiting in the command zone is a
- *  portrait against the plate, as every seat's is). */
-function myIcons(model: TableModel, seat: SeatId): IconView[] {
+/** Shortcuts from my nameplate to the graveyard and exile once they hold cards. */
+function zoneIcons(model: TableModel, seat: SeatId): IconView[] {
   const n = (zone: "graveyard" | "exile") => model.zone(seat, zone).length;
   return [
     ...(n("graveyard") ? [{ kind: "graveyard" as const, figure: String(n("graveyard")) }] : []),
@@ -286,9 +297,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
     const at = plan ? centre(plan, s.id) : null;
     const i = others.indexOf(s);
     const mark = marks.get(s.id);
-    // Mine says what of my game is off the table (my own table is in front of me): my graveyard and exile by count, and
-    // a commander waiting in the command zone; the nameplate's focus holds them.
-    const icons = s.out ? [] : mine ? myIcons(model, s.id) : restIcons(model, s.id, summaryOf(model, s.id));
+    const icons = s.out ? [] : [...restIcons(model, s.id, summaryOf(model, s.id)), ...(mine ? zoneIcons(model, s.id) : [])];
     const commanders = s.out ? [] : picked(model, model.zone(s.id, "command"));
     return {
       seat: String(s.id),
@@ -320,16 +329,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
   const px = (r: (typeof rows)[number], unit: number): number => r.width * unit + portraitsPx(r.commanders.length, unit);
   // The largest unit up to the design unit at which the row fits across, its portraits at a finger's width at least.
   const rowPx = (unit: number) => opponents.reduce((sum, r) => sum + px(r, unit), Math.max(0, opponents.length - 1) * PLATE.gap * unit);
-  let fullUnit = u;
-  if (opponents.length && rowPx(u) > right - left) {
-    let lo = 0, hi = u;
-    for (let k = 0; k < 20; k++) {
-      const m = (lo + hi) / 2;
-      if (rowPx(m) <= right - left) lo = m;
-      else hi = m;
-    }
-    fullUnit = lo;
-  }
+  const fullUnit = fitUnit(rowPx, right - left, u);
   let unit = fullUnit;
   let lefts: Map<string, number>;
   // If the cards split the available space into narrow gaps, compact the whole row while retaining its tap height.
@@ -343,8 +343,10 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       return under.every((g) => overlap({ l, r: l + p.w, t: top, b }, g) === 0);
     })) break;
   }
+  const mineLeft = safe.left + (HAND_UNITS.right + PLATE.gap * 2) * u;
+  const mineRight = w - safe.right;
   return rows.map((r) => {
-    const plateUnit = r.mine ? Math.min(u, (w - safe.left - safe.right) / (r.width + r.commanders.length * PORTRAIT.w)) : unit;
+    const plateUnit = r.mine ? fitUnit((scale) => px(r, scale), mineRight - mineLeft, u) : unit;
     const half = px(r, plateUnit) / 2;
     return {
       seat: r.seat,
@@ -361,7 +363,7 @@ function makePlates(model: TableModel, plan: TablePlan | null, marks: ReadonlyMa
       ...(r.commanders.length ? { commanders: r.commanders.map((c) => (r.mine && c.id !== null && cast.has(c.id) ? { ...c, cast: true } : c)) } : {}),
       unit: plateUnit,
       // (mine: centred on its place, but never over the hand, however wide its icons make it)
-      x: r.mine ? Math.min(w - safe.right - half, Math.max(safe.left + half, safe.left + (HAND_UNITS.right + PLATE.gap * 2) * u + half, r.mid)) : lefts!.get(r.seat)!,
+      x: r.mine ? Math.min(mineRight - half, Math.max(mineLeft + half, r.mid)) : lefts!.get(r.seat)!,
       y: r.mine ? Math.min(r.bottom ?? h, h - safe.bottom - PLATE.bottom * u) : top,
     };
   });

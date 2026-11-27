@@ -161,6 +161,23 @@ it.each([...SUPPORTED, { w: 1600, h: 1112 }, { w: 700, h: 480 }])("fits every co
 });
 
 describe("a seat's summary", () => {
+  it("shows my power, open mana sources and hand count before the zone shortcuts", () => {
+    const model = tableOf({ seats: { You: {
+      battlefield: [creature(1, "Grizzly Bears", "You"), land(2, "Plains", "You"), { ...land(3, "Plains", "You"), tapped: true }],
+      hand: [land(4, "Plains", "You")],
+      graveyard: [land(5, "Plains", "You")],
+      exile: [land(6, "Plains", "You"), land(7, "Plains", "You")],
+    } } });
+    const mine = platesOf(model, null, new Map(), TABLE).find((p) => p.mine)!;
+    expect(mine.icons).toEqual([
+      { kind: "power", figure: "2" },
+      { kind: "mana", figure: "1" },
+      { kind: "hand", figure: "1" },
+      { kind: "graveyard", figure: "1" },
+      { kind: "exile", figure: "2" },
+    ]);
+  });
+
   const model = tableOf({
     seats: {
       Atraxa: {

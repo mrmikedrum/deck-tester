@@ -50,7 +50,6 @@ export interface Facts {
   /** My hand, in the engine's order. */
   readonly hand: readonly CardId[];
   /** My commander, wherever it is. */
-  readonly commander: CardId | null;
   /** Bottom first. */
   readonly stack: readonly ItemFact[];
   /** Attackers aimed at me while attackers are declared. */
@@ -88,7 +87,6 @@ const canon = (v: unknown): unknown =>
 export function factsOf(m: TableModel): Facts {
   const me = m.viewer.perspective;
   const cards: Record<number, CardFact> = {};
-  let commander: CardId | null = null;
   for (const c of m.cards.values()) {
     cards[c.id] = {
       name: c.name,
@@ -105,10 +103,7 @@ export function factsOf(m: TableModel): Facts {
       text: c.face.text,
       catalogued: c.face.catalogued,
     };
-    if (commander === null && c.commander && c.owner === me) commander = c.id;
   }
-  // Out of sight, as last seen (live.js `known`): my plate still means my commander.
-  commander ??= m.commanders.get(me)?.[0]?.id ?? null;
   const top = topOf(m);
   const danger = new Set<CardId>();
   for (const st of m.stack) {
@@ -136,7 +131,6 @@ export function factsOf(m: TableModel): Facts {
     seats: m.seats.map((s) => ({ id: s.id, name: s.name as string, out: s.out })),
     cards,
     hand: m.zone(me, "hand"),
-    commander,
     stack: m.stack.map((s) => ({
       ...s,
       threat: threatens(s, m),

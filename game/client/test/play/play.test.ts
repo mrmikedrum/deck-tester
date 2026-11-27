@@ -200,7 +200,7 @@ describe("what glows on the table", () => {
     expect(t.p.controls.cardActions.has(818 as never)).toBe(false);
   });
 
-  it("the commander plays from my plate (009, a command-zone cast added to the decision)", () => {
+  it("only the commander portrait opens the cast action (009, a command-zone cast added to the decision)", () => {
     const t = new Table();
     const env = withDecision("009-play-commander-zone.json", {
       kind: "play",
@@ -208,8 +208,9 @@ describe("what glows on the table", () => {
       refs: [{}, { card: 50, spell: true }, { card: 100, spell: true }],
     });
     t.open(env);
-    expect(t.p.board.marks.seats.get("You" as never)).toBe("option");
-    expect(t.tapSeat("You")).toEqual([{ kind: "inspect", card: 100 }]);
+    expect(t.p.board.marks.seats.has("You" as never)).toBe(false);
+    expect(t.tapSeat("You")).toEqual([{ kind: "unclaimed" }]);
+    expect(t.tapCard(100)).toEqual([{ kind: "inspect", card: 100 }]);
     expect(t.p.controls.cardActions.get(100 as never)?.map((a) => a.label)).toEqual(["Cast from the command zone"]);
     t.pick(3);
     expect(t.answers()).toEqual([[3]]);
