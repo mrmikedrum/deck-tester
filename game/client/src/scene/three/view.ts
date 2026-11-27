@@ -2,7 +2,7 @@
 // new mods patch in place), every one posed from the stage's sample each frame; flying cards, lanes and the stack's
 // arcs likewise, and every effect ticked on the frame's clock. It decides nothing: where things are and how they look
 // is the stage's.
-import { AdditiveBlending, Box3, Color, Group, Mesh, MeshBasicMaterial, NormalBlending, Raycaster, Vector2, Vector3 } from "three";
+import { AdditiveBlending, Box3, Color, Euler, Group, Matrix4, Mesh, MeshBasicMaterial, NormalBlending, Quaternion, Raycaster, Vector2, Vector3 } from "three";
 import type { Camera, Material, Object3D } from "three";
 import type { HighlightTone } from "../stage/types";
 import { materials } from "../../theme";
@@ -30,11 +30,6 @@ export interface ScreenBox {
   readonly quad?: readonly (readonly [number, number])[];
 }
 
-/**
- * A card face as it was last drawn, for the layout audit (CSS px): its quad (foot-left, foot-right, top-right, top-left
- * of the card's own face, however it is turned), its width on screen (the mean of its foot and top edges), and, for a
- * stack card, whether it stands up as the table's focus.
- */
 /** A label as last drawn (CSS px): its box on screen and its smallest line's text size there. */
 export interface DrawnLabel {
   readonly id: string;
@@ -43,11 +38,18 @@ export interface DrawnLabel {
   readonly px: number;
 }
 
+/**
+ * A card face as it was last drawn, for the layout audit (CSS px): its quad (foot-left, foot-right, top-right, top-left
+ * of the card's own face, however it is turned); its width on screen as a floor measures it, across its middle with the
+ * tap's turn taken out (a turned card is no smaller: layout/shape.ts and arrange/audit.ts measure the same); whether it
+ * stands (leans up off the table) rather than lies; and, for a stack card, whether it stands up as the table's focus.
+ */
 export interface DrawnFace {
   readonly kind: PieceKind | "ghost";
   readonly visible: boolean;
   readonly quad: readonly (readonly [number, number])[];
   readonly width: number;
+  readonly standing: boolean;
   readonly up: boolean;
 }
 
@@ -389,9 +391,9 @@ export class StageRenderer {
 
   /** Every card face it holds as last drawn, by piece id (the layout audit's measures; not per frame in the app). */
   measure(camera: Camera, w: number, h: number): Record<string, DrawnFace> {
-    const v = new Vector3();
-    const at = (x: number, y: number, z: number, m: Object3D): [number, number] => {
-      v.set(x, y, z).applyMatrix4(m.matrixWorld).project(camera);
+    const v = new Vector3(), q = new Quaternion(), e = new Euler(), unturned = new Matrix4(), axis = new Vector3();
+    const at = (x: number, y: number, z: number, m: Matrix4): [number, number] => {
+      v.set(x, y, z).applyMatrix4(m).project(camera);
       return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
     };
     const out: Record<string, DrawnFace> = {};
@@ -400,12 +402,22 @@ export class StageRenderer {
       group.updateWorldMatrix(true, true);
       const g = front.geometry;
       g.computeBoundingBox();
-      const b = g.boundingBox!, z = (b.min.z + b.max.z) / 2;
-      const quad = [at(b.min.x, b.min.y, z, front), at(b.max.x, b.min.y, z, front), at(b.max.x, b.max.y, z, front), at(b.min.x, b.max.y, z, front)];
-      const len = (p: readonly number[], q: readonly number[]): number => Math.hypot(q[0]! - p[0]!, q[1]! - p[1]!);
+      const b = g.boundingBox!, z = (b.min.z + b.max.z) / 2, mid = (b.min.y + b.max.y) / 2;
+      const m = front.matrixWorld;
+      const quad = [at(b.min.x, b.min.y, z, m), at(b.max.x, b.min.y, z, m), at(b.max.x, b.max.y, z, m), at(b.min.x, b.max.y, z, m)];
+      // The tap turns the card's body in its own plane (cards.ts: its rotation about z, and nothing else): without it.
+      const body = front.parent;
+      if (body?.parent) {
+        e.set(body.rotation.x, body.rotation.y, 0, body.rotation.order);
+        unturned.compose(body.position, q.setFromEuler(e), body.scale).premultiply(body.parent.matrixWorld).multiply(front.matrix);
+      } else unturned.copy(m);
+      // Across the printed face (the stock's top, max z), not halfway through the card's thickness.
+      const a = at(b.min.x, mid, b.max.z, unturned), c = at(b.max.x, mid, b.max.z, unturned);
+      // Standing: its unturned up leans less than 60 degrees from the world's (a standee leans back 25; a lying card is level).
+      const standing = axis.set(0, 1, 0).transformDirection(unturned).y > 0.5;
       let visible = true;
       for (let o: Object3D | null = front; o; o = o.parent) if (!o.visible) visible = false;
-      out[id] = { kind, visible, quad, width: (len(quad[0]!, quad[1]!) + len(quad[3]!, quad[2]!)) / 2, up };
+      out[id] = { kind, visible, quad, width: Math.hypot(c[0] - a[0], c[1] - a[1]), standing, up };
     };
     for (const [id, e] of this.pieces) if (e.view) one(id, e.kind, e.view.group, e.view.front?.(), e.up);
     for (const [id, g] of this.ghosts) one(id, "ghost", g.group, g.front(), false);
