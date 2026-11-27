@@ -79,8 +79,15 @@ export function inspectorOf(model: TableModel, id: CardId, actions: readonly Car
       targets.push(...abilityTargetNames(it, model.stack, (id) => model.cards.get(id)?.face.name));
       return [it.spell ? "Spell" : "Ability", who, effect, ...stackValues(it), targets.length ? `Targets ${targets.join(", ")}` : ""].filter(Boolean).join(" · ");
     });
+  const cost = c.castCost;
+  const costNote = cost
+    ? "mana" in cost
+      ? `Costs ${cost.mana} now (printed ${c.face.cost})`
+      : `Mana can be reduced with ${cost.reducibleBy.join(", ")}`
+    : null;
   return {
     card: id,
+    ...(costNote ? { costNote } : {}),
     // A card in my hand is held up in the hand's focus, the fan live under it.
     ...(c.zone === "hand" && c.owner === model.viewer.perspective ? { held: true } : {}),
     name: c.faceDown && !mine ? "Face-down card" : c.face.name,

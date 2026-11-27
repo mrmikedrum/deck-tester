@@ -63,6 +63,7 @@ function handCard(c: Card, playable: boolean): HandCard {
     id: c.id,
     name: c.face.name,
     cost: c.face.cost || null,
+    ...(c.castCost ? { castCost: c.castCost } : {}),
     art: c.face.art,
     image: c.face.img,
     rules: spellText(c),

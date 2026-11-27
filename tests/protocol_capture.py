@@ -36,7 +36,7 @@ TIME_LIMIT = 420       # seconds
 # What the engine leaves out when it has nothing to say: keys that may be absent. The corpus adds whatever else it
 # sees missing in some object; this list covers keys the corpus might happen to always show.
 KNOWN_OPTIONAL = {
-    "card": {"faceDown", "cost", "power", "toughness", "sick", "loyalty", "tapped", "token", "commander", "copy",
+    "card": {"faceDown", "cost", "castCost", "power", "toughness", "sick", "loyalty", "tapped", "token", "commander", "copy",
              "attachedTo", "counters", "keywords", "text"},
     "player": {"poison", "monarch", "lost", "commanderDamage", "hand", "handCount"},
     "stack": {"source", "controller", "targets", "modes", "x", "abilityTargets"},

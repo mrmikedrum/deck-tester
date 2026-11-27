@@ -269,7 +269,7 @@ public final class Server {
                         reply.put("startFailure", session.startFailure);
                     }
                 }
-                reply.put("view", session.view());
+                reply.put("view", session.view(parked == null ? Map.of() : parked.castCosts()));
                 return reply;
             }
             case "fork":

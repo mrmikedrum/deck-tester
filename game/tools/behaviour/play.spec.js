@@ -87,6 +87,31 @@ test.describe("dragging a hand card up", () => {
   });
 });
 
+test("the hand ribbons and cast paths report adjusted mana", async ({ table }) => {
+  const s = snapshot("main");
+  const reduced = inHand(s, "Snap"), increased = inHand(s, "Arcane Denial"), unchanged = inHand(s, "Phantasmal Image");
+  reduced.castCost = { mana: "{U}", change: "reduced" };
+  increased.castCost = { mana: "2 {U}", change: "increased" };
+  const commander = find(s, "You", "Princess Yue");
+  commander.castCost = { mana: "4 {U}", change: "increased" };
+  await table.open(s);
+
+  const ribbon = card => table.page.locator(`.hcard[data-id="${card.id}"] .l-hand-cost`);
+  await expect(ribbon(reduced)).toHaveClass(/\breduced\b/);
+  await expect(ribbon(reduced).locator(".pip")).toHaveText(["U"]);
+  await expect(ribbon(increased)).toHaveClass(/\bincreased\b/);
+  await expect(ribbon(increased).locator(".pip")).toHaveText(["2", "U"]);
+  await expect(ribbon(unchanged).locator(".pip")).toHaveText(["1", "U"]);
+  await expect(ribbon(unchanged).locator(".l-cost-mark")).toHaveCount(0);
+
+  await table.click(await table.locateHand(reduced.id));
+  await expect(table.page.locator(".inspector .l-cost-note")).toHaveText("Costs U now (printed 1U)");
+  await table.page.keyboard.press("Escape");
+  await table.page.locator(`.cmd[data-cmd="${commander.id}"]`).click();
+  await expect(table.page.locator(".inspector .l-cost-note")).toContainText("Costs 4U now");
+  await expect(table.page.locator(".inspector button[data-option] .cost .pip")).toHaveText(["4", "U"]);
+});
+
 test.describe("tapping what glows", () => {
   test("a permanent with an ability opens it with the ability as a button; the button sends that option", async ({ table }) => {
     const s = snapshot("main");

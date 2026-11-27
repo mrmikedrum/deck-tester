@@ -1,6 +1,6 @@
 // A card as the client sees it: the engine's facts (zone, state, stats now) merged with the catalog's (Oracle text,
 // art, the mana it makes). Ported from live.js `conv` and `remember` and common.js `face`, `name`, `typeLine`.
-import type { Card as WireCard, CardId } from "../protocol";
+import type { Card as WireCard, CardId, CastCost } from "../protocol";
 import type { CardCatalog } from "./catalog";
 import { seatId } from "./ids";
 import type { Keyword, SeatId, Zone } from "./ids";
@@ -43,6 +43,8 @@ export interface Card {
   readonly controller: SeatId;
   readonly zone: Zone;
   readonly face: CardFace;
+  /** Preview for the main spell, with mana symbols braced. */
+  readonly castCost?: CastCost;
   readonly tapped: boolean;
   readonly token: boolean;
   readonly commander: boolean;
@@ -115,6 +117,7 @@ function faceOf(c: WireCard, catalog: CardCatalog, mine: boolean): CardFace {
 /** The model's card for a wire card in `zone`. `perspective` decides whose face-down cards show their name. */
 export function cardOf(c: WireCard, zone: Zone, catalog: CardCatalog, perspective: SeatId): Card {
   const controller = seatId(c.controller);
+  const castCost = c.castCost && "mana" in c.castCost ? { ...c.castCost, mana: bracedCost(c.castCost.mana) } : c.castCost;
   return {
     id: c.id,
     name: c.faceDown ? FACE_DOWN : c.name,
@@ -122,6 +125,7 @@ export function cardOf(c: WireCard, zone: Zone, catalog: CardCatalog, perspectiv
     controller,
     zone,
     face: faceOf(c, catalog, controller === perspective),
+    ...(castCost ? { castCost } : {}),
     tapped: c.tapped,
     token: c.token,
     commander: c.commander,

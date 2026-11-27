@@ -125,6 +125,17 @@ describe("decodeSnapshot refuses what the client would act on wrongly", () => {
 });
 
 describe("decodeSnapshot tolerates what the architecture says it must", () => {
+  it("decodes priority mana quotes and payment-dependent reductions without requiring them", () => {
+    const env = play();
+    const hand = env["view"].players[0].hand;
+    hand[0].castCost = { mana: "3 {U}", change: "reduced" };
+    hand[1].castCost = { mana: "1 {U}", change: "increased" };
+    hand[2].castCost = { reducibleBy: ["Convoke"] };
+    expect(ok(env).view?.players[0]?.hand?.slice(0, 4).map((card) => card.castCost)).toEqual([
+      hand[0].castCost, hand[1].castCost, hand[2].castCost, undefined,
+    ]);
+  });
+
   it("an unknown decision kind passes as a generic decision keyed by its wire kind", () => {
     const env = decision({ kind: "vote", options: ["Atraxa", "Dack"], refs: [{}, { card: 1, extra: true }] });
     const d = ok(env).decision;

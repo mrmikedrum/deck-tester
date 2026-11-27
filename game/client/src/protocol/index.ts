@@ -17,6 +17,7 @@ export type {
   BlockDecision,
   BlockRef,
   Card,
+  CastCost,
   ChoiceRef,
   ChooseDecision,
   Combat,

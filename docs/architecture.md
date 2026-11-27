@@ -430,6 +430,10 @@ engine to them. The rules:
   short form ("1 {G} {G}"); commander damage keyed by the commander's id as a string. A stack item carries its
   `targets`, `abilityTargets` (stack-instance ids), chosen `x` and `modes` when present. A target may be a card gone
   from the game (still named in the item's text), and a `choose` may offer hidden cards (a library search).
+  Own hand cards and commanders in the command zone can carry optional `castCost` at a priority decision.
+  It holds either `{mana, change}` (Forge's short mana string and `reduced`, `increased` or `changed`) or
+  `{reducibleBy}` (payment mechanics such as convoke). The quote uses Forge's cost adjustments for the main spell
+  before targets, modes and optional payments. Variable and split spell costs have no fixed quote.
   `combat` carries Forge's facts about the combat on the table:
   its `ordinal` in the turn, each attacker's `defender`, `defending` player (a battle's protector) and Forge's
   `blocked` verdict (it holds when the blockers leave), the `blockers`, and the combat `damage` dealt in it by `source`,

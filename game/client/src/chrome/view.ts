@@ -3,7 +3,7 @@
 // stop and commit it was drawn for, and an act it emits is stamped with them.
 import type { Insets } from "../platform";
 import type { Reservations } from "../layout";
-import type { CardId } from "../protocol";
+import type { CardId, CastCost } from "../protocol";
 import type { Act, CardAction, Carried, CommitId, Controls, Ms, Stamp, StopId } from "../play";
 import type { LogSheetView, LogStripView, LossRow, RecapView, RestoreView, WatchView } from "../narrative";
 import type { SeatPlace } from "../theme";
@@ -14,6 +14,7 @@ export interface HandCard {
   readonly name: string;
   /** The printed cost, braced ("{2}{U}"), or null. */
   readonly cost: string | null;
+  readonly castCost?: CastCost;
   /** The art crop shown in the fan (a url), or null while it loads. */
   readonly art: string | null;
   /** The whole card's image, for the peek. */
@@ -191,6 +192,7 @@ export interface InspectorView {
   readonly place: SeatPlace;
   /** "Marath · owned by Dack · Battlefield". */
   readonly owner: string;
+  readonly costNote?: string;
   /** Facts as words: Commander, Tapped, 3/3, counters, keywords the rules text does not already say. */
   readonly chips: readonly string[];
   readonly related: readonly { readonly label: string; readonly cards: readonly CardTile[] }[];

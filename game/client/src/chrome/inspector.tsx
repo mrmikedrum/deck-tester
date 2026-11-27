@@ -37,6 +37,7 @@ export function Inspector({
           {hold ? <AutoPass hold={hold} fill={fill} send={send} /> : null}
           <h3>{v.name}</h3>
           <div class="owner">{v.owner}</div>
+          {v.costNote ? <div class="l-cost-note"><Pips text={v.costNote} /></div> : null}
           {v.stack?.length ? (
             <div class="l-onstack">
               <div class="label">On the stack</div>
@@ -141,9 +142,10 @@ function Held({
             ) : null}
           </div>
         </div>
-        {hold || v.actions.length ? (
+        {hold || v.costNote || v.actions.length ? (
           <div class="info">
             {hold ? <AutoPass hold={hold} fill={fill} send={send} /> : null}
+            {v.costNote ? <div class="l-cost-note"><Pips text={v.costNote} /></div> : null}
             {v.actions.length ? (
               <div class="l-actions">
                 {v.actions.map((a) => (
