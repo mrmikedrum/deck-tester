@@ -111,11 +111,18 @@ async function compose(page, spec) {
 
 // ---- Layout audits: the hard limits in tools/look/intent.md, per stage and seat ------------------------------------
 const FLOOR = { any: 44, oppCreature: 56, myCreature: 72, tap: 44, nameCover: 20, faceCover: 35 };   // cover: most % another piece or a panel may hide
+// The floors are design px (1180x820), scaled by the design unit at other viewports, as the client's are (layout/types.ts).
+const designUnit = ([w, h]) => Math.min(w / 1180, h / 820);
+// The floor a face is held to, CSS px: the creature floor for a creature on show (standing), the any-card floor for
+// everything else, a creature lying in a pile, in the back band or tapped a quarter turn included. The face is measured
+// across its middle with the tap's turn taken out (a turned card is no smaller). The engine and the table's audit hold
+// the same (layout/shape.ts, layout/arrange/audit.ts); tools/behaviour/floors.spec.js keeps them together.
+const floorFor = ({ role, mine, stands }, u = 1) => u * (role === "creature" && stands !== false ? (mine ? FLOOR.myCreature : FLOOR.oppCreature) : FLOOR.any);
 const SEATNAME = { you: "Me", ana: "Marath (left)", bo: "Atraxa (across)", cy: "Dack (right)", stack: "The stack (set aside)" };
 
 // One audit held to the limits: a row per seat (and the stack set aside), its breaches of the hard limits, and how many
 // pieces it measured. `fr` holds the frame's objects (each piece's face width on screen).
-function auditRows(a, fr) {
+function auditRows(a, fr, u = 1) {
   const md = ["| seat | permanents | drawn alone | piles (cards) | hidden | smallest face px | too small | can't tap 44 pt | name or stats covered | face covered | creatures in mixed piles |", "|---|---|---|---|---|---|---|---|---|---|"];
   let fails = 0, measured = 0;
   for (const pid of ["you", "ana", "bo", "cy", "stack"]) {
@@ -125,7 +132,7 @@ function auditRows(a, fr) {
     const total = all.reduce((n, [, p]) => n + p.n, 0), alone = all.filter(([, p]) => p.n === 1 && !p.hidden).length;
     const piles = all.filter(([, p]) => p.n > 1 && !p.hidden), hidden = all.filter(([, p]) => p.hidden);
     const face = ([k]) => (fr.objects[k] || {}).face || 0;
-    const floorOf = ([, p]) => p.role === "creature" ? (pid === "you" ? FLOOR.myCreature : FLOOR.oppCreature) : FLOOR.any;
+    const floorOf = ([k, p]) => floorFor({ role: p.role, mine: pid === "you", stands: (fr.objects[k] || {}).stands }, u);
     const small = all.filter(e => !e[1].hidden && face(e) && face(e) < floorOf(e));
     const untappable = all.filter(([, p]) => !p.hidden && p.tapSquare < FLOOR.tap);
     const who = w => (w.startsWith("panel:") ? "the " + w.slice(6) + " panel" : a.pieces[w] ? (a.pieces[w].names[0] || w) : w);
@@ -175,13 +182,15 @@ function verdict({ gated, measured, fails, labelled = 0, labelsMeasured = 0 }) {
 
 async function audits(page, track, dir, out) {
   const [VW, VH] = track.viewport, md = ["", "## Layout audit (hard limits from tools/look/intent.md)", "",
-    `Floors: any card or pile ${FLOOR.any} px wide, an opponent's creature ${FLOOR.oppCreature}, my creature ${FLOOR.myCreature}; every piece a ${FLOOR.tap}×${FLOOR.tap} pt patch the hit test gives it; nothing hidden; no card's name or stats strip more than ${FLOOR.nameCover}% or face more than ${FLOOR.faceCover}% covered by another piece or a panel.`, ""];
+    `Viewport ${VW}×${VH}. Floors (design px, ×${designUnit(track.viewport).toFixed(3)} here): any card or pile ${FLOOR.any} px wide, an opponent's creature standing ${FLOOR.oppCreature}, my creature standing ${FLOOR.myCreature}, each face measured across its middle, unturned; every piece a ${FLOOR.tap}×${FLOOR.tap} pt patch the hit test gives it; nothing hidden; no card's name or stats strip more than ${FLOOR.nameCover}% or face more than ${FLOOR.faceCover}% covered by another piece or a panel.`, ""];
   let fails = 0, gated = 0, measured = 0, labelled = 0, labelsMeasured = 0;
   for (const a of track.audits) {
     const fr = a.objects ? { objects: a.objects } : track.frames[a.frame], tag = `stage-${String(a.frame).padStart(3, "0")}`;
     const still = path.join(dir, `still-${String(a.frame).padStart(3, "0")}.png`);
     md.push(`### #${a.frame}: ${a.label}`, "");
-    if (fs.existsSync(still)) {
+    if (a.still) {
+      md.push(`- [${a.still}](${a.still})`);
+    } else if (fs.existsSync(still)) {
       const base = "data:image/png;base64," + fs.readFileSync(still).toString("base64");
       const whole = await compose(page, { kind: "crop", vw: VW, crop: [0, 0, VW, VH], images: { base } });
       fs.writeFileSync(path.join(out, tag + ".jpg"), Buffer.from(whole.split(",")[1], "base64")); md.push(`- **${tag}.jpg**: the whole table, full resolution`);
@@ -196,7 +205,7 @@ async function audits(page, track, dir, out) {
     }
     if (!a.gate) { md.push("", "(a still only: not held to the limits)", ""); continue; }
     gated++;
-    const r = auditRows(a, fr), l = labelRows(a);
+    const r = auditRows(a, fr, designUnit(track.viewport)), l = labelRows(a);
     fails += r.fails + l.fails;
     if (r.measured) measured++;
     if (l.expected) labelled++;
@@ -207,7 +216,7 @@ async function audits(page, track, dir, out) {
   return md;
 }
 
-module.exports = { audits, verdict, labelRows };
+module.exports = { audits, verdict, labelRows, floorFor, designUnit };
 if (require.main === module) (async () => {
   const arg = process.argv[2] || "reels/latest";
   const clipDirs = fs.existsSync(path.join(arg, "track.json")) ? [arg] : fs.readdirSync(arg).map(d => path.join(arg, d)).filter(d => fs.existsSync(path.join(d, "track.json")));
@@ -215,6 +224,8 @@ if (require.main === module) (async () => {
   const browser = await pw.chromium.launch(), page = await browser.newPage();
   for (const dir of clipDirs) {
     const track = JSON.parse(fs.readFileSync(path.join(dir, "track.json"))), out = path.join(dir, "review");
+    // A look round keeps only the clip once its sheets are made; never clear sheets that can't be rebuilt.
+    if (track.frames.length && !fs.existsSync(path.join(dir, "frames"))) throw new Error(`${dir}: no frames left to rebuild its review sheets`);
     fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
     if (!track.frames.length) {
       // Recorded with --stills: no motion to show, only the stills and their audit.

@@ -1,18 +1,15 @@
-Independent witnesses, from more than one model family, reviewed the same packets of "Seat" (a 3D iPad card table) and wrote __WITNESSES__. Packets are in __PACKETS__.
+Consolidate blind witness reports in __WITNESSES__ against the packet in __PACKETS__ and
+[the design intent](intent.md). This lane owns __SCOPE__. Read previous findings in __PRIOR__
+and handoffs in __INBOX__.
 
-__PRIOR__
+Open the cited evidence. Mark an item agreed if multiple witnesses saw it and you can see it,
+confirmed if one saw it and you can see it, or rejected with a short reason. Merge duplicates.
+Keep the best still or frame reference, the player impact and what fixed looks like. Move requests
+to change a goal under Goal questions for the owner.
 
-This lane fixes only __SCOPE__. __INBOX__
+Write the lane's ranked findings and Goal questions to __OUT__. Include rejected findings with
+their reasons and end with `TOP: F<n>` or `TOP: none`. Write confirmed findings in the other
+lane's scope to __HANDOFF__ with the same evidence, replacing that file.
 
-Read tools/look/intent.md: a finding that asks to give up a goal goes under "Goal questions", not in the list; a finding that a goal is met badly stays, whatever implementation it suggests.
-
-For each finding, open the images the witnesses cite and decide for yourself:
-- **agreed**: more than one found it, and you can see it.
-- **confirmed**: one found it, and you can see it.
-- **rejected**: you can't see it in the images, or it is how a real table would behave. Say why in one line.
-
-Write the kept findings in this lane's scope, ranked by how much they would bother a player, most first, to __OUT__. Write the kept findings outside it to __HANDOFF__ in the same form, for the other lane (replace that file). Merge duplicates. For each kept finding keep the frames and images that show it best, the plain description, and "fixed looks like". Don't diagnose code. Change no files except those two.
-
-Collect the witnesses' "Goal questions" items, with yours, in a last section of __OUT__ of that name.
-
-End __OUT__ with one line: `TOP: F<n>` naming the finding to fix first.
+The 3D scene lane owns `client/src/scene/three/` and `client/src/scene/stage/` (motion), Grimoire faces in `client/src/theme/grimoire/`,
+and `client/src/layout/`. The HTML chrome lane owns `client/src/chrome/` and `client/src/app/`. The palette and shared CSS (`client/src/theme/tokens.ts`, `client/src/theme/css.ts`) belong to both: agree before changing them.

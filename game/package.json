@@ -13,6 +13,7 @@
     "test": "vitest run",
     "behaviour": "playwright test -c tools/behaviour",
     "check": "npm run typecheck && npm run lint && npm test && npm run build && node --test tools/*.test.js && npm run behaviour && BEHAVIOUR_BROWSERS=webkit npm run behaviour -- --grep @cast",
+    "look": "node tools/look-round.js",
     "knip": "knip"
   },
   "dependencies": {

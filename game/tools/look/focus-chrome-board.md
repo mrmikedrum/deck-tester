@@ -1,1 +1,3 @@
-Focus: the HTML and the board together, as one screen. For every moment in every clip: is what the prompt, stack panel and log say the same as what the board shows? Does the screen draw the eye to what just changed? Does any panel, sheet or overlay cover something that matters on the table at that moment? Is anything said twice in two places, or not at all? Would a new player know whose turn it is, what is on the stack and what it targets, and what they can do now?
+Inspect the chrome and board together. Check whether the active seat, stack and its targets, and
+the available action agree across the screen. Cite panel overlap that hides important cards or
+activity. Look for duplicated information or a missing cue a new player would need.

@@ -1,1 +1,3 @@
-Focus: the HTML around the board in motion: the prompt changing, buttons appearing, the stack panel arriving and leaving, sheets and the sift opening and closing, toasts, the log, the hand fan sliding. Narrate first, citing frames. Then judge: does each change happen in step with what the board shows (not before the card arrives, not after it has gone), does it move or fade smoothly and with purpose, does anything pop, jump, flash, linger, or move when it needn't, and does a player always know what is being asked of them now?
+Follow the hand, nameplates and controls through the available motion beats. Cite frames where
+the prompt changes out of step with the table, a control flashes or lingers, or motion pulls
+attention away from the deciding action.

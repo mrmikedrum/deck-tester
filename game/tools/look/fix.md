@@ -1,11 +1,14 @@
-Use the findings, recordings and scope in the brief to fix the game client.
+Fix the ranked findings in __FINDINGS__ on the branch for __SCOPE__, using baseline __BEFORE__.
+Read [the design intent](intent.md). The 3D scene lane owns `client/src/scene/three/` and `client/src/scene/stage/` (motion),
+Grimoire faces in `client/src/theme/grimoire/`, and `client/src/layout/`. The HTML chrome lane
+owns `client/src/chrome/` and `client/src/app/`. The palette and shared CSS (`client/src/theme/tokens.ts`, `client/src/theme/css.ts`) belong to both: agree before changing them. Hand off cross-lane findings with evidence
+and send goal changes to the owner.
 
-Read [the design intent](intent.md) first. Preserve its goals and hard limits. Send any finding that
-requires changing a goal to the owner.
+Start with the highest-ranked finding. Reproduce it using the cited still or frames, trace the
+cause in this lane's code, then fix it. Preserve engine answers and their timing. Use
+[the runner](../../LOOK.md) for a matching after packet. Compare the audit and the affected
+images at the same scale.
 
-Start with the highest-ranked finding. Reproduce it with the cited frames, trace the cause in
-`client/src/`, and fix it within scope. Record the affected beats using [the visual tools](../../LOOK.md).
-Read the layout audit and compare the before and after images.
-
-For each finding, report fixed, partial or skipped, with the cause and the evidence. Include the audit
-result and any regressions you found.
+Run `npm run check` from `game/` and open a pull request on the lane branch. For each finding,
+report fixed, partial or skipped, with the cause and matching evidence. Include the layout audit,
+check results and any regressions.
