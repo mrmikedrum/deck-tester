@@ -3,7 +3,7 @@ import type { Placement, Posture, SeatPlan, Unit } from "./seat";
 import type { CardId, Point, Rect, V3, Viewport } from "./types";
 import { designUnit } from "./types";
 import { FLOOR, TAP_PX } from "./board";
-import { CH, CW, PILE_LEAN, TAP_LEAN } from "./geometry";
+import { CH, CW, TAP_LEAN } from "./geometry";
 import { hasSquare } from "./arrange/audit";
 
 /** Audit with the cell grid alone (tests show the geometric first pass changes no verdict). */
@@ -15,10 +15,10 @@ export const GRID_ONLY = { on: false };
 
 export type Quad = readonly [Point, Point, Point, Point];
 
-export type ItemKind = "unit" | "plate" | "zone" | "stack";
+export type ItemKind = "unit" | "plate" | "stack";
 
 export interface Shape {
-  /** The group a tap on it reaches: a unit's id, "plate:<seat>", "command:<seat>", "zone:<zone>:<seat>", "stack:<key>". */
+  /** The group a tap on it reaches: a unit's id, "plate:<seat>", "stack:<key>". */
   readonly group: string;
   readonly kind: ItemKind;
   readonly seat: string | null;
@@ -80,11 +80,11 @@ const frameOf = (proj: Projector, pos: V3, posture: Posture, tapped: boolean, ow
   return { base: pos, up: { x: 0, y: Math.sin(delta), z: -Math.cos(delta) } };
 };
 
-/** Where a point of the table is drawn: itself at rest; a lean-in carries its seat's (layout focus.ts). */
+/** Where a point of the table is drawn: itself at rest, or as a caller carries it. */
 export type At = (v: V3) => V3;
 const AT_REST: At = (v) => v;
 
-/** A card's middle at rest (the point the scene poses it by, `unitPose`): where a lean-in carries it from. */
+/** A card's middle at rest (the point the scene poses it by, `unitPose`). */
 export function cardMiddle(proj: Projector, p: Placement, tapped: boolean): V3 {
   const fr = frameOf(proj, p.pos, p.posture, tapped, p.frame), h = (CH / 2) * p.scale;
   return { x: fr.base.x + fr.up.x * h, y: fr.base.y + fr.up.y * h, z: fr.base.z + fr.up.z * h };
@@ -122,7 +122,7 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     // (An arranged creature lying in a pile meets the any-card floor: only a standing one is a creature on show.)
     floor: creature && (!own || p.posture === "stand") ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
     members: u.members,
-    // at rest, a tap reaches its place; carried in a lean-in or fighting in the row, its face
+    // at rest, a tap reaches its place; carried, or fighting in the clash, its face
     ...(u.hit && at === AT_REST && !u.fighting ? { hit: u.hit } : {}),
   };
 }
@@ -151,20 +151,6 @@ export function plateShape(proj: Projector, seat: string, p: Placement, at: At =
   return { group: `plate:${seat}`, kind: "plate", seat, face: quad(0, 1), name: quad(5 / 6, 1), foot: quad(0, 1 / 6), order: PLATE_ORDER, floor: 0, width: 0, members: [] };
 }
 
-/** The commander beside the plaque: a card standing square to me, its group "command:<seat>". */
-export function commanderShape(proj: Projector, seat: string, c: NonNullable<SeatPlan["fixtures"]["commander"]>, at: At = AT_REST): Shape {
-  const q = cardQuads(proj, frameOf(proj, c.placement.pos, "stand", false), c.placement.scale, false, CW, CH, at);
-  return { group: `command:${seat}`, kind: "unit", seat, ...q, order: c.placement.pos.z, floor: FLOOR.any, members: [c.card] };
-}
-
-/** A zone pile: a card lying on a box, propped from its near edge for opponents (PILE_LEAN). */
-export function zoneShape(proj: Projector, seat: string, zone: string, p: Placement, mine: boolean, at: At = AT_REST): Shape {
-  const alpha = mine ? 0 : PILE_LEAN;
-  const base = { x: p.pos.x, y: p.pos.y, z: p.pos.z + (CH / 2) * p.scale };
-  const q = cardQuads(proj, { base, up: { x: 0, y: Math.sin(alpha), z: -Math.cos(alpha) } }, p.scale, false, CW, CH, at);
-  return { group: `zone:${zone}:${seat}`, kind: "zone", seat, ...q, order: p.pos.z, floor: FLOOR.any, members: [] };
-}
-
 /** A stack card at rest, square to the camera: its face on screen (foot-left, foot-right, top-right, top-left). */
 export function stackShape(group: string, face: Quad, order: number, members: readonly CardId[]): Shape {
   const strip = (v0: number, v1: number): Quad => [lerpQuad(face, 0, v0), lerpQuad(face, 1, v0), lerpQuad(face, 1, v1), lerpQuad(face, 0, v1)];
@@ -175,9 +161,7 @@ export function stackShape(group: string, face: Quad, order: number, members: re
 export function seatShapes(proj: Projector, plan: SeatPlan, mine: boolean): Shape[] {
   return [
     ...plan.units.map((u) => unitShape(proj, plan.seat, u, mine)),
-    ...plan.fixtures.zones.map((z) => zoneShape(proj, plan.seat, z.zone, z.placement, mine)),
     plateShape(proj, plan.seat, plan.fixtures.plate),
-    ...(plan.fixtures.commander ? [commanderShape(proj, plan.seat, plan.fixtures.commander)] : []),
   ];
 }
 

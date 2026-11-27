@@ -110,15 +110,12 @@ export const PATH = {
 
 /** How the table dims (h.js `targets`): out of focus is dimmer and greyer, never dark. */
 export const DIM = {
-  /** Another seat while I lean in on one (`0.55`); my own things then (`0.45`). */
-  leanOther: 0.55,
-  leanMine: 0.45,
   /** The others' things on another player's turn (`soft`: `0.4`). */
   soft: 0.4,
   /** What a moment leaves out (the arrangement engine's `down`: the attacking seat's creatures that stay home): its light
    *  goes out, a little, never dark. */
   down: 0.3,
-  /** The table itself under a sift (`tableMesh` colour 0.42). */
+  /** The table itself under a sheet (a pile, a seat's spread: `tableMesh` colour 0.42). */
   table: 0.42,
   /** A chosen card lifts off its page (`t.lift = 0.1`). */
   selectedLift: 0.1,

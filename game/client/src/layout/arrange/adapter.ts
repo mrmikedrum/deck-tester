@@ -1,5 +1,5 @@
-// An opponent's leaf, drawn (§6.1 step 6, §6.2 step 8): an arrangement as the seat plan the rest of the client already
-// reads, so the scene, picking, the table's audit, the lean-in and the gathering take it unchanged. A parted table hands
+// A seat drawn from its arrangement (§6.1 step 6, §6.2 steps 8 and 9): the seat plan the rest of the client reads, so
+// the scene, picking, the table's audit, the sheets and the gathering take it unchanged. A parted table hands
 // it the arrangement as the pose draws it (`posed`): its fixtures follow the frame it was drawn on. Each unit carries the
 // engine's pose for its top card (the orientation unturned, and how far it is turned: a quarter or a notch) and its target
 // region on screen (its place: what a tap at rest reaches); everything else (fixtures, ids, titles) is the seat plan's
@@ -8,10 +8,10 @@ import type { SeatBoard } from "../board";
 import { Ledger } from "../ledger";
 import type { Projector } from "../projector";
 import type { Reservations } from "../reservations";
-import type { Fixtures, LayoutMemory, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
+import type { Fixtures, LayoutMemory, Placement, SeatPlan, Unit, UnitKind, UnitRole } from "../seat";
 import { PLATE_S } from "../geometry";
 import type { CardId, SeatId, V3 } from "../types";
-import type { ArrCard, ArrUnit, ArrangeResult, Attention, CardPlace, ContainerMemory, PickTarget } from "./contract";
+import type { ArrCard, ArrUnit, ArrangeResult, Attention, CardPlace, ContainerMemory, PickTarget, SurfaceFrame } from "./contract";
 import { CARD, LEAN, clearBehind, onFrame } from "./frame";
 import { LIE_DEPTH } from "./rows";
 import { kindOf } from "./policies/kinds";
@@ -80,21 +80,19 @@ export function arrangedSeat(a: ArrangedSeatInput): SeatPlan {
   const behind = fit.rows.reduce((t, r) => Math.max(t, r.posture === "stand" ? clearBehind(a.projector, rest, r.v, s, 2, LEAN) : r.v + LIE_DEPTH * s + 0.3 * CARD.h * s), 0) + 0.1;
   // (The plate's own table group lies past the leaf's far edge, out of the way: the nameplate is chrome.)
   const plate = { pos: onFrame(f, 0, f.d + 0.25), scale: PLATE_S, posture: "stand" as const };
-  const zones: Fixtures["zones"] = [];
   if (left.length)
     units.push({ id: `u:entry:${board.seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(f, 0, behind + 0.2), scale: S_TABLE, posture: "flat" } });
   // The page from the front line back (the strip in front of it, for a stack's dice, is the open table's): the template's,
   // never its rows', so a mat neither grows nor shrinks as cards come and go.
   const v0 = SLOT.margin + SLOT.strip * S_TABLE;
-  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw }, plate, zones };
+  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + f.d) / 2), w: f.w, d: f.d - v0, yaw }, plate };
   const memory: LayoutMemory = { v: 1, paradigm: ARRANGED, fit: fit.memory };
-  const folded = fit.units.reduce((t, u) => t + Math.max(0, u.members.length - 1), 0);
   return new Ledger(board.cards.map((c) => c.id)).seal({
     seat: board.seat as SeatId,
     units,
     fixtures,
     memory,
-    report: { folded, held: false, pressure: 0, overflow: result.overflow !== null, lastResort: false },
+    report: { overflow: result.overflow !== null },
   });
 }
 
@@ -127,14 +125,34 @@ export function mineSeat(a: MineSeatInput): SeatPlan {
   if (left.length) units.push({ id: `u:entry:${seat}`, role: "support", kind: "summary", members: left, dressing: [], top: left[0]!, title: `All ${left.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(f, 0, 0.2), scale: S_TABLE, posture: "flat" } });
   // My page is the mat from my edge of the table (the near slot's) to just behind what lies on my field's line.
   const v0 = Math.min(0, -a.edge), v1 = a.facing + CARD.h * S_TABLE + 0.1;
-  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + v1) / 2), w: f.w, d: v1 - v0, yaw: 0 }, plate: myPlate(a.projector, a.reserve), zones: [] };
-  const folded = fit.units.reduce((t, u) => t + Math.max(0, u.members.length - 1), 0);
+  const fixtures: Fixtures = { page: { pos: onFrame(f, 0, (v0 + v1) / 2), w: f.w, d: v1 - v0, yaw: 0 }, plate: myPlate(a.projector, a.reserve) };
   return new Ledger(board.cards.map((c) => c.id)).seal({
     seat,
     units,
     fixtures,
     memory: { v: 1, paradigm: ARRANGED, fit: fit.memory },
-    report: { folded, held: false, pressure: 0, overflow: result.overflow !== null, lastResort: false },
+    report: { overflow: result.overflow !== null },
+  });
+}
+
+/**
+ * A seat the engine could not arrange (it threw; the plan records why): every permanent in one entry pile on its frame,
+ * reachable and counted, never hidden, its fixtures where the arrangement would put them.
+ */
+export function entrySeat(board: SeatBoard, frame: SurfaceFrame, plate: Placement): SeatPlan {
+  const seat = board.seat as SeatId, held = new Set(board.cards.map((c) => c.id));
+  const attached = board.cards.filter((c) => c.attachedTo !== null && held.has(c.attachedTo)).map((c) => c.id);
+  const members = board.cards.map((c) => c.id).filter((id) => !attached.includes(id));
+  const units: Unit[] = members.length
+    ? [{ id: `u:entry:${seat}`, role: "support", kind: "summary", members, dressing: attached, top: members[0]!, title: `All ${members.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(frame, 0, 0.2 * frame.d), scale: S_TABLE, posture: "flat" } }]
+    : [];
+  const yaw = Math.atan2(-frame.across.z, frame.across.x);
+  return new Ledger(board.cards.map((c) => c.id)).seal({
+    seat,
+    units,
+    fixtures: { page: { pos: onFrame(frame, 0, frame.d / 2), w: frame.w, d: frame.d, yaw }, plate },
+    memory: { v: 1, paradigm: ARRANGED, fit: null },
+    report: { overflow: members.length > 0 },
   });
 }
 

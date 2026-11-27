@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { SeatBoard } from "../../src/layout/board";
-import { hitTest, planTable, summarize } from "../../src/layout/plan";
+import { hitTest, planTable } from "../../src/layout/plan";
 import { reservations } from "../../src/layout/reservations";
 import { Ledger } from "../../src/layout/ledger";
 import { audit, seatShapes } from "../../src/layout/shape";
 import { NotTunedError, tableTemplate } from "../../src/layout/template";
-import { SEATS, card, cid, cids, randomBoard, resetIds, sid } from "./boards";
+import { SEATS, card, cid, cids, engineOf, randomBoard, resetIds, sid } from "./boards";
 import type { CardId } from "../../src/layout/types";
 
 const VP = { w: 1180, h: 820 };
@@ -14,7 +14,7 @@ const centre = (q: readonly { x: number; y: number }[]) => ({ x: q.reduce((t, p)
 function plan(stack = false) {
   resetIds(1);
   const seats = SEATS.map((s, i) => ({ seat: s, board: { ...randomBoard(i + 40, 10, s, i === 0), seat: s } as SeatBoard }));
-  return planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats, stack: stack ? [{ key: "s1", card: cid(9999), ability: false, answers: false }] : [] });
+  return planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats, stack: stack ? [{ key: "s1", card: cid(9999), ability: false, answers: false }] : [], engine: engineOf(seats) });
 }
 
 describe("hitTest at rest", () => {
@@ -46,7 +46,8 @@ describe("the stack's order", () => {
     { key: "t", card: cid(9003), ability: false, answers: false },
   ];
   const area = (q: readonly { x: number; y: number }[]) => Math.abs(q.reduce((t, p, i) => t + p.x * q[(i + 1) % 4]!.y - q[(i + 1) % 4]!.x * p.y, 0)) / 2;
-  const p = planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats: SEATS.map((s, i) => ({ seat: s, board: { seat: s, mine: i === 0, cards: [], fixtures: { graveyard: 0, exile: 0, commandZone: false } } })), stack });
+  const bare = SEATS.map((s, i) => ({ seat: s, board: { seat: s, mine: i === 0, cards: [] } }));
+  const p = planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats: bare, stack, engine: engineOf(bare) });
 
   it("the plan is top first, the top drawn largest and at the left", () => {
     expect(p.stack.map((s) => s.key)).toEqual(["t", "m", "b"]);
@@ -70,7 +71,7 @@ describe("the stack's order", () => {
 describe("sealing", () => {
   it("refuses a card held twice and homes a missing card in a counted pile", () => {
     const unit = (id: string, members: CardId[]) => ({ id, role: "support" as const, kind: "pile" as const, members, dressing: [], top: members[0]!, title: null, mixed: false, acting: false, tapped: false, placement: { pos: { x: 0, y: 0, z: 0 }, scale: 1, posture: "prop" as const } });
-    const base = { seat: sid("x"), fixtures: plan().seats.get(sid("ana"))!.fixtures, memory: { v: 1 as const, paradigm: "t", fit: null }, report: { folded: 0, held: false, pressure: 0, overflow: false, lastResort: false } };
+    const base = { seat: sid("x"), fixtures: plan().seats.get(sid("ana"))!.fixtures, memory: { v: 1 as const, paradigm: "t", fit: null }, report: { overflow: false } };
     expect(() => new Ledger(cids(1, 2)).seal({ ...base, units: [unit("a", cids(1)), unit("b", cids(1, 2))] })).toThrow(/held by both/);
     const sealed = new Ledger(cids(1, 2, 3)).seal({ ...base, units: [unit("a", cids(1))] });
     expect(sealed.home.size).toBe(3);
@@ -78,18 +79,14 @@ describe("sealing", () => {
   });
 });
 
-describe("last resort", () => {
-  it("a board no fold can fit becomes one reachable summary", () => {
+describe("a board too big for the leaf", () => {
+  it("stays reachable whole: every card held, no limit broken", () => {
     resetIds(1);
-    const huge = { seat: sid("ana"), mine: false, cards: Array.from({ length: 400 }, (_, i) => card({ name: `Odd ${i}`, creature: true, power: i % 9, toughness: 1, typeWord: "Creature", legendary: true })), fixtures: { graveyard: 0, exile: 0, commandZone: false } } as SeatBoard;
-    const seats = SEATS.map((s, i) => ({ seat: s, board: s === "ana" ? huge : ({ seat: s, mine: i === 0, cards: [], fixtures: huge.fixtures } as SeatBoard) }));
-    const p = planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats, stack: [] });
+    const huge = { seat: sid("ana"), mine: false, cards: Array.from({ length: 400 }, (_, i) => card({ name: `Odd ${i}`, creature: true, power: i % 9, toughness: 1, typeWord: "Creature", legendary: true })) };
+    const seats = SEATS.map((s, i) => ({ seat: s, board: s === "ana" ? huge : { seat: s, mine: i === 0, cards: [] } }));
+    const p = planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats, stack: [], engine: engineOf(seats) });
     expect(p.violations).toEqual([]);
     expect(p.seats.get(sid("ana"))!.home.size).toBe(400);
-  });
-  it("summarizes in the terms that matter", () => {
-    const b = { seat: sid("s"), mine: false, fixtures: { graveyard: 0, exile: 0, commandZone: false }, cards: [card({ id: 1, name: "A", creature: true, power: 3, toughness: 3, keywords: ["flying"] }), card({ id: 2, name: "B", creature: true, power: 8, toughness: 8, tapped: true })] } as SeatBoard;
-    expect(summarize(b, cids(1, 2))).toEqual({ count: 2, totalPower: 11, tapped: 1, keywords: [{ keyword: "flying", count: 1 }], biggest: 2 });
   });
 });
 

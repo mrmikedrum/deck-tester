@@ -43,27 +43,31 @@ function expectAtRest(snap: SceneSnapshot, model: TableModel, name: string): voi
     const d = Math.hypot(p.now.pos.x - p.target.pos.x, p.now.pos.y - p.now.lift - p.target.pos.y, p.now.pos.z - p.target.pos.z);
     expect(d, `${name}: ${p.id} at its target`).toBeLessThan(1e-6);
   }
-  for (const id of model.cards.keys()) expect(seen.has(id), `${name}: card ${id} (${model.cards.get(id)?.name}, ${model.cards.get(id)?.zone}) drawn or counted`).toBe(true);
-  expect(seen.size, `${name}: nothing extra`).toBe(model.cards.size);
+  const counted = onTable(model);
+  for (const id of counted) expect(seen.has(id), `${name}: card ${id} (${model.cards.get(id)?.name}, ${model.cards.get(id)?.zone}) drawn or counted`).toBe(true);
+  expect(seen.size, `${name}: nothing extra`).toBe(counted.length);
 }
+
+/** Every card the table draws or counts: all but graveyards and exile, which are the nameplates' (chrome). */
+const onTable = (model: TableModel): CardId[] => [...model.cards.values()].filter((c) => c.zone !== "graveyard" && c.zone !== "exile").map((c) => c.id);
 
 group("describe over the corpus", () => {
   it("has steps to play", () => {
     expect(steps.length).toBeGreaterThan(40);
   });
-  it.each(steps.map((s) => [s.name, s] as const))("%s: every card in exactly one piece", (_, s) => {
+  it.each(steps.map((s) => [s.name, s] as const))("%s: every card on the table in exactly one piece", (_, s) => {
     const d = describe({ model: s.model, plan: s.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
     const all = [...d.pieces.values()].flatMap((p) => p.members);
     expect(new Set(all).size, "no card twice").toBe(all.length);
-    expect(all.length).toBe(s.model.cards.size);
-    for (const id of s.model.cards.keys()) expect(d.home.has(id)).toBe(true);
+    expect(all.length).toBe(onTable(s.model).length);
+    for (const id of onTable(s.model)) expect(d.home.has(id)).toBe(true);
     // Every hit group is a piece, with the same members (the scene's targets are layout's); but the clash's brand slots
     // and its "more" column, chrome marks that reach fighters drawn as their own pieces.
     for (const g of s.plan.hits.groups) {
       if (CLASH_MARK.test(g.id)) continue;
       const p = d.pieces.get(g.id);
       expect(p, g.id).toBeDefined();
-      if (g.kind !== "zone" && g.kind !== "plate" && g.kind !== "stack") expect(p!.members.slice(0, g.members.length)).toEqual(g.members);
+      if (g.kind !== "plate" && g.kind !== "stack") expect(p!.members.slice(0, g.members.length)).toEqual(g.members);
     }
   });
 });
@@ -317,13 +321,14 @@ group("moments and epochs", () => {
 group("the scene's targets are layout's", () => {
   const near = (q: readonly { x: number; y: number }[], r: readonly { x: number; y: number }[]) =>
     Math.max(...q.map((p, k) => Math.hypot(p.x - r[k]!.x, p.y - r[k]!.y)));
-  it.each(steps.map((s) => [s.name, s] as const))("%s: at rest a card or a stack entry covers its hit group's quad", (_, s) => {
+  it.each(steps.map((s) => [s.name, s] as const))("%s: at rest a card or a stack entry is drawn on its hit group's face", (_, s) => {
     const d = describe({ model: s.model, plan: s.plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
     for (const g of s.plan.hits.groups) {
       if (CLASH_MARK.test(g.id)) continue;
       const p = d.pieces.get(g.id)!;
       if (g.kind === "stack" || ((g.kind === "card" || g.kind === "pile") && p.look.tap === 0))
-        expect(near(poseQuad(s.plan.projector, p.pose), g.quad), g.id).toBeLessThan(0.5);
+        // (a lying pile's top is posed on the page; the view lifts it onto its block, as the engine measured it: under a px)
+        expect(near(poseQuad(s.plan.projector, p.pose), g.face ?? g.quad), g.id).toBeLessThan(1);
     }
   });
 });

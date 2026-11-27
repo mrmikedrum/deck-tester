@@ -30,7 +30,7 @@ describe("cards on the engine's leaf", () => {
   for (const turn of [4, 9, 15])
     it(`turn ${turn}: lying ones rest on the page's top, standing ones stand out of it`, () => {
       const m = design.get(turn)!;
-      const plan = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+      const plan = planTable(tableInputOf(m, { viewport: VP, engine: {} }));
       const units = [...plan.seats.values()].flatMap((sp) => sp.units).filter((u) => u.placement.frame && !u.fighting);
       expect(units.length).toBeGreaterThan(0);
       for (const u of units) {

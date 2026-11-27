@@ -19,7 +19,7 @@ import {
   RepeatWrapping,
 } from "three";
 import type { Material, Object3D, Texture } from "three";
-import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/seat/geometry";
+import { CH, CW, PILE_LEAN, TAP_LEAN, TH } from "../../layout/geometry";
 import { STAND_OFF } from "../../layout";
 import { SIGN_FONT, SIGN_U, colour, faceKey, materials, motion, seatInk } from "../../theme";
 import type { FaceSpec, SeatPlace } from "../../theme";

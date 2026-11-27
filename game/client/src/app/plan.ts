@@ -68,7 +68,7 @@ const asideOf = (s: AppState): boolean => s.focus.aside.some((e) => e.layer === 
 /**
  * The stack held up as the table's focus: its layer is the topmost table layer, or a new item is about to bring it up
  * (focus.ts `sync` opens it for every new stack, after the plan is made). Held, it floats over the table and the mats
- * do not part for it; set aside (or under a sift or a lean-in) it rests in the middle at table size, and they do.
+ * do not part for it; set aside (or under a sheet: a sift, a spread) it rests in the middle at table size, and they do.
  */
 export function stackHeldOf(s: AppState, model: TableModel): boolean {
   if (!model.stack.length) return false;
@@ -113,7 +113,7 @@ export function replan(s: AppState, cues: BoardCues, settling = false): Replanne
         ...(s.focus.combat?.order.length ? { order: s.focus.combat.order } : {}),
         // Every opponent's leaf is the arrangement engine's (docs/game-arrangement-engine.md, steps 6 and 8): its
         // memory rides in the layout memory like any seat's.
-        engine: { draw: true, decision },
+        engine: { decision },
         stackHeld: stackHeldOf(s, model),
       }),
     );

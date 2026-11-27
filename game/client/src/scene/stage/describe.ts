@@ -17,7 +17,7 @@ import { DIM } from "./motion";
 import { LABEL_PX, estimate, placeLabels, shorter } from "./labels";
 import type { LabelAsk, Measure } from "./labels";
 import { chipsOf, colourOf, faceOfCard, inkOf, placeOf, plateOf, strongest } from "./faces";
-import { pagePose, platePose, poseQuad, screenPose, square, stackPose, unitPose, zonePose } from "./poses";
+import { pagePose, platePose, poseQuad, screenPose, square, stackPose, unitPose } from "./poses";
 import { LOOK, tableFocus } from "./types";
 import type { Aim, Description, Draw, FocusTop, HighlightLook, HighlightRequest, HighlightTone, Lane, Look, Piece, Pose, WellLook } from "./types";
 
@@ -126,78 +126,10 @@ export function describe(input: DescribeInput): Description {
       put({ ...piece, ...(u.fighting ? { fight: true } : {}) });
     }
 
-    for (const z of sp.fixtures.zones) {
-      const members = model.zone(seat, z.zone);
-      const mark = strongest(members.map(markOf));
-      put({
-        id: `zone:${z.zone}:${seat}`,
-        kind: "zone",
-        seat,
-        members,
-        face: members[members.length - 1] ?? null,
-        pose: zonePose(z.placement),
-        look: lookOf(dimOf(seat), mark, false, false),
-        form: `zone|${z.zone}|${mine}`,
-        mods: `${mark ?? ""}`,
-        mark,
-        draw: { t: "zone", zone: z.zone, mine, colour: colourOf(model, seat) },
-        needsMembers: true,
-      });
-    }
-
-    // The commander leans beside the plaque while it waits in the command zone (h.js `banner`): a card of its own, which
-    // a tap reaches and a cast flies from.
-    const cmd = sp.fixtures.commander;
-    const cmdCard = cmd ? model.cards.get(cmd.card) : undefined;
-    if (cmd && cmdCard) {
-      const mark = markOf(cmd.card) ?? null;
-      const cmdPose = unitPose(plan.projector, cmd.placement, false);
-      const small = isSmall(plan, cmdPose);
-      const face = faceOfCard(model, cmdCard, mark, small);
-      const id = `command:${seat}`;
-      put({
-        id,
-        kind: "unit",
-        seat,
-        members: [cmd.card],
-        face: cmd.card,
-        pose: cmdPose,
-        look: lookOf(dimOf(seat), mark, input.hover === id, false),
-        form: `command|${cmd.card}`,
-        mods: faceKey(face) + (mark ?? ""),
-        mark,
-        small,
-        // (It leans with the plaque, no standee's ash or shadow under it.)
-        draw: {
-          t: "unit",
-          unit: "card",
-          posture: "prop",
-          token: false,
-          title: null,
-          sub: null,
-          mixed: false,
-          mine,
-          chips: [],
-          dressed: [],
-          colours: cmdCard.face.colors,
-          well: null,
-          copies: [{ face: null, tapped: false }],
-          tapNote: null,
-          label: null,
-          seatColour: colourOf(model, seat),
-          seed: cmd.card,
-          sick: false,
-          cue: null,
-          light: null,
-        },
-        needsMembers: true,
-      });
-    }
-
     const plateMark = cues.marks.seats.get(seat) ?? null;
     const spec = plateOf(model, seat, plateMark);
-    // The rest of the command zone (a partner) is shown by its plate (the seal's art); it is counted there.
-    const command = model.zone(seat, "command").filter((id) => id !== cmd?.card);
+    // The command zone (a waiting commander, a partner) is shown by its nameplate (its portrait); it is counted there.
+    const command = model.zone(seat, "command");
     put({
       id: `plate:${seat}`,
       kind: "plate",

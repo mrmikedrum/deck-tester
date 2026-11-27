@@ -171,16 +171,6 @@ describe("boardOf: one board per card on screen", () => {
     expect(hers.mine).toBe(false);
   });
 
-  it("fixtures count the seat's graveyard and exile and see the commander at home", () => {
-    const m = tableOf({
-      seats: {
-        You: { graveyard: [wire(1, "Brainstorm", "You", "Instant")], exile: [wire(2, "Fireball", "You", "Sorcery"), wire(3, "Doom Blade", "You", "Instant")], command: [wire(4, "Marath, Will of the Wild", "You", "Legendary Creature - Elemental Beast", { commander: true })] },
-      },
-    });
-    expect(boardOf(m, "You" as never).fixtures).toEqual({ graveyard: 1, exile: 2, commandZone: true, commander: 4 });
-    expect(boardOf(m, "Dack" as never).fixtures).toEqual({ graveyard: 0, exile: 0, commandZone: false });
-  });
-
   it("every corpus battlefield card is on exactly one board", () => {
     for (const n of corpusNames) {
       const m = modelOf(corpusSnapshot(n), catalog, viewerOf());

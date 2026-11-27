@@ -1,27 +1,23 @@
 // Faults a review found in layout, each pinned by the case that showed it: a permanent of any mix of types is held
-// exactly once; the stack is audited against the screen (what is off it, or has no room, is not reachable on the table); a tap reaches
-// what is drawn where it lands; and a seat pushed past the last fold notch by a neighbour gets its last resort.
+// exactly once; the stack is audited against the screen (what is off it, or has no room, is not reachable on the table); a
+// tap reaches what is drawn where it lands.
 import { describe, expect, it } from "vitest";
-import type { BoardCard, SeatBoard } from "../../src/layout/board";
-import { hitTest, planSeat, planTable } from "../../src/layout/plan";
+import type { SeatBoard } from "../../src/layout/board";
+import { hitTest, planTable } from "../../src/layout/plan";
 import type { TableInput } from "../../src/layout/plan";
-import { mat } from "../../src/layout/seat/mat";
-import { pinhole } from "../../src/layout/projector";
-import { reservations } from "../../src/layout/reservations";
-import { bounds, inQuad, seatShapes } from "../../src/layout/shape";
-import { tableTemplate } from "../../src/layout/template";
-import type { CardId, SeatId } from "../../src/layout/types";
-import { SEATS, card, cid, randomBoard, resetIds, sid } from "./boards";
+import { bounds, inQuad } from "../../src/layout/shape";
+import type { CardId } from "../../src/layout/types";
+import { SEATS, card, cid, engineOf, randomBoard, resetIds, sid } from "./boards";
+import type { TestCard } from "./boards";
 
 const VP = { w: 1180, h: 820 };
-const EMPTY = { graveyard: 0, exile: 0, commandZone: false } as const;
 const table = (seats: TableInput["seats"], more: Partial<TableInput> = {}) =>
-  planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats, stack: [], ...more });
+  planTable({ viewport: VP, mode: "normal", settling: false, memory: null, involved: new Set(), seats, stack: [], engine: engineOf(seats), ...more });
 
 const FLAGS = ["land", "creature", "planeswalker", "artifact", "enchantment", "manaRock", "specialLand", "treasure", "basic"] as const;
 
 /** One card for every combination of the type flags (512), each a different card. */
-function everyCombination(first: number): BoardCard[] {
+function everyCombination(first: number): TestCard[] {
   return Array.from({ length: 1 << FLAGS.length }, (_, bits) => {
     const flags = Object.fromEntries(FLAGS.map((f, i) => [f, (bits & (1 << i)) !== 0]));
     return card({ id: first + bits, name: `Combo ${bits}`, power: 2, toughness: 2, token: !!flags["treasure"], typeWord: "Thing", ...flags });
@@ -38,8 +34,8 @@ describe("every permanent is held exactly once, whatever its types", () => {
   it("an animated Treasure (an artifact that is a creature now) stands with the creatures, not also in the well", () => {
     for (const mine of [true, false]) {
       const treasure = card({ id: 42, name: "Treasure", artifact: true, treasure: true, token: true, creature: true, power: 1, toughness: 1 });
-      const board: SeatBoard = { seat: sid("you"), mine, cards: [treasure], fixtures: EMPTY };
-      const seats = SEATS.map((s, i) => ({ seat: s, board: i === (mine ? 0 : 1) ? { ...board, seat: s } : { seat: s, mine: i === 0, cards: [], fixtures: EMPTY } }));
+      const board: SeatBoard = { seat: sid("you"), mine, cards: [treasure] };
+      const seats = SEATS.map((s, i) => ({ seat: s, board: i === (mine ? 0 : 1) ? { ...board, seat: s } : { seat: s, mine: i === 0, cards: [] } }));
       const p = table(seats);
       const sp = p.seats.get(SEATS[mine ? 0 : 1]!)!;
       expect(sp.units.filter((u) => u.members.includes(cid(42))).map((u) => u.role)).toEqual(["creature"]);
@@ -52,8 +48,8 @@ describe("every permanent is held exactly once, whatever its types", () => {
   ])("%s: one card of every combination of type flags, alone on its seat", (_, mine) => {
     const seat = mine ? SEATS[0]! : SEATS[1]!;
     for (const c of everyCombination(1)) {
-      const board: SeatBoard = { seat, mine, cards: [c], fixtures: EMPTY };
-      const seats = SEATS.map((s) => ({ seat: s, board: s === seat ? board : { seat: s, mine: s === SEATS[0], cards: [], fixtures: EMPTY } }));
+      const board: SeatBoard = { seat, mine, cards: [c] };
+      const seats = SEATS.map((s) => ({ seat: s, board: s === seat ? board : { seat: s, mine: s === SEATS[0], cards: [] } }));
       heldOnce(board, table(seats).seats.get(seat)!.units);
     }
   });
@@ -63,8 +59,8 @@ describe("every permanent is held exactly once, whatever its types", () => {
     ["theirs", false],
   ])("%s: all 512 combinations on one seat", (_, mine) => {
     const seat = mine ? SEATS[0]! : SEATS[1]!;
-    const board: SeatBoard = { seat, mine, cards: everyCombination(1000), fixtures: EMPTY };
-    const seats = SEATS.map((s) => ({ seat: s, board: s === seat ? board : { seat: s, mine: s === SEATS[0], cards: [], fixtures: EMPTY } }));
+    const board: SeatBoard = { seat, mine, cards: everyCombination(1000) };
+    const seats = SEATS.map((s) => ({ seat: s, board: s === seat ? board : { seat: s, mine: s === SEATS[0], cards: [] } }));
     heldOnce(board, table(seats).seats.get(seat)!.units);
   });
 });
@@ -124,74 +120,17 @@ describe("the stack against the screen", () => {
 });
 
 describe("a tap reaches what is drawn where it lands", () => {
-  it("my graveyard and exile: the hit quads are the drawn (flat) quads, and a tap outside them does not reach them", () => {
-    resetIds(1);
-    const seats = SEATS.map((s, i) => ({
-      seat: s,
-      board: { ...randomBoard(i + 40, 10, s, i === 0), seat: s, fixtures: { graveyard: 3, exile: 2, commandZone: i === 0 } } as SeatBoard,
-    }));
-    const p = table(seats);
-    const me = SEATS[0]!;
-    const drawn = seatShapes(p.projector, p.seats.get(me)!, true).filter((s) => s.kind === "zone");
-    expect(drawn.map((s) => s.group).sort()).toEqual([`zone:exile:${me}`, `zone:graveyard:${me}`]);
-    for (const s of drawn) {
-      const g = p.hits.groups.find((x) => x.id === s.group)!;
-      expect(g.quad).toEqual(s.face);
-      // every point a tap reaches this zone at is inside what is drawn
-      const b = bounds(s.face);
-      for (let x = b.l - 40; x <= b.r + 40; x += 4)
-        for (let y = b.t - 60; y <= b.b + 40; y += 4) if (hitTest(p, { x, y })?.id === s.group) expect(inQuad(s.face, x, y), `${s.group} at ${x},${y}`).toBe(true);
-    }
-  });
-
-  it("hitTest follows draw order over the stored quads: the group drawn on top at a point is the one reached", () => {
+  it("hitTest follows draw order: the face drawn on top at a point is the one reached, else the place that holds it", () => {
     resetIds(1);
     const p = table(SEATS.map((s, i) => ({ seat: s, board: { ...randomBoard(i + 7, 24, s, i === 0), seat: s } as SeatBoard })));
     const groups = p.hits.groups.filter((g) => g.kind !== "plate" && g.kind !== "stack");
     for (let x = 0; x < VP.w; x += 16)
       for (let y = 0; y < VP.h; y += 16) {
-        const under = groups.filter((g) => inQuad(g.quad, x, y));
+        const faces = groups.filter((g) => inQuad(g.face ?? g.quad, x, y)), under = faces.length ? faces : groups.filter((g) => inQuad(g.quad, x, y));
         const hit = hitTest(p, { x, y });
         if (!under.length || hit?.kind === "plate") continue;
         const top = under.reduce((a, b) => (b.order >= a.order ? b : a));
         expect(hit?.id, `${x},${y}`).toBe(top.id);
       }
-  });
-});
-
-describe("the fold cap", () => {
-  it("a seat asked to fold past the last notch gets its last resort instead of failing", () => {
-    resetIds(1);
-    const board = randomBoard(3, 24, "ana", false);
-    const tpl = tableTemplate(4), projector = pinhole(tpl.camera, VP), reserve = reservations(VP, "normal");
-    const input = { seat: sid("ana") as SeatId, board, region: { ...tpl.slots[1]!, lift: 0 }, projector, reserve, viewport: VP, involved: new Set<CardId>(), settling: false, memory: null };
-    const plan = planSeat(mat, input, { minPressure: 7 });
-    expect(plan.report.lastResort).toBe(true);
-    expect(plan.home.size).toBe(board.cards.length);
-  });
-
-  it("a seat that passes its own audit only at the last notch, then collides with a neighbour, is planned (its last resort)", () => {
-    // A stand-in arrangement for "ana" (mat for everyone else): below the last notch its card is too small (its own
-    // audit fails); at the last notch it is full size but lies on my side of the table, over my cards.
-    const tpl = tableTemplate(4), near = tpl.slots[0]!;
-    const layout = {
-      id: "test",
-      plan(input: Parameters<typeof mat.plan>[0]) {
-        const p = mat.plan(input);
-        if (input.seat !== sid("ana")) return p;
-        const units = p.units.map((u) =>
-          input.pressure < 6 ? { ...u, placement: { ...u.placement, scale: 0.05 } } : { ...u, placement: { ...u.placement, pos: { x: near.x, y: 0, z: near.z } } },
-        );
-        return { ...p, units };
-      },
-    };
-    resetIds(1);
-    const mine = randomBoard(5, 12, "you", true);
-    const seats = SEATS.map((s, i) => ({
-      seat: s,
-      board: i === 0 ? mine : i === 1 ? { seat: s, mine: false, cards: [card({ name: "Lone", creature: true, power: 2, toughness: 2 })], fixtures: EMPTY } : { seat: s, mine: false, cards: [], fixtures: EMPTY },
-    }));
-    const p = table(seats, { layout });
-    expect(p.seats.get(sid("ana"))!.report.lastResort).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
-// How long `planTable` takes (docs/game-client-architecture.md "Budgets": 8 ms on the iPad) as the app plans (every
-// opponent leaf drawn by the arrangement engine, a fight gathered) and with mat alone, over the named inputs of docs/game-arrangement-engine.md §7.3
+// How long `planTable` takes (docs/game-client-architecture.md "Budgets": 8 ms on the iPad) as the app plans (every seat
+// on the arrangement engine, a fight gathered), with the leaves arranged afresh, and with every opponent's spread opened
+// on the plan, over the named inputs of docs/game-arrangement-engine.md §7.3
 // (client/src/scene/workbench/bench-inputs.ts: the same tables the workbench's bench page times in Safari). A
 // measurement, not a test: it prints the median, p90 and worst per plan, and what the engine did.
 //
@@ -11,7 +12,7 @@ import "./ts-hooks.mjs";
 import { readFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 
-const { WARM, benchInputs, course, planFrame, planFrameChanged, planMatOnly, VIEWPORT } = await import("../client/src/scene/workbench/bench-inputs.ts");
+const { WARM, benchInputs, course, planAndSpreads, planFrame, planFrameChanged, VIEWPORT } = await import("../client/src/scene/workbench/bench-inputs.ts");
 
 const args = process.argv.slice(2);
 const json = args.includes("--json");
@@ -54,16 +55,16 @@ function time(input, plan) {
 
 const rows = [];
 for (const input of inputs) {
-  const on = time(input, planFrame), changed = time(input, planFrameChanged), off = time(input, planMatOnly);
+  const on = time(input, planFrame), changed = time(input, planFrameChanged), spreads = time(input, planAndSpreads);
   const e = on.plans;
   const n = (k) => Math.max(...e.map((x) => x[k]));
   rows.push({
     input: input.name,
     what: input.what,
     plans: on.times.length,
-    withShadow: stats(on.times),
+    asPlanned: stats(on.times),
     leafChanged: stats(changed.times),
-    matOnly: stats(off.times),
+    spreads: stats(spreads.times),
     engine: {
       policy: [...new Set(e.map((x) => x.policy))].join(","),
       errors: e.filter((x) => x.error).length,
@@ -81,10 +82,10 @@ if (json) console.log(JSON.stringify({ node: process.version, viewport: VIEWPORT
 else {
   const ms = (x) => x.toFixed(2).padStart(6);
   console.log(`planTable at ${VIEWPORT.w}x${VIEWPORT.h}, Node ${process.version}, ${runs} plans per input (ms per plan; budget 8 on the iPad)`);
-  console.log("input        as the app plans        the leaves changed      mat only                engine: estimates units violations");
+  console.log("input        as the app plans        the leaves changed      and every spread        engine: estimates units violations");
   console.log("             median   p90 worst       median   p90 worst       median   p90 worst");
   for (const r of rows)
     console.log(
-      `${r.input.padEnd(12)} ${ms(r.withShadow.median)}${ms(r.withShadow.p90)}${ms(r.withShadow.worst)}      ${ms(r.leafChanged.median)}${ms(r.leafChanged.p90)}${ms(r.leafChanged.worst)}      ${ms(r.matOnly.median)}${ms(r.matOnly.p90)}${ms(r.matOnly.worst)}       ${String(r.engine.candidates).padStart(4)} ${String(r.engine.units).padStart(5)} ${String(r.engine.violations).padStart(5)}  ${r.engine.policy}${r.engine.errors ? ` ERRORS ${r.engine.errors}` : ""}`,
+      `${r.input.padEnd(12)} ${ms(r.asPlanned.median)}${ms(r.asPlanned.p90)}${ms(r.asPlanned.worst)}      ${ms(r.leafChanged.median)}${ms(r.leafChanged.p90)}${ms(r.leafChanged.worst)}      ${ms(r.spreads.median)}${ms(r.spreads.p90)}${ms(r.spreads.worst)}       ${String(r.engine.candidates).padStart(4)} ${String(r.engine.units).padStart(5)} ${String(r.engine.violations).padStart(5)}  ${r.engine.policy}${r.engine.errors ? ` ERRORS ${r.engine.errors}` : ""}`,
     );
 }

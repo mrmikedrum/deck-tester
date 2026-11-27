@@ -131,7 +131,7 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const has = (id: string): boolean => (groups?.some((g) => g.id === id) ?? false) || zoneHas(id);
   const pages = (id: string): number => (s.model && s.plan ? (sheetOf(s.model, s.plan, { kind: "pile", group: id })?.pages.count ?? 1) : 1);
   const synced = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat, s.plan), groups: has, pages }, origin);
-  // A lean-in on a seat that has left the table (out of the game) goes with it.
+  // A seat's spread goes when the seat leaves the table (out of the game).
   const leaning = synced.layers.find((e) => e.layer === "lean");
   const focus = leaning?.seat && s.plan && !s.plan.seats.has(leaning.seat) ? close(synced, "lean") : synced;
   return focus === s.focus ? s : { ...s, focus };
@@ -294,15 +294,10 @@ function inspect(tx: Tx, card: CardId): void {
 
 const TABLE_LAYERS: ReadonlySet<string> = new Set(["stack", "clash", "lean", "sift"]);
 
-/** A graveyard's or exile's zone group: "zone:<zone>:<seat>". */
-const PILE_ZONE = /^zone:(graveyard|exile):/;
-
-/** Whether a tap on this group opens its sift: a pile, well or summary of several cards, or a graveyard or exile with
- * cards in it (h.js: a pile sifts; a zone with cards sifts what it holds). */
-function sifts(s: AppState, g: HitGroup): boolean {
-  if (g.kind === "pile" || g.kind === "well" || g.kind === "summary") return g.members.length > 1;
-  const z = g.kind === "zone" && g.seat !== null ? PILE_ZONE.exec(g.id)?.[1] : undefined;
-  return z !== undefined && (s.model?.zone(g.seat!, z as "graveyard" | "exile").length ?? 0) > 0;
+/** Whether a tap on this group opens its sift: a pile, well or summary of several cards (graveyard and exile open from
+ * the nameplate: the "zone" order). */
+function sifts(g: HitGroup): boolean {
+  return (g.kind === "pile" || g.kind === "well" || g.kind === "summary") && g.members.length > 1;
 }
 
 /** Play asks the player to choose one of a group's members (a gesture meant one of several): its sift opens, the stack
@@ -348,7 +343,7 @@ function tapDefault(tx: Tx, on: play.Target): void {
     return;
   }
   const sifting = t?.layer === "sift";
-  if (g && !sifting && sifts(tx.s, g)) {
+  if (g && !sifting && sifts(g)) {
     const under = isOpen(f, "stack") ? setAside(f, "stack") : f;
     tx.s = { ...tx.s, focus: open(under, entry("sift", { group: g.id, restore: tx.origin ?? null })) };
     return;
@@ -363,7 +358,7 @@ function tapDefault(tx: Tx, on: play.Target): void {
     tx.s = { ...tx.s, focus: dismiss(f).focus };
     return;
   }
-  const one = g && g.kind !== "plate" && g.kind !== "zone" && g.members.length === 1 ? g.members[0] : undefined;
+  const one = g && g.kind !== "plate" && g.members.length === 1 ? g.members[0] : undefined;
   if (one !== undefined) inspect(tx, one);
 }
 

@@ -25,7 +25,7 @@ group("flights to an opponent's graveyard off the table", () => {
   it("a discard and a mill fly to the owner's plate", () => {
     const card = (id: number, name: string) => ({ id, name, owner: "Dack", controller: "Dack", type: "Instant" });
     const before = at([]), after = at([card(7001, "Discarded"), card(7002, "Milled")]);
-    const plan = planTable(tableInputOf(after, { viewport: { w: 1180, h: 820 }, engine: { draw: true } }));
+    const plan = planTable(tableInputOf(after, { viewport: { w: 1180, h: 820 }, engine: {} }));
     const desc = describe({ model: after, plan, cues: NO_CUES, focus: NO_FOCUS, hover: null });
     const set = diff(before, after, 1);
     const flights = planFlights(set, { model: after, desc, homeOf: (id: CardId) => desc.home.get(id) ?? null, poseOf: () => null, shownOf: () => [], moments: [] });

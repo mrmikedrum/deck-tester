@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { boards } from "../../src/layout/board";
 import { planTable } from "../../src/layout/plan";
+import { tableInputOf } from "../../src/layout/table-input";
+import { boards } from "../../src/layout/board";
 import type { CardId } from "../../src/layout/types";
 import { modelOf } from "../../src/model";
 import { catalog, corpusSnapshot, viewerOf } from "../model/fixtures";
@@ -10,7 +11,7 @@ const VP = { w: 1180, h: 820 };
 
 function planOf(name: string) {
   const model = modelOf(corpusSnapshot(name), catalog, viewerOf())!;
-  return { model, plan: planTable({ viewport: VP, mode: "normal", seats: boards(model), involved: new Set(), settling: false, memory: null, stack: [] }) };
+  return { model, plan: planTable(tableInputOf(model, { viewport: VP })) };
 }
 
 describe("a planeswalker that is a creature now (Gideon Jura, card 872)", () => {

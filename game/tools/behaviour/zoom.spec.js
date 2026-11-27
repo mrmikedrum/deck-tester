@@ -1,6 +1,6 @@
 // The camera zoom's trial (`?zoom`): a long press on a card zooms the camera onto it; while zoomed,
 // and while the camera is still on its way back, a real click on the prompt's pass button sends nothing. Back at the
-// table, the next click passes. A long press on a seat's page raised by its nameplate's Board zooms to that seat.
+// table, the next click passes.
 const { Table, test, expect, snapshot, withDecision, locate, sleep } = require("./harness.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
@@ -52,40 +52,6 @@ test.describe("the camera zoom's trial", () => {
     expect(await t.page.evaluate(() => window.__deckmaster.state().zoom.drawn)).toBe(false);
     await t.pass();
     expect((await t.answered(1))[0].answer).toEqual([1]);
-    expect(t.errors).toEqual([]);
-    await sleep(10);
-    await ctx.close();
-  });
-
-  test("a long press on a page its nameplate's Board raised zooms to that seat", async ({ browser }) => {
-    const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true, deviceScaleFactor: 1, baseURL: process.env.BEHAVIOUR_BASE });
-    const t = new Table(await ctx.newPage());
-    await t.install();
-    await t.boot(withDecision(snapshot("main"), { ...PASS }), "?zoom");
-    const pages = () => t.page.evaluate(() => window.__deckmaster.scene.boxes().filter(b => b.kind === "page"));
-    const resting = await pages();
-    await t.tapPlate("cy");                                    // Dack
-    const board = t.page.locator('[data-fk^="board:"]').first();          // "See Dack's board"
-    await board.waitFor({ state: "visible", timeout: 3000 });
-    const seat = (await board.getAttribute("data-fk")).slice("board:".length);
-    const r = await board.boundingBox();
-    await t.page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
-    await t.step(1500);
-    const now = await pages();
-    const raised = now.find(b => b.id === `page:${seat}`), was = resting.find(b => b.id === `page:${seat}`);
-    expect(raised.quad).not.toEqual(was.quad);
-    // A point on the raised page, off where it rests, with no card or label on it.
-    const at = await t.page.evaluate(([q, rest]) => {
-      const inside = (q, x, y) => { let s = 0; for (let i = 0; i < 4; i++) { const [ax, ay] = q[i], [bx, by] = q[(i + 1) % 4]; const c = (bx - ax) * (y - ay) - (by - ay) * (x - ax); if (c !== 0) { if (s && Math.sign(c) !== s) return false; s = Math.sign(c); } } return true; };
-      const xs = q.map(p => p[0]), ys = q.map(p => p[1]);
-      for (let y = Math.min(...ys) + 4; y < Math.max(...ys); y += 6)
-        for (let x = Math.min(...xs) + 4; x < Math.max(...xs); x += 6)
-          if (inside(q, x, y) && !inside(rest, x, y) && !window.__deckmaster.scene.pick(x, y) && !window.__deckmaster.scene.under(x, y)) return { x, y };
-      return null;
-    }, [raised.quad, was.quad]);
-    expect(at).not.toBeNull();
-    await hold(t, at);
-    expect(await t.page.evaluate(() => window.__deckmaster.state().zoom.on)).toEqual({ seat });
     expect(t.errors).toEqual([]);
     await sleep(10);
     await ctx.close();

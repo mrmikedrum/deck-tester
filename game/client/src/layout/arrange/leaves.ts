@@ -1,6 +1,5 @@
-// The opponents' leaves on the engine (§6.1 step 5, §6.2 step 8): `planTable` arranges every opponent's leaf with the
-// arrangement engine. Drawn (`draw`), each leaf is its seat's plan (adapter.ts); otherwise it is only recorded beside
-// `mat`'s plan of the same seat, for goldens and the bench.
+// The seats on the engine (§6.1, §6.2 steps 8 and 9): `planTable` arranges every opponent's leaf (and my side, mine.ts)
+// with the arrangement engine, each drawn as its seat's plan (adapter.ts).
 import type { TableModel } from "../../model";
 import { boardOf } from "../board";
 import type { SeatBoard } from "../board";
@@ -37,12 +36,10 @@ export interface LeafInput {
   readonly auditPoses?: boolean;
 }
 
-/** The opponents' leaves for `planTable`: every one arranged, and drawn as its seat's plan when `draw`. */
+/** Every seat for `planTable`: each opponent's leaf, and my side (step 9, laid out by `mine`). */
 export interface EngineInput {
   readonly leaves: readonly LeafInput[];
-  /** My side (step 9), laid out by `mine`. */
   readonly mine?: LeafInput;
-  readonly draw: boolean;
 }
 
 export interface LeafPlan {
@@ -62,10 +59,6 @@ export interface EngineOptions {
   readonly memory?: ReadonlyMap<SeatId, ContainerMemory | null>;
   readonly policy?: string;
   readonly auditPoses?: boolean;
-  /** Draw the leaves (each the seat's plan), not only record them. */
-  readonly draw?: boolean;
-  /** Lay my side out with the engine too (the default); false keeps `mat`'s. */
-  readonly mine?: boolean;
 }
 
 /** A seat's leaf input from the model: its battlefield as `boardOf` draws it, read from current types. */

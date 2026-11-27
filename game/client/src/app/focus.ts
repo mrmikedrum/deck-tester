@@ -1,11 +1,11 @@
 // Focus: one ordered stack of typed layers, top last (docs/game-client-architecture.md, "input, focus and access").
-// Each entry is a layer with its subject (the inspector's card, a lean-in's seat, a sift's group), whether the player
+// Each entry is a layer with its subject (the inspector's card, a spread's seat, a sift's group), whether the player
 // may dismiss it, and where keyboard focus returns when it goes. Play keeps owning its choice draft and whether its
 // sheet may close: the stack holds a `sheet` entry while play presents a sheet, and dismissing it asks play. Pure.
 //
 // One rule for every way out, Escape, a tap outside (a sheet's scrim, an unclaimed tap on the table) and the ✕: the top
 // layer goes. The stack layer and the mulligan are set aside rather than closed (they stand for something still true
-// on the table); a set-aside layer shows a chip that restores it. The table's layers (the stack, a lean-in, a sift)
+// on the table); a set-aside layer shows a chip that restores it. The table's layers (the stack, the clash, a seat's spread, a sift)
 // always sit under the chrome's (a sheet, the inspector, the mulligan, the menu, the hand's list, the log, the loss
 // report): a new layer goes on top of its own tier.
 import type { SeatId, TableModel } from "../model";
@@ -85,7 +85,7 @@ export const topKey = (f: FocusState): string | null => {
   const t = top(f);
   return t ? `${t.layer}|${t.card}|${t.seat}|${t.group}${t.layer === "stack" ? `|${f.stackKey}` : ""}` : null;
 };
-/** The topmost table layer open (the stack, a lean-in, a sift): the one the scene draws the table from, whatever chrome
+/** The topmost table layer open (the stack, the clash, a spread, a sift): the one the scene draws the table from, whatever chrome
  * layer is over it (scene `tableFocus` of `focusTopOf`). */
 export const tableTop = (f: FocusState): FocusEntry | null => f.layers.filter((e) => TABLE.has(e.layer)).at(-1) ?? null;
 export const isOpen = (f: FocusState, layer: LayerId): boolean => f.layers.some((e) => e.layer === layer);

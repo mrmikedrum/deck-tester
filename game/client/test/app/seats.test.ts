@@ -75,7 +75,7 @@ describe("the plates after an elimination", () => {
       const st = structuredClone(raw.stages.find((x) => x.turn === 15)!);
       st.envelope.view.players = st.envelope.view.players.filter((p) => !gone.includes(p.name));
       const m = designModels({ stages: [st], catalog: raw.catalog }).get(15)!;
-      const plan = planTable(tableInputOf(m, { viewport: TABLE, engine: { draw: true } }));
+      const plan = planTable(tableInputOf(m, { viewport: TABLE, engine: {} }));
       const xs = platesOf(m, plan, new Map(), TABLE).filter((p) => !p.mine).map((p) => [p.seat, p.x] as const);
       expect(xs.map(([seat]) => seat), gone.join("+")).toEqual(["Marath", "Atraxa", "Dack"]);
       for (let i = 1; i < xs.length; i++) expect(xs[i]![1], gone.join("+")).toBeGreaterThan(xs[i - 1]![1]);
@@ -115,7 +115,7 @@ describe("the nameplates over the protocol corpus at 1180x820", () => {
       let plan: TablePlan;
       try {
         // (as the app plans: every leaf and my side on the arrangement engine)
-        plan = planTable(tableInputOf(model, { viewport: vp, engine: { draw: true } }));
+        plan = planTable(tableInputOf(model, { viewport: vp, engine: {} }));
       } catch {
         continue;
       }

@@ -26,7 +26,7 @@ export const PARTED: FramePose = partedPose(TEMPLATE.part);
 
 /**
  * The leaf's frame for a slot: square to me (every leaf's rows run straight across, so all their front rows stand on one
- * line), its anchor slid along `away` to the front line. A side slot's turn is `mat`'s: turned, a side leaf's back row
+ * line), its anchor slid along `away` to the front line. A side slot's turn is the template's: turned, a side leaf's back row
  * reaches under its plate as the mats part.
  */
 export function leafFrame(slot: SeatSlot, leaf: LeafGeometry = LEAF): SurfaceFrame {

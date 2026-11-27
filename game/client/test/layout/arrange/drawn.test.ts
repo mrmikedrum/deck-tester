@@ -55,7 +55,7 @@ describe("every opponent's leaf, drawn by the engine", () => {
     for (const vp of VIEWPORTS)
       for (const turn of [4, 9, 15]) {
         const m = design.get(turn)!;
-        const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true, auditPoses: true } }));
+        const plan = planTable(tableInputOf(m, { viewport: vp, engine: { auditPoses: true } }));
         expect(check(m, plan, `${vp.w} turn ${turn}`), `${vp.w} turn ${turn}`).toEqual([]);
         expect(plan.part).toBe(0);
         // each leaf's own audit, at rest and parted at the most
@@ -77,7 +77,7 @@ describe("every opponent's leaf, drawn by the engine", () => {
       for (const gone of [[], ["Dack"], ["Dack", "Marath"]] as const)
         for (const turn of [4, 9, 15]) {
           const m = without(turn, gone), label = `${vp.w} turn ${turn} without ${gone.join("+") || "anyone"}`;
-          const plan = planTable(tableInputOf(m, { viewport: vp, engine: { draw: true } }));
+          const plan = planTable(tableInputOf(m, { viewport: vp, engine: {} }));
           expect(plan.seats.size, label).toBe(4 - gone.length);
           expect(check(m, plan, label), label).toEqual([]);
           // the leaves span what three did: their outer edges where the four-seat table's are
@@ -108,7 +108,7 @@ describe("every opponent's leaf, drawn by the engine", () => {
     ];
     for (const [gone, seats] of steps) {
       const m = without(gone), label = `without ${gone.join("+") || "anyone"}`;
-      const plan: TablePlan = planTable(tableInputOf(m, { viewport: VP, memory, engine: { draw: true } }));
+      const plan: TablePlan = planTable(tableInputOf(m, { viewport: VP, memory, engine: {} }));
       expect([...plan.seats.keys()].map(String), label).toEqual(seats);
       expect(check(m, plan, label), label).toEqual([]);
       if (gone.includes("You")) expect(plan.seats.get(m.viewer.perspective)!.units, label).toEqual([]);
@@ -124,9 +124,8 @@ describe("every opponent's leaf, drawn by the engine", () => {
       st.envelope.view = { ...st.envelope.view, stack };
       const m = designModels({ stages: [st], catalog: raw.catalog }).get(4)!;
       expect(m.seats.slice(1).every((s2) => m.zone(s2.id, "command").length > 0)).toBe(true);
-      const plan = planTable(tableInputOf(m, { viewport: VP, engine: { draw: true } }));
+      const plan = planTable(tableInputOf(m, { viewport: VP, engine: {} }));
       if (stack.length) expect(plan.part).toBeGreaterThan(0);
-      for (const sp of plan.seats.values()) expect(sp.fixtures.commander, String(sp.seat)).toBeUndefined();
       expect(plan.hits.groups.filter((g) => g.id.startsWith("command:"))).toEqual([]);
     }
   });
@@ -141,9 +140,9 @@ describe("every opponent's leaf, drawn by the engine", () => {
     };
     const places = (p: TablePlan) => [...p.seats.values()].flatMap((sp) => [`${sp.seat}:${JSON.stringify(sp.fixtures.page)}`, ...sp.units.map((u) => `${u.id}@${JSON.stringify(u.placement.pos)}`)]);
     for (const turn of [4, 9, 15]) {
-      const rest = planTable(tableInputOf(modelWith(turn, []), { viewport: VP, engine: { draw: true } }));
-      const held = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: { draw: true }, stackHeld: true }));
-      const aside = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: { draw: true } }));
+      const rest = planTable(tableInputOf(modelWith(turn, []), { viewport: VP, engine: {} }));
+      const held = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: {}, stackHeld: true }));
+      const aside = planTable(tableInputOf(modelWith(turn, [spell]), { viewport: VP, engine: {} }));
       expect(held.part, `turn ${turn}`).toBe(0);
       expect(places(held), `turn ${turn}`).toEqual(places(rest));
       expect(held.violations.filter((v) => v.group.startsWith("stack:")), `turn ${turn}`).toEqual([]);
@@ -157,7 +156,7 @@ describe("every opponent's leaf, drawn by the engine", () => {
     const planned = (lower: string) => {
       const st = structuredClone(raw.stages.find((x) => x.turn === 9)!);
       st.envelope.view = { ...st.envelope.view, stack: [spell(9002, "Atraxa"), spell(9001, lower)] };
-      return planTable(tableInputOf(designModels({ stages: [st], catalog: raw.catalog }).get(9)!, { viewport: VP, engine: { draw: true } }));
+      return planTable(tableInputOf(designModels({ stages: [st], catalog: raw.catalog }).get(9)!, { viewport: VP, engine: {} }));
     };
     const a = planned("Marath"), b = planned("Dack"), again = planned("Marath");
     expect(b.stackUp.map((x) => x.quad)).not.toEqual(a.stackUp.map((x) => x.quad));
@@ -178,28 +177,28 @@ describe("every opponent's leaf, drawn by the engine", () => {
     let memory: TablePlan["memory"] | null = null;
     let plan: TablePlan | null = null;
     for (let i = 0; i < 3; i++) {
-      plan = planTable(tableInputOf(at(false), { viewport: VP, memory, engine: { draw: true } }));
+      plan = planTable(tableInputOf(at(false), { viewport: VP, memory, engine: {} }));
       memory = plan.memory;
     }
-    const next = planTable(tableInputOf(at(true), { viewport: VP, memory, engine: { draw: true } }));
+    const next = planTable(tableInputOf(at(true), { viewport: VP, memory, engine: {} }));
     for (const seat of ["Marath", "Atraxa"]) expect(next.leaves!.get(seat as never)!.result, seat).toBe(plan!.leaves!.get(seat as never)!.result);
     expect(next.leaves!.get("Dack" as never)!.result).not.toBe(plan!.leaves!.get("Dack" as never)!.result);
   });
 
   it("a tap on a stack's count die reaches its stack (review: turn 15, Dack's Spirits), in hitTest and the scene's pick", () => {
-    const plan = planTable(tableInputOf(design.get(15)!, { viewport: VP, engine: { draw: true } }));
+    const plan = planTable(tableInputOf(design.get(15)!, { viewport: VP, engine: {} }));
     const spirits = plan.hits.groups.find((g) => g.seat === ("Dack" as never) && g.id.includes("Spirit"))!;
     expect(hitTest(plan, { x: 889, y: 332 })?.id).toBe(spirits.id);
     expect(pickDrawn(plan, new Map(), { x: 889, y: 332 })?.id).toBe(spirits.id);
   });
 
   it("a tap on a face reaches that face, never the neighbour whose wider place it is under (review: turn 9)", () => {
-    const plan = planTable(tableInputOf(design.get(9)!, { viewport: VP, engine: { draw: true } }));
+    const plan = planTable(tableInputOf(design.get(9)!, { viewport: VP, engine: {} }));
     expect(hitTest(plan, { x: 931, y: 116 })?.id).toBe("u:c1135");
     // every face's middle, where no face drawn over it covers the point, reaches its own group
     for (const vp of [VP, { w: 1210, h: 834 }])
       for (const turn of [4, 9, 15]) {
-        const p = planTable(tableInputOf(design.get(turn)!, { viewport: vp, engine: { draw: true } }));
+        const p = planTable(tableInputOf(design.get(turn)!, { viewport: vp, engine: {} }));
         for (const g of p.hits.groups) {
           if (!g.face) continue;
           const b = bounds(g.face), mid = { x: (b.l + b.r) / 2, y: (b.t + b.b) / 2 };
@@ -215,7 +214,7 @@ describe("every opponent's leaf, drawn by the engine", () => {
       const snap = corpusSnapshot(n);
       const model = snap.view && modelOf(snap, catalog, viewerOf());
       if (!model || model.seats.length !== 4) continue;
-      const plan: TablePlan = planTable(tableInputOf(model, { viewport: VP, memory, engine: { draw: true } }));
+      const plan: TablePlan = planTable(tableInputOf(model, { viewport: VP, memory, engine: {} }));
       expect(check(model, plan, n), n).toEqual([]);
       memory = plan.memory;
     }

@@ -1,29 +1,22 @@
 import { describe, expect, it } from "vitest";
-import type { BoardCard, SeatBoard } from "../../src/layout/board";
+import type { SeatBoard } from "../../src/layout/board";
 import { planTable } from "../../src/layout/plan";
 import type { TablePlan } from "../../src/layout/plan";
-import { card, resetIds, SEATS, cid, sid } from "./boards";
+import { card, engineOf, resetIds, SEATS, cid, sid } from "./boards";
+import type { TestCard } from "./boards";
 import type { SeatId } from "../../src/layout/types";
 
 const VP = { w: 1180, h: 820 };
 const NAMES = SEATS;
-const fix = { graveyard: 0, exile: 0, commandZone: false };
 
-const creatures = (n: number, from: number): BoardCard[] =>
+const creatures = (n: number, from: number): TestCard[] =>
   Array.from({ length: n }, (_, i) => card({ id: from + i, name: `Hero ${from + i}`, creature: true, power: 2, toughness: 2, typeWord: "Creature" }));
-const lands = (n: number, from: number): BoardCard[] =>
+const lands = (n: number, from: number): TestCard[] =>
   Array.from({ length: n }, (_, i) => card({ id: from + i, name: i % 2 ? "Forest" : "Island", land: true, basic: true, typeWord: "Land" }));
 
-const run = (cards: Record<string, BoardCard[]>, memory: TablePlan["memory"] | null, settling = false): TablePlan =>
-  planTable({
-    viewport: VP,
-    mode: "normal",
-    settling,
-    memory,
-    stack: [],
-    involved: new Set(),
-    seats: NAMES.map((s, i) => ({ seat: s, board: { seat: s, mine: i === 0, cards: cards[s] ?? [], fixtures: fix } as SeatBoard })),
-  });
+const seatsOf = (cards: Record<string, TestCard[]>) => NAMES.map((s, i) => ({ seat: s, board: { seat: s, mine: i === 0, cards: cards[s] ?? [] } as SeatBoard }));
+const run = (cards: Record<string, TestCard[]>, memory: TablePlan["memory"] | null, settling = false, vp = VP): TablePlan =>
+  planTable({ viewport: vp, mode: "normal", settling, memory, stack: [], involved: new Set(), seats: seatsOf(cards), engine: engineOf(seatsOf(cards), new Set(), { memory, settling }) });
 
 const posOf = (p: TablePlan, seat: SeatId) => new Map(p.seats.get(seat)!.units.map((u) => [u.id, u.placement.pos]));
 
@@ -68,7 +61,7 @@ describe("HitGroups", () => {
   const board = [...creatures(4, 100), ...lands(3, 200)];
   it("rev holds while things merely move, and changes with membership or order", () => {
     const a = run({ ana: board }, null);
-    const moved = planTable({ viewport: { w: 1366, h: 1024 }, mode: "normal", settling: false, memory: null, stack: [], involved: new Set(), seats: NAMES.map((s, i) => ({ seat: s, board: { seat: s, mine: i === 0, cards: s === "ana" ? board : [], fixtures: fix } as SeatBoard })) });
+    const moved = run({ ana: board }, null, false, { w: 1366, h: 1024 });
     expect(moved.hits.rev).toBe(a.hits.rev);
     expect(moved.rev).not.toBe(a.rev);
     const fewer = run({ ana: board.filter((c) => c.id !== 101) }, null);
@@ -80,6 +73,6 @@ describe("HitGroups", () => {
     const a = run({ ana: board }, null), b = run({ ana: [...board, ...creatures(1, 150)] }, a.memory);
     const ids = (p: TablePlan) => p.hits.groups.filter((g) => g.seat === "ana" && g.kind === "card").map((g) => g.id);
     for (const id of ids(a)) expect(ids(b)).toContain(id);
-    expect(ids(a)).toContain("c100");
+    expect(ids(a).some((id) => id.endsWith("c100"))).toBe(true);
   });
 });

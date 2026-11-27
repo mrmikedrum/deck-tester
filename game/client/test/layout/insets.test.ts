@@ -41,7 +41,8 @@ describe("a plan with insets", () => {
       expect(some.reserve).toEqual(reservations(VP, "normal", safe));
       expect(some.violations).toEqual([]);
       const r = reach(some);
-      for (const g of some.hits.groups) expect(r.get(g.id)!.side, g.id).toBeGreaterThanOrEqual(g.kind === "plate" ? 1 : TAP_PX);
+      // (a seat's plate is chrome, over the canvas, and takes its own taps: its table group lies off the leaf)
+      for (const g of some.hits.groups) if (g.kind !== "plate") expect(r.get(g.id)!.side, g.id).toBeGreaterThanOrEqual(TAP_PX);
     }
   });
 
@@ -49,7 +50,7 @@ describe("a plan with insets", () => {
     for (const vp of SUPPORTED) {
       const plan = planTable({ ...stress(2, 40, 8, vp), safe: IPAD });
       const r = reach(plan);
-      for (const g of plan.hits.groups) expect(r.get(g.id)!.side, `${vp.w}x${vp.h} ${g.id}`).toBeGreaterThanOrEqual(g.kind === "plate" ? 1 : TAP_PX);
+      for (const g of plan.hits.groups) if (g.kind !== "plate") expect(r.get(g.id)!.side, `${vp.w}x${vp.h} ${g.id}`).toBeGreaterThanOrEqual(TAP_PX);
     }
   });
 
