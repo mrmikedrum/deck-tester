@@ -1,8 +1,7 @@
 // 4. attack and 5. block. Option numbers are 1-based positions in decision.options/refs.
 //    attack refs: one per (creature, defender), creature-major: option = 3 * creatureIndex + defenderIndex + 1, with the
 //    defenders Marath (plate "ana"), Atraxa ("bo"), Dack ("cy").
-const { test, expect, NEW, snapshot, withDecision, find, STATES } = require("./harness.js");
-const { label } = require("./labels.js");
+const { test, expect, snapshot, withDecision, find, STATES } = require("./harness.js");
 
 const ATTACKERS = ["Meloku the Clouded Mirror", "Master of Waves", "Faerie Mastermind", "Whirler Rogue"];
 const idOf = (s, n) => find(s, "You", n).id;
@@ -11,10 +10,10 @@ test.describe("attack", () => {
   test("tap creatures to toggle them; Attack (n) sends the picked options in order", async ({ table }) => {
     const s = snapshot("attack");
     await table.open(s);
-    await expect.poll(() => table.buttons()).toEqual([label("Everyone attacks"), "No attack", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual(["All attack", "No attack", "Auto"]);
     await table.tapCard(idOf(s, ATTACKERS[0]));
     await table.tapCard(idOf(s, ATTACKERS[1]));
-    expect(await table.buttons()).toEqual([label("Everyone attacks"), "Clear", "Attack (2)", label("Let Forge decide")]);
+    expect(await table.buttons()).toEqual(["All attack", "Clear", "Attack (2)", "Auto"]);
     expect(table.answers()).toEqual([]);
     await table.press("Attack (2)");
     expect((await table.answered(1))[0].answer).toEqual([1, 4]);       // both at Marath, the first opponent
@@ -40,9 +39,9 @@ test.describe("attack", () => {
     const s = snapshot("attack");
     await table.open(s);
     await table.tapPlate("cy");                                        // Dack
-    await table.press(label("Everyone attacks"));
+    await table.press("All attack");
     await table.step(2000);                                              // the ten go to the fight
-    expect(await table.buttons()).toEqual(["Clear", "Attack (4)", label("Let Forge decide")]);
+    expect(await table.buttons()).toEqual(["Clear", "Attack (4)", "Auto"]);
     await table.press("Attack (4)");
     expect((await table.answered(1))[0].answer).toEqual([3, 6, 9, 12]);
   });
@@ -90,7 +89,7 @@ test.describe("block", () => {
     const s = snapshot("block");
     await table.open(decide(s));
     await table.tapCard(mine(s, "Meloku the Clouded Mirror"));
-    expect(await table.buttons()).toEqual(["Clear", "Block (1)", label("Let Forge decide")]);
+    expect(await table.buttons()).toEqual(["Clear", "Block (1)", "Auto"]);
     await table.press("Block (1)");
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
@@ -98,9 +97,8 @@ test.describe("block", () => {
     const s = snapshot("block"), [m, h] = attackers(s);
     await table.open(decide(s));
     await table.tapCard(mine(s, "Master of Waves"));
-    expect(await table.buttons()).toEqual(["Clear", "No blocks", label("Let Forge decide")]);   // held, nothing picked yet
-    // (The new entry says it in the hint line, under "Declare blockers".)
-    expect(await table.page.locator(label(".l-what", ".l-ctx")).innerText()).toContain(label("Now tap the attacker for Master of Waves", "Master of Waves: tap an attacker"));
+    expect(await table.buttons()).toEqual(["Clear", "No blocks", "Auto"]);   // held, nothing picked yet
+    expect(await table.page.locator(".l-ctx").innerText()).toContain("Master of Waves: tap an attacker");
     await table.tapCard(h.id);
     await table.tapCard(mine(s, "Meloku the Clouded Mirror"));
     expect(await table.buttons()).toContain("Block (2)");
@@ -138,11 +136,10 @@ test.describe("block", () => {
   });
 });
 
-// A crowded fight: ten distinct creatures in one fight, gathered by the new entry, where a summary of several may stand
+// A crowded fight: ten distinct creatures in one fight, gathered into the fight, where a summary of several may stand
 // for some of them. A gesture must mean the card the player meant: a fighter keeps its own target, or the group it is
 // drawn in opens (a sift) and the card is tapped there; nothing is committed before that.
 test.describe("a crowded fight", () => {
-  test.skip(!NEW, "the gathering is the new entry's");
   const NAMES = ["Incubation Druid", "Evolution Sage", "Hangarback Walker", "Ouroboroid", "Pollenbright Druid", "Kami of Whispered Hopes", "Evolution Witness", "Haywire Mite", "Rishkar, Peema Renegade", "Generous Patron"];
   const IDS = NAMES.map((_, i) => 300 + i);
   /** Ten distinct creatures (300..309) for `who`, cloned from Meloku, untapped. */
@@ -205,7 +202,7 @@ test.describe("a crowded fight", () => {
     const defenders = ["Marath", "Atraxa", "Dack"];
     const refs = IDS.flatMap(card => defenders.map(to => ({ card, to })));
     await table.open(withDecision(s, { kind: "attack", prompt: "Declare attackers", options: refs.map(r => `${r.card} -> ${r.to}`), refs, min: 0, max: refs.length }));
-    await table.press(label("Everyone attacks"));
+    await table.press("All attack");
     await table.step(2000);                                              // the ten go to the fight
     await choose(table, IDS[8], NAMES[8]);                               // Rishkar stays home
     await table.press("Attack (9)");

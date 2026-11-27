@@ -15,8 +15,8 @@ script and decision model (automated mode) — and returns compact reports on ho
 
 ## Setup
 
-Prerequisites: **JDK 17+** (21 recommended), **Maven**, and **Python 3.9+** (standard library only). **Node.js 22+**
-is only needed for the browser client's recording/audit tools (`game/tools/`).
+Prerequisites: **JDK 17+** (21 recommended), **Maven**, and **Python 3.9+** (standard library only). **Node.js 22+** builds the browser
+client and runs its tools. Run `(cd game && npm ci)` before launching the browser game for the first time.
 
 ```bash
 scripts/bootstrap-forge.sh    # once, and after the Forge pin or patches change

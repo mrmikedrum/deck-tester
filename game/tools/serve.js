@@ -1,13 +1,6 @@
-// A static server for client/, for the tools: concurrent and with a deep accept queue, so several browsers can load
-// the client at once. Card images (cache/) come from the game server's cache, .deckmaster/cache/cards/; a fresh checkout
-// fills it with `bin/deckmaster game --fill-cache`. serve() resolves to its base URL; `node tools/serve.js [port]` runs it.
-// serve(port, { dist: true }) serves the built new entry (client/dist, `vite build`) instead, at index.html; `--dist` on
-// the command line. Card images may be cached by the browser (they never change), so a page can preload them.
-// { lan: true } (`--lan`) listens on every interface, so a tablet on the network can open the workbench's bench page
-// (workbench.html?only=bench, from --dist) without the game server; POST /api/bench keeps its results as a file under
-// .deckmaster/bench/ (the newest 20), as the game server does.
+// Serve client/dist and the local card cache. --lan also lets a tablet open the workbench.
 const http = require("http"), fs = require("fs"), os = require("os"), path = require("path");
-const SOURCE = path.join(__dirname, "../client"), DIST = path.join(SOURCE, "dist"), CACHE = path.join(__dirname, "../../.deckmaster/cache/cards");
+const DIST = path.join(__dirname, "../client/dist"), CACHE = path.join(__dirname, "../../.deckmaster/cache/cards");
 const BENCH = path.join(__dirname, "../../.deckmaster/bench"), KEEP = 20;
 
 const BENCH_CAP = 256 * 1024, BENCH_ROWS = 64;
@@ -87,11 +80,9 @@ function postBench(req, res, dir) {
   });
 }
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".woff": "font/woff", ".webmanifest": "application/manifest+json" };
-function serve(port = 0, { dist = false, lan = false, benchDir = BENCH } = {}) {
-  const ROOT = dist ? DIST : SOURCE, INDEX = dist ? "index.html" : "live.html";
-  if (dist && !fs.existsSync(path.join(DIST, "index.html"))) throw new Error("no built entry in client/dist: run `npx vite build` in game/");
+function serve(port = 0, { lan = false, benchDir = BENCH } = {}) {
   const server = http.createServer((req, res) => {
-    if (req.method === "POST" && new URL(req.url, "http://x").pathname.replace(/^\/next/, "") === "/api/bench") return postBench(req, res, benchDir);
+    if (req.method === "POST" && new URL(req.url, "http://x").pathname === "/api/bench") return postBench(req, res, benchDir);
     let rel;
     try {
       rel = decodeURIComponent(new URL(req.url, "http://x").pathname);
@@ -99,9 +90,9 @@ function serve(port = 0, { dist = false, lan = false, benchDir = BENCH } = {}) {
       res.writeHead(400);
       return res.end();
     }
-    const cached = rel.startsWith("/cache/"), root = cached ? CACHE : ROOT;
+    const cached = rel.startsWith("/cache/"), root = cached ? CACHE : DIST;
     const large = rel.startsWith("/cache/card/") && path.join(CACHE, "card-large", rel.slice("/cache/card/".length));
-    const file = large && fs.existsSync(large) ? large : cached ? path.join(CACHE, rel.slice("/cache/".length)) : path.join(ROOT, rel.endsWith("/") ? rel + INDEX : rel);
+    const file = large && fs.existsSync(large) ? large : cached ? path.join(CACHE, rel.slice("/cache/".length)) : path.join(DIST, rel === "/" ? "index.html" : rel);
     if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
     fs.readFile(file, (err, buf) => {
       if (err) { res.writeHead(404); return res.end(); }
@@ -117,9 +108,9 @@ const lanAddresses = () => Object.values(os.networkInterfaces()).flat().filter((
 module.exports = { serve };
 if (require.main === module) {
   const flags = new Set(process.argv.slice(2).filter((a) => a.startsWith("--")));
-  const dist = flags.has("--dist"), lan = flags.has("--lan"), port = +process.argv.slice(2).filter((a) => !a.startsWith("--"))[0] || 8797;
-  serve(port, { dist, lan }).then(({ base, server }) => {
-    console.log(`serving client/${dist ? "dist/" : ""} at ${base}`);
-    if (lan) for (const a of lanAddresses()) console.log(`  on the network: http://${a}:${server.address().port}/${dist ? "workbench.html?only=bench" : ""}`);
+  const lan = flags.has("--lan"), port = +process.argv.slice(2).filter((a) => !a.startsWith("--"))[0] || 8797;
+  serve(port, { lan }).then(({ base, server }) => {
+    console.log(`serving client/dist/ at ${base}`);
+    if (lan) for (const a of lanAddresses()) console.log(`  on the network: http://${a}:${server.address().port}/workbench.html?only=bench`);
   });
 }

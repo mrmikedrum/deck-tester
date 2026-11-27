@@ -20,8 +20,7 @@ README; load further detail only when the task needs it. For development or diag
 - **Never hide what the engine didn't do.** Unsupported cards, overrides, and decisions Forge's AI made
   must show up in the record and get flagged in reports.
 - **Python stays standard-library only, 3.9-compatible**, so it runs wherever the agents do. Java follows Forge:
-  Java 17, Maven. The game client is plain browser JavaScript for now (a TypeScript and Vite migration is
-  planned); its tools run on Node with Playwright.
+  Java 17, Maven. The game client uses TypeScript and Vite. Its tools run on Node with Playwright.
 - **One home per idea.** Update the owning doc instead of restating it. Keep these docs short.
 
 ## Layout
@@ -33,8 +32,8 @@ README; load further detail only when the task needs it. For development or diag
 | `engine/` | Forge host: `Server` (socket), `Session` (one game or one table seat), `ManualController` (decisions), `Recorder` (facts), `Table` (a networked table) |
 | `scripts/` | `bootstrap-forge.sh` (fetch, patch and install pinned Forge), `build-engine.sh` (compile; the CLI runs it when needed), `build-forge-client.sh` (the desktop app people join tables with), `forge-patches/` (our patch series, local card scripts included) |
 | `vendor/forge` | Pinned Forge checkout with the patch series on its `goldfish` branch, gitignored; card scripts in `forge-gui/res/cardsfolder` |
-| `game/client/` | The game client: `live.html` and `live.js` (the page and its prompt, hand and panels), `h.js` (the 3D table), `world.js` and `fx.js` (textures and effects); `offline.html` shows the board on fixtures for the tools |
-| `game/tools/` | Recording and judging the client: `reel.js` (frame-exact clips), `packet.js` (review packets and the layout audit), `clips.js`, `boards.js` and `plays.js` (fixtures), the look loop (`look.sh`, `look/`); see [game/LOOK.md](game/LOOK.md) |
+| `game/client/` | Game and workbench entries. See [game client architecture](docs/game-client-architecture.md) for client changes. |
+| `game/tools/` | Browser behaviour tests, fixtures, stills and recordings. See [LOOK.md](game/LOOK.md) for visual checks. |
 | `agent/` | The deck partner: its guidance (`AGENTS.md`), skills (`skills/deckmaster/` routes to the rest; `forge-cards/` is the procedure for the card scripts our series adds to Forge), docs, templates, labs, and the deck audit (`tools/deck-audit/`) |
 | `bench/` | Fork fidelity (goldfish and tables), scenarios and decision-model experiments |
 | `deckmaster/decks.py` | The deck database: decks from the decks repository (`deck sync`) and imports, with immutable revisions; see the README |
@@ -49,9 +48,9 @@ python3 -m unittest discover -s tests -v  # all tests; the engine test needs For
 bin/deckmaster deck sync                  # after decks change in the decks repository
 bin/deckmaster doctor                     # toolchain and Forge status
 bin/deckmaster engine stop                # after changing engine code with sessions open
-bin/deckmaster game                       # serve the game on this machine's network
-bin/deckmaster game --fill-cache          # once on a fresh checkout: the client's fixture card images
-(cd game && npm ci)                       # once: the client's toolchain and the tools' Playwright
+(cd game && npm ci)                       # install the client build and test dependencies
+bin/deckmaster game                       # build if stale and serve the game at /
+bin/deckmaster game --fill-cache          # fetch fixture card images for the visual tools
 (cd game && npm run check)                # the client's checks, browser behaviour suite included; before every merge
 ```
 

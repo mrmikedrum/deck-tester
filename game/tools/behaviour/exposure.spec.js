@@ -1,11 +1,11 @@
-// The physical table's exposure (the new entry only): a card the clash lifts toward the lamp is lit as it is on the
+// The physical table's exposure: a card the clash lifts toward the lamp is lit as it is on the
 // table. Atraxa's six attackers on the design pass's turn-15 table, untapped (as with vigilance: the lift alone is
 // measured, not the tapped look), at rest on their leaf and then gathered in a fight at me: each one's face, as drawn,
 // keeps its mean luminance within a fifth of the same card at rest (before the gathering's exposure was matched, the
 // cards nearest the lamp came out up to 1.75 times as bright, milky).
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
-const { test, expect, NEW } = require("./harness.js");
+const { test, expect } = require("./harness.js");
 
 const design = JSON.parse(readFileSync(resolve(__dirname, "../../../tests/fixtures/boards/design-pass.json"), "utf8"));
 const ATTACKERS = [1019, 1041, 1117, 1169, 1221, 1072];
@@ -79,7 +79,6 @@ async function faces(browser, envelope) {
 }
 
 test.describe("the physical table's exposure", () => {
-  test.skip(!NEW, "the physical table is the new entry's");
   test("a card the gathering lifts toward the lamp keeps its brightness at rest", async ({ browser }) => {
     const home = await faces(browser, table(false)), fight = await faces(browser, table(true));
     const rest = home.lum, gathered = fight.lum;

@@ -60,11 +60,9 @@ test.describe("it does not pass", () => {
       );
     }));
     await table.quiet(10000);
-    if (process.env.BEHAVIOUR_CLIENT === "new") {
-      const headline = await table.page.locator(".l-what").innerText();
-      expect(headline).toContain("ability (stack 3)");
-      expect(headline).not.toContain("your Meloku");
-    }
+    const headline = await table.page.locator(".l-what").innerText();
+    expect(headline).toContain("ability (stack 3)");
+    expect(headline).not.toContain("your Meloku");
   });
   test("a real play on offer (a response)", async ({ table }) => {
     const base = snapshot("main"), snap = inHand(base, "Snap").id;

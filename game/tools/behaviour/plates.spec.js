@@ -3,10 +3,9 @@ const envelope = require("../../../tests/fixtures/protocol/054-play-commander-da
 const catalog = require("../../client/test/model/catalog.json");
 
 test("nameplates and every icon stay on screen without overlapping", async ({ page }) => {
-  test.skip(process.env.BEHAVIOUR_CLIENT !== "new", "The nameplates belong to the TypeScript client");
   test.setTimeout(120_000);
   await page.route("**/nameplates.json", route => route.fulfill({ json: { envelopes: [envelope], catalog } }));
-  await page.goto("/index.html?script=nameplates.json");
+  await page.goto("/?script=nameplates.json");
   await expect(page.locator(".l-plate")).toHaveCount(4, { timeout: 30_000 });
   for (const [width, height] of [[1600, 1112], [1180, 820], [1024, 768], [700, 480]]) {
     await page.setViewportSize({ width, height });
@@ -33,7 +32,6 @@ test("nameplates and every icon stay on screen without overlapping", async ({ pa
 });
 
 test("partner portraits stay tappable and the full nameplate clears my hand", async ({ page }) => {
-  test.skip(process.env.BEHAVIOUR_CLIENT !== "new", "The nameplates belong to the TypeScript client");
   test.setTimeout(120_000);
   // Partners waiting: two in Dack's command zone and two in mine.
   const e = JSON.parse(JSON.stringify(envelope));
@@ -46,7 +44,7 @@ test("partner portraits stay tappable and the full nameplate clears my hand", as
   seat("Atraxa").command.push(partner(9904, "Ishai, Ojutai Dragonspeaker", "Atraxa"));
   seat("Princess").command = [partner(9905, "Reyhan, Last of the Abzan", "Princess"), partner(9906, "Vial Smasher the Fierce", "Princess")];
   await page.route("**/partners.json", (route) => route.fulfill({ json: { envelopes: [e], catalog } }));
-  await page.goto("/index.html?script=partners.json");
+  await page.goto("/?script=partners.json");
   await expect(page.locator(".l-plate .cmd")).toHaveCount(8, { timeout: 30_000 });
   await expect(page.locator(".l-plate.mine .fig")).toHaveCount(5);
   await expect(page.locator(".g-hand .hcard")).toHaveCount(seat("You").hand.length);

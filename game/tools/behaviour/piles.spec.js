@@ -1,14 +1,13 @@
-// My piles' title tabs as drawn (the new entry only): on the design pass's turn-15 table at iPad landscape, every title
+// My piles' title tabs as drawn: on the design pass's turn-15 table at iPad landscape, every title
 // of mine is on top where it is drawn, never tucked behind the standing card beside it (the end of my field's muster read
 // "5 ↷3" half behind Mulldrifter, as the ledger placed it on the card's bounds, not on its leaning top edge).
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
-const { test, expect, NEW } = require("./harness.js");
+const { test, expect } = require("./harness.js");
 
 const design = JSON.parse(readFileSync(resolve(__dirname, "../../../tests/fixtures/boards/design-pass.json"), "utf8"));
 
 test("my pile titles are drawn clear of my standing cards", async ({ browser }) => {
-  test.skip(!NEW, "the physical table is the new entry's");
   const ctx = await browser.newContext({ viewport: { width: 1210, height: 834 }, deviceScaleFactor: 1, baseURL: process.env.BEHAVIOUR_BASE });
   const page = await ctx.newPage();
   const envelope = design.stages.find((s) => s.turn === 15).envelope;

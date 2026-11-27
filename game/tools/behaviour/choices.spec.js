@@ -1,6 +1,5 @@
 // 6. pay, 7. on-table targets/choose (a. mixed vs same-name piles), 8. sheet decisions (order, repeat, number).
-const { test, expect, NEW, snapshot, withDecision, find, locate, pending } = require("./harness.js");
-const { label } = require("./labels.js");
+const { test, expect, snapshot, withDecision, find, locate } = require("./harness.js");
 
 const you = (s, n, k = 0) => find(s, "You", n, k);
 const grid = t => t.sheet().locator(".l-grid button");
@@ -14,11 +13,11 @@ test.describe("pay", () => {
   test("tap sources, then Pay sends them in the order tapped", async ({ table }) => {
     const s = snapshot("main");
     await table.open(simple(s));
-    await expect.poll(() => table.buttons()).toEqual([...(NEW ? ["List"] : []), "Auto-pay", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual(["List", "Auto-pay", "Auto"]);
     await table.tapCard(you(s, "Mystic Sanctuary").id);
     await table.tapCard(you(s, "Otawara, Soaring City").id);
     await table.tapCard(you(s, "Island", 3).id);
-    expect(await table.buttons()).toEqual([...(NEW ? ["List"] : []), "Undo", "Pay", label("Let Forge decide")]);
+    expect(await table.buttons()).toEqual(["List", "Undo", "Pay", "Auto"]);
     expect(table.answers()).toEqual([]);
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2, 1, 3]);
@@ -63,23 +62,15 @@ test.describe("pay", () => {
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2]);
   });
-  test("sources of different cards fanned in one pile: the player says which", async ({ table }) => {
-    // (The new entry lays the sources a payment offers out of my piles where my row holds them, so one tap takes
-    // Arcane Signet; the current client asks "Which source?".)
+  test("a payment source laid out from a mixed pile can be picked on the table", async ({ table }) => {
     const s = snapshot("main"), ring = you(s, "Sol Ring").id, signet = you(s, "Arcane Signet").id;
     await table.open(payment(s, ["Sol Ring (C)", "Arcane Signet (U)"], [{ card: ring }, { card: signet }]));
     await table.tapCard(signet);
-    if (NEW) {
-      expect(table.answers()).toEqual([]);
-    } else {
-      expect(await table.sheetTitle()).toBe("Which source?");
-      await table.sheet().locator("button.l-opt").filter({ hasText: "Arcane Signet (U)" }).click();
-    }
+    expect(table.answers()).toEqual([]);
     await table.press("Pay");
     expect((await table.answered(1))[0].answer).toEqual([2]);
   });
   test("a mixed pile of sources, paid by keyboard alone from the prompt", async ({ table }) => {
-    test.skip(!NEW, "the payment list is the new entry's");
     const s = snapshot("main"), ring = you(s, "Sol Ring").id, signet = you(s, "Arcane Signet").id;
     await table.open(payment(s, ["Sol Ring (C)", "Arcane Signet (U)", "Arcane Signet (W)"], [{ card: ring }, { card: signet }, { card: signet }]));
     const page = table.page;
@@ -116,8 +107,7 @@ test.describe("targets and choices on the table", () => {
     expect(await table.answered(1)).toEqual([{ key: expect.any(String), answer: [2] }]);
   });
   test("a tapped card on the leaf across is chosen by a tap in its place, off its face", async ({ table }) => {
-    // Glissa is Atraxa's, across: tapped, it lies a quarter turn in a place a standing card's height wide (the new entry
-    // draws that leaf with the arrangement engine; the current client has no places and taps the card).
+    // Glissa lies sideways in Atraxa's leaf. Tap the reserved place outside her face.
     const s = snapshot("main");
     find(s, "Atraxa", "Glissa, Herald of Predation").tapped = true;
     await table.open(choice(s));
@@ -131,7 +121,6 @@ test.describe("targets and choices on the table", () => {
     expect((await table.answered(1))[0].answer).toEqual([4]);
   });
   test("tapping my nameplate when I am a legal target sends that target", { tag: "@cast" }, async ({ table }) => {
-    test.skip(!NEW, "My nameplate focus belongs to the new entry");
     const s = snapshot("main");
     await table.open(choice(s, { options: ["Dack", "You"], refs: [{ player: "Dack" }, { player: "You" }] }));
     await table.page.locator(".l-plate.mine .bronze").tap();
@@ -142,7 +131,7 @@ test.describe("targets and choices on the table", () => {
   test("more than one wanted: taps pick, Done is disabled below min and sends the picks", async ({ table }) => {
     const s = snapshot("main");
     await table.open(choice(s, { min: 2, max: 3 }));
-    await expect.poll(() => table.buttons()).toEqual(["List", "None", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual(["List", "None", "Auto"]);
     expect(await table.button("None").isDisabled()).toBe(true);
     await table.tapCard(OPTS(s)[2].id);
     expect(table.answers()).toEqual([]);
@@ -175,34 +164,19 @@ test.describe("targets and choices on the table", () => {
     expect(table.answers()).toEqual([]);
   });
 
-  // a. Where an option is hidden in a pile of unlike cards the choice goes to a sheet; a pile of one card by name
-  //    (a land well) stays on the table.
-  test("an option inside a pile of unlike cards is chosen from a sheet", async ({ table }) => {
+  test("an option in a mixed pile is laid out and chosen on the table", async ({ table }) => {
     const s = snapshot("main"), ring = you(s, "Sol Ring");
     await table.open(withDecision(s, { kind: "choose", prompt: "Choose an artifact (Ghostly Flicker)", options: ["Sol Ring"], refs: [{ card: ring.id }], min: 1, max: 1 }));
-    if (NEW) {
-      // the new entry lays the option out of my pile where my row holds it: one tap sends it
-      expect(await table.sheet().count()).toBe(0);
-      await table.tapCard(ring.id);
-      expect((await table.answered(1))[0].answer).toEqual([1]);
-      return;
-    }
-    expect(await table.sheet().count()).toBe(1);
-    expect(await table.buttons()).toContain("Choose…");
-    await grid(table).first().click();
+    expect(await table.sheet().count()).toBe(0);
+    await table.tapCard(ring.id);
     expect((await table.answered(1))[0].answer).toEqual([1]);
   });
-  test("an option in a well of same-named cards, with other untapped ones that are not options, is chosen from a sheet", async ({ table }) => {
+  test("a well with one legal option sends that card", async ({ table }) => {
     const s = snapshot("main"), isl = you(s, "Island", 4);
     await table.open(withDecision(s, { kind: "choose", prompt: "Choose a land (Ghostly Flicker)", options: ["Island"], refs: [{ card: isl.id }], min: 1, max: 1 }));
-    if (NEW) {
-      // the new entry keeps it on the table: the well holds one option, so a tap on it means that one
-      expect(await table.sheet().count()).toBe(0);
-      await table.tapCard(isl.id);
-      expect((await table.answered(1))[0].answer).toEqual([1]);
-      return;
-    }
-    expect(await table.sheet().count()).toBe(1);
+    expect(await table.sheet().count()).toBe(0);
+    await table.tapCard(isl.id);
+    expect((await table.answered(1))[0].answer).toEqual([1]);
   });
   test("a well where every untapped card is an option is chosen on the table", async ({ table }) => {
     const s = snapshot("main"), islands = [3, 4, 5].map(k => you(s, "Island", k));   // the other three are tapped
@@ -280,7 +254,7 @@ test.describe("sheet decisions", () => {
 });
 
 // 8b. A choice of cards from a hidden zone (a library search): the printed cards on a sheet of one card size, copies
-//     of one card as a pile, pages past what fits. The new entry's sheet; the current client draws its own.
+//     of one card as a pile, pages past what fits.
 test.describe("card sheet", () => {
   const { CARDS } = require("./harness.js");
   let hidden = 9000;
@@ -290,7 +264,6 @@ test.describe("card sheet", () => {
   const LANDS = ["Hallowed Fountain", "Island", "Island", "Island", "Mountain", "Mountain"];
 
   test("one wanted: a tap on a card sends it; a pile sends its first copy", async ({ table }) => {
-    test.skip(!NEW, "the new entry's card sheet");
     await table.open(search(snapshot("main"), LANDS, {}));
     expect(await cards(table).count()).toBe(3);                          // Hallowed Fountain, Island ×3, Mountain ×2
     expect(await cards(table).locator(".count").allInnerTexts()).toEqual(["×3", "×2"]);
@@ -298,7 +271,6 @@ test.describe("card sheet", () => {
     expect((await table.answered(1))[0].answer).toEqual([5]);
   });
   test("up to two: a pile gives a copy per tap, the rest dim when full, Done sends the copies", async ({ table }) => {
-    test.skip(!NEW, "the new entry's card sheet");
     await table.open(search(snapshot("main"), LANDS, { min: 0, max: 2 }));
     await cards(table).nth(1).click();
     await cards(table).nth(1).click();
@@ -311,7 +283,6 @@ test.describe("card sheet", () => {
     expect((await table.answered(1))[0].answer).toEqual([2, 3]);
   });
   test("exactly two from many: pages turn without answering, and picks on two pages are sent together", async ({ table }) => {
-    test.skip(!NEW, "the new entry's card sheet");
     const names = Object.keys(CARDS).filter(n => !/Token|Basic/.test(CARDS[n].faces[0].type)).sort().slice(0, 40);
     await table.open(search(snapshot("main"), names, { min: 2, max: 2 }));
     const per = await cards(table).count();
@@ -328,7 +299,6 @@ test.describe("card sheet", () => {
     expect((await table.answered(1))[0].answer).toEqual([1, per + 2]);
   });
   test("one card known and twenty not: placeholders page with it, and Done stays on screen", async ({ table }) => {
-    test.skip(!NEW, "the new entry's card sheet");
     const names = ["Island", ...Array.from({ length: 20 }, (_, i) => `Unprinted Card ${i + 1}`)];   // no card data for these
     await table.open(withDecision(snapshot("main"), { kind: "choose", prompt: "Choose land cards (Test)", options: names,
       refs: names.map(() => ({ card: hidden++, search: true })), min: 0, max: 2 }));
@@ -345,7 +315,6 @@ test.describe("card sheet", () => {
     expect((await table.answered(1))[0].answer).toEqual([per + 1]);
   });
   test("closes like every pop-up: the stud, then Choose… brings it back", async ({ table }) => {
-    test.skip(!NEW, "the new entry's card sheet");
     await table.open(search(snapshot("main"), LANDS, {}));
     await table.sheet().getByRole("button", { name: "Close" }).click();
     await table.step(300);

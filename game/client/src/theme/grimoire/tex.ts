@@ -1,4 +1,4 @@
-// The baked surfaces' urls (made once from the old world.js by tools/bake.js). Imported by the scene's loader only:
+// URLs of the baked Grimoire surfaces, used by the scene's asset loader:
 // the painters take image sources, never urls.
 import bronze from "./tex/bronze.jpg?url";
 import bronzeClean from "./tex/bronze-clean.jpg?url";

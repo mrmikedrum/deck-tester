@@ -4,41 +4,21 @@ You sit in one seat at a four-player Commander table, in a browser (designed for
 desktop); Jev with each deck's advisor pilots the other three. From the host machine:
 
 ```bash
-bin/deckmaster game            # prints the address to open: http://<this machine>:8765/live.html
+(cd game && npm ci)            # first setup, or when dependencies change
+bin/deckmaster game            # prints the address to open
 ```
 
-then choose decks and start from **Game**. The first game takes about a minute to start. The decks come from the
+Open the printed address and choose **New game**. The first game takes about a minute to start. The decks come from the
 deck database (`deckmaster deck sync`); an opponent's deck needs a plan and an advisor. `--deck` and `--opponents`
 set the defaults, `--start` opens a table at once.
 
 ## Playing
 
-- **Your hand** is held in the bottom left corner, always in full, about three cards wide, lands first, then cheapest to
-  dearest, each card in front of the one to its left. Your plate and commander sit beside it, and your side of the table
-  ends above it, so nothing is ever behind the hand. Thumb through it by swiping sideways (or hovering, or scrolling
-  sideways on a trackpad): each swipe turns one card, sliding the cards along without changing their order. The
-  cards lean with the push, settle on a spring, and open one card in full while the rest bunch up. Tap a card to open
-  it there. At the start, the opening hand comes to the middle of the screen with Keep and Mulligan.
-- **Play a card:** drag it up from your hand onto the table, open or bunched. Tap the open card to read it,
-  with Play buttons if it can be played.
-- **Your commander** peeks out from behind your plate, beside your hand, while it's in the command zone: drag it onto the table to cast it,
-  or tap it to look.
-- **Use an ability:** tap a glowing permanent; it opens with its abilities as buttons.
-- **Float mana:** tap a land, select its mana ability, then choose a colour if asked. Floating mana appears in the prompt and can pay the next spell; unspent mana normally empties when the step or phase ends. This also works around an automatic colour-matching failure.
-- **Choices** happen on the table when every option is on it (tap the glowing cards or plates); otherwise they come up as a sheet of cards.
-- **Attack:** tap creatures to attack the lit player, drag one onto another player, or tap a plate to change target.
-- **Block:** drag a blocker onto an attacker, or tap your creature and then the attacker.
-- **Pay:** tap lands and other sources (a pile gives one card per tap), or Auto-pay.
-- **The stack** is a layer over the table. When something new goes on it, the table dims and the stack comes to the
-  middle with what each item does beside it. The corner prompt just says what happened, with Hold and OK. Tap the
-  table to look past the stack; tap the stack to bring it back.
-- **When the others act**, play stops on each spell and ability they put on the stack. One aimed at you or yours turns
-  the prompt red and waits for you; anything else carries on after a few seconds unless you tap Hold. Cards of yours
-  that leave the battlefield on their turns are listed above the prompt, with why.
-- **Focus:** your side never moves. On another player's turn their side comes toward the middle. Tap an opponent's
-  side to lean in on it; Back returns you to the table.
-- **Look:** tap any card to inspect it, or hold to peek. The log is top left; tap it for the whole game.
-- **Let Forge decide** hands that one decision to Forge's AI.
+- **Hand and commander.** Swipe sideways through your hand. Tap a card or commander portrait to read it and see its plays. Drag it onto the table to play it. Use **Keep** or **Mulligan** on the opening hand.
+- **Permanents and mana.** Tap a card to inspect it and use an available ability. Tap a pile to browse its cards. During payment, tap mana sources in order, use **List** to choose from a sheet, or select **Auto-pay**. You can float mana before casting by using a permanent's mana ability.
+- **Combat and choices.** Tap attackers and tap a nameplate to change their target, or drag an attacker to its target. To block, tap your blocker and then its attacker, or drag between them. Tap highlighted targets on the table or choose from the prompt's list.
+- **Stack and priority.** Tap the table to set the stack aside and tap its stack chip or cards to return. **Hold** stops the auto-pass countdown. A threat to you or your cards waits for your answer. **Auto** lets Forge decide once.
+- **Look around.** Tap a nameplate for that player's summary and zones. Use **See [player]'s board** to inspect their side. Tap the top-left log for the full history. Use the close control or Escape to leave a focus.
 
 ## How it works
 
@@ -49,7 +29,7 @@ fallbacks inside that pilot remain. A table plays the decks' latest revisions wh
 an idle-engine restart before the next table.
 
 Card images come from Scryfall into `.deckmaster/cache/cards/`, served from here so the board's canvases stay
-same-origin; they aren't in git. A fresh checkout fetches the offline fixtures' images with
+same-origin; they aren't in git. A fresh checkout fetches the browser fixtures' images with
 `bin/deckmaster game --fill-cache`.
 
 Mana abilities stay on their permanents as optional controls. They are excluded from All plays/Respond
@@ -58,4 +38,4 @@ hold the normal response window. The native mana regression checks empty-priorit
 (`game/tools/behaviour/`, `npm run behaviour` in `game/`) pins what the client sends for every decision, auto-pass and
 Hold included, through real gestures against a mocked bridge.
 
-The look, and the loop that records and judges it, are in [LOOK.md](LOOK.md).
+See [LOOK.md](LOOK.md) for stills, recordings and the status of the look loop.

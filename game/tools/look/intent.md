@@ -68,7 +68,9 @@ against gains elsewhere.
 - **Quiet chrome.** The table shows life only; counts and details go behind a tap. Pop-ups close with ✕, a tap
   outside or Escape.
 
-## Hard limits (measured by tools/packet.js; a change that breaks one is not done)
+## Hard limits
+
+The recording tools measure these limits at gated beats. See [LOOK.md](../../LOOK.md).
 - **Game behaviour is not this loop's to change.** What the client sends the engine (which decisions it answers, with
   which options, in what order, and when it answers on its own) stays as it is; only how things are shown and offered
   changes. The recordings use a mocked engine, so they can't catch a mistake here: keep the protocol untouched.

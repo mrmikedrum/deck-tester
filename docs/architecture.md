@@ -412,12 +412,8 @@ float real mana before a cast. Card text and Scryfall images are fetched on dema
 Failed downloads wait a minute before retrying, and the catalog retains pending first-print downloads across restarts.
 `deckmaster game --fill-cache` upgrades fixture images and uses exact printing IDs for the two Elemental tokens.
 
-The client (`game/client/`) is a three.js table (`h.js`, with `world.js` textures and `fx.js` effects) under an
-HTML layer (`live.js`): prompt and buttons, hand, stack panel, sheets, log. Its design goals live in
-`game/tools/look/intent.md` and its look in `game/LOOK.md`. The rebuilt client (`game/client/src`, TypeScript) is
-served from its build at `/next/` while the migration runs ([plan](game-client-migration.md)). `game/tools/` records the client frame-exactly on a
-virtual clock, with fixture boards and plays served by mock (`boards.js`, `plays.js`, `clips.js`), and audits
-layout limits per frame; two recordings of the same client have identical telemetry.
+The [TypeScript client](game-client-architecture.md) combines a three.js table with Preact controls.
+See [LOOK.md](../game/LOOK.md) for the design goals and visual checks.
 
 ### The game's protocol
 
@@ -466,8 +462,7 @@ engine to them. The rules:
   (Forge's AI decides). Ids restart with each engine session, so the next game's opening mulligan can share the last
   one's id and key: `gen` (the snapshot's) names the game. Under one lock the bridge refuses an `id`, `gen` or `key`
   that is not the pending decision's ("that decision has passed") and takes the engine session whose view showed that
-  decision; it then forwards the pending decision's `id` to that session, so the old client (which sends only the key)
-  is guarded too, except against a new game asking the same question under the same id. The key is `game.key()`:
+  decision. It then forwards the pending decision's `id` to that session. The bridge also accepts key-only answers. The key is `game.key()`:
   kind, turn, prompt, option count and the first six labels, joined by `|`, and the client computes the same
   (`protocol/key.ts`); it is not unique (the same question asked twice shares a key), which is why the id is the
   guard. Each game's watcher reads its own seat's session and publishes a view only while its gen is the newest, so
@@ -476,18 +471,13 @@ engine to them. The rules:
   forwarded: `working` while the engine plays on to the next decision, then `applied`, or `refused` with the engine's
   reason. A second answer in the same game while an answer is still working is refused ("an answer is already being
   worked on"). The reply itself stays `{ok: true, attempt}` after 0.6 s, or the refusal (`{ok: false, error,
-  attempt?}`) if it comes sooner, for the old client. `attempt` numbers the forwarded answers, increasing for as long
+  attempt?}`) if it comes sooner. `attempt` numbers the forwarded answers, increasing for as long
   as the bridge runs (a new game advances it too, so it never repeats); the reply carries the same number, so a client
   matches a status to its own answer, and a status with a later attempt than its own, seen before its own, means its
   outcome came and went between two polls. An answer refused before it is forwarded (a passed decision, one already
   working) has none; so does a bridge from before it.
-- **Build stamp**: `build` is the id in `game/client/dist/build.json`, a content hash of the client's sources that the
-  bundle also carries (`platform/build.ts`); a page whose id differs is stale and offers Reload. `deckmaster game`
-  rebuilds `dist` on start when its stamp (`dist/.stamp`: the sources, the lockfile, the Vite config, what the
-  workbench bundles from outside `src` (the protocol corpus, the test catalog) and the Node version; the inputs are
-  `vite.config.mts`'s, which the build id hashes too) is stale, in a staging directory published only on success;
-  without Node it serves the last build. `/next/` serves it, its hashed `assets/` cacheable for good; `/next/api/` and
-  `/next/cache/` reach the same bridge.
+- **Build stamp**: `build` comes from `game/client/dist/build.json`. A page running a different build offers
+  Reload. See [serving the client](game-client-architecture.md#serving-the-client) for build inputs and routes.
 - **Client log** (`POST /api/clientlog`): `{entries: [{level, code, message, build?, rev?, stop?}]}`, at most 50
   entries a request and 50 a minute, messages at most 2 KB; other shapes get 400. Every POST's `Content-Length` must
   be a whole number of bytes (else 400) of at most 256 KB (else 413), and exactly that many bytes are read. Appended to

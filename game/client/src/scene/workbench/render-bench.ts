@@ -330,7 +330,6 @@ export async function renderBench(root: HTMLElement): Promise<void> {
   $("r-send").onclick = async () => {
     said("Sending…");
     try {
-      // relative: /next/api/bench under the game server, /api/bench under tools/serve.js
       const r = await fetch("api/bench", { method: "POST", headers: { "Content-Type": "application/json" }, body: text() });
       const reply = (await r.json()) as { ok?: boolean; file?: string; error?: string };
       said(r.ok && reply.ok ? `Sent: ${reply.file ?? ""}` : `Not sent: ${reply.error ?? r.status}`);

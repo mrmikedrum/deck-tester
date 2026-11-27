@@ -1,5 +1,5 @@
 // fetch, read at call time (the behaviour harness routes it; tests replace it), with JSON in and out. Relative URLs
-// (`api/...`), so the page works at /next/ on the bridge and under Vite's proxy alike.
+// (`api/...`), so the page works on the bridge and under Vite's proxy.
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 

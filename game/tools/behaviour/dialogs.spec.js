@@ -1,14 +1,12 @@
-// 9. mulligan / confirm / "Let Forge decide"; 10. refusals; f. new games and reconnects while an answer is pending;
+// 9. mulligan / confirm / "Auto"; 10. refusals; f. new games and reconnects while an answer is pending;
 // g. empty and startup states.
-const { test, expect, NEW, snapshot, withDecision, find, inHand, opponentSpell, keyOf, locate } = require("./harness.js");
-const { label } = require("./labels.js");
+const { test, expect, snapshot, withDecision, find, inHand, opponentSpell, keyOf, locate } = require("./harness.js");
 
 const PASS = { kind: "play", prompt: "", options: ["Pass"], refs: [{}], min: 1, max: 1 };
 const mulligan = s => withDecision(s, { kind: "mulligan", prompt: "Keep this hand?", options: ["Keep", "Mulligan"], min: 1, max: 1 });
 const confirm = s => withDecision(s, { kind: "confirm", prompt: "Use Sol Ring?", options: ["Yes", "No"], min: 1, max: 1 });
 
 test("the sift caption keeps the close stud inside its button", async ({ table }) => {
-  test.skip(!NEW, "The sift caption belongs to the TypeScript client");
   await table.open("main");
   await table.tap(await locate(table.page, { pile: "ana" }));
   const close = table.page.locator(".l-sift").getByRole("button", { name: "Put back" });
@@ -31,14 +29,14 @@ test.describe("mulligan and confirm", () => {
     await table.press("Mulligan");
     expect((await table.answered(1))[0].answer).toEqual([2]);
   });
-  test("a mulligan is never offered \"Let Forge decide\"", async ({ table }) => {
+  test("a mulligan is never offered \"Auto\"", async ({ table }) => {
     await table.open(mulligan(snapshot("main")));
-    expect(await table.page.getByRole("button", { name: label("Let Forge decide") }).count()).toBe(0);
+    expect(await table.page.getByRole("button", { name: "Auto" }).count()).toBe(0);
   });
   test("confirm: Yes sends [1], No sends [2]", async ({ table }) => {
     const s = snapshot("main");
     await table.open(confirm(s));
-    await expect.poll(() => table.buttons()).toEqual(["Yes", "No", label("Let Forge decide")]);
+    await expect.poll(() => table.buttons()).toEqual(["Yes", "No", "Auto"]);
     await table.press("Yes");
     expect((await table.answered(1))[0].answer).toEqual([1]);
     table.forget();
@@ -46,22 +44,22 @@ test.describe("mulligan and confirm", () => {
     await table.press("No");
     expect((await table.answered(1))[0].answer).toEqual([2]);
   });
-  test("\"Let Forge decide\" sends {key, defer: true}", async ({ table }) => {
+  test("\"Auto\" sends {key, defer: true}", async ({ table }) => {
     const s = confirm(snapshot("main"));
     await table.open(s);
-    await table.press(label("Let Forge decide"));
+    await table.press("Auto");
     expect(await table.answered(1)).toEqual([{ key: keyOf(s.decision), defer: true }]);
   });
-  test("Let Forge decide is offered on play with plays, hidden when a spell is up and nothing can answer", async ({ table }) => {
+  test("Auto is offered on play with plays, hidden when a spell is up and nothing can answer", async ({ table }) => {
     await table.open("main");
-    expect(await table.buttons()).toContain(label("Let Forge decide"));
+    expect(await table.buttons()).toContain("Auto");
     const s = snapshot("main");
     await table.open(withDecision(s, PASS, v => { v.active = "Dack"; opponentSpell(v, "Swords to Plowshares", [find(s, "Marath", "Herd Baloth").id]); }), { animate: false });
-    expect(await table.buttons()).not.toContain(label("Let Forge decide"));
+    expect(await table.buttons()).not.toContain("Auto");
   });
-  test("Let Forge decide on a play sends defer, not [1]", async ({ table }) => {
+  test("Auto on a play sends defer, not [1]", async ({ table }) => {
     await table.open("main");
-    await table.press(label("Let Forge decide"));
+    await table.press("Auto");
     const a = (await table.answered(1))[0];
     expect(a.defer).toBe(true);
     expect(a.answer).toBeUndefined();
@@ -96,20 +94,16 @@ test.describe("refusals", () => {
     await table.answered(1); await table.step(100);
     expect(await table.toastText()).toBe("Forge refused that");
   });
-  // The current client gives up on a dropped answer at once. The new entry follows the answer ledger (docs/game-client-
-  // architecture.md, "The answer ledger"): a dropped reply proves nothing, so the prompt stays busy until a snapshot
-  // asked for after the failure shows the bridge never had the answer; only then is it lost and toasted.
+  // An indeterminate answer stays busy until the next snapshot resolves it.
   test("a lost connection toasts \"Lost the bridge\" and frees the prompt", async ({ table }) => {
     table.reply.answer = null;
     await table.open("main");
     await table.press("To combat");
     await table.answered(1); await table.step(100);
-    if (NEW) {
-      expect(await table.buttons()).toEqual([]);                      // indeterminate: busy, nothing said yet
-      expect(await table.toastText()).toBe("");
-      await table.push(table.snapshot);                               // the re-sync: no answer status, the same decision
-      await table.step(100);
-    }
+    expect(await table.buttons()).toEqual([]);                      // indeterminate: busy, nothing said yet
+    expect(await table.toastText()).toBe("");
+    await table.push(table.snapshot);                               // the re-sync: no answer status, the same decision
+    await table.step(100);
     expect(await table.toastText()).toBe("Lost the bridge");
     table.reply.answer = { ok: true };
     await table.press("To combat");
@@ -123,7 +117,7 @@ test.describe("refusals", () => {
     await table.step(2700);
     expect(await table.toastText()).toBe("");
   });
-  // Characterization of a known fault (migration doc): an ACCEPTED answer that leaves the view and the decision
+  // Characterization of a known fault: an ACCEPTED answer that leaves the view and the decision
   // unchanged leaves the prompt busy for ever. The test pins today's behaviour; fix deliberately and update it then.
   test("an accepted answer with nothing changing leaves the prompt busy (known fault)", async ({ table }) => {
     await table.open("main");
@@ -180,7 +174,7 @@ test.describe("new games and reconnects", () => {
   test("a new gen closes an open sheet", async ({ table }) => {
     const s = snapshot("main");
     await table.open(s);
-    await table.press(label("Choose a play (6)"));
+    await table.press("All plays (6)");
     expect(await table.sheet().count()).toBe(1);
     await table.open(snapshot("theirs"));
     expect(await table.sheet().count()).toBe(0);
@@ -212,7 +206,7 @@ test.describe("empty and startup states", () => {
     ["no game", { state: "no game" }, /No game yet/, true],
     ["starting", { state: "starting" }, /Shuffling up/, false],
     ["a playing snapshot with an empty view", { state: "playing", view: {}, decision: null, pilots: {} }, /No game yet/, true],
-    ["an error", { state: "error", error: "no such deck" }, NEW ? /Game couldn't start/ : /Couldn't start: no such deck/, true],
+    ["an error", { state: "error", error: "no such deck" }, /Game couldn't start/, true],
   ];
   for (const [name, snap, text, newGame] of states) {
     test(`${name}: waiting UI, nothing sent`, async ({ table }) => {

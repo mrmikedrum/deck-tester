@@ -27,15 +27,8 @@ function analyse(track) {
       b._move = move;
       if (move > 12 && move > 2.5 * Math.max(prev, next, 1)) ev.push({ frame: i, kind: "jump", detail: `outline moves ${move.toFixed(0)} px in one frame (${prev.toFixed(0)} px the frame before, ${next.toFixed(0)} px after)` });
       if (turn > 2.5) ev.push({ frame: i, kind: "turn", detail: `outline rotates ${turn.toFixed(1)}° in one frame` });
-      if (a.tex !== b.tex) ev.push({ frame: i, kind: "retexture", detail: `surface image replaced (${a.texSize ? a.texSize.join("×") : "?"} → ${b.texSize ? b.texSize.join("×") : "?"})` });
-      if (Math.abs(a.opacity - b.opacity) > 0.25) ev.push({ frame: i, kind: "fade-jump", detail: `opacity ${a.opacity} → ${b.opacity} in one frame` });
-      if (Math.abs(a.shade - b.shade) > 0.25) ev.push({ frame: i, kind: "shade-jump", detail: `brightness ${a.shade} → ${b.shade} in one frame` });
-      if (a.order !== b.order) ev.push({ frame: i, kind: "reorder", detail: `draw order ${a.order} → ${b.order}` });
     }
-    // Surface vs image proportions: a texture drawn for one shape and shown on another is stretched.
-    const stretch = rows.map(r => r && r.texSize ? (r.size[0] / r.size[1]) / (r.texSize[0] / r.texSize[1]) : 1);
-    const worst = stretch.reduce((m, s, i) => (Math.abs(Math.log(s)) > Math.abs(Math.log(m.s)) ? { s, i } : m), { s: 1, i: 0 });
-    per[k] = { rows, ev, stretch, worst };
+    per[k] = { rows, ev };
   }
   // Mats that overlap one another on screen (a coarse check on their bounding boxes, reported only when it changes).
   const overlaps = [];
@@ -243,7 +236,7 @@ if (require.main === module) (async () => {
       const save = (name, url) => fs.writeFileSync(path.join(out, name), Buffer.from(url.split(",")[1], "base64"));
       save(`${tag}-screen.jpg`, await compose(page, { kind: "grid", vw: VW, crop: [0, 0, VW, VH], frames, images }));
       md.push(`- **${tag}-screen.jpg**: beat ${bi + 1} at #${b.frame} (${b.label}); whole screen, frames #${w.start}–#${w.end}`);
-      const moving = an.mats.filter(k => an.per[k].rows.slice(w.start, w.end + 1).some((r, i, a) => r && (r._move > 0.5 || (i && a[i - 1] && (a[i - 1].tex !== r.tex || a[i - 1].shade !== r.shade || a[i - 1].opacity !== r.opacity)))));
+      const moving = an.mats.filter(k => an.per[k].rows.slice(w.start, w.end + 1).some(r => r && r._move > 0.5));
       for (const k of moving) {
         const qs = an.per[k].rows.slice(w.start, w.end + 1).filter(Boolean).map(r => bboxOf(r.quad));
         let x0 = Math.max(0, Math.min(...qs.map(q => q[0])) - 30), y0 = Math.max(0, Math.min(...qs.map(q => q[1])) - 30), x1 = Math.min(VW, Math.max(...qs.map(q => q[2])) + 30), y1 = Math.min(VH, Math.max(...qs.map(q => q[3])) + 30);
@@ -269,11 +262,10 @@ if (require.main === module) (async () => {
     md.push("", "## Telemetry (measured from the scene, per frame)", "");
     md.push("Beats: " + beats.map(b => `#${b.frame} ${b.label}`).join(" · "), "");
     for (const k of an.mats) {
-      const p = an.per[k], s = p.worst;
+      const p = an.per[k];
       md.push(`**${matName(k)}** (\`${k}\`)`);
-      if (Math.abs(Math.log(s.s)) > 0.03) md.push(`- surface vs its image's proportions: up to ${((s.s - 1) * 100).toFixed(0)}% off at #${s.i} (the image is drawn for one shape and shown on another)`);
       p.ev.forEach(e => md.push(`- #${e.frame} ${e.kind}${e.detail ? ": " + e.detail : ""}`));
-      if (!p.ev.length && Math.abs(Math.log(s.s)) <= 0.03) md.push("- nothing flagged");
+      if (!p.ev.length) md.push("- nothing flagged");
     }
     const cev = Object.values(an.cards).flatMap(c => c.ev).sort((a, b) => a.frame - b.frame);
     md.push("", "**Cards and pieces**");

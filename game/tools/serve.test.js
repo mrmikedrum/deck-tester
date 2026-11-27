@@ -14,7 +14,7 @@ test("POST /api/bench keeps the run as a file and says which", async () => {
     const { ok, file } = await r.json();
     assert.equal(ok, true);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, path.basename(file)), "utf8")).rows, [{ input: "dense" }]);
-    assert.equal((await post("next/api/bench", { rows: [] })).status, 200);
+    assert.equal((await post("api/bench", { rows: [] })).status, 200);
     assert.equal((await post("api/bench", { no: "rows" })).status, 400);
     assert.equal(fs.readdirSync(dir).length, 2);
   } finally {

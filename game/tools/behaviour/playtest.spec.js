@@ -1,8 +1,7 @@
 // Regressions from the first live game on the rebuilt client.
 const path = require("path");
-const { test, expect, NEW, snapshot, withDecision, find } = require("./harness.js");
+const { test, expect, snapshot, withDecision, find } = require("./harness.js");
 
-test.skip(!NEW, "rebuilt client");
 
 async function still(table, name) {
   if (process.env.PLAYTEST_STILLS) await table.page.screenshot({ path: path.join(process.env.PLAYTEST_STILLS, name + ".png") });
