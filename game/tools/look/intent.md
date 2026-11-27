@@ -76,9 +76,11 @@ The recording tools measure these limits at gated beats. See [LOOK.md](../../LOO
   changes. The recordings use a mocked engine, so they can't catch a mistake here: keep the protocol untouched.
 - **Nothing on the battlefield is hidden.** Every permanent is either drawn on its page or in a pile with a visible
   count that opens a sift of the cards at full size when tapped.
-- **Floor sizes** (card face width on screen at 1180×820, every seat including across): any card or pile 44 px; an
-  opponent's creature 56 px; my creatures 72 px. Cards never shrink below these to fit: a board that outgrows its page
-  folds into piles instead. Few cards never render small.
+- **Floor sizes** (card face width on screen at 1180×820, scaled by the design unit elsewhere, every seat including
+  across): any card or pile 44 px; an opponent's creature standing 56 px; my creatures standing 72 px. A creature lying
+  (tapped, in a pile, pushed to the back) is held to 44, and a turned card is measured unturned: a turn is not a smaller
+  card. Cards never shrink below these to fit: a board that outgrows its page folds into piles instead. Few cards never
+  render small.
 - **Tappable.** Every card and pile has at least a 44×44 pt patch that the hit test gives to it (Apple's minimum).
 - **Nothing covers what a card says.** No other card, label or panel hides more than a fifth of a card's name strip or
   of its foot (power, toughness, counters), or more than a third of its face. A pile's own cards may overlap each other.

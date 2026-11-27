@@ -18,6 +18,9 @@
 //   hits()               the committed plan's hit groups (id, kind, seat, members, the quad on screen, order)
 //   stack()              the stack's cards at rest, top first, with their screen rects
 //   plan()               the table plan; present() play's presentation; deadlines() every timer as [id, due]
+//   floors()             the committed plan's floors as the table audit holds them (layout/shape.ts), by unit id: its
+//                        role, whether it is mine, the face width it measures (across the middle, unturned) and its
+//                        floor, CSS px; the recorder's audit must agree (tools/behaviour/floors.spec.js)
 //   scene.inspect()      the scene's snapshot (pieces, flights, backlog); null before it is built
 //   scene.pick(x, y, skip?) the hit group a tap at (x, y) reaches on the committed plan, looking through the groups
 //                        whose ids are in `skip`
@@ -40,6 +43,7 @@
 //                        answers(), cardRequests(), acks() as plain data
 import type { Zone } from "../model";
 import { seatId } from "../model";
+import { designUnit, seatShapes } from "../layout";
 import * as play from "../play";
 import { after, now } from "../platform";
 import type { CardId } from "../protocol";
@@ -150,6 +154,15 @@ export function installDebug(loop: Loop, renderer: PageRenderer, extras: DebugEx
     hits: () => plain(loop.state.plan?.hits.groups ?? []),
     stack: () => plain(loop.state.plan?.stack ?? []),
     plan: () => plain(loop.state.plan),
+    floors: () => {
+      const plan = loop.state.plan, me = model()?.viewer.perspective, u = plan ? designUnit(plan.viewport) : 1, out: Record<string, { role: string; mine: boolean; width: number; floor: number }> = {};
+      for (const sp of plan?.seats.values() ?? [])
+        for (const s of seatShapes(plan!.projector, sp, sp.seat === me)) {
+          const unit = sp.units.find((x) => x.id === s.group);
+          if (unit) out[s.group] = { role: unit.role, mine: sp.seat === me, width: s.width, floor: s.floor * u };
+        }
+      return out;
+    },
     deadlines: () => [...loop.state.deadlines.items].map(([id, d]) => [id, d.due] as const),
     scene: {
       inspect: () => plain(renderer.scene?.inspect() ?? null),

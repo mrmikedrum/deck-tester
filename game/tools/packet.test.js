@@ -65,3 +65,23 @@ test("labels: a labelled board whose labels were not measured is INCOMPLETE, nev
   assert.equal(labelRows({ pieces: {}, labels: [{ ...label, px: 10.96 }], strips: [] }).fails, 1);
   assert.match(await last([{ ...beat, labelled: true, labels: [{ ...label, px: 10.96 }] }]), /LAYOUT: FAIL/);
 });
+
+test("the creature floor holds a creature on show; one lying (tapped, in a pile, in the back band) meets the any-card floor", async () => {
+  const at = (face, stands, pid = "you") => last([{ frame: 9, label: "start", gate: true, objects: { a: { face, stands } }, pieces: { a: piece(pid) } }]);
+  // My creature: 72 standing, 44 lying; an opponent's: 56 standing.
+  assert.match(await at(71, true), /LAYOUT: FAIL/);
+  assert.match(await at(72, true), /LAYOUT: PASS/);
+  assert.match(await at(58, false), /LAYOUT: PASS/);
+  assert.match(await at(43, false), /LAYOUT: FAIL/);
+  assert.match(await at(55, true, "bo"), /LAYOUT: FAIL/);
+  assert.match(await at(51, false, "bo"), /LAYOUT: PASS/);
+});
+
+test("floors are design px, scaled by the design unit at another viewport", () => {
+  const { floorFor, designUnit } = require("./packet.js");
+  assert.equal(designUnit([1180, 820]), 1);
+  assert.ok(Math.abs(designUnit([1210, 834]) - 834 / 820) < 1e-12);
+  assert.ok(Math.abs(floorFor({ role: "creature", mine: true, stands: true }, designUnit([1210, 834])) - 72 * 834 / 820) < 1e-9);
+  assert.equal(floorFor({ role: "creature", mine: false, stands: false }), 44);
+  assert.equal(floorFor({ role: "support", mine: true, stands: true }), 44);
+});

@@ -1,6 +1,7 @@
 // Record the built client on its scripted transport at a fixed virtual time.
-//   node tools/reel.js <outdir> [clip,clip] [--quick | --stills] [--jobs 2] [--fps 30] [--engine chromium|webkit]
-// --quick records 15 fps without video. --stills records only the 2× stills and their audit.
+//   node tools/reel.js <outdir> [clip,clip] [--quick | --stills] [--jobs 2] [--fps 30] [--engine chromium|webkit] [--viewport 1210x834]
+// --quick records 15 fps without video. --stills records only the 2× stills and their audit. --viewport is in CSS px
+// (1180x820 by default; the iPad in landscape is 1210x834).
 const fs = require("fs"), path = require("path"), { execFileSync } = require("child_process");
 const pw = require(process.env.PW || "playwright");
 const { CLOCK } = require("./behaviour/clock.js");
@@ -14,6 +15,7 @@ const argv = process.argv.slice(2), flag = (k, d) => { const i = argv.indexOf("-
 const QUICK = argv.includes("--quick") && !!argv.splice(argv.indexOf("--quick"), 1);
 const STILLS = argv.includes("--stills") && !!argv.splice(argv.indexOf("--stills"), 1);
 const FPS = +flag("fps", QUICK ? 15 : 30), ENG = flag("engine", "chromium"), SCALE = +flag("scale", 2), JOBS = +flag("jobs", 2);
+const VIEWPORT = flag("viewport", "1180x820").split("x").map(Number);
 const [outDir = "reels/latest", onlyArg] = argv;
 const only = onlyArg ? new Set(onlyArg.split(",")) : null;
 
@@ -35,7 +37,8 @@ const TRACK = () => {
     if (name) rec.name = name;
     if (b.quad) rec.quad = b.quad;
     else Object.assign(rec, { box: b.box, fade: pc ? +pc.now.fade.toFixed(3) : 0 });
-    if (faces[b.id]) rec.face = +faces[b.id].width.toFixed(1);   // the card face's width on screen
+    // The card face's width on screen as a floor measures it (across its middle, unturned), and whether it stands.
+    if (faces[b.id]) Object.assign(rec, { face: +faces[b.id].width.toFixed(1), stands: faces[b.id].standing });
     out[b.kind === "page" && pc ? "floor" + pidOf(pc.seat) : b.id] = rec;
   }
   return { objects: out };
@@ -227,20 +230,20 @@ async function stills(ctx, clip, dir, frames, gated = true) {
 
 async function record(browser, clip, dir) {
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(path.join(dir, "frames"), { recursive: true });
-  const context = async scale => { const c = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: scale, hasTouch: true }); await c.addInitScript(CLOCK); return c; };
+  const context = async scale => { const c = await browser.newContext({ viewport: { width: VIEWPORT[0], height: VIEWPORT[1] }, deviceScaleFactor: scale, hasTouch: true }); await c.addInitScript(CLOCK); return c; };
   let c;
   if (STILLS) {
     // No motion: the stills pass alone, on every clip (gated only where the clip asks for an audit).
     const frames = Math.round(clip.ms / (1000 / FPS));
     c = await context(SCALE); const st = await stills(c, clip, dir, frames, !!clip.audit); await c.close();
-    fs.writeFileSync(path.join(dir, "track.json"), JSON.stringify({ clip: clip.name, about: clip.about, fps: FPS, viewport: [1180, 820], beats: [], errors: st.errors, audits: clip.audit ? st.audits : [], frames: [] }));
+    fs.writeFileSync(path.join(dir, "track.json"), JSON.stringify({ clip: clip.name, about: clip.about, fps: FPS, viewport: VIEWPORT, beats: [], errors: st.errors, audits: clip.audit ? st.audits : [], frames: [] }));
     return { frames: 0, errors: st.errors };
   }
   c = await context(1);
   const m = await motion(c, clip, dir); await c.close();
   let audits = [], errors = m.errors;
   if (clip.audit) { c = await context(SCALE); const st = await stills(c, clip, dir, m.frames); await c.close(); audits = st.audits; errors = errors.concat(st.errors); }
-  fs.writeFileSync(path.join(dir, "track.json"), JSON.stringify({ clip: clip.name, about: clip.about, fps: FPS, viewport: [1180, 820], beats: m.beats, errors, audits, frames: m.track }));
+  fs.writeFileSync(path.join(dir, "track.json"), JSON.stringify({ clip: clip.name, about: clip.about, fps: FPS, viewport: VIEWPORT, beats: m.beats, errors, audits, frames: m.track }));
   fs.writeFileSync(path.join(dir, "beats.json"), JSON.stringify(m.beats, null, 1));
   if (!QUICK && HAS_FFMPEG) execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(FPS), "-i", path.join(dir, "frames", "%03d.jpg"), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", path.join(dir, "clip.mp4")]);
   return { frames: m.frames + 1, errors };

@@ -17,8 +17,9 @@ node tools/packet.js ../.deckmaster/reels
 
 The workbench at `/workbench.html` shows fixture boards and motion. The stills tools show combat
 and chrome on the built client. The recorder uses scripted bridge snapshots, real gestures and a
-virtual clock. Omit `--stills` to capture motion. The packet measures the drawn table at each gated
-beat and reports whether the clip meets the layout limits.
+virtual clock. Omit `--stills` to capture motion; `--viewport 1210x834` records at the iPad's
+landscape size. The packet measures the drawn table at each gated beat and reports whether the clip
+meets the layout limits.
 
 ## Look loop
 
