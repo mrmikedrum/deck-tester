@@ -482,8 +482,9 @@ graveyard or exile from its nameplate, the clash's "more") lays its cards singly
 **spread** ("See X's board" on its nameplate) lays every permanent under its tier's caption (Ready, Tapped, Works, Lands
 or Mana), in the order its leaf shows them, copies one card with its count, an Aura right after its host: a spread hides
 nothing. Both are a sheet brought nearer: every card square to the camera at the table's one mesh size, carried toward
-the eye until it reads `step` times a table card where it came from (2 down to 1.2), the largest step that fits, rows kept
-apart by tier and break run where there is room, then shared, then pages at the smallest step; cards never shrink. While
+the eye until it reads `step` times a table card where it came from (2 down to 1.2), the largest step that fits; each
+tier (then each break run) starts a row of its own as far as the room allows, its caption once over its first card;
+past that, pages at the smallest step; cards never shrink. While
 a decision chooses cards, what it offers comes first (page 1 holds it; the pager names pages holding more), and an
 offered card's target selects it; otherwise a tap reads the card. The hand slides away under a sheet; the prompt stays
 up and no card covers it; captions and counts are chrome (`SiftView`). The order is the sheet's policy stage

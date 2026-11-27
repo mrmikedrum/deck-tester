@@ -147,6 +147,23 @@ describe("a seat's spread", () => {
       expect(under.some((b) => Math.abs(b.t - c.at.y) < 40 && c.at.x >= b.l - 1 && c.at.x <= b.r)).toBe(true);
     }
   });
+  it("each tier starts a row of its own as far as the room allows, and says its caption once (a tier wrapping does not repeat it)", () => {
+    resetIds();
+    // a turn-15 board's worth: too many for every tier apart at any step, enough room for some of them
+    const cards: ArrCard[] = [
+      ...Array.from({ length: 16 }, (_, i) => ac({ name: `Ready ${i}` })),
+      ...Array.from({ length: 7 }, (_, i) => ac({ name: `Tapped ${i}`, tapped: true })),
+      ...Array.from({ length: 6 }, (_, i) => ac({ name: `Work ${i}`, kind: "enchantment" })),
+      ...Array.from({ length: 14 }, (_, i) => ac({ name: `Land ${i}`, kind: "land", tapped: i % 3 === 0 })),
+    ];
+    const s = sheet(spreadUnits(cards, () => 0, NOTHING), { role: "spread" });
+    expect(s.pages.count).toBe(1);
+    expect(s.captions.map((c) => c.kind)).toEqual(["ready", "tapped", "works", "lands"]);
+    // tiers that start a row of their own have their captions at the sheet's left edge
+    const lefts = s.captions.filter((c) => Math.abs(c.at.x - Math.min(...s.captions.map((k) => k.at.x))) < 30);
+    expect(lefts.length, s.rows).toBeGreaterThanOrEqual(2);
+  });
+
   it("an Aura stands right after what it is on, never stacked; while choosing an offered copy stands alone", () => {
     resetIds();
     const bears = many(3, { name: "Bear" });
