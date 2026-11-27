@@ -99,7 +99,7 @@ export function factsOf(m: TableModel): Facts {
       asides: asides(m, c),
       commander: c.commander,
       attachedTo: c.attachedTo ?? null,
-      cost: c.face.cost,
+      cost: c.castCost ? ("mana" in c.castCost ? c.castCost.mana : "") : c.face.cost,
       text: c.face.text,
       catalogued: c.face.catalogued,
     };

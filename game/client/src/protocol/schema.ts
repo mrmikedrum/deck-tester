@@ -37,6 +37,11 @@ const counts = v.optional(v.record(v.string(), count), () => ({}));
 
 // ---- The view ----------------------------------------------------------------------------------------------------
 
+const CastCostSchema = v.union([
+  v.object({ mana: v.string(), change: v.picklist(["reduced", "increased", "changed"]) }),
+  v.object({ reducibleBy: v.array(v.string()) }),
+]);
+
 export const CardSchema = v.object({
   id: cardId,
   /** "" for a face-down card. */
@@ -46,6 +51,8 @@ export const CardSchema = v.object({
   type: v.string(),
   /** Forge's short string: bare generic, braced colours ("1 {G} {G}", "X {R}"); null for no cost (lands). */
   cost: v.nullish(v.string(), null),
+  /** Own hand/commander at priority. Changed main-spell mana (Forge short form), or a payment-dependent reduction. */
+  castCost: v.optional(CastCostSchema),
   power: v.nullish(int, null),
   toughness: v.nullish(int, null),
   loyalty: v.nullish(int, null),

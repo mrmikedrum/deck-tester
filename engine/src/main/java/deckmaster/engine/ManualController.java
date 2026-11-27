@@ -128,7 +128,9 @@ public class ManualController extends PlayerControllerAi {
             by = "ai";
         }
         if (answer == null && mine(decision.kind())) {
-            answer = session.channel.ask(decision);
+            answer = decision.kind().equals("play")
+                    ? session.channel.ask(decision, CastCosts.atPriority(getPlayer()))
+                    : session.channel.ask(decision);
             by = session.channel.by();
             p = session.channel.confidence();
             if (answer == null) {

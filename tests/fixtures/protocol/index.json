@@ -95,6 +95,7 @@
    ],
    "optional": [
     "attachedTo",
+    "castCost",
     "commander",
     "copy",
     "cost",

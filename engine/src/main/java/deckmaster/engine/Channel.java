@@ -1,6 +1,7 @@
 package deckmaster.engine;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
 
 /**
@@ -37,23 +38,25 @@ final class Channel {
     static final Object DEFER = new Object();
 
     /** A parked decision and its number: strictly increasing per session, so a client's answer names what it saw. */
-    record Parked(Decision decision, long id) {
+    record Parked(Decision decision, long id, Map<Integer, Map<String, Object>> castCosts) {
     }
 
     private final SynchronousQueue<Object> answers = new SynchronousQueue<>();
-    private Decision pending;
-    private long pendingId;
+    private Parked pending;
     private long asked;
     private boolean finished;
     private String by = "agent";
     private Double confidence;
 
     /** Game thread: publish the decision and park until it is answered; null when handed to the AI. */
-    @SuppressWarnings("unchecked")
     List<Integer> ask(Decision decision) {
+        return ask(decision, Map.of());
+    }
+
+    @SuppressWarnings("unchecked")
+    List<Integer> ask(Decision decision, Map<Integer, Map<String, Object>> castCosts) {
         synchronized (this) {
-            pending = decision;
-            pendingId = ++asked;
+            pending = new Parked(decision, ++asked, castCosts);
             notifyAll();
         }
         Object answer;
@@ -98,11 +101,11 @@ final class Channel {
     }
 
     synchronized Decision pending() {
-        return pending;
+        return pending == null ? null : pending.decision();
     }
 
     synchronized Parked parked() {
-        return pending == null ? null : new Parked(pending, pendingId);
+        return pending;
     }
 
     synchronized boolean isFinished() {
@@ -144,11 +147,11 @@ final class Channel {
     @SuppressWarnings("unchecked")
     void answerIf(long id, Object answer, String by, Double confidence) throws InterruptedException {
         synchronized (this) {
-            if (pending == null || pendingId != id) {
+            if (pending == null || pending.id() != id) {
                 throw new IllegalStateException("that decision has passed");
             }
             if (answer != DEFER) {
-                String problem = pending.check((List<Integer>) answer);
+                String problem = pending.decision().check((List<Integer>) answer);
                 if (problem != null) {
                     throw new IllegalArgumentException(problem);
                 }

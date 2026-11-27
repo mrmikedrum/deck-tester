@@ -1162,6 +1162,22 @@
     white-space: nowrap;
     pointer-events: none;
   }
+  .l-hand-cost.reduced {
+    color: var(--seat-near);
+    box-shadow: inset 0 2px currentColor, var(--ribbon-shadow);
+  }
+  .l-hand-cost.increased {
+    color: var(--sig-danger-ink);
+    box-shadow: inset 0 2px currentColor, var(--ribbon-shadow);
+  }
+  .l-cost-mark {
+    margin-right: 2px;
+    font-size: 12px;
+  }
+  .l-cost-note {
+    font-size: calc(15 * var(--u));
+    line-height: 1.45;
+  }
   .hcard:focus-visible {
     outline: 3px solid var(--sig-selected);
     outline-offset: 2px;

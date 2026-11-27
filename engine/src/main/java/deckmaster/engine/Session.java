@@ -1068,10 +1068,18 @@ final class Session {
     }
 
     private List<Map<String, Object>> shown(Iterable<Card> cards) {
+        return shown(cards, Map.of());
+    }
+
+    private List<Map<String, Object>> shown(Iterable<Card> cards, Map<Integer, Map<String, Object>> costs) {
         List<Map<String, Object>> out = new ArrayList<>();
         cards.forEach(card -> {
             if (!card.isImmutable()) {
-                out.add(shown(card));
+                Map<String, Object> visible = shown(card);
+                if (costs.containsKey(card.getId())) {
+                    visible.put("castCost", costs.get(card.getId()));
+                }
+                out.add(visible);
             }
         });
         return out;
@@ -1082,7 +1090,7 @@ final class Session {
      * the stack with what each item targets, and combat. Read while Forge plays on, so a caller retries a read
      * that fails.
      */
-    Map<String, Object> view() {
+    Map<String, Object> view(Map<Integer, Map<String, Object>> castCosts) {
         Map<String, Object> view = new LinkedHashMap<>();
         if (game == null || pilot == null) {
             return view;
@@ -1116,13 +1124,13 @@ final class Session {
                 p.put("lost", true);
             }
             if (player.equals(pilot)) {
-                p.put("hand", shown(player.getCardsIn(ZoneType.Hand)));
+                p.put("hand", shown(player.getCardsIn(ZoneType.Hand), castCosts));
             } else {
                 p.put("handCount", player.getCardsIn(ZoneType.Hand).size());
             }
             p.put("library", player.getCardsIn(ZoneType.Library).size());
             p.put("battlefield", shown(player.getCardsIn(ZoneType.Battlefield)));
-            p.put("command", shown(player.getCardsIn(ZoneType.Command)));
+            p.put("command", shown(player.getCardsIn(ZoneType.Command), player == pilot ? castCosts : Map.of()));
             p.put("graveyard", shown(player.getCardsIn(ZoneType.Graveyard)));
             p.put("exile", shown(player.getCardsIn(ZoneType.Exile)));
             Map<String, Integer> damage = new LinkedHashMap<>();

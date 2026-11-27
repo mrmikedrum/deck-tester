@@ -39,6 +39,7 @@ type DeepReadonly<T> = T extends string | number | boolean | null | undefined
 type Out<S extends v.GenericSchema> = DeepReadonly<v.InferOutput<S>>;
 
 export type Card = Out<typeof CardSchema>;
+export type CastCost = NonNullable<Card["castCost"]>;
 export type Player = Out<typeof PlayerSchema>;
 export type StackItem = Out<typeof StackItemSchema>;
 export type Combat = Out<typeof CombatSchema>;

@@ -83,6 +83,41 @@ class TableCreationTest(unittest.TestCase):
 @unittest.skipUnless(engine.RES.is_dir(), "Forge not installed; run scripts/bootstrap-forge.sh")
 class ManualGameTest(unittest.TestCase):
     @unittest.skipUnless(engine.FORGE_BUILD.exists(), "requires installed Forge")
+    def test_view_quotes_affinity_thalia_and_commander_tax(self):
+        commander = "Isamaru, Hound of Konda"
+        start = {"cmd": "start", "commanders": [commander], "main": [[99, "Plains"]],
+                 "seed": 11, "turns": 2, "opponents": 1}
+        session = engine.request(start)["session"]
+
+        def request(cmd, **args):
+            return engine.request(dict(args, cmd=cmd, session=session))
+
+        try:
+            request("answer", answer=[1])
+            for name in ("Island", "Island", "Plains", "Ornithopter", "Sol Ring", "Arcane Signet", "Thalia, Guardian of Thraben"):
+                request("override", args=["create", name])
+            for name in ("Thought Monitor", "Brainstorm", "Ornithopter", "Siege Wurm"):
+                request("override", args=["create", name, "hand"])
+
+            view = request("view")
+            hand = {card["name"]: card for card in view["view"]["players"][0]["hand"]}
+            self.assertEqual(hand["Thought Monitor"]["cost"], "6 {U}")
+            self.assertEqual(hand["Thought Monitor"]["castCost"], {"mana": "3 {U}", "change": "reduced"})
+            self.assertEqual(hand["Brainstorm"]["castCost"], {"mana": "1 {U}", "change": "increased"})
+            self.assertNotIn("castCost", hand["Ornithopter"])
+            self.assertEqual(hand["Siege Wurm"]["castCost"], {"reducibleBy": ["Convoke"]})
+
+            [first] = [i for i, label in enumerate(view["decision"]["options"], 1) if label.startswith(commander)]
+            reply = request("answer", answer=[first])
+            if reply["decision"]["turn"] == "T1 main1" and request("view")["view"]["stack"]:
+                request("answer", answer=[1])
+            request("override", args=["destroy", commander])
+            [card] = request("view")["view"]["players"][0]["command"]
+            self.assertEqual(card["castCost"], {"mana": "2 {W}", "change": "increased"})
+        finally:
+            request("end")
+
+    @unittest.skipUnless(engine.FORGE_BUILD.exists(), "requires installed Forge")
     def test_station_changes_the_spacecraft_type_in_the_client_view(self):
         ship = "Wurmwall Sweeper"
         crew = "Siege Wurm"

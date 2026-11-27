@@ -37,11 +37,15 @@ function Face({ card, tight = false }: { card: HandCard; tight?: boolean }): JSX
   );
 }
 
-/** A bunched card's cost, on a small vellum ribbon above its top-left corner. */
-function Ribbon({ cost }: { cost: string }): JSX.Element {
+/** The vellum ribbon shows the current quote, or marks mana that depends on a payment choice. */
+function Ribbon({ card }: { card: HandCard }): JSX.Element {
+  const preview = card.castCost;
+  const quote = preview && "mana" in preview ? preview : null;
+  const mark = quote?.change === "reduced" ? "↓" : quote?.change === "increased" ? "↑" : quote ? "↔" : preview ? "~" : "";
   return (
-    <div class="l-hand-cost" aria-hidden="true">
-      <Pips text={cost} />
+    <div class={`l-hand-cost ${quote?.change ?? ""}`} aria-hidden="true">
+      {mark ? <b class="l-cost-mark">{mark}</b> : null}
+      {quote || !preview ? <Pips text={quote?.mana ?? card.cost ?? ""} /> : null}
     </div>
   );
 }
@@ -113,6 +117,7 @@ export function Hand(p: HandProps): JSX.Element {
               role="button"
               tabIndex={p.hand.away ? -1 : 0}
               aria-label={c.name}
+              aria-description={c.castCost && ("mana" in c.castCost ? `Costs ${c.castCost.mana} now` : c.castCost.reducibleBy.join(", "))}
               aria-current={p.frame.focus === d.id ? "true" : undefined}
               style={`transform:translate(${px(d.x)}, ${px(d.y)}) rotate(${deg(d.rot)})${scale};z-index:${d.z};--label-w:${Math.ceil(d.label)}px${d.fit.k < 1 ? `;--label-k:${d.fit.k}` : ""}`}
               onKeyDown={(e) => {
@@ -120,7 +125,7 @@ export function Hand(p: HandProps): JSX.Element {
               }}
             >
               <Face card={c} tight={d.fit.tight} />
-              {bunched && c.cost ? <Ribbon cost={c.cost} /> : null}
+              {!d.dragging && (c.castCost || (bunched && c.cost)) ? <Ribbon card={c} /> : null}
             </div>
           );
         })}
