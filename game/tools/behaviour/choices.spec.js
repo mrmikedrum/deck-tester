@@ -130,6 +130,15 @@ test.describe("targets and choices on the table", () => {
     await table.tapPlate("cy");
     expect((await table.answered(1))[0].answer).toEqual([4]);
   });
+  test("tapping my nameplate when I am a legal target sends that target", { tag: "@cast" }, async ({ table }) => {
+    test.skip(!NEW, "My nameplate focus belongs to the new entry");
+    const s = snapshot("main");
+    await table.open(choice(s, { options: ["Dack", "You"], refs: [{ player: "Dack" }, { player: "You" }] }));
+    await table.page.locator(".l-plate.mine .bronze").tap();
+    await table.step(100);
+    expect((await table.answered(1))[0].answer).toEqual([2]);
+    await expect(table.page.locator(".l-seat")).toHaveCount(0);
+  });
   test("more than one wanted: taps pick, Done is disabled below min and sends the picks", async ({ table }) => {
     const s = snapshot("main");
     await table.open(choice(s, { min: 2, max: 3 }));
