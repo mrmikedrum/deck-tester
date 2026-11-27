@@ -360,6 +360,9 @@ async function tapCard(page, card) {
       const page = await ctx.newPage();
       const errors = [];
       page.on("pageerror", (e) => errors.push(String(e)));
+      // The art loader swallows failed loads and draws a blank face; a still without its art is no evidence.
+      page.on("response", (r) => { if (r.status() >= 400 && r.url().includes("/cache/cards/art/")) errors.push(`art ${r.status()}: ${r.url()}`); });
+      page.on("requestfailed", (r) => { if (r.url().includes("/cache/cards/art/")) errors.push(`art failed: ${r.url()}`); });
       const capture = async (name, label, gate) => {
         if (errors.length) throw new Error(`${name}: ${errors.join(" | ")}`);
         if (!audit) {

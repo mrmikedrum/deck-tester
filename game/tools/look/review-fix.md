@@ -2,7 +2,8 @@ Review the lane PR in __PR__ using __FINDINGS__, __FIX__, and the matching __BEF
 packets. Read the diff and [the design intent](intent.md).
 
 - Verify the fix addresses the cause and stays in the lane's `client/src/` scope. The 3D lane
-  covers scene/three, Grimoire faces and layout. The HTML lane covers chrome and app.
+  covers scene/three, scene/stage (motion), Grimoire faces and layout. The HTML lane covers chrome and app.
+  Changes to theme/tokens.ts or theme/css.ts touch both lanes: check both lanes' stills.
 - Compare the stills and numbered motion sheets. Check the audit of every gated still and inspect
   the focuses visually. Cite new jumps, overlaps, missing cues and legibility losses.
 - Check browser errors and `npm run check` evidence. Read the diff for changes to engine answers,

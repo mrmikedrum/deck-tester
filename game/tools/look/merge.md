@@ -11,5 +11,5 @@ Write the lane's ranked findings and Goal questions to __OUT__. Include rejected
 their reasons and end with `TOP: F<n>` or `TOP: none`. Write confirmed findings in the other
 lane's scope to __HANDOFF__ with the same evidence, replacing that file.
 
-The 3D scene lane owns `client/src/scene/three/`, Grimoire faces in `client/src/theme/grimoire/`,
-and `client/src/layout/`. The HTML chrome lane owns `client/src/chrome/` and `client/src/app/`.
+The 3D scene lane owns `client/src/scene/three/` and `client/src/scene/stage/` (motion), Grimoire faces in `client/src/theme/grimoire/`,
+and `client/src/layout/`. The HTML chrome lane owns `client/src/chrome/` and `client/src/app/`. The palette and shared CSS (`client/src/theme/tokens.ts`, `client/src/theme/css.ts`) belong to both: agree before changing them.

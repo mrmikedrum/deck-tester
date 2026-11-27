@@ -37,7 +37,12 @@ async function main() {
     assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [width * dpr, height * dpr], file);
     return file;
   });
+  // Every still held to the limits must be measured; a missing row would otherwise drop out of the verdict.
+  const gated = measured.audits.filter((a) => a.gate);
+  for (const name of TABLE) assert.ok(measured.audits.some((a) => a.still === `${name}.png`), `${name}: no audit row`);
+  assert.ok(gated.length > 0, "no still was held to the layout limits");
   const report = await audits(null, measured, stillDir, stillDir);
+  assert.ok(!/NOT MEASURED|INCOMPLETE/.test(report.at(-1)), `layout: ${report.at(-1)}`);
   fs.writeFileSync(path.join(stillDir, "layout.md"), report.join("\n").trimStart() + "\n");
 
   // The recorder starts a local fixture server on an available port.
@@ -51,7 +56,6 @@ async function main() {
     assert.equal(track.errors.length, 0, `${name}: ${track.errors.join(" | ")}`);
     const file = `motion/${name}/clip.mp4`;
     const video = fs.existsSync(path.join(out, file)) ? file : null;
-    if (video) fs.rmSync(path.join(dir, "frames"), { recursive: true });
     return {
       name,
       about: track.about,

@@ -37,9 +37,9 @@ iPad's landscape size.
 1. Record a baseline. Give independent [witnesses](tools/look/witness.md) the packet, the intent
    and a focus brief. Keep the branch, prior judgments and proposed fixes out of their briefs.
 2. [Consolidate](tools/look/merge.md) witnessed findings and hand off cross-lane items. The
-   **3D scene lane** owns `client/src/scene/three/`, the Grimoire faces in
+   **3D scene lane** owns `client/src/scene/three/` and `client/src/scene/stage/` (motion), the Grimoire faces in
    `client/src/theme/grimoire/`, and `client/src/layout/`. The **HTML chrome lane** owns
-   `client/src/chrome/` and `client/src/app/`. Agree on ownership of shared changes before editing.
+   `client/src/chrome/` and `client/src/app/`. The palette and shared CSS (`client/src/theme/tokens.ts`, `client/src/theme/css.ts`) belong to both: agree before changing them. Agree on ownership of shared changes before editing.
 3. Each lane [fixes](tools/look/fix.md) on its own branch, records a fresh packet, and opens its own
    pull request. Run `npm run check` before opening the PR. All changes go through pull requests.
 4. A [reviewer](tools/look/review-fix.md) checks the diff and the matching recordings.
