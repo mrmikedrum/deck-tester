@@ -1030,8 +1030,8 @@ No solver exists to time yet, so this is a gate, not a claim.
 **How to run it.** Every input is planned at the iPad held in landscape, 1210×834 (`bench-inputs.ts` `VIEWPORT`). Node:
 `node --no-warnings --experimental-transform-types game/tools/bench-plan.mjs [plans] [--json]`.
 The iPad: on the Mac, `bin/deckmaster game` (it rebuilds the client when stale), then open
-`http://<the Mac's address>:8765/next/workbench.html?only=bench`; or, without the game server, build the client
-(`npx vite build` in `game/`) and run `node game/tools/serve.js 8797 --dist --lan`, which prints the address to open.
+`http://<the Mac's address>:8765/workbench.html?only=bench`; or, without the game server, build the client
+(`npm run build` in `game/`) and run `node game/tools/serve.js 8797 --lan`, which prints the address to open.
 Wait for "Done" and press "Send to Mac": the results are kept as a file under `.deckmaster/bench/` and the page names
 it. Over plain http a browser offers no clipboard, so the page also shows the results in a box with "Select all", and
 Copy and Share only where the browser has them. The page times the same inputs and course as Node

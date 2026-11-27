@@ -26,6 +26,7 @@ import traceback
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+from html.parser import HTMLParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -574,29 +575,59 @@ def client_stamp(node_version):
     return h.hexdigest()
 
 
+class ClientEntry(HTMLParser):
+    """The module and linked resources Vite emits in the game's index."""
+
+    def __init__(self):
+        super().__init__()
+        self.module = False
+        self.assets = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "script" and attrs.get("type") == "module" and attrs.get("src"):
+            self.module = True
+            self.assets.append(attrs["src"])
+        if tag == "link" and attrs.get("href"):
+            self.assets.append(attrs["href"])
+
+
+def usable_client(directory):
+    try:
+        entry = ClientEntry()
+        entry.feed((directory / "index.html").read_text(encoding="utf-8"))
+        entry.close()
+        return entry.module and all(
+            (directory / urllib.parse.unquote(urllib.parse.urlsplit(url).path).lstrip("/")).is_file()
+            for url in entry.assets
+        )
+    except (OSError, ValueError):
+        return False
+
+
 def ensure_client(run=subprocess.run, which=shutil.which, say=lambda line: print(line, flush=True)):
     """Build the client into game/client/dist when its stamp is stale: into a staging directory, published only
-    when the build succeeds. Without Node, or when the build fails, what is there is served. Returns what happened:
-    "current", "built", "no node" or "failed"."""
+    when the build succeeds. A usable prior build is served if building is unavailable or fails. Returns "current",
+    "built", "no node" or "failed"."""
     node, npm = which("node"), which("npm")
     if not node or not npm:
         say("The client can't be rebuilt: Node isn't installed. " +
-            ("Serving its last build." if (DIST / "index.html").exists() else "It has no build to serve."))
+            ("Serving its last build." if usable_client(DIST) else "It has no build to serve."))
         return "no node"
     version = run([node, "--version"], capture_output=True, text=True).stdout
     stamp = client_stamp(version)
     old = DIST / ".stamp"
-    if (DIST / "index.html").exists() and old.exists() and old.read_text().strip() == stamp:
+    if usable_client(DIST) and old.exists() and old.read_text().strip() == stamp:
         return "current"
     staging, retired = DIST.with_name("dist.staging"), DIST.with_name("dist.old")
     shutil.rmtree(staging, ignore_errors=True)
     say("Building the game client ...")
     built = run([npm, "run", "build", "--", "--outDir", str(staging)], cwd=str(GAME), capture_output=True, text=True)
-    if built.returncode != 0 or not (staging / "index.html").is_file():
+    if built.returncode != 0 or not usable_client(staging):
         shutil.rmtree(staging, ignore_errors=True)
         tail = "\n".join((built.stdout + built.stderr).strip().splitlines()[-15:])
         say(f"The client build failed (is `npm ci` done in game/?). Serving "
-            f"{'its last build' if (DIST / 'index.html').exists() else 'no client'}.\n{tail}")
+            f"{'its last build' if usable_client(DIST) else 'no client'}.\n{tail}")
         return "failed"
     (staging / ".stamp").write_text(stamp + "\n")
     shutil.rmtree(retired, ignore_errors=True)
@@ -784,7 +815,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def client(self, rel):
         """Serve the built client, with immutable caching for fingerprinted assets."""
-        if not (DIST / "index.html").is_file():
+        if rel in ("", "index.html") and not usable_client(DIST):
             return self.send(404, b"The game client isn't built. Run "
                                   b"(cd game && npm ci && npm run build).\n", "text/plain; charset=utf-8")
         return self.file(DIST, rel or "index.html",
@@ -808,12 +839,22 @@ class Handler(BaseHTTPRequestHandler):
         except RecursionError:
             raise ValueError("nested too deep") from None
 
+    def redirect_entry(self, url):
+        if url.path not in ("/next", "/next/", "/live.html"):
+            return False
+        target = urllib.parse.urlunsplit(("", "", "/", url.query, ""))
+        self.send(302, b"", "text/plain", headers=[("Location", target)])
+        return True
+
+    def do_HEAD(self):
+        if not self.redirect_entry(urllib.parse.urlparse(self.path)):
+            self.send_error(501, "Unsupported method ('HEAD')")
+
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
+        if self.redirect_entry(url):
+            return
         q = urllib.parse.parse_qs(url.query)
-        if url.path in ("/next", "/next/", "/live.html"):
-            target = urllib.parse.urlunsplit(("", "", "/", url.query, ""))
-            return self.send(302, b"", "text/plain", headers=[("Location", target)])
         # Open pages from before the cutover still poll here and can prompt the player to reload.
         if url.path.startswith(("/next/api/", "/next/cache/")):
             url = url._replace(path=url.path[len("/next"):])
