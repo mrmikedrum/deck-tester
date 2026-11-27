@@ -224,6 +224,8 @@ if (require.main === module) (async () => {
   const browser = await pw.chromium.launch(), page = await browser.newPage();
   for (const dir of clipDirs) {
     const track = JSON.parse(fs.readFileSync(path.join(dir, "track.json"))), out = path.join(dir, "review");
+    // A look round keeps only the clip once its sheets are made; never clear sheets that can't be rebuilt.
+    if (track.frames.length && !fs.existsSync(path.join(dir, "frames"))) throw new Error(`${dir}: no frames left to rebuild its review sheets`);
     fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
     if (!track.frames.length) {
       // Recorded with --stills: no motion to show, only the stills and their audit.

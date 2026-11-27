@@ -56,6 +56,8 @@ async function main() {
     assert.equal(track.errors.length, 0, `${name}: ${track.errors.join(" | ")}`);
     const file = `motion/${name}/clip.mp4`;
     const video = fs.existsSync(path.join(out, file)) ? file : null;
+    // The frames run to ~100 MB a round; the clip and its numbered sheets are the evidence.
+    if (video) fs.rmSync(path.join(dir, "frames"), { recursive: true });
     return {
       name,
       about: track.about,
