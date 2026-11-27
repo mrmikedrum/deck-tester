@@ -1,29 +1,13 @@
-You are reviewing "Seat", an iPad card-game table rendered in 3D: four players sit around a table seen from above, and each player's cards lie on that player's page. You are a witness, not a designer: see what actually happens on screen and say where it fails a player.
+Inspect the fixture packet in __PACKETS__ using [the design intent](intent.md) and __FOCUS__.
+The manifest indexes the full-resolution stills, layout audit and motion review sheets.
+Read the stills at full sharpness, and narrate the visible motion with frame numbers before judging it.
+Use audit and telemetry flags to locate issues and cite the image wherever the symptom is visible.
+Record any measured breach that needs on-screen confirmation.
 
-Packets are in __PACKETS__ (one folder per clip, each with review/packet.md and images). Read every packet.md, then look at every image it lists. Sheets are frames labelled with number and time; zoom sheets enlarge one area; trails draw outlines at every frame (blue first, red last); stage images are full-resolution stills. The telemetry and layout audit in packet.md were measured from the scene: use them to know where to look; a finding still needs an image.
+Write __OUT__, with at most 12 findings in player-impact order:
 
-tools/look/intent.md lists the goals the table serves and why. Judge how well the screen meets them; a way of meeting a goal that works badly is a finding; a goal you think is wrong goes under "Goal questions".
-
-__FOCUS__
-
-Write __OUT__ in this shape:
-
-```
-## Narration
-(per clip and beat, short, citing frames: what you see, before judging)
-
-## Findings
-### F1: <one-line title> — severity high|medium|low — confidence high|medium|low
-- seen in: <clip>/<image> frames #a–#b (where on the image)
-- what happens: <concrete>
-- why it fails a player: <one sentence>
-- fixed looks like: <one sentence>
-
-## Flags checked
-- <telemetry or audit flag>: confirmed as F<n> | not a problem on screen, because <why>
-
-## Goal questions
-- <a deliberate choice you think is wrong, and why> (or "none")
-```
-
-Most important first, at most 12 findings. Only report what you can point at in an image. Change no files except __OUT__.
+- Narration by clip and beat, with frame references.
+- Findings numbered F1 onward. Give severity and confidence (high, medium or low), the still or
+  frame range and location, what happens, what it costs a player, and what fixed looks like.
+- Audit or telemetry flags checked, with the finding number or a brief explanation of the result.
+- Goal questions for deliberate choices you think the owner should reconsider.

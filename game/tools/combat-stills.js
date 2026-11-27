@@ -2,9 +2,10 @@
 // table at rest (turns 4, 9 and 15), the stack at rest, combat (the clash, duels in the parted middle), a seat leaving.
 // Each moment is its envelopes on the scripted transport, then the taps and keys it names, then a screenshot once the
 // table is settled.
-//   npm run build && node tools/combat-stills.js <outdir> [only,names]
+//   npm run build && node tools/combat-stills.js <outdir> [only,names] [--audit]
 const fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
+const { TRACK, AUDIT } = require("./scene-audit.js");
 const { serve } = require("./serve.js");
 
 const design = JSON.parse(fs.readFileSync(path.join(__dirname, "../../tests/fixtures/boards/design-pass.json"), "utf8"));
@@ -329,11 +330,9 @@ const MOMENTS = {
   },
 };
 
-async function settle(page, ms = 20000) {
-  for (let calm = 0, end = Date.now() + ms; Date.now() < end && calm < 6; ) {
-    calm = (await page.evaluate(() => window.__deckmaster.settled() && window.__deckmaster.art.pending() === 0)) ? calm + 1 : 0;
-    await new Promise((r) => setTimeout(r, 200));
-  }
+async function settle(page) {
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForFunction(() => window.__deckmaster.settled(), null, { timeout: 60000, polling: 100 });
 }
 
 /** Tap the middle of the hit group holding this card. */
@@ -342,11 +341,14 @@ async function tapCard(page, card) {
   if (!g) throw new Error(`no hit group for ${card}`);
   const x = g.quad.reduce((t, p) => t + p.x, 0) / 4, y = g.quad.reduce((t, p) => t + p.y, 0) / 4;
   await page.mouse.click(x, y);
-  await settle(page, 4000);
+  await settle(page);
 }
 
 (async () => {
-  const [outDir = "combat-stills", onlyArg] = process.argv.slice(2);
+  const args = process.argv.slice(2), audit = args.includes("--audit");
+  const [outDir = "combat-stills", onlyArg] = args.filter((arg) => arg !== "--audit");
+  const audits = [];
+  const viewport = { width: 1210, height: 834 };
   const only = onlyArg ? new Set(onlyArg.split(",")) : null;
   fs.mkdirSync(outDir, { recursive: true });
   const { base: url, server } = await serve();
@@ -354,9 +356,22 @@ async function tapCard(page, card) {
   try {
     for (const [name, m] of Object.entries(MOMENTS)) {
       if (only && !only.has(name)) continue;
-      const ctx = await browser.newContext({ viewport: { width: 1210, height: 834 }, deviceScaleFactor: 2, baseURL: url });
+      const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, baseURL: url });
       const page = await ctx.newPage();
-      page.on("pageerror", (e) => console.error(name, String(e)));
+      const errors = [];
+      page.on("pageerror", (e) => errors.push(String(e)));
+      const capture = async (name, label, gate) => {
+        if (errors.length) throw new Error(`${name}: ${errors.join(" | ")}`);
+        if (!audit) {
+          await page.screenshot({ path: path.join(outDir, `${name}.jpg`), type: "jpeg", quality: 88 });
+          return;
+        }
+        const still = `${name}.png`;
+        await page.screenshot({ path: path.join(outDir, still) });
+        const objects = (await page.evaluate(TRACK)).objects;
+        const measurement = gate ? await page.evaluate(AUDIT, 4) : {};
+        audits.push({ frame: audits.length + 1, label, still, gate, objects, ...measurement });
+      };
       const first = m.steps ? [m.steps[0].env] : (m.envs ?? [m.env]);
       await page.route("**/still-scenario.json", (r) => r.fulfill({ json: { catalog: design.catalog, envelopes: first } }));
       await page.goto("index.html?script=still-scenario.json");
@@ -367,9 +382,9 @@ async function tapCard(page, card) {
         for (const [i, st] of m.steps.entries()) {
           if (i) await page.evaluate((e) => window.__deckmaster.script.push(e), st.env);
           await settle(page);
-          const file = `${name}-${String(i + 1).padStart(2, "0")}.jpg`;
-          await page.screenshot({ path: path.join(outDir, file), type: "jpeg", quality: 88 });
-          console.log(`${file}: ${st.what}`);
+          const stepName = `${name}-${String(i + 1).padStart(2, "0")}`;
+          await capture(stepName, st.what, true);
+          console.log(`${stepName}: ${st.what}`);
         }
         await ctx.close();
         continue;
@@ -382,31 +397,35 @@ async function tapCard(page, card) {
         const g = gs.find((h) => new Set(h.members.map((id) => names.get(id))).size > 1);
         if (!g) throw new Error(`no mixed pile of ${m.mixed}`);
         await page.mouse.click(g.quad.reduce((t, q) => t + q.x, 0) / 4, g.quad.reduce((t, q) => t + q.y, 0) / 4);
-        await settle(page, 4000);
+        await settle(page);
       }
       for (const seat of m.cmd ?? []) {
         await page.click(`[data-plate="${seat}"] [data-cmd]`);
-        await settle(page, 4000);
+        await settle(page);
       }
       for (const seat of m.board ?? []) {
         await page.click(`[data-plate="${seat}"]`);
-        await settle(page, 4000);
+        await settle(page);
         await page.click(`[data-fk="board:${seat}"]`);
-        await settle(page, 4000);
+        await page.locator(".l-sift").waitFor({ state: "visible" });
+        await settle(page);
       }
       for (const c of m.hand ?? []) {
         await page.click(`.g-hand [data-id="${c}"]`);
-        await settle(page, 4000);
+        await page.locator(".inspector.from-hand").waitFor({ state: "visible" });
+        await settle(page);
       }
       for (const k of m.keys ?? []) {
         await page.keyboard.press(k);
-        await settle(page, 4000);
+        await settle(page);
       }
       await settle(page);
-      await page.screenshot({ path: path.join(outDir, `${name}.jpg`), type: "jpeg", quality: 88 });
+      // Spread and hand are inspected visually. The sampled audit measures the table and its stack target.
+      await capture(name, m.what, !m.board && !m.hand);
       console.log(`${name}: ${m.what}`);
       await ctx.close();
     }
+    if (audit) fs.writeFileSync(path.join(outDir, "audit.json"), JSON.stringify({ viewport: [viewport.width, viewport.height], audits }));
   } finally {
     await browser.close();
     server.close();

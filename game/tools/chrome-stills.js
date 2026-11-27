@@ -9,7 +9,7 @@ const { serve } = require("./serve.js");
 
 const [outDir = "chrome-stills", onlyArg] = process.argv.slice(2);
 const only = onlyArg ? new Set(onlyArg.split(",")) : null;
-const { Table, snapshot, withDecision, find, clone, sleep, CARDS } = require("./behaviour/harness.js");
+const { Table, snapshot, withDecision, find, clone, CARDS } = require("./behaviour/harness.js");
 
 // Cards from the library: ids the table does not hold, so the sheet shows them by name, with Forge's details (their text).
 let hidden = 5000;
@@ -133,12 +133,19 @@ const SHOTS = {
     if (shot.plate) {
       await page.locator(`.l-plate[aria-label^="${shot.plate},"]`).click();
       await t.step(800);
+      await page.locator(".l-seat").waitFor({ state: "visible" });
     }
-    await sleep(200);
+    await page.waitForFunction(() => window.__deckmaster.art.pending() === 0, null, { timeout: 30000, polling: 100 });
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await Promise.allSettled([...document.images].map((img) => img.decode()));
+      window.__deckmaster.redraw();
+    });
+    await t.step(0);
     await page.screenshot({ path: path.join(outDir, `${name}.png`) });
     console.log("shot", name);
   }
-  if (t.errors.length) console.log("page errors:", t.errors);
+  if (t.errors.length) throw new Error(t.errors.join(" | "));
   await browser.close();
   server.close();
 })().catch((e) => {

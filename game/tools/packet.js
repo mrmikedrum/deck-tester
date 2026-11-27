@@ -188,7 +188,9 @@ async function audits(page, track, dir, out) {
     const fr = a.objects ? { objects: a.objects } : track.frames[a.frame], tag = `stage-${String(a.frame).padStart(3, "0")}`;
     const still = path.join(dir, `still-${String(a.frame).padStart(3, "0")}.png`);
     md.push(`### #${a.frame}: ${a.label}`, "");
-    if (fs.existsSync(still)) {
+    if (a.still) {
+      md.push(`- [${a.still}](${a.still})`);
+    } else if (fs.existsSync(still)) {
       const base = "data:image/png;base64," + fs.readFileSync(still).toString("base64");
       const whole = await compose(page, { kind: "crop", vw: VW, crop: [0, 0, VW, VH], images: { base } });
       fs.writeFileSync(path.join(out, tag + ".jpg"), Buffer.from(whole.split(",")[1], "base64")); md.push(`- **${tag}.jpg**: the whole table, full resolution`);

@@ -1,12 +1,13 @@
 // Record the built client on its scripted transport at a fixed virtual time.
-//   node tools/reel.js <outdir> [clip,clip] [--quick | --stills] [--jobs 2] [--fps 30] [--engine chromium|webkit] [--viewport 1210x834]
-// --quick records 15 fps without video. --stills records only the 2× stills and their audit. --viewport is in CSS px
-// (1180x820 by default; the iPad in landscape is 1210x834).
+//   node tools/reel.js <outdir> [clip,clip] [--quick | --stills | --motion-only] [--jobs 2] [--fps 30] [--engine chromium|webkit] [--viewport 1210x834]
+// --quick records 15 fps without video. --stills records only the 2× stills and their audit. --motion-only skips them.
+// --viewport is in CSS px (1180x820 by default; the iPad in landscape is 1210x834).
 const fs = require("fs"), path = require("path"), { execFileSync } = require("child_process");
 const pw = require(process.env.PW || "playwright");
 const { CLOCK } = require("./behaviour/clock.js");
 const { locate } = require("./behaviour/locate.js");
 let BASE = process.env.BASE;   // unset: serve the build ourselves (tools/serve.js), shared with the processes we start
+const { TRACK, AUDIT } = require("./scene-audit.js");
 const CLIPS = require("./clips.js");
 const HAS_FFMPEG = (() => { try { execFileSync("ffmpeg", ["-version"], { stdio: "ignore" }); return true; } catch (e) { return false; } })();   // without it, no clip.mp4
 const ORIGIN = 1e6;   // the virtual time playback starts at, ms: later than any boot
@@ -14,6 +15,7 @@ const ORIGIN = 1e6;   // the virtual time playback starts at, ms: later than any
 const argv = process.argv.slice(2), flag = (k, d) => { const i = argv.indexOf("--" + k); return i < 0 ? d : argv.splice(i, 2)[1]; };
 const QUICK = argv.includes("--quick") && !!argv.splice(argv.indexOf("--quick"), 1);
 const STILLS = argv.includes("--stills") && !!argv.splice(argv.indexOf("--stills"), 1);
+const MOTION_ONLY = argv.includes("--motion-only") && !!argv.splice(argv.indexOf("--motion-only"), 1);
 const FPS = +flag("fps", QUICK ? 15 : 30), ENG = flag("engine", "chromium"), SCALE = +flag("scale", 2), JOBS = +flag("jobs", 2);
 const VIEWPORT = flag("viewport", "1180x820").split("x").map(Number);
 if (VIEWPORT.length !== 2 || !VIEWPORT.every(n => Number.isInteger(n) && n > 0)) throw new Error("--viewport takes WIDTHxHEIGHT in whole CSS px, e.g. 1210x834");
@@ -23,110 +25,6 @@ const only = onlyArg ? new Set(onlyArg.split(",")) : null;
 // ---- The virtual clock (behaviour/clock.js), installed before any page script ------------------------------------------
 // It runs in real time until __clock.freeze(ORIGIN), so boot, fetches and art loading work normally; after that nothing
 // advances except through __clock.step(ms).
-
-// ---- What gets measured each frame ---------------------------------------------------------------------------------
-const TRACK = () => {
-  const dm = window.__deckmaster, snap = dm.scene.inspect(), faces = dm.scene.faces(), out = {};
-  const seats = dm.seats(), pidOf = s => (s == null ? null : ["you", "ana", "bo", "cy"][seats.indexOf(s)] || s);
-  const members = new Map((snap ? snap.pieces : []).map(p => [p.id, p])), flights = new Map((snap ? snap.flights : []).map(f => [f.id, f]));
-  const nameOf = ids => { const c = ids.length ? dm.card(ids[0]) : null; return c ? c.name + (ids.length > 1 ? " ×" + ids.length : "") : undefined; };
-  for (const b of dm.scene.boxes()) {
-    if (!b.visible) continue;
-    const pc = members.get(b.id), fl = flights.get(b.id);
-    const rec = { role: b.kind === "page" ? "floor" : b.kind, pid: pc ? pidOf(pc.seat) : null };
-    const name = pc ? nameOf(pc.shown) : fl && fl.card != null ? nameOf([fl.card]) : undefined;
-    if (name) rec.name = name;
-    if (b.quad) rec.quad = b.quad;
-    else Object.assign(rec, { box: b.box, fade: pc ? +pc.now.fade.toFixed(3) : 0 });
-    // The card face's width on screen as a floor measures it (across its middle, unturned), and whether it stands.
-    if (faces[b.id]) Object.assign(rec, { face: faces[b.id].width, stands: faces[b.id].standing });
-    out[b.kind === "page" && pc ? "floor" + pidOf(pc.seat) : b.id] = rec;
-  }
-  return { objects: out };
-};
-
-// ---- A layout audit, at chosen frames: what the hit test gives each piece, what is hidden --------------------------
-// Audit the drawn table through `window.__deckmaster`: its pieces as the
-// scene last drew them (`scene.faces()`: each card face's quad on screen), what a tap reaches at each point
-// (`scene.pick`, the scene's own picking of its drawn poses), and what is drawn on top there (`scene.under`, a ray
-// against the drawn cards and labels). Roles come from the plan's units. The stack standing up as the table's focus is
-// set aside (one tap does that), except that it may not cover what it aims at; a stack set aside is measured as one
-// more thing on the table. Panels marked data-focus (the sift's caption, the lean-in's bar) are hidden while measuring.
-const AUDIT = step => {
-  const dm = window.__deckmaster, plan = dm.plan(), snap = dm.scene.inspect(), faces = dm.scene.faces(), state = dm.state();
-  const seats = dm.seats(), pidOf = s => (s == null ? null : ["you", "ana", "bo", "cy"][seats.indexOf(s)] || s);
-  const cv = document.querySelector("canvas"), W = innerWidth, H = innerHeight, cols = Math.ceil(W / step), rows = Math.ceil(H / step);
-  const role = new Map();
-  for (const sp of plan.seats.values()) {
-    for (const u of sp.units) role.set(u.id, u.role);
-    if (sp.fixtures.commander) role.set("command:" + sp.seat, "commander");
-  }
-  const up = Object.entries(faces).filter(([, f]) => f.kind === "stack" && f.up && f.visible).map(([id]) => id), stackUp = up.length > 0;
-  const aimed = new Set(stackUp ? ((state.model || {}).stack || []).flatMap(st => (st.targets || []).map(t => (t && typeof t === "object" ? t.card : t)).filter(c => typeof c === "number")) : []);
-  const panel = el => { const a = el && el.closest("[data-audit]"); if (a) return "panel:" + a.dataset.audit; const c = el && el.closest("[class]"); return "panel:" + (c ? String(c.className).split(" ")[0] : el ? el.tagName.toLowerCase() : "?"); };
-  const owned = new Map();   // piece id -> the grid cells a tap there reaches it
-  const grid = () => { for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-    const x = i * step + step / 2, y = j * step + step / 2, el = document.elementFromPoint(x, y);
-    if (el !== cv) continue;
-    const g = dm.scene.pick(x, y, up); if (!g) continue;
-    if (!owned.has(g.id)) owned.set(g.id, new Set()); owned.get(g.id).add(j * cols + i);
-  } };
-  const seen = (x, y, skip) => { const el = document.elementFromPoint(x, y); return el !== cv ? panel(el) : dm.scene.under(x, y, skip); };
-  const inQuad = (q, x, y) => { let s = 0; for (let n = 0; n < 4; n++) { const a = q[n], b = q[(n + 1) % 4], c = (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]); if (c !== 0) { if (s && Math.sign(c) !== s) return false; s = Math.sign(c); } } return true; };
-  const lerp = (q, u, v) => { const a = [q[0][0] + (q[1][0] - q[0][0]) * u, q[0][1] + (q[1][1] - q[0][1]) * u], b = [q[3][0] + (q[2][0] - q[3][0]) * u, q[3][1] + (q[2][1] - q[3][1]) * u]; return [a[0] + (b[0] - a[0]) * v, a[1] + (b[1] - a[1]) * v]; };
-  const strip = (q, v0, v1) => [lerp(q, 0, v0), lerp(q, 1, v0), lerp(q, 1, v1), lerp(q, 0, v1)];
-  const coverOf = (k, q, skip) => {
-    const tally = qq => {
-      const xs = qq.map(p => p[0]), ys = qq.map(p => p[1]), out = { n: 0, by: {} };
-      for (let j = Math.max(0, Math.floor(Math.min(...ys) / step)); j <= Math.min(rows - 1, Math.floor(Math.max(...ys) / step)); j++)
-        for (let i = Math.max(0, Math.floor(Math.min(...xs) / step)); i <= Math.min(cols - 1, Math.floor(Math.max(...xs) / step)); i++) {
-          const x = i * step + step / 2, y = j * step + step / 2;
-          if (!inQuad(qq, x, y)) continue;
-          out.n++; const w = seen(x, y, skip); if (w && w !== k) out.by[w] = (out.by[w] || 0) + 1;
-        }
-      return out;
-    };
-    const f = tally(q), nm = tally(strip(q, 5 / 6, 1)), ft = tally(strip(q, 0, 1 / 6));
-    const pct = t => (t.n ? Math.round(100 * Object.values(t.by).reduce((a, b) => a + b, 0) / t.n) : 0);
-    const top = t => Object.entries(t.by).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([w]) => w);
-    return { face: pct(f), name: pct(nm), foot: pct(ft), by: [...new Set([...top(nm), ...top(ft), ...top(f)])] };
-  };
-  const square = set => {   // the largest square of cells the piece owns, in px
-    let best = 0; const dp = new Map();
-    for (const c of [...set].sort((a, b) => a - b)) { const i = c % cols; const v = i === 0 ? 1 : 1 + Math.min(dp.get(c - 1) || 0, dp.get(c - cols) || 0, dp.get(c - cols - 1) || 0); dp.set(c, v); best = Math.max(best, v); }
-    return best * step;
-  };
-  const panels = [...document.querySelectorAll("[data-focus]")].map(e => [e, e.style.visibility]);
-  panels.forEach(([e]) => (e.style.visibility = "hidden"));
-  const pieces = {};
-  try {
-    grid();
-    for (const pc of snap ? snap.pieces : []) {
-      if (!["unit", "plate", "stack"].includes(pc.kind) || pc.remnant || up.includes(pc.id)) continue;
-      const f = faces[pc.id], cells = owned.get(pc.id), ids = pc.shown.length ? pc.shown : pc.members;
-      const hidden = pc.kind === "unit" && (!pc.visible || !f || !f.visible);
-      pieces[pc.id] = { role: pc.kind === "plate" ? "plate" : pc.kind === "stack" ? "stack" : role.get(pc.id) || "card", pid: pc.kind === "stack" ? "stack" : pidOf(pc.seat), n: ids.length,
-        names: ids.slice(0, 6).map(id => (dm.card(id) || {}).name).filter(Boolean),
-        pick: cells ? pc.kind : null, tapPx: cells ? cells.size * step * step : 0, tapSquare: cells ? square(cells) : 0, hidden,
-        cover: hidden || !f || pc.kind === "plate" ? null : coverOf(pc.id, f.quad, up) };
-      if (f && !hidden && pc.members.some(id => aimed.has(id))) {   // what the stack points at: the stack may not cover it
-        const a = coverOf(pc.id, f.quad, []), b = pieces[pc.id].cover;
-        pieces[pc.id].cover = { face: Math.max(a.face, b.face), name: Math.max(a.name, b.name), foot: Math.max(a.foot, b.foot), by: [...new Set([...a.by, ...b.by])] };
-      }
-    }
-  } finally { panels.forEach(([e, v]) => (e.style.visibility = v)); }
-  // Labels at rest (the stack's focus set aside: the board under it keeps its labels where they are): each one's box and
-  // text size as drawn (unrounded), and every card's name strip and foot, so the packet can check that no label meets
-  // another, or another unit's name or stats. `labelled`: the board draws labels (or has piles that would carry them),
-  // so a beat without them measured is not a pass. Null labels: the scene could not say.
-  const strips = Object.entries(faces).filter(([id, f]) => f.visible && f.kind === "unit" && !up.includes(id))
-    .flatMap(([id, f]) => [{ id, part: "name", q: strip(f.quad, 5 / 6, 1) }, { id, part: "foot", q: strip(f.quad, 0, 1 / 6) }])
-    .map(({ id, part, q }) => ({ id, part, box: [Math.min(...q.map(p => p[0])), Math.min(...q.map(p => p[1])), Math.max(...q.map(p => p[0])), Math.max(...q.map(p => p[1]))] }));
-  const drawn = dm.scene.labels ? dm.scene.labels() : null;
-  const labels = drawn ? drawn.filter(l => l.visible && !up.includes(l.id)).map(l => ({ id: l.id, box: l.box, px: l.px, name: ((pieces[l.id] || {}).names || [])[0] || l.id })) : null;
-  const labelled = (drawn || []).some(l => !up.includes(l.id)) || Object.values(pieces).some(p => p.role !== "plate" && p.role !== "stack" && p.n > 1);
-  return { pieces, stackUp, labels, labelled, strips };
-};
 
 async function open(ctx, clip) {
   const p = await ctx.newPage(), errors = [];
@@ -243,7 +141,7 @@ async function record(browser, clip, dir) {
   c = await context(1);
   const m = await motion(c, clip, dir); await c.close();
   let audits = [], errors = m.errors;
-  if (clip.audit) { c = await context(SCALE); const st = await stills(c, clip, dir, m.frames); await c.close(); audits = st.audits; errors = errors.concat(st.errors); }
+  if (clip.audit && !MOTION_ONLY) { c = await context(SCALE); const st = await stills(c, clip, dir, m.frames); await c.close(); audits = st.audits; errors = errors.concat(st.errors); }
   fs.writeFileSync(path.join(dir, "track.json"), JSON.stringify({ clip: clip.name, about: clip.about, fps: FPS, viewport: VIEWPORT, beats: m.beats, errors, audits, frames: m.track }));
   fs.writeFileSync(path.join(dir, "beats.json"), JSON.stringify(m.beats, null, 1));
   if (!QUICK && HAS_FFMPEG) execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(FPS), "-i", path.join(dir, "frames", "%03d.jpg"), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", path.join(dir, "clip.mp4")]);
@@ -252,7 +150,7 @@ async function record(browser, clip, dir) {
 
 // A machine-wide cap on recordings at once (lanes and fixers record side by side): each top-level run holds one of
 // SLOTS slots, a directory with its pid in it; a slot whose pid has gone is free again.
-const SLOTS = 2, LOCKS = path.join(require("os").homedir(), ".cache/seat-look");
+const SLOTS = 2, LOCKS = path.join(require("os").tmpdir(), "deckmaster-reel-slots");
 async function slot() {
   if (process.env.SEAT_SLOT) return;                                  // a child of a run that holds one
   fs.mkdirSync(LOCKS, { recursive: true });
@@ -273,7 +171,7 @@ const chosen = CLIPS.filter(c => only ? only.has(c.name) : !c.manual);
 if (only && chosen.length !== only.size) throw new Error("Unknown clip: " + [...only].filter(name => !chosen.some(c => c.name === name)).join(", "));
 const ready = slot().then(() => (BASE ? null : require("./serve.js").serve().then(s => { BASE = s.base; process.env.BASE = BASE; })));
 if (chosen.length > 1 && JOBS > 1) ready.then(() => {
-  const { spawn } = require("child_process"), queue = chosen.map(c => c.name), passed = process.argv.slice(2).filter((a, i, all) => a.startsWith("--") || (i && all[i - 1].startsWith("--") && all[i - 1] !== "--quick" && all[i - 1] !== "--stills"));
+  const { spawn } = require("child_process"), queue = chosen.map(c => c.name), passed = process.argv.slice(2).filter((a, i, all) => a.startsWith("--") || (i && all[i - 1].startsWith("--") && all[i - 1] !== "--quick" && all[i - 1] !== "--stills" && all[i - 1] !== "--motion-only"));
   let failed = 0;
   const next = () => new Promise(done => {
     const name = queue.shift(); if (!name) return done();

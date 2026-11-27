@@ -1,3 +1,3 @@
-Focus: cards in play and the stack. Follow every card that moves: from hand to stack, stack to battlefield or graveyard, tokens arriving, creatures attacking, blocking and dying, permanents leaving. For each beat:
-1. **Narrate first**: what each moving card does frame to frame, citing frame numbers, and what the stack and prompt show. Compare adjacent frames part by part; anything that changes between two frames with nothing to explain it is what you are here to catch.
-2. **Then judge** against real cards on a real table, filmed, and against a player trying to follow the game: things that pop, snap, teleport, take paths nothing real would take, pass through other cards, arrive before or after the prompt says so, move when they needn't, or leave a player unsure what just happened, whose it was, or what it targeted.
+Follow the cast, stack resolution and combat. Narrate the game objects' paths and timing with
+frame numbers. Flag cards that pop, pass through other objects, part from their targets, or
+arrive or leave out of step with the prompt. Look for actions that become hard to follow.
