@@ -411,7 +411,8 @@ export class StageRenderer {
         e.set(body.rotation.x, body.rotation.y, 0, body.rotation.order);
         unturned.compose(body.position, q.setFromEuler(e), body.scale).premultiply(body.parent.matrixWorld).multiply(front.matrix);
       } else unturned.copy(m);
-      const a = at(b.min.x, mid, z, unturned), c = at(b.max.x, mid, z, unturned);
+      // Across the printed face (the stock's top, max z), not halfway through the card's thickness.
+      const a = at(b.min.x, mid, b.max.z, unturned), c = at(b.max.x, mid, b.max.z, unturned);
       // Standing: its unturned up leans less than 60 degrees from the world's (a standee leans back 25; a lying card is level).
       const standing = axis.set(0, 1, 0).transformDirection(unturned).y > 0.5;
       let visible = true;

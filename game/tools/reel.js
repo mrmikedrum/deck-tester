@@ -16,6 +16,7 @@ const QUICK = argv.includes("--quick") && !!argv.splice(argv.indexOf("--quick"),
 const STILLS = argv.includes("--stills") && !!argv.splice(argv.indexOf("--stills"), 1);
 const FPS = +flag("fps", QUICK ? 15 : 30), ENG = flag("engine", "chromium"), SCALE = +flag("scale", 2), JOBS = +flag("jobs", 2);
 const VIEWPORT = flag("viewport", "1180x820").split("x").map(Number);
+if (VIEWPORT.length !== 2 || !VIEWPORT.every(n => Number.isInteger(n) && n > 0)) throw new Error("--viewport takes WIDTHxHEIGHT in whole CSS px, e.g. 1210x834");
 const [outDir = "reels/latest", onlyArg] = argv;
 const only = onlyArg ? new Set(onlyArg.split(",")) : null;
 
@@ -38,7 +39,7 @@ const TRACK = () => {
     if (b.quad) rec.quad = b.quad;
     else Object.assign(rec, { box: b.box, fade: pc ? +pc.now.fade.toFixed(3) : 0 });
     // The card face's width on screen as a floor measures it (across its middle, unturned), and whether it stands.
-    if (faces[b.id]) Object.assign(rec, { face: +faces[b.id].width.toFixed(1), stands: faces[b.id].standing });
+    if (faces[b.id]) Object.assign(rec, { face: faces[b.id].width, stands: faces[b.id].standing });
     out[b.kind === "page" && pc ? "floor" + pidOf(pc.seat) : b.id] = rec;
   }
   return { objects: out };
