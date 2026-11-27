@@ -394,128 +394,108 @@ so the log and the motion agree. A first model, a new `gen`, or a view that does
 ## layout: where things go
 
 Pure, with the camera as plain data. The app computes the **table plan** from the model; `play` reads its hit groups
-and the scene draws it. Nothing in layout waits on what the scene drew.
+and the scene draws it. Nothing in layout waits on what the scene drew. Every card on the table is placed by the
+**arrangement engine** ([its design](game-arrangement-engine.md), `layout/arrange/`): a container's cards and space in,
+units, places, pick targets and attention out, with the rules (a `Policy`) swappable and no count of rows or places
+assumed. Where rows break is a stage of its own after ordering (`arrange/breaks.ts`: non-creature lands on a row of their
+own where the space has one), kept when ordering is replaced (a trained model is expected to replace the heuristic
+policies behind the same contract).
 
 ```ts
 export function reservations(viewport: Viewport, mode: ChromeMode, safe: Insets): Reservations;
 // { items: hand and prompt rects, each `visible` in mode "normal" (not "mulligan" or "sifting"); safe: the screen less
 // its insets }. Each corner's rect grows inward by the insets. A sheet or the inspector is an overlay; it never changes
 // the reservations, so opening one never moves the table.
-export interface TableTemplate { seats(n: number, form: "landscape" | "portrait"): readonly SeatSlot[] }  // 4 landscape tuned
+export interface TableTemplate { slots; camera; leaf; part; mine }   // 1 to 4 seats, landscape
 export interface Projector { project(p: V3): Point; onTable(x: number, y: number): V3 }   // pinhole math, equal to three's
 
-export function boardOf(model: TableModel, seat: SeatId): SeatBoard;   // its permanents, as layout facts (boards(model): all)
-// An Aura or Equipment on another seat's permanent is on its host's board, so every card on screen is on exactly one.
-
-export interface SeatLayout {                     // the swap point for the opponent-board exploration
-  plan(input: SeatInput): SeatPlan;
-}
-export interface SeatInput {
-  readonly seat: SeatId; readonly board: SeatBoard;      // the seat's permanents with the facts that matter for layout
-  readonly region: SeatRegion;                           // its slot, scaled; a lean-in is a bigger, lifted region
-  readonly projector: Projector; readonly reserve: Reservations; readonly viewport: Viewport;
-  readonly involved: ReadonlySet<CardId>;                // cards acting now leave their piles
-  readonly memory: LayoutMemory | null;                  // the previous plan: kept places, held rows
-}
-export interface SeatPlan {
-  readonly units: readonly Unit[];                       // card, pile or summary, each with placement, look, members in order
-  readonly home: ReadonlyMap<CardId, UnitId>;            // every permanent → exactly one unit
-  readonly memory: LayoutMemory;
-}
-
 export function tableInputOf(model: TableModel, o: TableInputOptions): TableInput;
-// viewport, safe, mode, memory, settling, involved (a combat draft's cards, as ids: never play's types); the app and
-// the workbench plan the corpus alike through it
-export function planTable(input: TableInput): TablePlan;          // seats, plates, the stack at rest
+// viewport, safe, mode, memory, settling, involved (a combat draft's cards, as ids: never play's types), and the engine's
+// input for every seat (`engine`: each opponent's leaf and my side, the decision in hand); the app, the workbench and the
+// bench plan alike through it
+export function planTable(input: TableInput): TablePlan;
 export interface TablePlan {
   readonly rev: number;                                  // changes when placement or membership changes
   readonly viewport: Viewport; readonly projector: Projector; readonly reserve: Reservations;
-  readonly seats: ReadonlyMap<SeatId, SeatPlan>; readonly memory: ReadonlyMap<SeatId, LayoutMemory>;
+  readonly seats: ReadonlyMap<SeatId, SeatPlan>;         // each seat's units as drawn (arrange/adapter.ts), its page and plate
+  readonly leaves: ReadonlyMap<SeatId, LeafPlan>; readonly mine?: LeafPlan;   // the engine's arrangements at rest
+  readonly memory: ReadonlyMap<SeatId, LayoutMemory>;    // each container's memory, carried to the next plan
   readonly hits: HitGroups;                              // what a tap can reach, for play and the scene's picker
   readonly stack: readonly StackAtRest[];                // top first: key, card, quad, reachable
   readonly stackUp: readonly StackAtRest[];              // the stack as the focus: held up in the middle, read
-  readonly violations: readonly Violation[];             // limits still broken after every retry
+  readonly gathering: Gathering | null; readonly part: number; readonly fieldTop: number; readonly crowded: boolean;
+  readonly decision: { offered; choosing };              // what the focus sheets read of the decision up
+  readonly violations: readonly Violation[];             // limits still broken
 }
-// layout/focus.ts: a lean-in (one seat's page lifted over the middle, squared to me) and a sift (a pile's cards fanned
-// in front of the camera), computed from the committed plan, so the scene draws them without a new plan
-export interface HitGroups {
-  readonly rev: number;                                  // changes when any group's members or their order change
-  readonly groups: readonly HitGroup[];                  // id, kind (card, pile, well, summary, plate, zone, stack),
-                                                         // seat, members in order, quad on screen, draw order
-  readonly up?: readonly HitGroup[];                     // the stack as the focus: a group per card it shows, at its
-}                                                        // stackUp quad, over the whole table, top nearest
-// A group's id is stable for as long as the unit lasts (its first card's id and kind, as today's piece keys).
+export function sheetOf(model: TableModel, plan: TablePlan, focus: SheetFocus, page?: number): FocusSheet | null;
+// layout/focus.ts: a pile opened or a seat's spread, arranged by the engine from the committed plan on demand (kept per
+// plan), so opening one never replans the table
 export function hitTest(plan: TablePlan, p: Point): HitGroup | null;
 ```
 
-Guarantees: a seat plan is sealed only if its units' members are disjoint and together are exactly the seat's
-permanents (`home` is derived from the units, not trusted); a board too big for its region folds into summary units
-that open a sift. Every group but a plate needs a 44×44 CSS px tappable patch, at every viewport: floors scale
-with the design unit, the target never does. `planTable` audits the composed table at rest in draw order (every seat,
-cards acting standing where they are drawn, and the stack; the clash apart, over it): floors, the tappable patch
-inside the safe area and off visible chrome, nothing covering a card's name, foot or most of its face. It folds harder
-where seats collide or the stack covers them, down to a last resort that is always reachable: the whole seat as one
-summary that opens a sift. The stack set aside stands in the open middle the pages leave, the mats parted all the way for it (held up as the focus it floats over the table and nothing parts: `TableInput.stackHeld`); an entry with no room there
-(`no-room`), off the safe area (`off-screen`) or without a patch of its own is not `reachable`: it has no hit group, a
-sheet offers it, and the plan reports the violation. As the focus, the top never stands under its floor: past what
-fits, the cards under it overlap further (each keeping a finger's strip), then the deepest lie under the last one shown.
-While the focus is up the stack is reached through `hits.up`, so every card it shows is tappable, even one with no room
-set aside; the focus clears what the stack aims at and the chrome, or reports `focus-covers`. Portrait viewports, planned with the landscape template, still
-break limits on dense boards.
+**The rest containers.** Every opponent's leaf is a container on the template's no-middle leaves (`TableTemplate.leaf`:
+square to me, every front row on one line), and so is my side (the `mine` policy): my field, eleven places on the
+template's field line (`TableTemplate.mine`), one centred block while it has room (works at its left, what stands in its
+middle), and in front of it my mana lying as wells by kind, in the space the hand and the prompt leave. A seat's plan is
+sealed only if its units' members are disjoint and together are exactly its permanents (`home` is derived, not trusted);
+what the engine's last edit leaves without a place is one entry pile, and a seat the engine could not arrange (it threw:
+`LeafPlan.error` says why) is one entry pile on its frame: never hidden. Every group but a plate needs a 44×44 CSS px
+tappable patch at every viewport: floors scale with the design unit, the target never does. A unit's place on screen is
+its target (`HitGroup.quad`); its face as drawn is `face`, and a tap reaches a face before any wider place.
 
-**Combat** is the gathering's (`layout/arrange/gathering.ts`, every table), in one of two forms
-(`TableInput.combatForm`; absent, `combatFormOf`). **The clash**, when I am attacked or my attackers are blocked (or opponents' duels do not fit): every
+**Off the table.** Graveyard, exile and waiting commanders are the nameplates' (chrome): my nameplate stands at the
+screen's foot right of the hand and shows power, open mana sources and hand count, then shortcuts to my graveyard and
+exile; every seat's nameplate carries a portrait of each waiting commander (a tap reads it and offers any legal cast; mine
+also casts by a drag onto the table). A card bound there flies to the plate. The plates' own table groups lie off the
+leaves: the nameplate takes its taps.
+
+**The parting** makes room when something rests on the middle at table size: every leaf slides along its own `away`,
+and my row toward me, by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens it, its units, slots
+and memory unchanged (`posed` draws it again; the rows are laid to hold their floors and patches parted). The stack set
+aside stands in that middle, the mats parted all the way for it; held up as the focus (`TableInput.stackHeld`) it floats
+over the table and nothing parts. An entry with no room (`no-room`), off the safe area (`off-screen`) or without a patch
+of its own is not `reachable`: it has no hit group, a sheet offers it, and the plan reports the violation. As the focus,
+the top never stands under its floor: past what fits, the cards under it overlap further (each keeping a finger's strip),
+then the deepest lie under the last one shown; it is reached through `hits.up` and clears what it aims at and the chrome,
+or reports `focus-covers`. The template is tuned for one to four seats: one out gives its room back (its nameplate a
+small "Out" chip that opens its focus).
+
+**Moments** change light, never places: each unit carries the engine's light for the moment (`Unit.light`) and a cue
+when it hides what answers it (`Unit.cue`). What a decision offers on my side, and what the stack aims at anywhere,
+steps out of a pile only into whole free places after what rest shows, in the acting rank; anything else stays in its
+pile, lit, and a tap opens it.
+
+**Combat** is the gathering's (`layout/arrange/gathering.ts`), in one of two forms (`TableInput.combatForm`; absent,
+`combatFormOf`). **The clash**, when I am attacked or my attackers are blocked (or opponents' duels do not fit): every
 fighter upright on a plane carried toward the eye, one rank of columns between the plaques and my field row's tops
-(`TablePlan.fieldTop`, which it never covers: `clash-covers`), wings by defender, a blocker on its controller's side
-of its attacker, at the largest step from 1.8 at which every column fits one tier, the rest in a "more" column. Its
-fighters, brand slots (`slot:<attacker>`, reaching the attacker) and "more" (`clash:more`) are reached over the whole
-table; what it covers is reached once it is set aside. **The table form**: each unblocked attack I am in is a lane,
-one trunk per attacking seat and defender, its attackers at home (between opponents, no lane: the attackers' light and
-the defender's tally say it); each blocked fight stands as a **duel** in a row across
-the middle at table size (the attacker, turned when tapped, a clasp, its blockers), the mats parted for it and the row
-slid to where it needs least. A fight between opponents takes the table form by itself; duels that do not fit the
-middle raise the clash (`TablePlan.crowded`, and the app's clash layer), or, set aside, stay home. `TablePlan.gathering` carries the columns, wings, plaques and extent for the
-scene (one light shade, a calm ground of the page's tone under the picture, fighters above both, no lanes) and the
-chrome (plaques, brands, clasps, the plates' tallies, `app/clash.ts`). They count the unblocked attackers' current
-power and say "unblocked", never "damage"; once the engine reports combat damage dealt to a wing's defender (a player
-or a planeswalker) by the attackers aimed at it, the plaque says what was dealt. Who is blocked is Forge's verdict. Wings stand apart, each at least a plaque wide; a defender
-whose attackers all wait in "more" keeps its wing and tally.
+(`TablePlan.fieldTop`, which it never covers: `clash-covers`), wings by defender, a blocker on its controller's side of
+its attacker, at the largest step from 1.8 at which every column fits one tier, the rest in a "more" column. Its
+fighters, brand slots (`slot:<attacker>`) and "more" (`clash:more`) are reached over the whole table. **The table
+form**: each unblocked attack I am in is a lane; each blocked fight between opponents stands as a **duel** in a row
+across the middle at table size, the mats parted for it; duels that do not fit raise the clash (`TablePlan.crowded`), or,
+set aside, stay home. `TablePlan.gathering` carries the columns, wings, plaques and extent for the scene and the chrome
+(`app/clash.ts`), which count the unblocked attackers' current power and say "unblocked", never "damage", until the
+engine reports damage dealt. Who is blocked is Forge's verdict.
 
-`hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest
-by depth, so the stack's top wins where its cards meet), a later group winning a tie; first among the faces drawn
-(`HitGroup.face`), and only where no face is among the wider places an engine unit owns. It is what layout tests, the
-scene's `pick` and the tools use; the scene picks the poses it drew (`pickDrawn`), which at rest equals `hitTest` on the
-committed plan. The app replans only when the plan key changes: gen, model rev, viewport, insets, chrome mode, the
-combat draft's cards, the decision in hand (its kind and the cards it offers: `decisionFactsOf`) and `settling`: cards in flight between zones, while a change set the scene has not taken moves a
-card or its last report said `flying`. Pages then hold their shape while cards leave them; the app replans when it turns
-false, and they re-fit. The first `SeatLayout` adapter, `mat`, is
-today's `fitSeat` and `fold`, ported. A new arrangement that fits `Unit` is a new adapter; one that rearranges the whole table, or sifts of hundreds of
-cards, needs `planTable` work too.
+**The focus sheets** (the engine's focus containers, `arrange/sheet.ts`): a **pile** opened (any seat's pile, a
+graveyard or exile from its nameplate, the clash's "more") lays its cards singly in the pile's order; a seat's
+**spread** ("See X's board" on its nameplate) lays every permanent under its tier's caption (Ready, Tapped, Works, Lands
+or Mana), in the order its leaf shows them, copies one card with its count, an Aura right after its host: a spread hides
+nothing. Both are a sheet brought nearer: every card square to the camera at the table's one mesh size, carried toward
+the eye until it reads `step` times a table card where it came from (2 down to 1.2), the largest step that fits, rows kept
+apart by tier and break run where there is room, then shared, then pages at the smallest step; cards never shrink. While
+a decision chooses cards, what it offers comes first (page 1 holds it; the pager names pages holding more), and an
+offered card's target selects it; otherwise a tap reads the card. The hand slides away under a sheet; the prompt stays
+up and no card covers it; captions and counts are chrome (`SiftView`). The order is the sheet's policy stage
+(`policies/sheet.ts`), apart from its placing.
 
-**The arrangement engine** ([its design](game-arrangement-engine.md), `layout/arrange/`) replaces `SeatLayout` one
-container at a time: a container's cards and space in, units, places, pick targets and attention out, with the rules
-(a `Policy`) swappable and no count of rows or places assumed. Where rows break is a stage of its own after
-ordering (`arrange/breaks.ts`: non-creature lands on a row of their own where the space has one), kept when ordering is
-replaced. Every opponent's leaf is the engine's
-(`tableInputOf(model, { engine: { draw: true } })`, as the app plans; `TablePlan.leaves` holds each at rest), on the
-template's no-middle leaves (`TableTemplate.leaf`: square to me, every front row on one line), and so is my side
-(`TablePlan.mine`, the `mine` policy): my field, eleven places on the template's field line (`TableTemplate.mine`), one
-centred block while it has room (works at its left, what stands in its middle), and in front of it my mana lying as
-wells by kind, in the space the hand and the prompt leave. My nameplate stands at the screen's foot right of the hand
-and shows power, open mana sources and hand count, followed by shortcuts to my graveyard and exile when they hold cards.
-Every seat's nameplate carries the portrait of each waiting commander. A tap on the portrait reads the card and offers
-any legal cast. I can also drag my portrait onto the table to cast it. At rest no middle is held back.
-**The parting** makes room when something rests on the middle at
-table size: every engine leaf slides along its own `away`, and my row toward me, by the least step (`TableTemplate.part`, at most 0.15 card heights) that opens
-it, its units, slots and memory unchanged (`posed` draws it again; the leaves' rows are laid to hold their floors and
-patches parted). `TablePlan.part` says how far. No leaf goes under the chrome along the top (`topChrome`); graveyard and
-exile are in the nameplate's focus, not on the leaves (a sift of one reads the zone from the model). The template is
-tuned for one to four seats: the near place is the camera's (the perspective, in the game or not), the others the
-opponents still in it; one out gives its room back (its nameplate a small "Out" chip that opens its focus), and with
-none left the table is the near place alone. **Moments** change light, never places: each unit carries the engine's
-light for the moment (`Unit.light`: what answers it, what it leaves out) and a cue when it hides what answers it
-(`Unit.cue`). What a decision offers on my side, and what the stack aims at anywhere, steps out of a pile only into
-whole free places after what rest shows, in the acting rank; anything else stays in its pile, lit, and a tap opens it.
+`hitTest` picks in the audit's order: the highest draw order under the point (plates draw over everything; the rest by
+depth, so the stack's top wins where its cards meet), a later group winning a tie; first among the faces drawn, and only
+where no face is among the wider places a unit owns. It is what layout tests, the scene's `pick` and the tools use; the
+scene picks the poses it drew (`pickDrawn`), which at rest equals `hitTest` on the committed plan. The app replans only
+when the plan key changes: gen, model rev, viewport, insets, chrome mode, the combat draft's cards, the decision in hand
+(its kind and the cards it offers: `decisionFactsOf`) and `settling`: cards in flight between zones. Pages then hold their
+shape while cards leave them; the app replans when it turns false, and they re-fit.
 
 ## play: the decision controller
 
@@ -646,7 +626,8 @@ export interface SceneReport {
 ```
 
 Canvas gestures are bound by the app's renderer (below, "input"), not the scene; `SceneIntent` is a stub. The table's
-focus layers are ported: the stack as the focus (`TablePlan.stackUp`), a sift and a lean-in (`layout/focus.ts`). An idle
+focus layers are ported: the stack as the focus (`TablePlan.stackUp`), and the sheets: a pile opened and a seat's spread
+(`layout/focus.ts`), drawn over the table whatever their depth. An idle
 table that still moves on its own (ambient effects) says so in its report (`ambient`): the loop then draws it about 10
 times a second (`AMBIENT_MS`) and still counts as settled, so a recorder's virtual clock is not held up by it.
 
@@ -664,8 +645,8 @@ token (`materials.highlight`).
 **Zoom** is a composed camera move, never navigation: `zoom` names a subject and the camera eases onto it (lower and
 from the right, so cards show their thickness and shadows) and back to the table's when it is gone. Picking stays right
 under it: a tap reaches the piece a ray through the zoomed camera meets, by its identity (what stands above the scrim
-first; with a sift open, only its cards), and a ray that meets none reaches nothing. A seat's page is found and framed
-where it is drawn (a lean-in raises it). For now it is a trial (`?zoom`: a long press on a card, a pile or a seat's page
+first; with a sheet open, only its cards), and a ray that meets none reaches nothing. A seat's page is found and framed
+where it is drawn. For now it is a trial (`?zoom`: a long press on a card, a pile or a seat's page
 zooms; then any input, a tap, a button or Escape, only comes back, and nothing reaches play until the scene has drawn
 the table's camera again).
 
@@ -707,7 +688,7 @@ the projector; a test holds them equal), the base world (the tome, one warm spot
 the pages and the cards, a hemisphere fill and a faint room reflection), the shared geometry, and the `Painter` facade.
 The table is physical: cards are lit card stock at their true thickness (0.3 mm; a pile's height is its count), with a
 faint paper grain, contact shades where they meet the page; the tome's texture paints no lamplight of its own. A card
-lifted off the table (the combat gathering, a lean-in) takes the lamp as it would on the table there, and its mirror of
+lifted off the table (the combat gathering) takes the lamp as it would on the table there, and its mirror of
 the lamp fades as it rises (`liftExposure`), so nothing lifted toward the lamp blows out; a behaviour spec holds a
 gathered card's face within a fifth of its brightness at rest.
 
@@ -768,10 +749,10 @@ target is what is under it at release. A mouse with no button down reports the h
 changes (null when it leaves the canvas or presses; a touch never hovers): the app keeps it and the scene lifts that
 piece a little, with no replan. Taps, drags and hover are wired; hold and the wheel are not yet.
 
-**Focus** is one stack of typed layers, top last (`app/focus.ts`): the table's own (the stack, the clash, a lean-in, a sift)
+**Focus** is one stack of typed layers, top last (`app/focus.ts`): the table's own (the stack, the clash, a seat's spread, a sift)
 always under the chrome's (play's sheet, the inspector, the mulligan, the Game menu, the hand's list, the log, the loss
 report); a new layer goes on top of its tier, one of each. An entry carries its subject (the inspector's card, a
-lean-in's seat, a sift's group) and the control keyboard focus returns to when it goes (the chrome's `data-fk`). The app
+spread's seat, a sift's group, a sheet's page) and the control keyboard focus returns to when it goes (the chrome's `data-fk`). The app
 keeps it in step with what its layers stand for (`sync`): a `sheet` entry while play presents a sheet, the mulligan
 while one is asked, and the stack layer for every new stack (a new item brings it up again, even set aside) until the
 stack empties; and the clash while the combat raises it. The combat itself is remembered for its lifetime, a game's
@@ -900,9 +881,9 @@ four), and enforced at cutover:
 | A decision kind using existing interactions | one file in `play/kinds/` |
 | A decision kind needing a new interaction or board affordance | `play` plus the cues it adds to the scene and chrome |
 | A theme | a sibling of `theme/grimoire/` |
-| An opponent-board arrangement within a seat | a `SeatLayout` adapter |
 | A rule set for grouping, ordering and folding cards | a `Policy` in `layout/arrange/policies/` ([the engine](game-arrangement-engine.md) §2) |
-| A table-wide arrangement | `planTable` and adapters |
+| A table-wide arrangement | `planTable` and `arrange/adapter.ts` |
+| An order for a focus sheet (a trained model) | `layout/arrange/policies/sheet.ts` |
 | 2, 3, 5 or 6 seats, or portrait | Update seat and viewport assumptions across scene and chrome, then add a table template and tune reservations. |
 | Spectators | `Viewer` from the bridge |
 | Several people at one table | server-owned seat identity, per-viewer views and answer authorisation in the bridge; `Viewer` here |

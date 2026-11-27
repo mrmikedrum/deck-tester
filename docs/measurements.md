@@ -541,3 +541,22 @@ the combat of twelve 0.54 / 1.55 and 0.51 / 1.43, 0.63 / 1.98 and 0.73 / 1.91; 3
 5.64 / 25.74, 2.99 / 8.20 and 2.75 / 10.31. On par with main within the noise; the break stage packs a lying band a
 second time only where its classes differ. The iPad's run decides.
 
+
+## The cutover: the engine alone, and the focus sheets (steps 11 and 12) — 2026-11-26
+
+`planTable` in Node (`game/tools/bench-plan.mjs`, 1210 × 834, 200 plans each), main (`e840f75`) then this branch back to
+back (load average 10 to 13), median / p90 / worst ms. "And every spread" is the plan, then every opponent's spread
+("See X's board") arranged on it; main's last column was `mat` alone, which is gone.
+
+| Input | Main, as the app plans | Here, as the app plans | Here, and every spread |
+|---|---|---|---|
+| The design pass's turn 15 | 0.60 / 0.77 / 3.91 | 0.52 / 0.70 / 2.95 | 0.70 / 0.76 / 1.65 |
+| Dense | 0.60 / 0.65 / 1.62 | 0.53 / 0.55 / 1.09 | 0.73 / 0.77 / 1.65 |
+| 40 distinct names | 0.47 / 0.50 / 1.30 | 0.41 / 0.42 / 0.97 | 0.60 / 0.64 / 1.48 |
+| A combat of twelve | 0.50 / 0.53 / 1.80 | 0.46 / 0.49 / 1.15 | 0.65 / 0.79 / 2.80 |
+| 30 snapshots in sequence | 1.69 / 2.23 / 3.93 | 1.62 / 2.24 / 5.94 | 1.84 / 3.13 / 5.79 |
+
+The plan is a little faster with the seat-layout seam and its fold-harder rounds gone. Three spreads together cost about
+0.2 ms over the plan, so one opened costs under 0.1 ms; a sheet is arranged once per plan and kept. At the iPad's
+earlier 6 to 9 times Node's p90, a plan is about 3 to 7 ms and a spread well under 1. The owner's run decides
+(`workbench.html?only=bench`, held in landscape; its third column is now "and every spread").

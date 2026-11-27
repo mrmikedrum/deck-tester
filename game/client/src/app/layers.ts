@@ -172,6 +172,8 @@ export function siftViewOf(model: TableModel, plan: TablePlan, focus: SheetFocus
     title = n > 1 ? `${what} ×${n}` : what;
   }
   const shown = sh.places.flatMap((p) => p.cards), first = sh.cards.indexOf(shown[0]!);
+  // (the lands' tier holds every mana source: where rocks lie among the lands, it says mana)
+  const allLands = sh.places.filter((p) => p.tier === "lands").every((p) => p.cards.every((id) => /\bLand\b/.test(model.cards.get(id)?.face.type ?? "")));
   const pages = sh.pages.count, p = sh.pages.current;
   const elsewhere = sh.pages.offeredOn.length ? ` · choices on ${sh.pages.offeredOn.map((k) => k + 1).join(", ")}` : "";
   return {
@@ -188,7 +190,7 @@ export function siftViewOf(model: TableModel, plan: TablePlan, focus: SheetFocus
       const c = model.cards.get(pl.top);
       return c ? [{ id: pl.top, label: [c.face.name + (pl.cards.length > 1 ? ` ×${pl.cards.length}` : ""), ...asides(model, c)].join(", ") }] : [];
     }),
-    captions: sh.captions.map((c) => ({ text: CAPTION[c.kind]!, x: c.at.x, y: c.at.y })),
+    captions: sh.captions.map((c) => ({ text: c.kind === "lands" && !allLands ? "Mana" : CAPTION[c.kind]!, x: c.at.x, y: c.at.y })),
     counts: sh.places.flatMap((pl) => (pl.count ? [{ text: `×${pl.count.n}`, x: pl.count.at.x, y: pl.count.at.y }] : [])),
   };
 }
