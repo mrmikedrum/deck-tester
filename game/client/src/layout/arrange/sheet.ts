@@ -101,6 +101,8 @@ interface Row {
   readonly y: number;
   readonly lo: number;
   readonly hi: number;
+  /** How far in from the sheet's left edge its cards start: a tier that began mid-row goes on under its own caption. */
+  indent: number;
 }
 
 const add = (a: V3, b: V3, k = 1): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k });
@@ -183,15 +185,26 @@ function boundaries(units: readonly SheetUnit[], rules: readonly BreakRule[]): {
 /**
  * The units laid in rows from `y0` down, pages where the area ends: a row ends where its span does, and before each unit
  * in `breaks` (a tier's or a run's start). A caption stands over each tier's first unit; a tier going on at a new page's
- * top says so again (a row it wraps onto does not). `onePage`: give up (null) rather than go past the area's foot.
+ * top says so again; a row it wraps onto starts under that tier's caption (`indents`), or says it again where the tier
+ * began mid-row and there is no room to start there. `onePage`: give up (null) rather than go past the area's foot.
  */
-function pack(input: SheetInput, g: Geometry, units: readonly SheetUnit[], breaks: ReadonlySet<number>, y0: number, onePage: boolean): Row[][] | null {
+function pack(input: SheetInput, g: Geometry, units: readonly SheetUnit[], breaks: ReadonlySet<number>, y0: number, onePage: boolean, indents = true): Row[][] | null {
   const foot = input.area.bottom;
   const pages: Row[][] = [];
   let page: Row[] = [], cur: Row | null = null, used = 0, prev: SheetUnit | null = null;
-  const start = (y: number, lead: SheetUnit): Row => {
+  /** Where the tier being laid began, in from the sheet's left edge: a row it wraps onto starts there. */
+  let tierAt = 0;
+  const start = (y: number, lead: SheetUnit, goesOnTier: boolean): Row => {
     const goesOn = !page.length && pages.length > 0 && lead.tier !== null && prev?.tier === lead.tier;
-    const r: Row = { units: [], captions: goesOn ? [{ at: 0, kind: lead.tier!, more: true }] : [], y, ...span(input, g, y) };
+    const r: Row = { units: [], captions: goesOn ? [{ at: 0, kind: lead.tier!, more: true }] : [], y, ...span(input, g, y), indent: 0 };
+    // (wrapping on the same page: under its caption, where a card still fits there; else from the left edge, saying its
+    // caption again if the tier began mid-row, so the row does not read as the tier before it)
+    const wraps = goesOnTier && !goesOn && lead.tier !== null && prev?.tier === lead.tier;
+    if (wraps && indents && r.hi - r.lo - tierAt >= cellW(g, lead)) r.indent = tierAt;
+    else {
+      if (wraps && tierAt > 0) r.captions.push({ at: 0, kind: lead.tier!, more: true });
+      tierAt = 0;
+    }
     page.push(r);
     used = 0;
     return r;
@@ -199,7 +212,7 @@ function pack(input: SheetInput, g: Geometry, units: readonly SheetUnit[], break
   for (let i = 0; i < units.length; i++) {
     const x = units[i]!, tierStart = !prev || prev.tier !== x.tier;
     const broken = !!cur && cur.units.length > 0 && breaks.has(i);
-    const wide = !!cur && cur.units.length > 0 && used + g.gx + cellW(g, x) > cur.hi - cur.lo;
+    const wide = !!cur && cur.units.length > 0 && cur.indent + used + g.gx + cellW(g, x) > cur.hi - cur.lo;
     if (!cur || broken || wide) {
       let y = cur ? cur.y + rowH(g, cur) + g.gy : y0;
       if (cur && y + g.cap + g.th > foot) {
@@ -208,9 +221,13 @@ function pack(input: SheetInput, g: Geometry, units: readonly SheetUnit[], break
         page = [];
         y = input.area.top;
       }
-      cur = start(y, x);
+      // (a row that carries on the tier, whether it wrapped or a break run starts it)
+      cur = start(y, x, !tierStart);
     }
-    if (tierStart && x.tier) cur.captions.push({ at: cur.units.length, kind: x.tier, more: false });
+    if (tierStart && x.tier) {
+      cur.captions.push({ at: cur.units.length, kind: x.tier, more: false });
+      tierAt = cur.indent + used + (cur.units.length ? g.gx : 0);
+    }
     used += (cur.units.length ? g.gx : 0) + cellW(g, x);
     cur.units.push(x);
     prev = x;
@@ -231,12 +248,16 @@ function pack(input: SheetInput, g: Geometry, units: readonly SheetUnit[], break
  */
 export function arrangeSheet(input: SheetInput): Sheet {
   const rules = input.rules ?? BREAK_RULES, a = input.area;
+  // (a tier wrapping goes on under its caption where the room allows that too; else from the left edge, rather than page)
   const one = (g: Geometry, units: readonly SheetUnit[], breaks: ReadonlySet<number>): Row[] | null => {
-    const top = pack(input, g, units, breaks, a.top, true);
-    if (!top) return null;
-    if (!top[0]?.length) return [];
-    const rows = top[0]!, last = rows.at(-1)!, free = a.bottom - (last.y + rowH(g, last));
-    return (free > 0 ? pack(input, g, units, breaks, a.top + free / 2, true)?.[0] : null) ?? rows;
+    for (const indents of [true, false]) {
+      const top = pack(input, g, units, breaks, a.top, true, indents);
+      if (!top) continue;
+      if (!top[0]?.length) return [];
+      const rows = top[0]!, last = rows.at(-1)!, free = a.bottom - (last.y + rowH(g, last));
+      return (free > 0 ? pack(input, g, units, breaks, a.top + free / 2, true, indents)?.[0] : null) ?? rows;
+    }
+    return null;
   };
   const modes: Mode[] = input.role === "spread" ? ["apart", "tiers"] : ["apart"];
   for (const mode of modes)
@@ -265,12 +286,12 @@ function laid(input: SheetInput, step: number, g: Geometry, mode: Mode, pages: r
   const proj = input.projector, { fwd, f } = lens(proj), depth = (f * CARD.h * S_TABLE) / g.h;
   const rows = pages[current] ?? [];
   const a = input.area, mid = (a.left + a.right) / 2;
-  const widest = Math.max(0, ...rows.map((r) => rowW(g, r)));
+  const widest = Math.max(0, ...rows.map((r) => r.indent + rowW(g, r)));
   // A spread's rows share one left edge where their spans allow (its captions line up); a pile's rows are each centred.
   const left = (r: Row): number => {
     const w = rowW(g, r);
     if (input.role === "pile") return Math.max(r.lo, Math.min(r.hi - w, (r.lo + r.hi) / 2 - w / 2));
-    return Math.max(r.lo, Math.min(r.hi - w, mid - widest / 2));
+    return Math.max(r.lo, Math.min(r.hi - w - r.indent, mid - widest / 2)) + r.indent;
   };
   const places: SheetPlace[] = [], captions: SheetCaption[] = [];
   const c = Math.cos(-NOTCH), s = Math.sin(-NOTCH);

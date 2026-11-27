@@ -8,7 +8,7 @@ import type { Quad } from "../../../src/layout/shape";
 import { CH } from "../../../src/layout/geometry";
 import { S_TABLE } from "../../../src/layout/arrange/scale";
 import { SHEET_STEPS, arrangeSheet, referenceHeight } from "../../../src/layout/arrange/sheet";
-import type { Sheet, SheetInput } from "../../../src/layout/arrange/sheet";
+import type { Sheet, SheetInput, SheetPlace } from "../../../src/layout/arrange/sheet";
 import { pileUnits, spreadUnits } from "../../../src/layout/arrange/policies/sheet";
 import type { SheetUnit } from "../../../src/layout/arrange/policies/sheet";
 import type { ArrCard } from "../../../src/layout/arrange/contract";
@@ -159,7 +159,7 @@ describe("a seat's spread", () => {
       expect(under.some((b) => Math.abs(b.t - c.at.y) < 40 && c.at.x >= b.l - 1 && c.at.x <= b.r)).toBe(true);
     }
   });
-  it("each tier starts a row of its own as far as the room allows, and says its caption once (a tier wrapping does not repeat it)", () => {
+  it("each tier starts a row of its own as far as the room allows, its caption over its first card", () => {
     resetIds();
     // a turn-15 board's worth: too many for every tier apart at any step, enough room for some of them
     const cards: ArrCard[] = [
@@ -170,10 +170,43 @@ describe("a seat's spread", () => {
     ];
     const s = sheet(spreadUnits(cards, () => 0, NOTHING), { role: "spread" });
     expect(s.pages.count).toBe(1);
-    expect(s.captions.map((c) => c.kind)).toEqual(["ready", "tapped", "works", "lands"]);
+    expect(s.captions.filter((c) => !c.more).map((c) => c.kind)).toEqual(["ready", "tapped", "works", "lands"]);
     // tiers that start a row of their own have their captions at the sheet's left edge
     const lefts = s.captions.filter((c) => Math.abs(c.at.x - Math.min(...s.captions.map((k) => k.at.x))) < 30);
     expect(lefts.length, s.rows).toBeGreaterThanOrEqual(2);
+  });
+
+  it("a tier that starts mid-row and wraps goes on under its own caption, or says it again: never read as the tier before", () => {
+    resetIds();
+    const cards: ArrCard[] = [
+      ...Array.from({ length: 9 }, (_, i) => ac({ name: `Ready ${i}` })),
+      ...Array.from({ length: 4 }, (_, i) => ac({ name: `Work ${i}`, kind: "enchantment" })),
+      // the lands' tier holds rocks too: a break run inside it starts rows as much as a wrap does
+      ...Array.from({ length: 3 }, (_, i) => ac({ name: `Rock ${i}`, kind: "rock" })),
+      ...Array.from({ length: 22 }, (_, i) => ac({ name: `Land ${i}`, kind: "land" })),
+    ];
+    const units = spreadUnits(cards, () => 0, NOTHING);
+    let wraps = 0;
+    for (const w of [700, 800, 900, 1000, 1100])
+      for (let h = 300; h <= 700; h += 20) {
+        const s = sheet(units, { role: "spread", area: { ...AREA, right: AREA.left + w, bottom: AREA.top + h }, keepouts: [] });
+        // each row of each tier, in order; a row whose first card goes on a tier begun mid-row above it
+        const rows = new Map<number, SheetPlace[]>();
+        for (const p of s.places) {
+          const t = Math.round(bounds(p.quad).b / 4);
+          rows.set(t, [...(rows.get(t) ?? []), p]);
+        }
+        const ordered = [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, ps]) => ps.sort((a, b) => bounds(a.quad).l - bounds(b.quad).l));
+        ordered.forEach((row, k) => {
+          const above = ordered[k - 1], lead = row[0]!;
+          if (!above || above.at(-1)!.tier !== lead.tier || above[0]!.tier === lead.tier) return;
+          wraps++;
+          const cap = s.captions.find((c) => c.kind === lead.tier && !c.more)!, b = bounds(lead.quad);
+          const again = s.captions.some((c) => c.kind === lead.tier && c.more && Math.abs(c.at.x - b.l) < 40 && c.at.y <= b.t + 1 && c.at.y > b.t - 60);
+          expect(b.l >= cap.at.x - 1 || again, `${w}x${h} ${s.rows}`).toBe(true);
+        });
+      }
+    expect(wraps).toBeGreaterThan(0);
   });
 
   it("an Aura stands right after what it is on, never stacked; while choosing an offered copy stands alone", () => {

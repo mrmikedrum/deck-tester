@@ -484,8 +484,9 @@ graveyard or exile from its nameplate, the clash's "more") lays its cards singly
 or Mana), in the order its leaf shows them, copies one card with its count, an Aura right after its host: a spread hides
 nothing. Both are a sheet brought nearer: every card square to the camera at the table's one mesh size, carried toward
 the eye until it reads `step` times a table card where it came from (2 down to 1.2), the largest step that fits; each
-tier (then each break run between adjacent cards) starts a row of its own as far as the room allows, its caption once
-over its first card, the policy's sequence never reordered; past that, pages at the smallest step; cards never shrink. A
+tier (then each break run between adjacent cards) starts a row of its own as far as the room allows, its caption over its
+first card; a tier that began mid-row carries on under its caption, or says it again at the next row's start where it
+cannot; the policy's sequence is never reordered; past that, pages at the smallest step; cards never shrink. A
 tap reaches the engine's target for each place, moved with the card as drawn; a stack of copies is a group play is told
 of (`sheet:<top>`), so its twins rule chooses among them, and a block offers its attackers as well as its blockers. While
 a decision chooses cards, what it offers comes first (page 1 holds it; the pager names pages holding more), and an
