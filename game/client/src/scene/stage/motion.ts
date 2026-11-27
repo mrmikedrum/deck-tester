@@ -66,8 +66,7 @@ export const PATH = {
   /** A standing card arcs over its neighbours' tops (`CH * s0 * 0.7`); anything else a little (`0.6`). */
   standeeArc: 0.7,
   arc: 0.6,
-  /** It lies down and takes the pile's size in the first part of its way (`settle = pile ? .55 : big ? .8 : 1`). */
-  settlePile: 0.55,
+  /** A big card takes its size in the first part of its way (`settle = big ? .8 : 1`). */
   settleBig: 0.8,
   /** It starts shedding its size a quarter of the way in, unless it lands on a pile or was big (`smooth(.25, settle)`). */
   shrinkFrom: 0.25,

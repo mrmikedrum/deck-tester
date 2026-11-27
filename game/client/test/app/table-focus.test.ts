@@ -331,6 +331,27 @@ describe("the clash, a table layer", () => {
   }
   const fighterOf = (r: Rig, card: number) => groups(r).find((g) => g.members.includes(card as CardId))!;
 
+  it("two identical attackers on Atraxa's spread, a blocker that may block either: each stands alone, and the one tapped is the one blocked", () => {
+    const beast = (id: number): Json => ({ id, name: "Beast", owner: "Atraxa", controller: "Atraxa", type: "Token Creature - Beast", power: 3, toughness: 3, token: true, tapped: true });
+    const e = fight({ v: 1, at: "You", attackers: [901, 902] }) as { view: { players: Json[] }; decision: Json };
+    e.view.players[1]!["battlefield"] = [beast(901), beast(902)];
+    // the Guard (30) may block either Beast; nothing else
+    e.decision = { id: 7, kind: "block", turn: "T1 combat", prompt: "Declare blockers", repeat: false, options: ["block", "block"], refs: [{ card: 30, blocks: 901 }, { card: 30, blocks: 902 }], min: 0, max: 2 };
+    const r = started(e);
+    // hold the Guard, then see Atraxa's board and tap the second Beast there
+    r.send({ a: "tap", on: { card: 30 as CardId } });
+    r.frame((r.now += 10));
+    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(seatId("Atraxa")) });
+    r.frame((r.now += 10));
+    const f = r.commits.at(-1)!.frame!;
+    const sh = sheetOf(f.model, f.plan, { kind: "spread", seat: seatId("Atraxa") })!;
+    // the twins stand apart while the decision offers them (not one stack whose top would be blocked)
+    expect(sh.places.filter((p) => p.cards.some((c) => c === 901 || c === 902)).map((p) => p.cards)).toEqual([[901], [902]]);
+    r.send({ a: "tap", on: { card: 902 as CardId } });
+    r.frame((r.now += 10));
+    expect(play.present(r.state.play).board.combat?.blocks).toEqual([{ blocker: 30, attacker: 902 }]);
+  });
+
   it("comes up when I am attacked; a tap on the shade sets it aside behind a Combat chip; the chip raises it; it goes with the combat", () => {
     const r = started(fight({ v: 1, at: "You" }));
     expect(layers(r)).toEqual([["clash", null]]);
@@ -569,7 +590,7 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
       { id: 711, name: "Forest", owner: "Atraxa", controller: "Atraxa", type: "Basic Land - Forest" },
     ];
     const r = started(e);
-    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa), origin: `board:${atraxa}` } as never);
+    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
     r.frame((r.now += 10));
     expect(layers(r)).toEqual([["lean", atraxa]]);
     const view = r.commits.at(-1)!.view;
@@ -583,6 +604,14 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
     const faces = [...d.pieces.values()].filter((p) => p.draw.t === "sift" && p.face !== null).map((p) => p.face!);
     expect(faces).toHaveLength(3);
     expect(faces).toEqual(expect.arrayContaining([710, 711]));
+    // the stack of four Thopters is a group of them for play (its twins rule), and a tap on it reads the one it shows
+    const stack = sheetOf(f.model, f.plan, { kind: "spread", seat: atraxa })!.places.find((p) => p.cards.length === 4)!;
+    r.send({ a: "tap", on: { group: `sheet:${stack.top}`, members: stack.cards } });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([["lean", atraxa], ["inspector", null]]);
+    expect(r.state.focus.layers[1]?.card).toBe(stack.top);
+    r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
+    r.frame((r.now += 10));
     // a card on it is the card itself: the inspector over the spread
     r.send({ a: "tap", on: { card: 710 as CardId } });
     r.frame((r.now += 10));
@@ -591,7 +620,7 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
     r.inputs.push({ t: "dismiss", stamp: { at: r.now, commit: r.state.commit } });
     r.frame((r.now += 10));
     expect(layers(r)).toEqual([["lean", atraxa]]);
-    expect(r.state.focus.layers[0]?.restore).toBe(`board:${atraxa}`);
+    expect(r.state.focus.layers[0]?.restore).toBe(`plate:${atraxa}`);
     r.send({ a: "tap", on: { nothing: true } });
     r.frame((r.now += 10));
     expect(layers(r)).toEqual([]);
@@ -621,8 +650,89 @@ describe("an opponent's graveyard and exile: in the nameplate's focus, not on th
     expect(r.transport.answers.map((a) => a.body)).toEqual([expect.objectContaining({ id: 9, answer: [1] })]);
   });
 
-  it("a lean-in on a seat goes when that seat leaves the game", () => {
-    const r = started(yard(1));
+  /** `yard` with a creature of Atraxa's on her board (a spread has something to show). */
+  const yardWithBoard = (v: number): Json => {
+    const e = yard(v) as { view: { players: Json[] } };
+    e.view.players.find((p) => p["name"] === "Atraxa")!["battlefield"] = [{ id: 720, name: "Steel Overseer", owner: "Atraxa", controller: "Atraxa", type: "Artifact Creature - Construct", power: 1, toughness: 1 }];
+    return e;
+  };
+
+  it("a spread whose board shrinks between two presses pages back from the page it shows (as a pile does)", () => {
+    const army = (n: number): Json[] => Array.from({ length: n }, (_, i) => ({ id: 800 + i, name: `Soldier ${i}`, owner: "Atraxa", controller: "Atraxa", type: "Creature - Soldier", power: 1 + (i % 5), toughness: 1 }));
+    const withArmy = (v: number, n: number): Json => {
+      const e = yard(v) as { view: { players: Json[] } };
+      e.view.players.find((p) => p["name"] === "Atraxa")!["battlefield"] = army(n);
+      return e;
+    };
+    const r = started(withArmy(1, 120));
+    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    const view = () => r.commits.at(-1)!.view.sift!;
+    const pages = view().pages, per = view().cards.length;
+    expect(pages).toBeGreaterThan(2);
+    const pageBy = (delta: number) => {
+      r.inputs.push({ t: "siftPage", stamp: { at: r.now, commit: r.state.commit }, group: `spread:${atraxa}`, delta });
+      r.frame((r.now += 10));
+    };
+    pageBy(pages);
+    expect(view().page).toBe(pages - 1);
+    // the board shrinks to two pages' worth: the last is shown, and the stored page follows
+    r.transport.push(withArmy(2, 2 * per - 3));
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(view()).toMatchObject({ page: 1, pages: 2 });
+    expect(r.state.focus.layers.find((x) => x.layer === "lean")?.page).toBe(1);
+    pageBy(-1);
+    expect(view().page).toBe(0);
+  });
+
+  it("the lands' tier says Mana on every page when a rock lies anywhere in it, Lands when it holds lands alone", () => {
+    const land = (id: number, n: number): Json => ({ id, name: `Land ${n}`, owner: "Atraxa", controller: "Atraxa", type: "Land" });
+    const ring = { id: 999, name: "Sol Ring", owner: "Atraxa", controller: "Atraxa", type: "Artifact" };
+    const captionsOn = (bf: Json[]) => {
+      const e = yard(1) as { view: { players: Json[] } };
+      e.view.players.find((p) => p["name"] === "Atraxa")!["battlefield"] = bf;
+      const r = started(e);
+      r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+      r.frame((r.now += 10));
+      const out: string[] = [];
+      for (let k = 0; k < r.commits.at(-1)!.view.sift!.pages; k++) {
+        out.push(...r.commits.at(-1)!.view.sift!.captions.map((c) => c.text));
+        r.inputs.push({ t: "siftPage", stamp: { at: r.now, commit: r.state.commit }, group: `spread:${atraxa}`, delta: 1 });
+        r.frame((r.now += 10));
+      }
+      return { out, pages: r.commits.at(-1)!.view.sift!.pages };
+    };
+    const lands = Array.from({ length: 140 }, (_, i) => land(600 + i, i));
+    const withRing = captionsOn([...lands, ring]);
+    expect(withRing.pages).toBeGreaterThan(1);
+    expect(withRing.out.length).toBeGreaterThan(1);
+    expect(new Set(withRing.out)).toEqual(new Set(["Mana"]));
+    expect(new Set(captionsOn(lands).out)).toEqual(new Set(["Lands"]));
+  });
+
+  it("a seat's spread goes when its board empties (never an empty sheet with the hand away); an empty board offers none", () => {
+    const r = started(yardWithBoard(1));
+    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    expect(layers(r)).toEqual([["lean", atraxa]]);
+    expect(r.commits.at(-1)!.view.hand.away).toBe(true);
+    r.transport.push(yard(2));
+    r.frame((r.now += 10));
+    r.frame((r.now += 1300));
+    expect(layers(r)).toEqual([]);
+    expect(r.commits.at(-1)!.view.hand.away).toBe(false);
+    // with nothing on her board the nameplate offers no spread, and the order is refused
+    r.inputs.push({ t: "seat", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    expect(r.commits.at(-1)!.view.seatFocus?.board).toBe(false);
+    r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
+    r.frame((r.now += 10));
+    expect(layers(r).some(([l]) => l === "lean")).toBe(false);
+  });
+
+  it("a seat's spread goes when that seat leaves the game", () => {
+    const r = started(yardWithBoard(1));
     r.inputs.push({ t: "board", stamp: { at: r.now, commit: r.state.commit }, seat: String(atraxa) });
     r.frame((r.now += 10));
     expect(layers(r)).toEqual([["lean", atraxa]]);

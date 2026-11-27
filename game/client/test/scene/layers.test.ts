@@ -136,7 +136,12 @@ group("a seat's spread", () => {
     expect(view.drawn.get(plate.id)!.now.pos).toEqual(still.drawn.get(plate.id)!.now.pos);
     const sifted = [...view.drawn.entries()].filter(([id]) => id.startsWith("sift:") && id !== "sift:scrim");
     expect(sifted.length).toBeGreaterThan(0);
-    for (const [id, dp] of sifted) expect(pickDrawn(board.plan, view.drawn, centre(poseQuad(board.plan.projector, dp.now, dp.sift?.roll ?? 0)))?.id).toBe(id);
+    // (a card alone is reached as itself, a stack of copies as a group of them)
+    for (const [id, dp] of sifted) {
+      const got = pickDrawn(board.plan, view.drawn, centre(poseQuad(board.plan.projector, dp.now, dp.sift?.roll ?? 0)));
+      expect(got?.id).toBe(dp.sift!.members.length > 1 ? id.replace("sift:", "sheet:") : id);
+      expect(got?.members).toEqual(dp.sift!.members);
+    }
     expect(pickDrawn(board.plan, view.drawn, { x: 4, y: 4 })).toBeNull();
   });
 });

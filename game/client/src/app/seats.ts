@@ -1,7 +1,7 @@
 // The seats as the chrome tells them: each seat's nameplate with its summary as icons, and the nameplate focus with the
 // same summary in words and the seat's zones picked up as printed cards. Figures are facts the engine sent, never a
 // verdict. The client's words name a seat by its name, never by a pronoun. Pure.
-import { FEED_UNITS, HAND_UNITS, designUnit } from "../layout";
+import { FEED_UNITS, HAND_UNITS, boardOf, designUnit } from "../layout";
 import type { TablePlan } from "../layout";
 import { RULE_CARDS, isLand } from "../model";
 import type { Card, SeatId, TableModel } from "../model";
@@ -435,7 +435,8 @@ export function seatFocusOf(model: TableModel, seat: SeatId): SeatFocusView | nu
     graveyard,
     exile,
     command,
-    board: !s.out,
+    // (a board with nothing on it has nothing to see: no spread is offered)
+    board: !s.out && boardOf(model, seat).cards.length > 0,
     hand,
     handCount: s.hand,
     library: s.library,

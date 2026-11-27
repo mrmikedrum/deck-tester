@@ -363,7 +363,7 @@ export class Stage {
     const plans = planFlights(set, ctx);
     const inputs: ScheduleInput[] = plans.map((f) => {
       const from = f.origin.from === "piece" ? this.actors.get(f.origin.piece) : undefined;
-      const to = f.dest.to === "pile" || f.dest.to === "piece" ? latest.pieces.get(f.dest.piece) : undefined;
+      const to = f.dest.to === "piece" ? latest.pieces.get(f.dest.piece) : undefined;
       const maker = f.origin.from === "maker" ? this.actors.get(f.origin.piece) : undefined;
       return {
         flight: f,
@@ -648,7 +648,7 @@ export class Stage {
       const stepped = st.actor.step(t);
       if (p.kind === "hidden") continue;
       // Stepped out of the light, a card on the table rises toward me (the stack's cards already stand up).
-      const sample = hl && (p.kind === "unit" || p.kind === "zone") ? this.lifted(stepped, hl.k) : stepped;
+      const sample = hl && p.kind === "unit" ? this.lifted(stepped, hl.k) : stepped;
       // Above the scrim: what steps out of the light, and what the description raises (the clash's fighters, my choices).
       const raised = !!hl || !!desc?.above.has(st.id);
       if (raised) above.add(st.id);
@@ -670,9 +670,9 @@ export class Stage {
         if (was !== p.draw.up && !this.reduced) this.handoffUntil = Math.max(this.handoffUntil, t + motion.stackPrint);
         this.stackUps.set(st.id, p.draw.up);
       }
-      const sift = p.draw.t === "sift" ? { sift: { card: p.draw.card, seat: p.seat, roll: siftRoll(p.draw.tapped, sample.alpha) } } : {};
+      const sift = p.draw.t === "sift" ? { sift: { card: p.draw.card, seat: p.seat, roll: siftRoll(p.draw.tapped, sample.alpha), members: p.draw.members, region: p.draw.region } } : {};
       drawn.set(st.id, { now: sample, rest, pickable: !(p.members.length > 0 && st.shown.length === 0), ...(up ? { up } : {}), ...(raised ? { above: true } : {}), ...sift });
-      const faceCard = p.kind === "zone" ? (st.shown[st.shown.length - 1] ?? null) : p.kind === "unit" ? (st.shown.includes(p.face!) ? p.face : (st.shown[0] ?? p.face)) : p.face;
+      const faceCard = p.kind === "unit" ? (st.shown.includes(p.face!) ? p.face : (st.shown[0] ?? p.face)) : p.face;
       const fm = this.faceOf(st, faceCard, p.mark, p.small ?? false);
       const face = fm?.face ?? null;
       // Its Auras and Equipment are drawn once they have arrived, and never counted in its title.

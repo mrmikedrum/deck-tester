@@ -17,7 +17,7 @@ interface Row {
 }
 
 const destKey = (f: Unordered): string =>
-  f.dest.to === "pile" || f.dest.to === "piece" ? f.dest.piece : f.dest.to === "hand" ? "hand" : `nowhere:${f.dest.seat ?? ""}`;
+  f.dest.to === "piece" ? f.dest.piece : f.dest.to === "hand" ? "hand" : `nowhere:${f.dest.seat ?? ""}`;
 const fromStack = (f: Unordered): boolean => f.origin.from === "piece" && f.origin.piece.startsWith("stack:");
 
 /** First row that reads a flight orders it. */
@@ -39,12 +39,6 @@ export const ORDER: readonly Row[] = [
     phase: 1,
     cohort: (f) => `to:${destKey(f)}`,
     why: "What leaves the battlefield (or a pile) follows what the stack did; each trip to one pile is its own cohort.",
-  },
-  {
-    when: (f) => f.dest.to === "pile",
-    phase: 1,
-    cohort: (f) => `to:${destKey(f)}`,
-    why: "A card put into a pile from out of sight (milled, discarded) arrives with the departures.",
   },
   {
     when: () => true,

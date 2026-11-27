@@ -80,10 +80,6 @@ const frameOf = (proj: Projector, pos: V3, posture: Posture, tapped: boolean, ow
   return { base: pos, up: { x: 0, y: Math.sin(delta), z: -Math.cos(delta) } };
 };
 
-/** Where a point of the table is drawn: itself at rest, or as a caller carries it. */
-export type At = (v: V3) => V3;
-const AT_REST: At = (v) => v;
-
 /** A card's middle at rest (the point the scene poses it by, `unitPose`). */
 export function cardMiddle(proj: Projector, p: Placement, tapped: boolean): V3 {
   const fr = frameOf(proj, p.pos, p.posture, tapped, p.frame), h = (CH / 2) * p.scale;
@@ -91,7 +87,7 @@ export function cardMiddle(proj: Projector, p: Placement, tapped: boolean): V3 {
 }
 
 // A card of scale s on `frame`, its middle half a card up. Tapped it lies turned: its top points right.
-function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = CW, h = CH, at: At = AT_REST): { face: Quad; name: Quad; foot: Quad; width: number } {
+function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = CW, h = CH): { face: Quad; name: Quad; foot: Quad; width: number } {
   const c = { x: fr.base.x + fr.up.x * (h / 2) * s, y: fr.base.y + fr.up.y * (h / 2) * s, z: fr.base.z + fr.up.z * (h / 2) * s };
   const hx = ((tapped ? h : w) / 2) * s, hu = ((tapped ? w : h) / 2) * s;
   // a window of the card's own frame: its up-axis fraction t0..t1 (0 foot, 1 top)
@@ -100,7 +96,7 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
     const pts = tapped
       ? [[lo * hx, -hu], [hi * hx, -hu], [hi * hx, hu], [lo * hx, hu]]
       : [[-hx, lo * hu], [hx, lo * hu], [hx, hi * hu], [-hx, hi * hu]];
-    return pts.map(([a, b]) => proj.project(at({ x: c.x + a! + fr.up.x * b!, y: c.y + fr.up.y * b!, z: c.z + fr.up.z * b! }))) as unknown as Quad;
+    return pts.map(([a, b]) => proj.project({ x: c.x + a! + fr.up.x * b!, y: c.y + fr.up.y * b!, z: c.z + fr.up.z * b! })) as unknown as Quad;
   };
   // Width on screen across the middle of the card, upright: the old floor's measure.
   const mid = { x: fr.base.x, y: fr.base.y + fr.up.y * (h / 2) * s, z: fr.base.z + fr.up.z * (h / 2) * s };
@@ -108,10 +104,10 @@ function cardQuads(proj: Projector, fr: Frame, s: number, tapped: boolean, w = C
   return { face: win(0, 1), name: win(5 / 6, 1), foot: win(0, 1 / 6), width: Math.abs(b.x - a.x) };
 }
 
-export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean, at: At = AT_REST): Shape {
+export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean): Shape {
   const p: Placement = u.placement;
   const own = p.frame;
-  const q = own ? ownQuads(proj, p, own, u.turn ?? (u.tapped ? 1 : 0), at) : cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH, at);
+  const q = own ? ownQuads(proj, p, own, u.turn ?? (u.tapped ? 1 : 0)) : cardQuads(proj, frameOf(proj, p.pos, p.posture, u.tapped), p.scale, u.tapped, CW, CH);
   const creature = u.role === "creature";
   return {
     group: u.id,
@@ -122,8 +118,8 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
     // (An arranged creature lying in a pile meets the any-card floor: only a standing one is a creature on show.)
     floor: creature && (!own || p.posture === "stand") ? (mine ? FLOOR.mine : FLOOR.theirs) : FLOOR.any,
     members: u.members,
-    // at rest, a tap reaches its place; carried, or fighting in the clash, its face
-    ...(u.hit && at === AT_REST && !u.fighting ? { hit: u.hit } : {}),
+    // at rest, a tap reaches its place; fighting in the clash, its face
+    ...(u.hit && !u.fighting ? { hit: u.hit } : {}),
   };
 }
 
@@ -131,22 +127,22 @@ export function unitShape(proj: Projector, seat: string, u: Unit, mine: boolean,
  * A card on its own axes (the arrangement engine's), turned `turn` quarter turns clockwise in its own plane about its
  * middle (a tapped card: 1 a quarter turn, 1/6 a notch). Its width is measured unturned, as a floor is.
  */
-function ownQuads(proj: Projector, p: Placement, own: NonNullable<Placement["frame"]>, turn: number, at: At): { face: Quad; name: Quad; foot: Quad; width: number } {
+function ownQuads(proj: Projector, p: Placement, own: NonNullable<Placement["frame"]>, turn: number): { face: Quad; name: Quad; foot: Quad; width: number } {
   const s = p.scale, th = (turn * Math.PI) / 2, c = Math.cos(th), sn = Math.sin(th);
   const m = (a: V3, b: V3, k: number): V3 => ({ x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k });
   const mid = m(p.pos, own.up, (CH / 2) * s);
   const up = m({ x: own.up.x * c, y: own.up.y * c, z: own.up.z * c }, own.right, sn);
   const right = m({ x: own.right.x * c, y: own.right.y * c, z: own.right.z * c }, own.up, -sn);
-  const pt = (a: number, b: number): Point => proj.project(at(m(m(mid, right, a * s), up, b * s)));
+  const pt = (a: number, b: number): Point => proj.project(m(m(mid, right, a * s), up, b * s));
   const win = (t0: number, t1: number): Quad => [pt(-CW / 2, (t0 - 0.5) * CH), pt(CW / 2, (t0 - 0.5) * CH), pt(CW / 2, (t1 - 0.5) * CH), pt(-CW / 2, (t1 - 0.5) * CH)];
   const a = proj.project(m(mid, own.right, (-CW / 2) * s)), b = proj.project(m(mid, own.right, (CW / 2) * s));
   return { face: win(0, 1), name: win(5 / 6, 1), foot: win(0, 1 / 6), width: Math.hypot(b.x - a.x, b.y - a.y) };
 }
 
 /** The plaque stands leaning back by the camera's pitch, 3.2 wide and 0.82 tall at scale 1. */
-export function plateShape(proj: Projector, seat: string, p: Placement, at: At = AT_REST): Shape {
+export function plateShape(proj: Projector, seat: string, p: Placement): Shape {
   const th = proj.pitch, up = { x: 0, y: Math.cos(th), z: -Math.sin(th) }, s = p.scale;
-  const pt = (sx: number, t: number): Point => proj.project(at({ x: p.pos.x + sx * 1.6 * s, y: p.pos.y + up.y * t * 0.82 * s, z: p.pos.z + up.z * t * 0.82 * s }));
+  const pt = (sx: number, t: number): Point => proj.project({ x: p.pos.x + sx * 1.6 * s, y: p.pos.y + up.y * t * 0.82 * s, z: p.pos.z + up.z * t * 0.82 * s });
   const quad = (t0: number, t1: number): Quad => [pt(-1, t0), pt(1, t0), pt(1, t1), pt(-1, t1)];
   return { group: `plate:${seat}`, kind: "plate", seat, face: quad(0, 1), name: quad(5 / 6, 1), foot: quad(0, 1 / 6), order: PLATE_ORDER, floor: 0, width: 0, members: [] };
 }

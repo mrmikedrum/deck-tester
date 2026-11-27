@@ -25,9 +25,6 @@ export const slab = {
   /** What each card under the top one adds to a block (its true thickness), and the most a block rises. */
   step: card.thickness,
   cap: 0.5,
-  /** A zone's block (a library, a graveyard): the same stock. */
-  zoneStep: card.thickness,
-  zoneCap: 0.5,
   /** A mixed pile is a staircase: each card lies on the one under it, turned this much past it. */
   stairTurn: 0.035,
   stairShow: 5,

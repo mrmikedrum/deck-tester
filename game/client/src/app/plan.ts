@@ -49,6 +49,8 @@ export function decisionFactsOf(d: Decision | null, cues: BoardCues): DecisionFa
   for (const r of ("refs" in d ? (d.refs as readonly unknown[]) : []) ?? []) {
     const ref = r as { readonly card?: CardId | null; readonly blocks?: CardId };
     if (ref.card != null) options.add(ref.card);
+    // (a block names both ends: the attacker is as much a choice as the blocker, so twins of it stand apart)
+    if (ref.blocks != null) options.add(ref.blocks);
   }
   const draft = d.kind === "attack" ? (cues.combat?.attacks.map((a) => a.attacker) ?? []) : [];
   return { kind: d.kind, options: [...options].sort((a, b) => a - b), draft };

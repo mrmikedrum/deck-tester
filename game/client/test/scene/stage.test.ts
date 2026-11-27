@@ -37,7 +37,7 @@ function flight(over: Partial<FlightPlan> & Pick<FlightPlan, "key">): FlightPlan
     card: id(1),
     departure: true,
     origin: { from: "piece", piece: "c1" },
-    dest: { to: "pile", piece: "zone:graveyard:A" },
+    dest: { to: "piece", piece: "c9" },
     face: null,
     token: false,
     motion: "depart",

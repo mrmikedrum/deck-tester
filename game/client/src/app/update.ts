@@ -10,7 +10,7 @@
 import type { ZoomRequest } from "../scene/stage/types";
 import { diff, modelOf, playerViewer } from "../model";
 import { groupById, pileCards, sheetOf } from "../layout";
-import type { HitGroup } from "../layout";
+import type { HitGroup, HitGroups } from "../layout";
 import type { ChangeSet, TableModel } from "../model";
 import * as narrative from "../narrative";
 import * as play from "../play";
@@ -109,7 +109,7 @@ function updated(s: AppState, m: Msg): Step {
   // The focus changed: a sift opening or going changes the chrome's mode, so the plan may be made again (and the focus
   // kept in step with it).
   const tx: Tx = { s: state, fx: [...r.effects] };
-  plan(tx, timeOf(m));
+  plan(tx, timeOf(m), s);
   return { state: focused(state, tx.s, origin), effects: tx.fx };
 }
 
@@ -131,9 +131,11 @@ function focused(prev: AppState, s: AppState, origin: string | null): AppState {
   const has = (id: string): boolean => (groups?.some((g) => g.id === id) ?? false) || zoneHas(id);
   const pages = (id: string): number => (s.model && s.plan ? (sheetOf(s.model, s.plan, { kind: "pile", group: id })?.pages.count ?? 1) : 1);
   const synced = sync(s.focus, { sheet: live && c.sheet !== null, mulligan, stack: stackKeyOf(s.model), combat: combatSightOf(s.model, play.present(s.play).board.combat, s.plan), groups: has, pages }, origin);
-  // A seat's spread goes when the seat leaves the table (out of the game).
+  // A seat's spread goes when there is nothing left to show (the seat out of the game, its board emptied): never an
+  // empty sheet with the hand away. Its page is kept to the pages it has, as a pile's is.
   const leaning = synced.layers.find((e) => e.layer === "lean");
-  const focus = leaning?.seat && s.plan && !s.plan.seats.has(leaning.seat) ? close(synced, "lean") : synced;
+  const spread = leaning?.seat && s.model && s.plan && s.plan.seats.has(leaning.seat) ? sheetOf(s.model, s.plan, { kind: "spread", seat: leaning.seat }, leaning.page) : null;
+  const focus = !leaning || !s.model || !s.plan ? synced : !spread ? close(synced, "lean") : spread.pages.current !== leaning.page ? { ...synced, layers: synced.layers.map((e) => (e === leaning ? { ...e, page: spread.pages.current } : e)) } : synced;
   return focus === s.focus ? s : { ...s, focus };
 }
 
@@ -321,6 +323,8 @@ function chooseFrom(tx: Tx, group: string, rev: number): void {
  */
 function tapDefault(tx: Tx, on: play.Target): void {
   if ("card" in on) return inspect(tx, on.card);
+  // (a stack of copies on a sheet is its cards: a tap play leaves reads the one it shows)
+  if ("group" in on && on.group.startsWith("sheet:") && on.members[0] !== undefined) return inspect(tx, on.members[0]);
   const f = tx.s.focus, t = top(f);
   const g = "group" in on && tx.s.plan ? groupById(tx.s.plan.hits, on.group) : undefined;
   if (g?.kind === "stack" && isAside(f, "stack")) {
@@ -381,16 +385,36 @@ function bridgeWorking(tx: Tx, at: Ms): void {
  */
 export const settlingOf = (s: AppState): boolean => s.settling || s.changes.sets.some((set) => set.changes.some((c) => c.t === "moved"));
 
-/** Recomputes the plan when its inputs changed and gives play the new hit groups. */
-function plan(tx: Tx, at: Ms): void {
-  const before = tx.s.plan;
+/**
+ * Recomputes the plan when its inputs changed and gives play the new hit groups: the plan's, and the stacks of copies on
+ * the sheet up (`from`: the state play last heard of, when the focus has just changed).
+ */
+function plan(tx: Tx, at: Ms, from: AppState = tx.s): void {
+  const before = playHits(from);
   const r = replan(tx.s, play.present(tx.s.play).board, settlingOf(tx.s));
   tx.s = r.state;
   if (r.error) log(tx, "warn", "layout.plan", r.error);
-  const after = tx.s.plan;
-  if (after === before) return;
-  if (after && after.hits.rev === before?.hits.rev) return;
-  toPlay(tx, { t: "hits", at, hits: after ? after.hits : { rev: -1, groups: [] } }, at);
+  const after = playHits(tx.s);
+  if (after?.rev === before?.rev && (after === null) === (before === null)) return;
+  toPlay(tx, { t: "hits", at, hits: after ?? { rev: -1, groups: [] } }, at);
+}
+
+/**
+ * What a tap can reach, for play: the plan's groups, and on a sheet up each stack of copies as a group of its own
+ * ("sheet:<top>", the scene's pick), so a tap on one resolves as a tap on any table pile does (play's twins rule).
+ */
+export function playHits(s: AppState): HitGroups | null {
+  const p = s.plan;
+  if (!p) return null;
+  const on = sheetFocusOf(tableTop(s.focus)), sh = on && s.model ? sheetOf(s.model, p, on.focus, on.page) : null;
+  const stacks: HitGroup[] = (sh?.targets ?? []).flatMap((t) =>
+    t.members.length > 1 ? [{ id: `sheet:${t.members[0]}`, kind: "pile" as const, seat: sh!.seat, members: [...t.members], quad: t.region, order: 1e6 }] : [],
+  );
+  if (!stacks.length) return p.hits;
+  const key = stacks.map((g) => `${g.id}:${g.members.join(",")}`).join(";");
+  let h = p.hits.rev ^ 0x9e3779b9;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
+  return { ...p.hits, rev: h >>> 0, groups: [...p.hits.groups, ...stacks] };
 }
 
 // ---- card data ----------------------------------------------------------------------------------------------------------
@@ -662,11 +686,12 @@ function input(s: AppState, m: InputMsg): Step {
       return done(tx);
     }
     case "board": {
-      // The nameplate's "See … board": the nameplate closes and the table leans in on that seat (not my own).
+      // The nameplate's "See … board": the nameplate closes and that seat's spread opens (not my own).
       const seat = s.model?.seats.find((x) => String(x.id) === m.seat)?.id;
-      // (a seat out of the game has no board on the table to lean in on)
-      if (!seat || seat === s.model?.viewer.perspective || !s.plan?.seats.has(seat)) return done(tx);
-      tx.s = { ...s, focus: open(close(s.focus, "seat"), entry("lean", { seat, restore: tx.origin ?? null })) };
+      // (a seat out of the game, or one with nothing on its board, has no spread to show)
+      if (!seat || seat === s.model?.viewer.perspective || !s.plan?.seats.has(seat) || !sheetOf(s.model!, s.plan, { kind: "spread", seat })) return done(tx);
+      // (when it goes, keyboard focus goes back to the seat's plate, as from a zone opened there)
+      tx.s = { ...s, focus: open(close(s.focus, "seat"), entry("lean", { seat, restore: `plate:${seat}` })) };
       return done(tx);
     }
     case "siftPage": {
@@ -676,9 +701,10 @@ function input(s: AppState, m: InputMsg): Step {
       const e = tableTop(s.focus);
       const sheet = sheetFocusOf(e);
       const key = sheet ? (sheet.focus.kind === "pile" ? sheet.focus.group : `spread:${sheet.focus.seat}`) : null;
-      const count = sheet && key === m.group && s.model && s.plan ? (sheetOf(s.model, s.plan, sheet.focus, sheet.page)?.pages.count ?? 0) : 0;
-      if (!e || !count) return done(tx);
-      const page = Math.max(0, Math.min(count - 1, e.page + m.delta));
+      const now = sheet && key === m.group && s.model && s.plan ? sheetOf(s.model, s.plan, sheet.focus, sheet.page) : null;
+      if (!e || !now) return done(tx);
+      // (from the page shown, which a sheet that shrank under it has already clamped)
+      const page = Math.max(0, Math.min(now.pages.count - 1, now.pages.current + m.delta));
       if (page !== e.page) tx.s = { ...s, focus: { ...s.focus, layers: s.focus.layers.map((x) => (x === e ? { ...x, page } : x)) } };
       return done(tx);
     }

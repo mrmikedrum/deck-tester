@@ -82,15 +82,27 @@ describe("a pile's sheet", () => {
     expect(s.places.map((p) => p.turn)).toEqual(["none", "notch"]);
     expect(tall(s.places[1]!.quad)).toBeCloseTo(tall(s.places[0]!.quad), 6);
   });
-  it("lands keep a row of their own while the sheet has one (the break stage), and share it when it has not", () => {
+  it("lands keep a row of their own while the sheet has one (the break stage), between adjacent runs only", () => {
     resetIds();
-    const cards: ArrCard[] = [ac({ name: "Bear" }), ac({ name: "Forest", kind: "land" }), ac({ name: "Wolf" }), ac({ name: "Island", kind: "land" })];
+    const cards: ArrCard[] = [ac({ name: "Bear" }), ac({ name: "Wolf" }), ac({ name: "Forest", kind: "land" }), ac({ name: "Island", kind: "land" })];
     const s = sheet(pileUnits(cards, NOTHING));
     expect(s.rows).toBe("apart");
     const rowOf = (name: string) => Math.round(bounds(s.places.find((p) => cards.find((c) => c.id === p.top)!.name === name)!.quad).t);
     expect(rowOf("Bear")).toBe(rowOf("Wolf"));
     expect(rowOf("Forest")).toBe(rowOf("Island"));
     expect(rowOf("Bear")).not.toBe(rowOf("Forest"));
+  });
+  it("never reorders: a zone's mixed order and offered-first stand as the policy gave them, read row by row", () => {
+    resetIds();
+    const mixed: ArrCard[] = ["Bolt", "Forest", "Shock", "Island", "Opt", "Swamp", "Ponder"].map((name, i) => ac({ name, kind: i % 2 ? "land" : "artifact" }));
+    const reading = (s: Sheet) => [...s.places].sort((a, b) => bounds(a.quad).t - bounds(b.quad).t || bounds(a.quad).l - bounds(b.quad).l).map((p) => p.top);
+    // a graveyard keeps its order
+    const zone = sheet(pileUnits(mixed, NOTHING));
+    expect(reading(zone)).toEqual(mixed.map((c) => c.id));
+    // offered first while choosing, then the rest in order, lands and others mixed as they come
+    const offered = new Set([mixed[5]!.id, mixed[2]!.id]);
+    const chosen = sheet(pileUnits(mixed, { offered, choosing: true }), { choosing: true });
+    expect(reading(chosen)).toEqual([mixed[2]!.id, mixed[5]!.id, ...mixed.filter((c) => !offered.has(c.id)).map((c) => c.id)]);
   });
 });
 

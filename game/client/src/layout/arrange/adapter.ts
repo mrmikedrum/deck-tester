@@ -144,7 +144,7 @@ export function entrySeat(board: SeatBoard, frame: SurfaceFrame, plate: Placemen
   const attached = board.cards.filter((c) => c.attachedTo !== null && held.has(c.attachedTo)).map((c) => c.id);
   const members = board.cards.map((c) => c.id).filter((id) => !attached.includes(id));
   const units: Unit[] = members.length
-    ? [{ id: `u:entry:${seat}`, role: "support", kind: "summary", members, dressing: attached, top: members[0]!, title: `All ${members.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(frame, 0, 0.2 * frame.d), scale: S_TABLE, posture: "flat" } }]
+    ? [{ id: `u:entry:${seat}`, role: "support", kind: "summary", members, dressing: attached, top: members[0]!, title: `All ${members.length}`, mixed: true, acting: false, tapped: false, placement: { pos: onFrame(frame, 0, 0.2 * frame.d), scale: S_TABLE, posture: "flat" }, ...(attached.length ? { reach: [...members, ...attached] } : {}) }]
     : [];
   const yaw = Math.atan2(-frame.across.z, frame.across.x);
   return new Ledger(board.cards.map((c) => c.id)).seal({

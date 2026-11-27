@@ -7,7 +7,5 @@ export const TH = 0.0034; // card thickness: 0.3 mm of an 88 mm card
 /** How much further back than upright a tapped standee leans, so tapped reads at a glance (a card without the engine's
  *  own axes). */
 export const TAP_LEAN = 0.3;
-/** The lean of an opponent's zone pile: propped up from its near edge so it reads from afar. */
-export const PILE_LEAN = 0.8;
 /** A seat's plaque on the table (its group lies past the leaf: the nameplate is chrome). */
 export const PLATE_S = 1.0;

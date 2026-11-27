@@ -190,6 +190,14 @@ describe("the nameplates", () => {
     icons: [{ kind: "hand" as const, figure: "5" }],
   };
   const plates = () => $(".l-plates") as HTMLElement | null;
+  it("a seat's spread closed gives keyboard focus back to the seat's plate (focus restored to plate:<seat>)", () => {
+    const spread = { group: "spread:Atraxa", title: "Atraxa's board", close: "Back to the table", tapped: 0, page: 0, pages: 1, range: null, top: 200, chooser: null, cards: [{ id: 5 as CardId, label: "Beast" }], captions: [], counts: [] };
+    show({ plates: [PLATE] });
+    show({ commit: 2, plates: [PLATE], sift: spread, layers: [{ layer: "lean", restore: "plate:Atraxa" }] });
+    ($(".l-sift .g-close") as HTMLElement).focus();
+    show({ commit: 3, plates: [PLATE] });
+    expect(document.activeElement).toBe($('[data-fk="plate:Atraxa"]'));
+  });
   it("a tap on a plate is the tap on its plate's hit group", () => {
     show({ plates: [PLATE] });
     expect(plates()?.inert).toBe(false);

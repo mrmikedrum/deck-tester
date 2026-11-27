@@ -13,6 +13,7 @@ import { leafContainer, partedPose } from "./leaf";
 import { momentOf } from "./moment";
 import type { DecisionFacts, Moment } from "./moment";
 import { POLICIES, policyFor } from "./policies/select";
+import { readyTapped } from "./policies/ready-tapped";
 import { arrange } from "./solver";
 
 /** One opponent's leaf, as the engine is given it. */
@@ -85,8 +86,10 @@ export function leafInputOf(model: TableModel, seat: SeatId, involved: ReadonlyS
 /** A leaf arranged at rest in its slot, its rows laid to hold under the template's parting at its most. */
 export function planLeaf(s: LeafInput, slot: SeatSlot, leaf: LeafGeometry, part: Parting, projector: Projector, safe: Rect): LeafPlan {
   const forced = s.policy !== undefined ? POLICIES.get(s.policy) : undefined;
-  const chosen = forced ? { policy: forced, selection: undefined } : policyFor(s.cards, s.memory, s.clock);
+  let chosen: ReturnType<typeof policyFor> | { policy: NonNullable<typeof forced>; selection: undefined } = { policy: forced ?? readyTapped, selection: undefined };
   try {
+    // (choosing the policy reads the cards too: inside, so nothing the engine cannot read breaks the plan)
+    if (!forced) chosen = policyFor(s.cards, s.memory, s.clock);
     const container = leafContainer({ id: `rest:${s.seat}`, seat: s.seat, viewer: s.viewer, slot, leaf, projector, safe, poses: [partedPose(part)] });
     const here = new Set(s.cards.map((c) => c.id));
     const input: ArrangeInput = {

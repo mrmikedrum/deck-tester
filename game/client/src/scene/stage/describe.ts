@@ -307,7 +307,10 @@ function sheetPieces(model: TableModel, plan: TablePlan, focus: SheetFocus, page
       needsMembers: false,
     },
   ];
+  const targets = new Map(sh.targets.map((t) => [t.piece, t]));
   for (const pl of sh.places) {
+    // (a tap reaches the engine's target for the place: its region and the cards it stands for)
+    const target = targets.get(pl.key)!;
     // (each card keeps what the decision says of it: an option, chosen, in danger, or nothing; a stack, its strongest)
     const mark = strongest(pl.cards.map(markOf));
     const tapped = pl.turn === "notch";
@@ -323,7 +326,7 @@ function sheetPieces(model: TableModel, plan: TablePlan, focus: SheetFocus, page
       form: `sift|${pl.top}`,
       mods: `${pl.turn}#${mark ?? ""}`,
       mark,
-      draw: { t: "sift", card: pl.top, tapped, from: focus.kind === "pile" ? focus.group : (sh.from.get(pl.top) ?? `plate:${sh.seat}`) },
+      draw: { t: "sift", card: pl.top, tapped, from: focus.kind === "pile" ? focus.group : (sh.from.get(pl.top) ?? `plate:${sh.seat}`), members: target.members, region: target.region },
       needsMembers: false,
     });
   }

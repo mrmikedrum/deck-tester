@@ -132,30 +132,6 @@ function atDepth(proj: Projector, fwd: V3, x: number, y: number, depth: number):
   return add(proj.eye, dir, depth / Math.max(1e-6, dot(dir, fwd)));
 }
 
-/**
- * The units in the order a mode lays them: "apart" and "some" order each tier's units by break run (the break stage's
- * runs, each in the order its first unit appears), so a run is never split by another; the others keep the policy's
- * order.
- */
-function ordered(units: readonly SheetUnit[], mode: Mode, rules: readonly BreakRule[]): SheetUnit[] {
-  if (mode !== "apart" && mode !== "some") return [...units];
-  const out: SheetUnit[] = [];
-  let i = 0;
-  while (i < units.length) {
-    let j = i;
-    while (j < units.length && units[j]!.tier === units[i]!.tier) j++;
-    const runs: { cls: SheetUnit["cls"]; xs: SheetUnit[] }[] = [];
-    for (const x of units.slice(i, j)) {
-      const r = runs.find((r) => mayShare(r.cls, x.cls, rules));
-      if (r) r.xs.push(x);
-      else runs.push({ cls: x.cls, xs: [x] });
-    }
-    out.push(...runs.flatMap((r) => r.xs));
-    i = j;
-  }
-  return out;
-}
-
 interface Geometry {
   readonly h: number;
   readonly w: number;
@@ -191,8 +167,8 @@ function span(input: SheetInput, g: Geometry, top: number): { lo: number; hi: nu
   return { lo, hi };
 }
 
-/** Where a row may break in the ordered units: before each unit that starts a tier, and before each that starts a break run
- *  within its tier. */
+/** Where a row may break in the policy's sequence (never reordered: a zone keeps its order, what is offered stays first):
+ *  before each unit that starts a tier, and before each whose class may not share a row with the one before it. */
 function boundaries(units: readonly SheetUnit[], rules: readonly BreakRule[]): { tiers: number[]; runs: number[] } {
   const tiers: number[] = [], runs: number[] = [];
   units.forEach((x, i) => {
@@ -258,18 +234,19 @@ export function arrangeSheet(input: SheetInput): Sheet {
   const one = (g: Geometry, units: readonly SheetUnit[], breaks: ReadonlySet<number>): Row[] | null => {
     const top = pack(input, g, units, breaks, a.top, true);
     if (!top) return null;
+    if (!top[0]?.length) return [];
     const rows = top[0]!, last = rows.at(-1)!, free = a.bottom - (last.y + rowH(g, last));
     return (free > 0 ? pack(input, g, units, breaks, a.top + free / 2, true)?.[0] : null) ?? rows;
   };
   const modes: Mode[] = input.role === "spread" ? ["apart", "tiers"] : ["apart"];
   for (const mode of modes)
     for (const step of SHEET_STEPS) {
-      const g = geometry(input, step), units = ordered(input.units, mode, rules), b = boundaries(units, rules);
+      const g = geometry(input, step), units = input.units, b = boundaries(units, rules);
       const rows = one(g, units, new Set(mode === "apart" ? [...b.tiers, ...b.runs] : b.tiers));
       if (rows) return laid(input, step, g, mode, [rows], 0);
     }
   const step = SHEET_STEPS[SHEET_STEPS.length - 1]!, g = geometry(input, step);
-  const units = ordered(input.units, "some", rules), b = boundaries(units, rules);
+  const units = input.units, b = boundaries(units, rules);
   if (one(g, units, new Set())) {
     // As many breaks as still fit, every tier's before any run's, each in order.
     const taken = new Set<number>();
@@ -279,7 +256,7 @@ export function arrangeSheet(input: SheetInput): Sheet {
     }
     return laid(input, step, g, taken.size ? "some" : "shared", [one(g, units, taken)!], 0);
   }
-  const mode: Mode = input.role === "spread" ? "tiers" : "shared", paged = ordered(input.units, mode, rules);
+  const mode: Mode = input.role === "spread" ? "tiers" : "shared", paged = input.units;
   const pages = pack(input, g, paged, new Set(mode === "tiers" ? boundaries(paged, rules).tiers : []), a.top, false)!;
   return laid(input, step, g, mode, pages, Math.max(0, Math.min(pages.length - 1, input.page)));
 }

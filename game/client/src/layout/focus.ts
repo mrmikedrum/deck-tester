@@ -1,6 +1,6 @@
 // The table's focus layers on the arrangement engine (docs "layout"; engine §2.8): a pile opened (its cards singly, as
 // a sheet brought nearer) and a seat's spread ("See X's board": every permanent of that seat under its tier's caption).
-// Both are arranged from the committed plan and the model, so opening one never replans the table; the stack as the
+// Both are arranged from the committed plan and the model, so a sheet's page never replans the table (the first one opened changes the chrome's mode, which does, moving nothing); the stack as the
 // focus is the plan's own `stackUp`. Pure.
 import type { TableModel } from "../model";
 import { arrCard } from "./arrange/card";
@@ -66,6 +66,8 @@ export interface FocusSheet extends Sheet {
   readonly cards: readonly CardId[];
   /** The hit group each card rests in on the table (it flies out of it and back), when it has one. */
   readonly from: ReadonlyMap<CardId, string>;
+  /** Its lands' tier holds lands alone, over every page (else it holds rocks too, and says mana). */
+  readonly landsOnly: boolean;
 }
 
 const kept = new WeakMap<TablePlan, Map<string, FocusSheet | null>>();
@@ -132,6 +134,8 @@ function make(model: TableModel, plan: TablePlan, focus: SheetFocus, page: numbe
     [seat, id] = [focus.seat, `spread:${focus.seat}`];
     units = spreadUnits(cs, leafRank(plan, focus.seat), ctx);
   }
+  // (cards the model no longer holds are not shown: nothing left, no sheet)
+  if (!units.length) return null;
   const cards = units.flatMap((x) => [...x.cards]);
   // Nearer than where its cards came from: my field line for mine, a leaf's front line for anyone else's.
   const tpl = tableTemplate(Math.max(1, Math.min(4, plan.seats.size)));
@@ -140,5 +144,6 @@ function make(model: TableModel, plan: TablePlan, focus: SheetFocus, page: numbe
   const laid = arrangeSheet({ id, role: focus.kind, units, projector: plan.projector, ...roomOf(plan), u: designUnit(plan.viewport), ref, page, choosing: ctx.choosing });
   const rests = new Map<CardId, string>();
   for (const sp of plan.seats.values()) for (const un of sp.units) for (const c of [...un.members, ...un.dressing]) if (!rests.has(c)) rests.set(c, un.id);
-  return { ...laid, seat, zone, cards, from: rests };
+  const landsOnly = units.filter((x) => x.tier === "lands").every((x) => x.cls === "land");
+  return { ...laid, seat, zone, cards, from: rests, landsOnly };
 }
